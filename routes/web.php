@@ -40,6 +40,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/reports', [AdminController::class, 'reports'])->name('reports');
         Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
         Route::get('/messages', [AdminController::class, 'messages'])->name('messages');
+        Route::get('/messages/{userId}', [AdminController::class, 'messagesThread'])->name('messages.thread');
+        Route::post('/messages/{userId}', [AdminController::class, 'messagesSend'])->name('messages.send');
         Route::get('/account', [AdminController::class, 'account'])->name('account');
         Route::post('/account/update', [AdminController::class, 'accountUpdate'])->name('account.update');
         Route::post('/account/password', [AdminController::class, 'passwordUpdate'])->name('account.password');
@@ -62,6 +64,8 @@ Route::prefix('logistics')->name('logistics.')->middleware('logistics')->group(f
     Route::get('/reports', [LogisticsController::class, 'reports'])->name('reports');
     Route::get('/notifications', [LogisticsController::class, 'notifications'])->name('notifications');
     Route::get('/messages', [LogisticsController::class, 'messages'])->name('messages');
+    Route::get('/messages/{userId}', [LogisticsController::class, 'messagesThread'])->name('messages.thread');
+    Route::post('/messages/{userId}', [LogisticsController::class, 'messagesSend'])->name('messages.send');
     Route::get('/account', [LogisticsController::class, 'account'])->name('account');
     Route::post('/account/update', [LogisticsController::class, 'accountUpdate'])->name('account.update');
     Route::post('/account/password', [LogisticsController::class, 'passwordUpdate'])->name('account.password');

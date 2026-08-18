@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\Shipment;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class LogisticsController extends Controller
@@ -15,7 +16,7 @@ class LogisticsController extends Controller
     private function sidebarCounts(): array
     {
         return [
-            'pendingDeliveries    ' => Shipment::where('shipping_status', 'pending')->count(),
+            'pendingDeliveries' => Shipment::where('shipping_status', 'pending')->count(),
             'activeDeliveries'      => Shipment::whereIn('shipping_status', ['assigned', 'accepted', 'picked_up', 'out_for_delivery'])->count(),
             'unassigned'            => Shipment::whereNull('courier_id')->where('shipping_status', 'pending')->count(),
             'unreadNotifications'   => 0,
@@ -150,11 +151,45 @@ class LogisticsController extends Controller
 
     public function messages()
     {
-        $counts  = $this->sidebarCounts();
+        $counts   = $this->sidebarCounts();
         $couriers = User::where('account_type', 'rider')->where('status', 'approved')->get();
         $sellers  = User::where('account_type', 'seller')->where('status', 'approved')->get();
         $buyers   = User::where('account_type', 'buyer')->where('status', 'approved')->get();
-        return view('logistics.messages', array_merge($counts, compact('couriers', 'sellers', 'buyers')));
+        $activeUser = $couriers->first() ?? $sellers->first() ?? $buyers->first();
+        $messages = $activeUser ? DB::table('messages')
+            ->where(fn($q) => $q->where('sender_id', auth()->id())->where('receiver_id', $activeUser->id))
+            ->orWhere(fn($q) => $q->where('sender_id', $activeUser->id)->where('receiver_id', auth()->id()))
+            ->orderBy('created_at')->get() : collect();
+        return view('logistics.messages', array_merge($counts, compact('couriers', 'sellers', 'buyers', 'activeUser', 'messages')));
+    }
+
+    public function messagesThread($userId)
+    {
+        $counts     = $this->sidebarCounts();
+        $couriers   = User::where('account_type', 'rider')->where('status', 'approved')->get();
+        $sellers    = User::where('account_type', 'seller')->where('status', 'approved')->get();
+        $buyers     = User::where('account_type', 'buyer')->where('status', 'approved')->get();
+        $activeUser = User::findOrFail($userId);
+        $messages   = DB::table('messages')
+            ->where(fn($q) => $q->where('sender_id', auth()->id())->where('receiver_id', $activeUser->id))
+            ->orWhere(fn($q) => $q->where('sender_id', $activeUser->id)->where('receiver_id', auth()->id()))
+            ->orderBy('created_at')->get();
+        DB::table('messages')->where('sender_id', $activeUser->id)->where('receiver_id', auth()->id())->update(['read' => true]);
+        return view('logistics.messages', array_merge($counts, compact('couriers', 'sellers', 'buyers', 'activeUser', 'messages')));
+    }
+
+    public function messagesSend(Request $request, $userId)
+    {
+        $request->validate(['body' => 'required|string|max:2000']);
+        DB::table('messages')->insert([
+            'sender_id'   => auth()->id(),
+            'receiver_id' => $userId,
+            'body'        => $request->body,
+            'read'        => false,
+            'created_at'  => now(),
+            'updated_at'  => now(),
+        ]);
+        return back();
     }
 
     public function account()
