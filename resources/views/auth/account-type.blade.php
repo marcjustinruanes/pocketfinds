@@ -33,7 +33,7 @@
 
                 <div class="auth-type-grid">
                     <button class="auth-type-card" type="button"
-                            data-account-type="buyer" data-target="{{ url('/register/method') }}">
+                            data-account-type="buyer" data-target="{{ url('/register') }}">
                         <span class="auth-type-icon">B</span>
                         <span class="auth-type-copy">
                             <span class="auth-type-name">Buyer</span>
@@ -43,7 +43,7 @@
                     </button>
 
                     <button class="auth-type-card" type="button"
-                            data-account-type="rider" data-target="{{ url('/register/method') }}">
+                            data-account-type="rider" data-target="{{ url('/register') }}">
                         <span class="auth-type-icon">R</span>
                         <span class="auth-type-copy">
                             <span class="auth-type-name">Rider</span>
@@ -53,7 +53,7 @@
                     </button>
 
                     <button class="auth-type-card" type="button"
-                            data-account-type="seller" data-target="{{ url('/register/method') }}">
+                            data-account-type="seller" data-target="{{ url('/register') }}">
                         <span class="auth-type-icon">S</span>
                         <span class="auth-type-copy">
                             <span class="auth-type-name">Seller</span>

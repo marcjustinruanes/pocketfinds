@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!stack) return;
     const t = document.createElement('div');
     t.className = 'toast';
-    t.innerHTML = `<span class="ic">●</span><span>${msg}</span>`;
+    t.innerHTML = `<span class="ic" aria-hidden="true"><svg class="svg-icon" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4"></circle></svg></span><span>${msg}</span>`;
     stack.appendChild(t);
     setTimeout(() => { t.style.opacity = '0'; t.style.transition = '.25s'; setTimeout(() => t.remove(), 250); }, 3200);
   };

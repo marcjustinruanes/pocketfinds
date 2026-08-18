@@ -1,62 +1,206 @@
 @extends('admin.layout')
 @section('title', 'Settings')
 @section('page-title', 'Platform Settings')
-@section('page-sub', 'Configure platform-wide options')
+@section('page-sub', 'Manage announcements and platform policies')
 
 @section('content')
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
-  <div class="card">
-    <div class="card-head"><h2>General</h2></div>
-    <div class="card-pad">
-      <div class="form-row"><label>Platform Name</label><input type="text" value="PocketFinds"></div>
-      <div class="form-row"><label>Support Email</label><input type="email" value="support@pocketfinds.com"></div>
-      <div class="form-row"><label>Commission Rate (%)</label><input type="number" value="5" min="0" max="100"></div>
-      <button class="btn btn-primary" data-toast="Settings saved!">Save Changes</button>
-    </div>
-  </div>
+@if(session('success'))
+<div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px">
+  {{ session('success') }}
+</div>
+@endif
 
-  <div class="card">
-    <div class="card-head"><h2>Feature Toggles</h2></div>
-    <div class="card-pad">
-      <div class="switch-row">
-        <div><strong>Google Sign-In</strong><span>Allow users to register via Google</span></div>
-        <label class="switch"><input type="checkbox" checked><span class="track"></span></label>
-      </div>
-      <div class="switch-row">
-        <div><strong>New Registrations</strong><span>Accept new account applications</span></div>
-        <label class="switch"><input type="checkbox" checked><span class="track"></span></label>
-      </div>
-      <div class="switch-row">
-        <div><strong>Maintenance Mode</strong><span>Take the platform offline for maintenance</span></div>
-        <label class="switch"><input type="checkbox"><span class="track"></span></label>
-      </div>
-      <div class="switch-row">
-        <div><strong>Email Notifications</strong><span>Send system emails to users</span></div>
-        <label class="switch"><input type="checkbox" checked><span class="track"></span></label>
+<div data-tabs style="margin-bottom:20px">
+  <a class="tab active" data-tab="announcements"><x-admin-icon name="megaphone" /> Announcements</a>
+  <a class="tab" data-tab="policies"><x-admin-icon name="file" /> Platform Policies</a>
+  <a class="tab" data-tab="general"><x-admin-icon name="settings" /> General</a>
+</div>
+
+<div data-tab-panel="announcements">
+  <div class="dash-grid">
+    <div class="card">
+      <div class="card-head"><div><h2>Post Announcement</h2><p>Broadcast a message to platform users</p></div></div>
+      <div class="card-pad">
+        <form method="POST" action="{{ route('admin.settings.announcements.store') }}">
+          @csrf
+          <div class="form-row">
+            <label>Title</label>
+            <input type="text" name="title" placeholder="Announcement title" required value="{{ old('title') }}">
+          </div>
+          <div class="form-row">
+            <label>Message</label>
+            <textarea name="body" rows="4" placeholder="Write your announcement here..." required>{{ old('body') }}</textarea>
+          </div>
+          <div class="form-row">
+            <label>Audience</label>
+            <select name="audience">
+              <option value="all">All Users</option>
+              <option value="buyer">Buyers Only</option>
+              <option value="seller">Sellers Only</option>
+              <option value="rider">Riders Only</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" type="submit">Post Announcement</button>
+        </form>
       </div>
     </div>
-  </div>
 
-  <div class="card">
-    <div class="card-head"><h2>Registration Requirements</h2></div>
-    <div class="card-pad">
-      <div class="checklist">
-        <label><input type="checkbox" checked> Require government ID for sellers</label>
-        <label><input type="checkbox" checked> Require business permit for sellers</label>
-        <label><input type="checkbox"> Require ID for buyers</label>
-        <label><input type="checkbox" checked> Manual admin approval for sellers</label>
-        <label><input type="checkbox"> Manual admin approval for buyers</label>
+    <div class="card">
+      <div class="card-head"><div><h2>Active Announcements</h2><p>{{ $announcements->count() }} total</p></div></div>
+      <div style="max-height:480px;overflow-y:auto">
+        @forelse($announcements as $ann)
+        <div style="padding:14px 18px;border-bottom:1px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+            <div style="min-width:0">
+              <div style="font-weight:700;font-size:13.5px">{{ $ann->title }}</div>
+              <div style="font-size:12px;color:var(--muted);margin:3px 0">{{ $ann->body }}</div>
+              <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+                <span class="stamp stamp-approved">{{ ucfirst($ann->audience) }}</span>
+                <span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">{{ $ann->created_at?->format('Y-m-d') }}</span>
+              </div>
+            </div>
+            <form method="POST" action="{{ route('admin.settings.announcements.destroy', $ann->id) }}" style="flex:none">
+              @csrf @method('DELETE')
+              <button class="btn btn-sm btn-danger icon-only" type="submit" onclick="return confirm('Delete this announcement?')" aria-label="Delete announcement"><x-admin-icon name="trash" /></button>
+            </form>
+          </div>
+        </div>
+        @empty
+        <div class="empty"><div class="ic"><x-admin-icon name="megaphone" /></div><h3>No announcements yet</h3></div>
+        @endforelse
       </div>
-      <button class="btn btn-primary" data-toast="Requirements saved!">Save</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-head"><h2>Danger Zone</h2></div>
-    <div class="card-pad" style="display:flex;flex-direction:column;gap:10px">
-      <button class="btn btn-danger" data-toast="Cache cleared!">Clear Application Cache</button>
-      <button class="btn btn-danger" data-toast="Sessions cleared!">Clear All Sessions</button>
     </div>
   </div>
 </div>
+
+<div data-tab-panel="policies" style="display:none">
+  <div class="dash-grid">
+    <div class="card">
+      <div class="card-head"><div><h2>Add New Policy</h2><p>Create a platform policy document</p></div></div>
+      <div class="card-pad">
+        <form method="POST" action="{{ route('admin.settings.policies.store') }}">
+          @csrf
+          <div class="form-row">
+            <label>Policy Title</label>
+            <input type="text" name="title" placeholder="e.g. Terms of Service" required value="{{ old('title') }}">
+          </div>
+          <div class="form-row">
+            <label>Slug <span class="hint">(unique identifier, e.g. terms-of-service)</span></label>
+            <input type="text" name="slug" placeholder="terms-of-service" required value="{{ old('slug') }}">
+          </div>
+          <div class="form-row">
+            <label>Content</label>
+            <textarea name="content" rows="6" placeholder="Write the policy content here..." required>{{ old('content') }}</textarea>
+          </div>
+          <button class="btn btn-primary" type="submit">Save Policy</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="stack">
+      @forelse($policies as $policy)
+      <div class="card">
+        <div class="card-head">
+          <div><h2>{{ $policy->title }}</h2><p>Last updated {{ $policy->updated_at?->format('Y-m-d') }}</p></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-sm btn-outline" data-modal-open="policyModal-{{ $policy->id }}">Edit</button>
+            <form method="POST" action="{{ route('admin.settings.policies.destroy', $policy->id) }}">
+              @csrf @method('DELETE')
+              <button class="btn btn-sm btn-danger icon-only" type="submit" onclick="return confirm('Delete this policy?')" aria-label="Delete policy"><x-admin-icon name="trash" /></button>
+            </form>
+          </div>
+        </div>
+        <div class="card-pad">
+          <p style="font-size:13px;color:var(--muted);margin:0;line-height:1.6">{{ Str::limit($policy->content, 160) }}</p>
+        </div>
+      </div>
+
+      <div class="modal-overlay" id="policyModal-{{ $policy->id }}">
+        <div class="modal modal-lg">
+          <div class="modal-head">
+            <div><h3>Edit Policy</h3><p>{{ $policy->title }}</p></div>
+            <button class="modal-close" data-modal-close aria-label="Close"><x-admin-icon name="close" /></button>
+          </div>
+          <form method="POST" action="{{ route('admin.settings.policies.update', $policy->id) }}">
+            @csrf @method('PATCH')
+            <div class="modal-body">
+              <div class="form-row">
+                <label>Title</label>
+                <input type="text" name="title" value="{{ $policy->title }}" required>
+              </div>
+              <div class="form-row">
+                <label>Content</label>
+                <textarea name="content" rows="8" required>{{ $policy->content }}</textarea>
+              </div>
+            </div>
+            <div class="modal-foot">
+              <button class="btn btn-outline" type="button" data-modal-close>Cancel</button>
+              <button class="btn btn-primary" type="submit">Update Policy</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      @empty
+      <div class="card"><div class="empty"><div class="ic"><x-admin-icon name="file" /></div><h3>No policies yet</h3><p>Add your first platform policy.</p></div></div>
+      @endforelse
+    </div>
+  </div>
+</div>
+
+<div data-tab-panel="general" style="display:none">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px">
+    <div class="card">
+      <div class="card-head"><h2>General</h2></div>
+      <div class="card-pad">
+        <div class="form-row"><label>Platform Name</label><input type="text" value="PocketFinds"></div>
+        <div class="form-row"><label>Support Email</label><input type="email" value="support@pocketfinds.com"></div>
+        <div class="form-row"><label>Commission Rate (%)</label><input type="number" value="10" min="0" max="100"></div>
+        <button class="btn btn-primary" data-toast="Settings saved!">Save Changes</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Feature Toggles</h2></div>
+      <div class="card-pad">
+        <div class="switch-row">
+          <div><strong>Google Sign-In</strong><span>Allow users to register via Google</span></div>
+          <label class="switch"><input type="checkbox" checked><span class="track"></span></label>
+        </div>
+        <div class="switch-row">
+          <div><strong>New Registrations</strong><span>Accept new account applications</span></div>
+          <label class="switch"><input type="checkbox" checked><span class="track"></span></label>
+        </div>
+        <div class="switch-row">
+          <div><strong>Maintenance Mode</strong><span>Take the platform offline</span></div>
+          <label class="switch"><input type="checkbox"><span class="track"></span></label>
+        </div>
+        <div class="switch-row">
+          <div><strong>Email Notifications</strong><span>Send system emails to users</span></div>
+          <label class="switch"><input type="checkbox" checked><span class="track"></span></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Danger Zone</h2></div>
+      <div class="card-pad" style="display:flex;flex-direction:column;gap:10px">
+        <button class="btn btn-danger" data-toast="Cache cleared!">Clear Application Cache</button>
+        <button class="btn btn-danger" data-toast="Sessions cleared!">Clear All Sessions</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+@push('scripts')
+<script>
+document.querySelectorAll('[data-tabs] .tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('[data-tabs] .tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('[data-tab-panel]').forEach(p => p.style.display = 'none');
+    document.querySelector('[data-tab-panel="' + tab.dataset.tab + '"]').style.display = '';
+  });
+});
+</script>
+@endpush
 @endsection

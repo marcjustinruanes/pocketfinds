@@ -11,8 +11,8 @@
   <div class="card-pad">
     <div class="filter-bar">
       <div class="search-mini">
-        <span class="ic">🔍</span>
-        <input type="text" placeholder="Search…" data-table-search="usersTable">
+        <span class="ic"><x-admin-icon name="search" /></span>
+        <input type="text" placeholder="Search..." data-table-search="usersTable">
       </div>
     </div>
 
@@ -31,7 +31,7 @@
           <tr class="rail-row rail-{{ $user->status }}" data-type="{{ $user->account_type }}">
             <td>
               <div class="cell-user">
-                <div class="avatar-sm">{{ strtoupper(substr($user->first_name,0,1).substr($user->last_name,0,1)) }}</div>
+                <x-user-avatar :user="$user" size="30" class="avatar-sm" />
                 <div><strong>{{ $user->first_name }} {{ $user->last_name }}</strong><span>{{ $user->email }}</span></div>
               </div>
             </td>
@@ -50,7 +50,7 @@
             <div class="modal">
               <div class="modal-head">
                 <div><h3>Manage User</h3><p>{{ $user->first_name }} {{ $user->last_name }} — {{ ucfirst($user->account_type) }}</p></div>
-                <button class="modal-close" data-modal-close>✕</button>
+                <button class="modal-close" data-modal-close aria-label="Close"><x-admin-icon name="close" /></button>
               </div>
               <div class="modal-body">
                 <div class="detail-grid">
@@ -76,7 +76,7 @@
             </div>
           </div>
           @empty
-          <tr><td colspan="6"><div class="empty"><div class="ic">👤</div><h3>No users yet</h3></div></td></tr>
+          <tr><td colspan="6"><div class="empty"><div class="ic"><x-admin-icon name="users" /></div><h3>No users yet</h3></div></td></tr>
           @endforelse
         </tbody>
       </table>

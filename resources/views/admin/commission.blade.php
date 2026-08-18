@@ -33,7 +33,7 @@
           <td>
             @if($c->seller)
             <div class="cell-user">
-              <div class="avatar-sm">{{ strtoupper(substr($c->seller->first_name,0,1).substr($c->seller->last_name,0,1)) }}</div>
+              <x-user-avatar :user="$c->seller" size="30" class="avatar-sm" />
               <div><strong>{{ $c->seller->first_name }} {{ $c->seller->last_name }}</strong></div>
             </div>
             @else

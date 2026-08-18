@@ -1,12 +1,14 @@
 <header class="topbar">
-  <button class="menu-toggle" data-sidebar-toggle>☰</button>
+  <button class="menu-toggle" data-sidebar-toggle aria-label="Toggle navigation">
+    <x-admin-icon name="menu" />
+  </button>
   <div class="page-heading">
     <h1>@yield('page-title', 'Dashboard')</h1>
     <p>@yield('page-sub', '')</p>
   </div>
   <div class="topbar-search">
-    <span class="ic">🔍</span>
-    <input type="text" placeholder="Search…">
+    <span class="ic"><x-admin-icon name="search" /></span>
+    <input type="text" placeholder="Search...">
   </div>
   <div class="topbar-actions">
     @php
@@ -21,8 +23,9 @@
     @endphp
 
     <div class="dropdown">
-      <button class="icon-btn" data-dropdown-toggle="notifPanel">
-        🔔@if($unreadCount > 0)<span class="dot-badge"></span>@endif
+      <button class="icon-btn" data-dropdown-toggle="notifPanel" aria-label="Notifications">
+        <x-admin-icon name="bell" />
+        @if($unreadCount > 0)<span class="dot-badge"></span>@endif
       </button>
       <div class="dropdown-panel" id="notifPanel">
         <div class="dropdown-head">
@@ -40,8 +43,8 @@
       </div>
     </div>
 
-    <a href="{{ route('admin.account') }}" class="topbar-avatar">
-      {{ strtoupper(substr(auth()->user()->first_name, 0, 1)) }}
+    <a href="{{ route('admin.account') }}" class="topbar-avatar" aria-label="My Account">
+      <x-user-avatar :user="auth()->user()" size="38" />
     </a>
   </div>
 </header>

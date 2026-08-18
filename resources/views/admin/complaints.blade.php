@@ -9,8 +9,8 @@
   <div class="card-pad">
     <div class="filter-bar">
       <div class="search-mini">
-        <span class="ic">🔍</span>
-        <input type="text" placeholder="Search case…" data-table-search="dispTable">
+        <span class="ic"><x-admin-icon name="search" /></span>
+        <input type="text" placeholder="Search case..." data-table-search="dispTable">
       </div>
     </div>
     <div data-tabs>
@@ -44,7 +44,7 @@
               <div class="modal-head">
                 <div><h3>Case #{{ strtoupper(substr($c->id, 0, 8)) }}</h3>
                   <p>{{ $c->complainant?->first_name }} vs {{ $c->respondent?->first_name }}</p></div>
-                <button class="modal-close" data-modal-close>✕</button>
+                <button class="modal-close" data-modal-close aria-label="Close"><x-admin-icon name="close" /></button>
               </div>
               <div class="modal-body">
                 <div class="detail-grid">
@@ -73,7 +73,7 @@
             </div>
           </div>
           @empty
-          <tr><td colspan="8"><div class="empty"><div class="ic">⚑</div><h3>No complaints yet</h3></div></td></tr>
+          <tr><td colspan="8"><div class="empty"><div class="ic"><x-admin-icon name="flag" /></div><h3>No complaints yet</h3></div></td></tr>
           @endforelse
         </tbody>
       </table>

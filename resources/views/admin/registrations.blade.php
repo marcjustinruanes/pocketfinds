@@ -11,8 +11,8 @@
   <div class="card-pad">
     <div class="filter-bar">
       <div class="search-mini">
-        <span class="ic">🔍</span>
-        <input type="text" placeholder="Search name or email…" data-table-search="regTable">
+        <span class="ic"><x-admin-icon name="search" /></span>
+        <input type="text" placeholder="Search name or email..." data-table-search="regTable">
       </div>
       <select class="select" onchange="filterType(this.value)">
         <option value="all">All Types</option>
@@ -37,7 +37,7 @@
           <tr class="rail-row rail-{{ $user->status }}" data-type="{{ $user->status }}">
             <td>
               <div class="cell-user">
-                <div class="avatar-sm">{{ strtoupper(substr($user->first_name,0,1).substr($user->last_name,0,1)) }}</div>
+                <x-user-avatar :user="$user" size="30" class="avatar-sm" />
                 <div><strong>{{ $user->first_name }} {{ $user->last_name }}</strong><span>{{ $user->email }}</span></div>
               </div>
             </td>
@@ -58,7 +58,7 @@
             <div class="modal modal-lg">
               <div class="modal-head">
                 <div><h3>Review Application</h3><p>{{ $user->first_name }} {{ $user->last_name }} — {{ ucfirst($user->account_type) }}</p></div>
-                <button class="modal-close" data-modal-close>✕</button>
+                <button class="modal-close" data-modal-close aria-label="Close"><x-admin-icon name="close" /></button>
               </div>
               <div class="modal-body">
                 <div class="detail-grid">
@@ -72,7 +72,7 @@
                   <div><div class="field-label">Submitted</div><div class="field-value mono">{{ $user->created_at->format('Y-m-d') }}</div></div>
                   <div><div class="field-label">Auth Method</div><div class="field-value">{{ ucfirst($user->auth_method) }}</div></div>
                   @if($user->id_file)
-                  <div class="full"><div class="field-label">Submitted ID</div><div class="field-value"><span class="doc-chip">📄 {{ basename($user->id_file) }}</span></div></div>
+                  <div class="full"><div class="field-label">Submitted ID</div><div class="field-value"><span class="doc-chip"><x-admin-icon name="file" /> {{ basename($user->id_file) }}</span></div></div>
                   @endif
                 </div>
               </div>
@@ -90,7 +90,7 @@
             </div>
           </div>
           @empty
-          <tr><td colspan="6"><div class="empty"><div class="ic">✎</div><h3>No registrations yet</h3></div></td></tr>
+          <tr><td colspan="6"><div class="empty"><div class="ic"><x-admin-icon name="edit" /></div><h3>No registrations yet</h3></div></td></tr>
           @endforelse
         </tbody>
       </table>

@@ -4,51 +4,98 @@
 @section('page-sub', 'Platform messaging and support inbox')
 
 @section('content')
+<style>
+  .content { padding: 0 !important; }
+  .chat-shell { border-radius: 0; border-left: 0; border-right: 0; border-bottom: 0; height: calc(100vh - 66px); display: flex; }
+  .chat-main { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .chat-body { flex: 1; overflow-y: auto; }
+  .chat-input { flex-shrink: 0; }
+  .chat-list { overflow-y: auto; }
+</style>
+@if(session('success'))
+<div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">
+  {{ session('success') }}
+</div>
+@endif
+@error('body')
+<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">
+  {{ $message }}
+</div>
+@enderror
+
 <div class="chat-shell">
   <div class="chat-list">
     <div class="chat-list-head">
-      <input type="text" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px" placeholder="Search users…">
+      <input type="text" data-chat-search style="width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px" placeholder="Search users...">
     </div>
     @forelse($users as $user)
-    <div class="chat-conv {{ $loop->first ? 'active' : '' }}">
-      <div class="avatar-sm">{{ strtoupper(substr($user->first_name,0,1).substr($user->last_name,0,1)) }}</div>
+    @php
+      $unread = \App\Models\Message::where('sender_id', $user->id)->where('receiver_id', auth()->id())->where('read', false)->count();
+    @endphp
+    <a href="{{ route('admin.messages.user', $user) }}" class="chat-conv {{ $selectedUser && $selectedUser->id === $user->id ? 'active' : '' }}" data-chat-user>
+      <x-user-avatar :user="$user" size="36" class="avatar-sm" />
       <div class="meta">
         <strong>{{ $user->first_name }} {{ $user->last_name }}</strong>
         <div class="role-tag">{{ ucfirst($user->account_type) }}</div>
         <p>{{ $user->email }}</p>
       </div>
-    </div>
+      @if($unread)
+      <span class="unread">{{ $unread }}</span>
+      @endif
+    </a>
     @empty
     <div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">No users yet.</div>
     @endforelse
   </div>
 
   <div class="chat-main">
-    @if($users->isNotEmpty())
+    @if($selectedUser)
     <div class="chat-head">
-      <div class="avatar-sm">{{ strtoupper(substr($users->first()->first_name,0,1).substr($users->first()->last_name,0,1)) }}</div>
+      <x-user-avatar :user="$selectedUser" size="36" class="avatar-sm" />
       <div>
-        <strong>{{ $users->first()->first_name }} {{ $users->first()->last_name }}</strong>
-        <div style="font-size:11px;color:var(--muted)">{{ ucfirst($users->first()->account_type) }} · {{ $users->first()->email }}</div>
+        <strong>{{ $selectedUser->first_name }} {{ $selectedUser->last_name }}</strong>
+        <div style="font-size:11px;color:var(--muted)">{{ ucfirst($selectedUser->account_type) }} - {{ $selectedUser->email }}</div>
       </div>
     </div>
-    <div class="chat-body">
+    <div class="chat-body" id="chatBody">
+      @forelse($messages as $message)
+      <div class="bubble {{ $message->sender_id === auth()->id() ? 'out' : 'in' }}">
+        {{ $message->body }}
+        <time>{{ $message->created_at?->format('M d, Y g:i A') }}</time>
+      </div>
+      @empty
       <div class="empty" style="margin:auto">
-        <div class="ic">✉</div>
+        <div class="ic"><x-admin-icon name="mail" /></div>
         <h3>No messages yet</h3>
-        <p>Messaging functionality coming soon.</p>
+        <p>Start the conversation with {{ $selectedUser->first_name }}.</p>
       </div>
+      @endforelse
     </div>
-    <div class="chat-input">
-      <input type="text" placeholder="Type a message…">
-      <button class="btn btn-primary" data-toast="Message sent!">Send</button>
-    </div>
+    <form class="chat-input" method="POST" action="{{ route('admin.messages.send', $selectedUser) }}">
+      @csrf
+      <input type="text" name="body" value="{{ old('body') }}" placeholder="Type a message..." maxlength="2000" required>
+      <button class="btn btn-primary" type="submit">Send</button>
+    </form>
     @else
     <div class="empty" style="margin:auto">
-      <div class="ic">✉</div>
+      <div class="ic"><x-admin-icon name="mail" /></div>
       <h3>No users to message</h3>
     </div>
     @endif
   </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+  const chatBody = document.getElementById('chatBody');
+  if (chatBody) chatBody.scrollTop = chatBody.scrollHeight;
+
+  document.querySelector('[data-chat-search]')?.addEventListener('input', (event) => {
+    const query = event.target.value.trim().toLowerCase();
+    document.querySelectorAll('[data-chat-user]').forEach((item) => {
+      item.hidden = query && !item.textContent.toLowerCase().includes(query);
+    });
+  });
+</script>
+@endpush
