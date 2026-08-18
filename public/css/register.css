@@ -1,0 +1,292 @@
+/* ── Global overrides for register page (compact, consistent across all steps) ── */
+.auth-form-panel {
+    padding: 20px clamp(20px, 4vw, 44px);
+    align-items: flex-start;
+    overflow-y: auto;
+}
+.auth-form-wrap {
+    padding: 4px 0;
+}
+.auth-back {
+    margin-bottom: 12px;
+}
+.auth-eyebrow {
+    margin-bottom: 6px;
+}
+.auth-title {
+    font-size: 20px;
+    letter-spacing: -.03em;
+}
+.auth-subtitle {
+    font-size: 13px;
+    margin: 4px 0 12px;
+    line-height: 1.5;
+}
+.auth-input,
+.auth-select {
+    height: 38px;
+    font-size: 13px;
+    padding: 0 12px;
+}
+.auth-label {
+    font-size: 12px;
+}
+.auth-field {
+    gap: 4px;
+}
+.auth-form-grid {
+    gap: 10px;
+}
+.auth-bottom {
+    margin: 12px 0 0;
+    font-size: 12px;
+}
+.auth-password-toggle {
+    height: 30px;
+    font-size: 11px;
+}
+
+/* ── Step indicator ── */
+.steps {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 22px;
+}
+.step-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    position: relative;
+}
+.step-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 13px;
+    left: 50%;
+    width: 100%;
+    height: 2px;
+    background: var(--auth-border);
+    z-index: 0;
+}
+.step-item.done:not(:last-child)::after,
+.step-item.active:not(:last-child)::after {
+    background: var(--auth-primary);
+}
+.step-circle {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid var(--auth-border);
+    background: #fff;
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--auth-muted);
+    position: relative;
+    z-index: 1;
+    transition: all .2s;
+}
+.step-item.active .step-circle {
+    border-color: var(--auth-primary);
+    background: var(--auth-primary);
+    color: #fff;
+}
+.step-item.done .step-circle {
+    border-color: var(--auth-primary);
+    background: var(--auth-primary);
+    color: #fff;
+}
+.step-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--auth-muted);
+    white-space: nowrap;
+}
+.step-item.active .step-label,
+.step-item.done .step-label {
+    color: var(--auth-primary);
+}
+
+/* ── Step panels ── */
+.step-panel { display: none; }
+.step-panel.active { display: block; }
+
+/* ── Form panel scroll ── */
+.auth-form-panel { overflow-y: auto; }
+
+/* ── Step nav buttons ── */
+.step-nav {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+}
+.btn-prev {
+    flex: 1;
+    min-height: 38px;
+    border: 1px solid var(--auth-border);
+    border-radius: var(--auth-radius-md);
+    background: #fff;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .18s, border-color .18s;
+}
+.btn-prev:hover {
+    background: #f4f4f5;
+    border-color: #cbd5e1;
+}
+.btn-next,
+.btn-submit {
+    flex: 2;
+    min-height: 38px;
+    border: 0;
+    border-radius: var(--auth-radius-md);
+    background: var(--auth-primary);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background .18s, transform .18s;
+}
+.btn-next:hover,
+.btn-submit:hover {
+    background: var(--auth-primary-dark);
+    transform: translateY(-1px);
+}
+
+/* ── Section divider ── */
+.form-section-title {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--auth-muted);
+    margin: 10px 0 8px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid var(--auth-border);
+}
+
+/* ── Address grid ── */
+.address-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+.address-grid .full {
+    grid-column: 1 / -1;
+}
+
+/* ── Select styling ── */
+.auth-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2371717a' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 36px;
+    cursor: pointer;
+}
+.auth-select:disabled {
+    background-color: #f4f4f5;
+    color: #a1a1aa;
+    cursor: not-allowed;
+}
+
+/* ── Readonly input ── */
+.input-readonly {
+    background: #f4f4f5 !important;
+    color: var(--auth-muted) !important;
+    cursor: default;
+}
+
+/* ── File upload ── */
+.file-upload-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    border: 2px dashed var(--auth-border);
+    border-radius: var(--auth-radius-md);
+    padding: 16px;
+    cursor: pointer;
+    transition: border-color .18s, background .18s;
+    text-align: center;
+}
+.file-upload-label:hover {
+    border-color: var(--auth-primary);
+    background: var(--auth-primary-soft);
+}
+.upload-icon { font-size: 26px; }
+.upload-text { font-size: 12px; color: var(--auth-muted); line-height: 1.5; }
+.upload-name { font-size: 12px; font-weight: 700; color: var(--auth-primary); display: none; }
+#id_file { display: none; }
+
+/* ── Field hint ── */
+.field-hint {
+    font-size: 11px;
+    color: var(--auth-muted);
+    margin-top: 3px;
+}
+
+/* ── Field error state ── */
+.auth-input.error,
+.auth-select.error {
+    border-color: var(--auth-danger);
+}
+.field-error {
+    font-size: 11px;
+    color: var(--auth-danger);
+    margin-top: 2px;
+}
+
+/* ── Success screen ── */
+.success-screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 24px 0 8px;
+    gap: 14px;
+}
+.success-screen.active { display: flex; }
+.success-icon {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: var(--auth-primary-soft);
+    display: grid;
+    place-items: center;
+    font-size: 30px;
+}
+.success-screen h3 {
+    margin: 0;
+    font-size: 22px;
+    letter-spacing: -.03em;
+}
+.success-screen p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--auth-muted);
+    line-height: 1.65;
+    max-width: 300px;
+}
+.success-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 24px;
+    border-radius: var(--auth-radius-md);
+    background: var(--auth-primary);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: none;
+    margin-top: 4px;
+    transition: background .18s;
+}
+.success-btn:hover { background: var(--auth-primary-dark); }

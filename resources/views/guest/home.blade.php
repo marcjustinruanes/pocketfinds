@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Marketplace — Guest</title>
+<link rel="stylesheet" href="{{ asset('css/marketplace.css') }}">
+</head>
+<body class="marketplace">
+<div class="market-top"><div class="container"><div>Welcome to PocketFinds Marketplace</div><div class="top-links"><span>Help Centre</span><span>Sell on PocketFinds</span><span>Download App</span></div></div></div>
+<header class="market-header"><div class="container header-main">
+<a class="logo" href="{{ url('/') }}"><span class="logo-mark">◆</span><span>PocketFinds</span></a>
+<div class="search"><input data-search type="search" placeholder="Search for products, brands and categories"><button type="button">⌕</button></div>
+<div class="header-actions"><button class="icon-action" type="button" data-protected><span>♡</span><span>Wishlist</span></button><button class="icon-action" type="button" data-protected><span>🛒</span><span>Cart</span></button><a class="signin" href="{{ url('/login') }}">Sign In</a><a class="register" href="{{ url('/register/type') }}">Register</a></div>
+</div></header>
+<nav class="category-bar"><div class="container categories"><a class="category active" href="#">All Categories</a><a class="category" href="#">Electronics</a><a class="category" href="#">Fashion</a><a class="category" href="#">Beauty</a><a class="category" href="#">Home & Living</a><a class="category" href="#">Gaming</a><a class="category" href="#">Food</a><a class="category" href="#">Sports</a><a class="category" href="#">Health</a></div></nav>
+<main class="container">
+<section class="hero"><div class="hero-grid"><div class="hero-main"><div class="hero-copy"><div class="eyebrow">Guest shopping</div><h1>Discover products you'll love.</h1><p>Browse products, explore categories, compare deals, and find something worth adding to your cart.</p><a class="primary" href="#products">Explore products →</a></div></div><div class="hero-side"><div class="promo"><strong>Flash Deals</strong><span>Fresh discounts updated throughout the day.</span></div><div class="promo dark"><strong>New arrivals</strong><span>Discover the latest products from our sellers.</span></div></div></div></section>
+<div class="guest-notice"><div><strong>You're browsing as a guest.</strong><span>Sign in to save items, checkout, and track orders.</span></div><a class="notice-link" href="{{ url('/login') }}">Sign in now →</a></div>
+<section class="section" id="products"><div class="section-head"><h2 class="section-title">Flash Deals</h2><a class="see-all" href="#">See All →</a></div><div class="deal-strip"><div class="deal-grid">
+<article class="product" data-product="wireless earbuds"><div class="product-img">🎧</div><div class="product-body"><span class="badge">20% OFF</span><div class="product-name">Wireless Earbuds Pro</div><div class="price">₱799 <span class="old-price">₱999</span></div><div class="meta"><span>⭐ 4.8</span><span>1.2k sold</span></div></div></article>
+<article class="product" data-product="minimal backpack"><div class="product-img">🎒</div><div class="product-body"><span class="badge">HOT</span><div class="product-name">Minimal Everyday Backpack</div><div class="price">₱549 <span class="old-price">₱699</span></div><div class="meta"><span>⭐ 4.7</span><span>856 sold</span></div></div></article>
+<article class="product" data-product="smart watch"><div class="product-img">⌚</div><div class="product-body"><span class="badge">15% OFF</span><div class="product-name">Smart Watch Series 5</div><div class="price">₱1,299 <span class="old-price">₱1,499</span></div><div class="meta"><span>⭐ 4.9</span><span>2.4k sold</span></div></div></article>
+<article class="product" data-product="running shoes"><div class="product-img">👟</div><div class="product-body"><span class="badge">SALE</span><div class="product-name">Lightweight Running Shoes</div><div class="price">₱899 <span class="old-price">₱1,199</span></div><div class="meta"><span>⭐ 4.6</span><span>648 sold</span></div></div></article>
+<article class="product" data-product="desk lamp"><div class="product-img">💡</div><div class="product-body"><span class="badge">NEW</span><div class="product-name">LED Desk Lamp</div><div class="price">₱399 <span class="old-price">₱499</span></div><div class="meta"><span>⭐ 4.8</span><span>731 sold</span></div></div></article>
+</div></div></section>
+<section class="section"><div class="section-head"><h2 class="section-title">Browse Categories</h2><a class="see-all" href="#">View All →</a></div><div class="category-grid">
+<a class="cat-card" href="#"><span class="cat-icon">📱</span><span class="cat-name">Electronics</span></a><a class="cat-card" href="#"><span class="cat-icon">👕</span><span class="cat-name">Fashion</span></a><a class="cat-card" href="#"><span class="cat-icon">💄</span><span class="cat-name">Beauty</span></a><a class="cat-card" href="#"><span class="cat-icon">🏠</span><span class="cat-name">Home</span></a><a class="cat-card" href="#"><span class="cat-icon">🎮</span><span class="cat-name">Gaming</span></a><a class="cat-card" href="#"><span class="cat-icon">🍔</span><span class="cat-name">Food</span></a>
+</div></section>
+<section class="section"><div class="section-head"><h2 class="section-title">Recommended For You</h2><a class="see-all" href="#">See All →</a></div><div class="deal-grid">
+<article class="product" data-product="phone case"><div class="product-img">📱</div><div class="product-body"><div class="product-name">Premium Phone Case</div><div class="price">₱249</div><div class="meta"><span>⭐ 4.8</span><span>2k sold</span></div></div></article>
+<article class="product" data-product="coffee tumbler"><div class="product-img">🥤</div><div class="product-body"><div class="product-name">Insulated Coffee Tumbler</div><div class="price">₱329</div><div class="meta"><span>⭐ 4.7</span><span>945 sold</span></div></div></article>
+<article class="product" data-product="keyboard"><div class="product-img">⌨️</div><div class="product-body"><div class="product-name">Mechanical Keyboard</div><div class="price">₱1,899</div><div class="meta"><span>⭐ 4.9</span><span>512 sold</span></div></div></article>
+<article class="product" data-product="hoodie"><div class="product-img">🧥</div><div class="product-body"><div class="product-name">Everyday Oversized Hoodie</div><div class="price">₱699</div><div class="meta"><span>⭐ 4.8</span><span>1.1k sold</span></div></div></article>
+<article class="product" data-product="skincare set"><div class="product-img">🧴</div><div class="product-body"><div class="product-name">Daily Skincare Set</div><div class="price">₱599</div><div class="meta"><span>⭐ 4.6</span><span>782 sold</span></div></div></article>
+</div></section></main>
+<footer class="footer"><div class="container"><div class="footer-grid"><div><h3>PocketFinds Marketplace</h3><p>A simple marketplace experience for discovering products from local sellers.</p></div><div><h3>Customer Service</h3><a href="#">Help Centre</a><a href="#">Contact Us</a><a href="#">Returns</a></div><div><h3>About</h3><a href="#">About Us</a><a href="#">Careers</a><a href="#">Privacy</a></div><div><h3>Account</h3><a href="{{ url('/login') }}">Sign In</a><a href="{{ url('/register/type') }}">Register</a><a href="#">Seller Centre</a></div></div><div class="footer-bottom">© {{ date('Y') }} PocketFinds. All rights reserved.</div></div></footer>
+<script src="{{ asset('js/marketplace.js') }}"></script></body></html>
