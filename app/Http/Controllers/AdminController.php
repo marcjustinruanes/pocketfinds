@@ -18,8 +18,9 @@ class AdminController extends Controller
 {
     public function login()
     {
-        if (auth()->check() && auth()->user()->is_admin) {
-            return redirect()->route('admin.dashboard');
+        if (auth()->check()) {
+            if (auth()->user()->is_admin) return redirect()->route('admin.dashboard');
+            if (auth()->user()->is_logistics) return redirect()->route('logistics.dashboard');
         }
         return view('auth.login');
     }
@@ -33,10 +34,14 @@ class AdminController extends Controller
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
-            if (auth()->user()->is_admin) {
+            $user = auth()->user();
+            if ($user->is_admin) {
                 return redirect()->route('admin.dashboard');
             }
-            return redirect()->intended('/');
+            if ($user->is_logistics) {
+                return redirect()->route('logistics.dashboard');
+            }
+            return redirect('/');
         }
 
         return back()->withErrors(['email' => 'Invalid credentials.'])->withInput();

@@ -15,7 +15,7 @@ class User extends Authenticatable
         'last_name', 'first_name', 'middle_initial', 'sex', 'birthday', 'age',
         'email', 'contact_no',
         'province', 'municipality', 'barangay', 'house_no', 'street',
-        'password', 'id_file', 'profile_picture', 'status', 'is_admin',
+        'password', 'id_file', 'profile_picture', 'status', 'is_admin', 'is_logistics',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -26,6 +26,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password'          => 'hashed',
             'birthday'          => 'date',
+            'is_admin'          => 'boolean',
+            'is_logistics'      => 'boolean',
         ];
     }
 }

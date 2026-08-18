@@ -4,6 +4,14 @@
 @section('page-sub', 'Platform messaging and support inbox')
 
 @section('content')
+<style>
+  .content { padding: 0 !important; }
+  .chat-shell { border-radius: 0; border-left: 0; border-right: 0; border-bottom: 0; height: calc(100vh - 66px); display: flex; }
+  .chat-main { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .chat-body { flex: 1; overflow-y: auto; }
+  .chat-input { flex-shrink: 0; }
+  .chat-list { overflow-y: auto; }
+</style>
 @if(session('success'))
 <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">
   {{ session('success') }}

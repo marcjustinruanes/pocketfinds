@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\SocialAuthController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\LogisticsController;
 
 Route::get('/', fn() => view('guest.home'));
 
@@ -19,6 +20,31 @@ Route::middleware('web')->group(function () {
 
     Route::get('/auth/google/redirect', [SocialAuthController::class, 'redirectToGoogle'])->name('google.redirect');
     Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleCallback'])->name('google.callback');
+});
+
+// Logistics routes
+Route::prefix('logistics')->name('logistics.')->middleware('logistics')->group(function () {
+    Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
+    Route::get('/dashboard', [LogisticsController::class, 'dashboard'])->name('dashboard');
+    Route::get('/requests', [LogisticsController::class, 'requests'])->name('requests');
+    Route::patch('/requests/{id}/approve', [LogisticsController::class, 'approveRequest'])->name('requests.approve');
+    Route::patch('/requests/{id}/reject', [LogisticsController::class, 'rejectRequest'])->name('requests.reject');
+    Route::get('/assign', [LogisticsController::class, 'assign'])->name('assign');
+    Route::patch('/assign/{id}', [LogisticsController::class, 'assignCourier'])->name('assign.courier');
+    Route::get('/monitor', [LogisticsController::class, 'monitor'])->name('monitor');
+    Route::patch('/status/{id}', [LogisticsController::class, 'updateStatus'])->name('status.update');
+    Route::get('/issues', [LogisticsController::class, 'issues'])->name('issues');
+    Route::get('/history', [LogisticsController::class, 'history'])->name('history');
+    Route::get('/reports', [LogisticsController::class, 'reports'])->name('reports');
+    Route::get('/notifications', [LogisticsController::class, 'notifications'])->name('notifications');
+    Route::get('/settings', [LogisticsController::class, 'settings'])->name('settings');
+    Route::post('/settings', [LogisticsController::class, 'settingsUpdate'])->name('settings.update');
+    Route::get('/messages', [LogisticsController::class, 'messages'])->name('messages');
+    Route::get('/messages/{userId}', [LogisticsController::class, 'messagesThread'])->name('messages.thread');
+    Route::post('/messages/{userId}', [LogisticsController::class, 'messagesSend'])->name('messages.send');
+    Route::get('/account', [LogisticsController::class, 'account'])->name('account');
+    Route::post('/account/update', [LogisticsController::class, 'accountUpdate'])->name('account.update');
+    Route::post('/account/password', [LogisticsController::class, 'passwordUpdate'])->name('account.password');
 });
 
 // Admin routes
