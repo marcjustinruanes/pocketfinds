@@ -12,9 +12,15 @@ Route::middleware('web')->group(function () {
     Route::get('/login', fn() => view('auth.login'))->name('login');
     Route::post('/login', [AdminController::class, 'loginPost'])->name('login.post');
     Route::get('/register/type', fn() => view('auth.account-type'))->name('register.type');
-    Route::get('/register/method', fn() => view('auth.signup-method'))->name('register.method');
-    Route::get('/register/google', fn() => view('auth.register-google'))->name('register.google');
-    Route::get('/register', fn() => view('auth.register'))->name('register');
+    Route::get('/register/method', fn() => redirect()->route('register', ['type' => request('type', 'buyer')]))->name('register.method');
+    Route::get('/register/google', fn() => redirect()->route('register', ['type' => request('type', 'buyer'), 'google' => 1]))->name('register.google');
+    Route::get('/register', function () {
+        if (!request()->boolean('google')) {
+            session()->forget(['google_id', 'google_name', 'google_email', 'google_avatar']);
+        }
+
+        return view('auth.register');
+    })->name('register');
     Route::post('/register', [RegisterController::class, 'store'])->name('register.store');
     Route::get('/password/reset', fn() => view('auth.login'))->name('password.request');
 

@@ -23,7 +23,7 @@
             <tr class="rail-row rail-{{ $user->status }}">
               <td>
                 <div class="cell-user">
-                  <div class="avatar-sm">{{ strtoupper(substr($user->first_name,0,1).substr($user->last_name,0,1)) }}</div>
+                  <x-user-avatar :user="$user" size="30" class="avatar-sm" />
                   <div><strong>{{ $user->first_name }} {{ $user->last_name }}</strong><span>{{ $user->email }}</span></div>
                 </div>
               </td>

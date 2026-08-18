@@ -54,13 +54,7 @@
 
   <div class="sidebar-foot">
     <div class="sidebar-user">
-      <div class="avatar">
-        @if(auth()->user()->profile_picture)
-          <img src="{{ asset('storage/'.auth()->user()->profile_picture) }}" alt="{{ auth()->user()->first_name }} {{ auth()->user()->last_name }}">
-        @else
-          {{ strtoupper(substr(auth()->user()->first_name, 0, 1)) }}
-        @endif
-      </div>
+      <x-user-avatar :user="auth()->user()" size="36" class="avatar" />
       <div class="who">
         <strong>{{ auth()->user()->first_name }} {{ auth()->user()->last_name }}</strong>
         <span>{{ ucfirst(auth()->user()->account_type) }}</span>

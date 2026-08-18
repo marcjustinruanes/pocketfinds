@@ -33,7 +33,7 @@
       $unread = \App\Models\Message::where('sender_id', $user->id)->where('receiver_id', auth()->id())->where('read', false)->count();
     @endphp
     <a href="{{ route('admin.messages.user', $user) }}" class="chat-conv {{ $selectedUser && $selectedUser->id === $user->id ? 'active' : '' }}" data-chat-user>
-      <div class="avatar-sm">{{ strtoupper(substr($user->first_name, 0, 1).substr($user->last_name, 0, 1)) }}</div>
+      <x-user-avatar :user="$user" size="36" class="avatar-sm" />
       <div class="meta">
         <strong>{{ $user->first_name }} {{ $user->last_name }}</strong>
         <div class="role-tag">{{ ucfirst($user->account_type) }}</div>
@@ -51,7 +51,7 @@
   <div class="chat-main">
     @if($selectedUser)
     <div class="chat-head">
-      <div class="avatar-sm">{{ strtoupper(substr($selectedUser->first_name, 0, 1).substr($selectedUser->last_name, 0, 1)) }}</div>
+      <x-user-avatar :user="$selectedUser" size="36" class="avatar-sm" />
       <div>
         <strong>{{ $selectedUser->first_name }} {{ $selectedUser->last_name }}</strong>
         <div style="font-size:11px;color:var(--muted)">{{ ucfirst($selectedUser->account_type) }} - {{ $selectedUser->email }}</div>

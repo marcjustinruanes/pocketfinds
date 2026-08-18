@@ -44,11 +44,7 @@
     </div>
 
     <a href="{{ route('admin.account') }}" class="topbar-avatar" aria-label="My Account">
-      @if(auth()->user()->profile_picture)
-        <img src="{{ asset('storage/'.auth()->user()->profile_picture) }}" alt="{{ auth()->user()->first_name }} {{ auth()->user()->last_name }}">
-      @else
-        {{ strtoupper(substr(auth()->user()->first_name, 0, 1)) }}
-      @endif
+      <x-user-avatar :user="auth()->user()" size="38" />
     </a>
   </div>
 </header>

@@ -9,8 +9,6 @@
   .form-row label { font-family: var(--font-body); font-size: 13px; }
   .form-row input { font-family: var(--font-body); font-size: 13px; }
   .stamp { font-family: var(--font-body); font-size: 11px; letter-spacing: 0; text-transform: none; }
-  .profile-photo { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; display: block; }
-  .profile-photo-fallback { width:72px;height:72px;border-radius:50%;background:linear-gradient(145deg,var(--pink),#7a2a56);display:grid;place-items:center;color:#fff;font-weight:700;font-size:24px;flex:none }
   .profile-upload { border:1px dashed var(--line); border-radius:8px; padding:12px; background:var(--panel-soft); }
   .profile-upload input[type=file] { width:100%; border:0; padding:0; background:transparent; }
 </style>
@@ -34,13 +32,7 @@
     <div class="card-head"><h2>Account Information</h2></div>
     <div class="card-pad">
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
-        @if($admin->profile_picture)
-          <img class="profile-photo" src="{{ asset('storage/'.$admin->profile_picture) }}" alt="{{ $admin->first_name }} {{ $admin->last_name }}">
-        @else
-          <div class="profile-photo-fallback">
-            {{ strtoupper(substr($admin->first_name, 0, 1)) }}
-          </div>
-        @endif
+        <x-user-avatar :user="$admin" size="72" />
         <div>
           <div style="font-weight:700;font-size:15px">{{ $admin->first_name }} {{ $admin->last_name }}</div>
           <div style="font-size:12px;color:var(--muted)">{{ $admin->email }}</div>

@@ -24,10 +24,11 @@ class RegisterController extends Controller
             'barangay'       => 'required|string',
             'house_no'       => 'nullable|string|max:50',
             'street'         => 'nullable|string|max:100',
-            'password'       => 'nullable|string|min:8|confirmed',
+            'password'       => 'required_if:auth_method,manual|nullable|string|min:8|confirmed',
             'id_file'        => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'account_type'   => 'required|in:buyer,rider,seller',
             'auth_method'    => 'required|in:manual,google',
+            'google_id'      => 'nullable|string',
         ]);
 
         $idPath = $request->file('id_file')->store('id_files', 'public');

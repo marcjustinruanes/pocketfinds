@@ -19,6 +19,7 @@ class SocialAuthController extends Controller
         $googleUser = Socialite::driver('google')->user();
 
         session([
+            'google_id'     => $googleUser->getId(),
             'google_name'   => $googleUser->getName(),
             'google_email'  => $googleUser->getEmail(),
             'google_avatar' => $googleUser->getAvatar(),
@@ -26,6 +27,6 @@ class SocialAuthController extends Controller
 
         $type = session('oauth_account_type', 'buyer');
 
-        return redirect()->route('register.google', ['type' => $type]);
+        return redirect()->route('register', ['type' => $type, 'google' => 1]);
     }
 }
