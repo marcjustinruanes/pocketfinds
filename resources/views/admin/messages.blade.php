@@ -57,7 +57,7 @@
       </div>
       @empty
       <div class="empty" style="margin:auto">
-        <div class="ic">✉</div>
+        <div class="ic"><x-admin-icon name="mail" /></div>
         <h3>No messages yet</h3>
         <p>Start the conversation with {{ $selectedUser->first_name }}.</p>
       </div>
@@ -70,7 +70,7 @@
     </form>
     @else
     <div class="empty" style="margin:auto">
-      <div class="ic">✉</div>
+      <div class="ic"><x-admin-icon name="mail" /></div>
       <h3>No users to message</h3>
     </div>
     @endif

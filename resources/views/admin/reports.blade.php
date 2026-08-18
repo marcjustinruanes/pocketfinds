@@ -54,7 +54,7 @@
       </div>
       <div class="card-pad" style="display:flex;flex-direction:column;gap:12px">
         <p style="font-size:12.5px;color:var(--muted);margin:0">Download the full commission report as CSV to view per-seller earnings and platform deductions.</p>
-        <a href="{{ route('admin.reports.export.commission') }}" class="btn btn-outline btn-block">📊 Download Commission Report (CSV)</a>
+        <a href="{{ route('admin.reports.export.commission') }}" class="btn btn-outline btn-block"><x-admin-icon name="chart" /> Download Commission Report (CSV)</a>
         <a href="{{ route('admin.reports.export.sales') }}" class="btn btn-outline btn-block">📋 Download Sales Summary (CSV)</a>
       </div>
     </div>

@@ -4,21 +4,18 @@
 @section('page-sub', 'Manage announcements and platform policies')
 
 @section('content')
-
 @if(session('success'))
 <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px">
   {{ session('success') }}
 </div>
 @endif
 
-{{-- Tabs --}}
 <div data-tabs style="margin-bottom:20px">
-  <a class="tab active" data-tab="announcements">📢 Announcements</a>
-  <a class="tab" data-tab="policies">📄 Platform Policies</a>
-  <a class="tab" data-tab="general">⚙ General</a>
+  <a class="tab active" data-tab="announcements"><x-admin-icon name="megaphone" /> Announcements</a>
+  <a class="tab" data-tab="policies"><x-admin-icon name="file" /> Platform Policies</a>
+  <a class="tab" data-tab="general"><x-admin-icon name="settings" /> General</a>
 </div>
 
-{{-- ANNOUNCEMENTS --}}
 <div data-tab-panel="announcements">
   <div class="dash-grid">
     <div class="card">
@@ -32,7 +29,7 @@
           </div>
           <div class="form-row">
             <label>Message</label>
-            <textarea name="body" rows="4" placeholder="Write your announcement here…" required>{{ old('body') }}</textarea>
+            <textarea name="body" rows="4" placeholder="Write your announcement here..." required>{{ old('body') }}</textarea>
           </div>
           <div class="form-row">
             <label>Audience</label>
@@ -59,24 +56,23 @@
               <div style="font-size:12px;color:var(--muted);margin:3px 0">{{ $ann->body }}</div>
               <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
                 <span class="stamp stamp-approved">{{ ucfirst($ann->audience) }}</span>
-                <span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">{{ $ann->created_at->format('Y-m-d') }}</span>
+                <span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">{{ $ann->created_at?->format('Y-m-d') }}</span>
               </div>
             </div>
             <form method="POST" action="{{ route('admin.settings.announcements.destroy', $ann->id) }}" style="flex:none">
               @csrf @method('DELETE')
-              <button class="btn btn-sm btn-danger" type="submit" onclick="return confirm('Delete this announcement?')">✕</button>
+              <button class="btn btn-sm btn-danger icon-only" type="submit" onclick="return confirm('Delete this announcement?')" aria-label="Delete announcement"><x-admin-icon name="trash" /></button>
             </form>
           </div>
         </div>
         @empty
-        <div class="empty"><div class="ic">📢</div><h3>No announcements yet</h3></div>
+        <div class="empty"><div class="ic"><x-admin-icon name="megaphone" /></div><h3>No announcements yet</h3></div>
         @endforelse
       </div>
     </div>
   </div>
 </div>
 
-{{-- POLICIES --}}
 <div data-tab-panel="policies" style="display:none">
   <div class="dash-grid">
     <div class="card">
@@ -94,7 +90,7 @@
           </div>
           <div class="form-row">
             <label>Content</label>
-            <textarea name="content" rows="6" placeholder="Write the policy content here…" required>{{ old('content') }}</textarea>
+            <textarea name="content" rows="6" placeholder="Write the policy content here..." required>{{ old('content') }}</textarea>
           </div>
           <button class="btn btn-primary" type="submit">Save Policy</button>
         </form>
@@ -105,12 +101,12 @@
       @forelse($policies as $policy)
       <div class="card">
         <div class="card-head">
-          <div><h2>{{ $policy->title }}</h2><p>Last updated {{ $policy->updated_at->format('Y-m-d') }}</p></div>
+          <div><h2>{{ $policy->title }}</h2><p>Last updated {{ $policy->updated_at?->format('Y-m-d') }}</p></div>
           <div style="display:flex;gap:8px">
             <button class="btn btn-sm btn-outline" data-modal-open="policyModal-{{ $policy->id }}">Edit</button>
             <form method="POST" action="{{ route('admin.settings.policies.destroy', $policy->id) }}">
               @csrf @method('DELETE')
-              <button class="btn btn-sm btn-danger" type="submit" onclick="return confirm('Delete this policy?')">✕</button>
+              <button class="btn btn-sm btn-danger icon-only" type="submit" onclick="return confirm('Delete this policy?')" aria-label="Delete policy"><x-admin-icon name="trash" /></button>
             </form>
           </div>
         </div>
@@ -119,12 +115,11 @@
         </div>
       </div>
 
-      {{-- Edit Policy Modal --}}
       <div class="modal-overlay" id="policyModal-{{ $policy->id }}">
         <div class="modal modal-lg">
           <div class="modal-head">
             <div><h3>Edit Policy</h3><p>{{ $policy->title }}</p></div>
-            <button class="modal-close" data-modal-close>✕</button>
+            <button class="modal-close" data-modal-close aria-label="Close"><x-admin-icon name="close" /></button>
           </div>
           <form method="POST" action="{{ route('admin.settings.policies.update', $policy->id) }}">
             @csrf @method('PATCH')
@@ -146,15 +141,14 @@
         </div>
       </div>
       @empty
-      <div class="card"><div class="empty"><div class="ic">📄</div><h3>No policies yet</h3><p>Add your first platform policy.</p></div></div>
+      <div class="card"><div class="empty"><div class="ic"><x-admin-icon name="file" /></div><h3>No policies yet</h3><p>Add your first platform policy.</p></div></div>
       @endforelse
     </div>
   </div>
 </div>
 
-{{-- GENERAL --}}
 <div data-tab-panel="general" style="display:none">
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px">
     <div class="card">
       <div class="card-head"><h2>General</h2></div>
       <div class="card-pad">

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>@yield('title', 'Admin') — Console</title>
+<title>@yield('title', 'Admin') - Console</title>
 <link rel="stylesheet" href="/css/admin.css">
 @stack('head')
 </head>
@@ -18,12 +18,11 @@
   </div>
 </div>
 
-{{-- Logout confirm modal --}}
 <div class="modal-overlay" id="logoutOverlay">
   <div class="modal" style="max-width:380px">
     <div class="modal-head">
       <div><h3>Sign out?</h3><p>You will be returned to the login screen.</p></div>
-      <button class="modal-close" data-modal-close>✕</button>
+      <button class="modal-close" data-modal-close aria-label="Close"><x-admin-icon name="close" /></button>
     </div>
     <div class="modal-foot">
       <button class="btn btn-outline" data-modal-close>Cancel</button>

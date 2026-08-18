@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class AdminController extends Controller
@@ -341,9 +342,10 @@ class AdminController extends Controller
             'barangay'     => 'required|string|max:255',
             'house_no'     => 'nullable|string|max:255',
             'street'       => 'nullable|string|max:255',
+            'profile_picture' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
-        $user->update($request->only([
+        $data = $request->only([
             'first_name',
             'last_name',
             'email',
@@ -353,7 +355,17 @@ class AdminController extends Controller
             'barangay',
             'house_no',
             'street',
-        ]));
+        ]);
+
+        if ($request->hasFile('profile_picture')) {
+            if ($user->profile_picture) {
+                Storage::disk('public')->delete($user->profile_picture);
+            }
+
+            $data['profile_picture'] = $request->file('profile_picture')->store('profile-pictures', 'public');
+        }
+
+        $user->update($data);
 
         return back()->with('success', 'Profile updated.');
     }

@@ -32,7 +32,7 @@
               <td><span class="stamp stamp-{{ $user->status }}">{{ ucfirst($user->status) }}</span></td>
             </tr>
             @empty
-            <tr><td colspan="4"><div class="empty"><div class="ic">👤</div><h3>No users yet</h3></div></td></tr>
+            <tr><td colspan="4"><div class="empty"><div class="ic"><x-admin-icon name="users" /></div><h3>No users yet</h3></div></td></tr>
             @endforelse
           </tbody>
         </table>
