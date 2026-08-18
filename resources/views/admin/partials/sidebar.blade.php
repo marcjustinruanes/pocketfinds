@@ -38,8 +38,14 @@
     </a>
 
     <div class="nav-label">System</div>
-    <a href="{{ route('admin.messages') }}" class="nav-item {{ request()->routeIs('admin.messages') ? 'active' : '' }}">
+    <a href="{{ route('admin.messages') }}" class="nav-item {{ request()->routeIs('admin.messages*') ? 'active' : '' }}">
       <span class="ic">✉</span> Messages
+      @if(!empty($unreadMessages))
+      <span class="count">{{ $unreadMessages }}</span>
+      @endif
+    </a>
+    <a href="{{ route('admin.account') }}" class="nav-item {{ request()->routeIs('admin.account') ? 'active' : '' }}">
+      <span class="ic">A</span> My Account
     </a>
     <a href="{{ route('admin.settings') }}" class="nav-item {{ request()->routeIs('admin.settings') ? 'active' : '' }}">
       <span class="ic">⚙</span> Settings

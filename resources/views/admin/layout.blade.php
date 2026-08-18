@@ -37,5 +37,6 @@
 
 <div class="toast-stack" id="toastStack"></div>
 <script src="/js/admin.js"></script>
+@stack('scripts')
 </body>
 </html>

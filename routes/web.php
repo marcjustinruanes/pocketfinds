@@ -37,8 +37,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::patch('/complaints/{id}/resolve', [AdminController::class, 'resolveComplaint'])->name('complaints.resolve');
         Route::get('/commission', [AdminController::class, 'commission'])->name('commission');
         Route::get('/reports', [AdminController::class, 'reports'])->name('reports');
+        Route::get('/reports/export/sales', [AdminController::class, 'exportSalesReport'])->name('reports.export.sales');
+        Route::get('/reports/export/commission', [AdminController::class, 'exportCommissionReport'])->name('reports.export.commission');
         Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
+        Route::post('/settings/announcements', [AdminController::class, 'storeAnnouncement'])->name('settings.announcements.store');
+        Route::delete('/settings/announcements/{id}', [AdminController::class, 'destroyAnnouncement'])->name('settings.announcements.destroy');
+        Route::post('/settings/policies', [AdminController::class, 'storePolicy'])->name('settings.policies.store');
+        Route::patch('/settings/policies/{policy}', [AdminController::class, 'updatePolicy'])->name('settings.policies.update');
+        Route::delete('/settings/policies/{policy}', [AdminController::class, 'destroyPolicy'])->name('settings.policies.destroy');
         Route::get('/messages', [AdminController::class, 'messages'])->name('messages');
+        Route::get('/messages/{user}', [AdminController::class, 'messages'])->name('messages.user');
+        Route::post('/messages/{user}', [AdminController::class, 'sendMessage'])->name('messages.send');
         Route::get('/account', [AdminController::class, 'account'])->name('account');
         Route::post('/account/update', [AdminController::class, 'accountUpdate'])->name('account.update');
         Route::post('/account/password', [AdminController::class, 'passwordUpdate'])->name('account.password');

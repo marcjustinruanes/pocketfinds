@@ -2,12 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Announcement;
 use App\Models\Commission;
 use App\Models\Complaint;
+use App\Models\Message;
+use App\Models\Policy;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class AdminController extends Controller
 {
@@ -50,6 +54,7 @@ class AdminController extends Controller
         return [
             'pendingRegistrations' => User::where('status', 'pending')->where('is_admin', false)->count(),
             'openDisputes'         => Complaint::whereIn('status', ['open', 'escalated'])->count(),
+            'unreadMessages'       => Message::where('receiver_id', auth()->id())->where('read', false)->count(),
         ];
     }
 
@@ -147,24 +152,174 @@ class AdminController extends Controller
         $pending     = User::where('status', 'pending')->where('is_admin', false)->count();
         $approved    = User::where('status', 'approved')->where('is_admin', false)->count();
         $rejected    = User::where('status', 'rejected')->where('is_admin', false)->count();
+        $totalCommission = Commission::sum('commission_amount');
+        $commissionCount = Commission::count();
 
         return view('admin.reports', array_merge($counts, compact(
             'totalUsers', 'buyerCount', 'sellerCount', 'riderCount',
-            'pending', 'approved', 'rejected'
+            'pending', 'approved', 'rejected', 'totalCommission', 'commissionCount'
         )));
+    }
+
+    public function exportSalesReport()
+    {
+        $commissions = Commission::with('seller')->latest()->get();
+        $csv = "Order ID,Seller,Sale Amount,Commission Rate,Commission,Seller Earnings,Date\n";
+        foreach ($commissions as $c) {
+            $seller = $c->seller ? $c->seller->first_name.' '.$c->seller->last_name : 'Unknown';
+            $csv .= implode(',', [
+                strtoupper(substr($c->order_id ?? $c->id, 0, 8)),
+                $seller,
+                $c->order_amount,
+                $c->commission_rate.'%',
+                $c->commission_amount,
+                $c->seller_earnings,
+                $c->created_at?->format('Y-m-d'),
+            ])."\n";
+        }
+        return response($csv, 200, [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="sales_report_'.now()->format('Ymd').'.csv"',
+        ]);
+    }
+
+    public function exportCommissionReport()
+    {
+        $commissions = Commission::with('seller')->latest()->get();
+        $csv = "Seller,Total Orders,Total Commission,Date\n";
+        $grouped = $commissions->groupBy('seller_id');
+        foreach ($grouped as $sellerId => $items) {
+            $seller = $items->first()->seller;
+            $name   = $seller ? $seller->first_name.' '.$seller->last_name : 'Unknown';
+            $csv .= implode(',', [
+                $name,
+                $items->count(),
+                number_format($items->sum('commission_amount'), 2),
+                now()->format('Y-m-d'),
+            ])."\n";
+        }
+        return response($csv, 200, [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="commission_report_'.now()->format('Ymd').'.csv"',
+        ]);
     }
 
     public function settings()
     {
-        $counts = $this->sidebarCounts();
-        return view('admin.settings', $counts);
+        $counts        = $this->sidebarCounts();
+        $announcements = Announcement::latest()->get();
+        $policies      = Policy::latest()->get();
+        return view('admin.settings', array_merge($counts, compact('announcements', 'policies')));
     }
 
-    public function messages()
+    public function storeAnnouncement(Request $request)
+    {
+        $request->validate([
+            'title'    => 'required|string|max:255',
+            'body'     => 'required|string',
+            'audience' => 'required|in:all,buyer,seller,rider',
+        ]);
+        Announcement::create([
+            'title'      => $request->title,
+            'body'       => $request->body,
+            'audience'   => $request->audience,
+            'is_active'  => true,
+            'created_by' => auth()->id(),
+        ]);
+        return back()->with('success', 'Announcement posted.');
+    }
+
+    public function destroyAnnouncement($id)
+    {
+        Announcement::findOrFail($id)->delete();
+        return back()->with('success', 'Announcement deleted.');
+    }
+
+    public function storePolicy(Request $request)
+    {
+        $request->validate([
+            'title'   => 'required|string|max:255',
+            'content' => 'required|string',
+            'slug'    => 'required|string|unique:policies,slug',
+        ]);
+        Policy::create([
+            'title'      => $request->title,
+            'content'    => $request->content,
+            'slug'       => $request->slug,
+            'updated_by' => auth()->id(),
+        ]);
+        return back()->with('success', 'Policy saved.');
+    }
+
+    public function updatePolicy(Request $request, Policy $policy)
+    {
+        $request->validate([
+            'title'   => 'required|string|max:255',
+            'content' => 'required|string',
+        ]);
+        $policy->update([
+            'title'      => $request->title,
+            'content'    => $request->content,
+            'updated_by' => auth()->id(),
+        ]);
+        return back()->with('success', 'Policy updated.');
+    }
+
+    public function destroyPolicy(Policy $policy)
+    {
+        $policy->delete();
+        return back()->with('success', 'Policy deleted.');
+    }
+
+    public function messages(Request $request, ?User $user = null)
     {
         $counts = $this->sidebarCounts();
-        $users  = User::where('is_admin', false)->latest()->take(20)->get();
-        return view('admin.messages', array_merge($counts, compact('users')));
+        $users = User::where('is_admin', false)
+            ->orderBy('first_name')
+            ->orderBy('last_name')
+            ->get();
+
+        $selectedUser = $user && ! $user->is_admin ? $user : $users->first();
+        $messages = collect();
+
+        if ($selectedUser) {
+            Message::where('sender_id', $selectedUser->id)
+                ->where('receiver_id', auth()->id())
+                ->where('read', false)
+                ->update(['read' => true]);
+
+            $messages = Message::with(['sender', 'receiver'])
+                ->where(function ($query) use ($selectedUser) {
+                    $query->where('sender_id', auth()->id())
+                        ->where('receiver_id', $selectedUser->id);
+                })
+                ->orWhere(function ($query) use ($selectedUser) {
+                    $query->where('sender_id', $selectedUser->id)
+                        ->where('receiver_id', auth()->id());
+                })
+                ->oldest()
+                ->get();
+        }
+
+        return view('admin.messages', array_merge($counts, compact('users', 'selectedUser', 'messages')));
+    }
+
+    public function sendMessage(Request $request, User $user)
+    {
+        abort_if($user->is_admin, 404);
+
+        $request->validate([
+            'body' => 'required|string|max:2000',
+        ]);
+
+        Message::create([
+            'sender_id'   => auth()->id(),
+            'receiver_id' => $user->id,
+            'body'        => $request->body,
+            'read'        => false,
+        ]);
+
+        return redirect()->route('admin.messages.user', $user)->with('success', 'Message sent.');
     }
 
     public function account()
@@ -177,10 +332,29 @@ class AdminController extends Controller
     {
         $user = auth()->user();
         $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name'  => 'required|string|max:255',
+            'first_name'   => 'required|string|max:255',
+            'last_name'    => 'required|string|max:255',
+            'email'        => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'contact_no'   => 'required|string|max:11',
+            'province'     => 'required|string|max:255',
+            'municipality' => 'required|string|max:255',
+            'barangay'     => 'required|string|max:255',
+            'house_no'     => 'nullable|string|max:255',
+            'street'       => 'nullable|string|max:255',
         ]);
-        $user->update($request->only('first_name', 'last_name'));
+
+        $user->update($request->only([
+            'first_name',
+            'last_name',
+            'email',
+            'contact_no',
+            'province',
+            'municipality',
+            'barangay',
+            'house_no',
+            'street',
+        ]));
+
         return back()->with('success', 'Profile updated.');
     }
 
