@@ -6,7 +6,7 @@
 @section('content')
 <div class="filter-bar">
   <div class="search-mini">
-    <span class="ic">🔍</span>
+    <span class="ic">@include('buyer.partials.icon', ['name' => 'search', 'size' => 13])</span>
     <input type="text" placeholder="Search products…">
   </div>
   <select class="select">
@@ -31,7 +31,9 @@
     <div class="product-grid product-grid-lg">
       @foreach(range(1,12) as $i)
       <div class="product-card">
-        <div class="product-img">🛍</div>
+        <div class="product-img">
+          @include('buyer.partials.icon', ['name' => 'bag', 'size' => 36])
+        </div>
         <div class="product-info">
           <div class="product-name">Product {{ $i }}</div>
           <div class="product-seller">by Sample Seller</div>
@@ -45,7 +47,7 @@
       @endforeach
     </div>
     <div class="empty" style="display:none">
-      <div class="ic">🛍</div>
+      <div class="ic">@include('buyer.partials.icon', ['name' => 'bag', 'size' => 28])</div>
       <h3>No products found</h3>
       <p>Try adjusting your search or filters.</p>
     </div>

@@ -9,9 +9,8 @@
     <div class="card">
       <div class="card-head"><h2>Cart Items</h2></div>
       <div class="card-pad">
-        {{-- Empty state --}}
         <div class="empty">
-          <div class="ic">🛒</div>
+          <div class="ic">@include('buyer.partials.icon', ['name' => 'cart', 'size' => 28])</div>
           <h3>Your cart is empty</h3>
           <p>Browse products and add items to your cart.</p>
           <a href="{{ route('buyer.browse') }}" class="btn btn-primary" style="margin-top:14px">Browse Products</a>

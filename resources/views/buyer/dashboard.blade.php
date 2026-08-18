@@ -38,9 +38,19 @@
       </div>
       <div class="card-pad">
         <div class="category-grid">
-          @foreach([['🍔','Food & Drinks'],['👗','Clothing'],['💄','Beauty'],['📱','Electronics'],['🏠','Home & Living'],['🎮','Hobbies']] as [$icon,$label])
+          @php
+          $categories = [
+            ['food',   'Food & Drinks'],
+            ['shirt',  'Clothing'],
+            ['sparkle','Beauty'],
+            ['phone',  'Electronics'],
+            ['home',   'Home & Living'],
+            ['puzzle', 'Hobbies'],
+          ];
+          @endphp
+          @foreach($categories as [$icon, $label])
           <a href="{{ route('buyer.browse') }}?category={{ urlencode($label) }}" class="category-chip">
-            <span class="category-icon">{{ $icon }}</span>
+            <span class="category-icon">@include('buyer.partials.icon', ['name' => $icon, 'size' => 24])</span>
             <span>{{ $label }}</span>
           </a>
           @endforeach
@@ -48,7 +58,7 @@
       </div>
     </div>
 
-    {{-- Featured products placeholder --}}
+    {{-- Featured products --}}
     <div class="card">
       <div class="card-head">
         <div><h2>Featured Products</h2><p>Handpicked for you</p></div>
@@ -58,7 +68,9 @@
         <div class="product-grid">
           @foreach(range(1,4) as $i)
           <div class="product-card">
-            <div class="product-img">🛍</div>
+            <div class="product-img">
+              @include('buyer.partials.icon', ['name' => 'bag', 'size' => 36])
+            </div>
             <div class="product-info">
               <div class="product-name">Sample Product {{ $i }}</div>
               <div class="product-price">₱ —</div>
@@ -76,9 +88,17 @@
     <div class="card">
       <div class="card-head"><h2>My Orders</h2></div>
       <div class="card-pad" style="display:flex;flex-direction:column;gap:8px">
-        @foreach([['📦','To Ship','to_ship'],['🚚','In Transit','in_transit'],['🏍','Out for Delivery','out_for_delivery'],['✅','Completed','completed']] as [$ic,$label,$tab])
+        @php
+        $orderStatuses = [
+          ['package', 'To Ship',           'to_ship'],
+          ['truck',   'In Transit',         'in_transit'],
+          ['bike',    'Out for Delivery',   'out_for_delivery'],
+          ['check',   'Completed',          'completed'],
+        ];
+        @endphp
+        @foreach($orderStatuses as [$icon, $label, $tab])
         <a href="{{ route('buyer.orders') }}?tab={{ $tab }}" class="order-status-row">
-          <span class="order-status-ic">{{ $ic }}</span>
+          <span class="order-status-ic">@include('buyer.partials.icon', ['name' => $icon, 'size' => 18])</span>
           <span>{{ $label }}</span>
           <span class="order-status-count mono">0</span>
         </a>
@@ -90,10 +110,18 @@
     <div class="card">
       <div class="card-head"><h2>Quick Actions</h2></div>
       <div class="card-pad" style="display:flex;flex-direction:column;gap:8px">
-        <a href="{{ route('buyer.browse') }}" class="btn btn-outline">🛍 Browse Products</a>
-        <a href="{{ route('buyer.cart') }}" class="btn btn-outline">🛒 View Cart</a>
-        <a href="{{ route('buyer.orders') }}" class="btn btn-outline">📦 Track Orders</a>
-        <a href="{{ route('buyer.messages') }}" class="btn btn-outline">✉ Messages</a>
+        <a href="{{ route('buyer.browse') }}" class="btn btn-outline">
+          @include('buyer.partials.icon', ['name' => 'bag', 'size' => 15]) Browse Products
+        </a>
+        <a href="{{ route('buyer.cart') }}" class="btn btn-outline">
+          @include('buyer.partials.icon', ['name' => 'cart', 'size' => 15]) View Cart
+        </a>
+        <a href="{{ route('buyer.orders') }}" class="btn btn-outline">
+          @include('buyer.partials.icon', ['name' => 'package', 'size' => 15]) Track Orders
+        </a>
+        <a href="{{ route('buyer.messages') }}" class="btn btn-outline">
+          @include('buyer.partials.icon', ['name' => 'mail', 'size' => 15]) Messages
+        </a>
       </div>
     </div>
   </div>

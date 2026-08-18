@@ -10,7 +10,7 @@
       <strong style="font-size:13.5px">Conversations</strong>
     </div>
     <div class="empty" style="padding:40px 20px">
-      <div class="ic">✉</div>
+      <div class="ic">@include('buyer.partials.icon', ['name' => 'mail', 'size' => 28])</div>
       <h3>No messages</h3>
       <p>Start a conversation with a seller.</p>
     </div>
@@ -18,18 +18,22 @@
 
   <div class="chat-main">
     <div class="chat-head">
-      <button class="icon-btn" style="display:none" id="chatBack">←</button>
+      <button class="icon-btn" style="display:none" id="chatBack">
+        @include('buyer.partials.icon', ['name' => 'arrow-right', 'size' => 16, 'class' => 'rotate-180'])
+      </button>
       <div style="color:var(--muted);font-size:13px">Select a conversation</div>
     </div>
     <div class="chat-body" style="align-items:center;justify-content:center">
       <div style="text-align:center;color:var(--muted)">
-        <div style="font-size:32px;margin-bottom:8px">💬</div>
+        <div style="margin-bottom:8px;opacity:.4">@include('buyer.partials.icon', ['name' => 'chat', 'size' => 36])</div>
         <p style="font-size:13px">No conversation selected</p>
       </div>
     </div>
     <div class="chat-input">
       <input type="text" placeholder="Type a message…" disabled>
-      <button class="btn btn-primary" disabled>Send</button>
+      <button class="btn btn-primary" disabled>
+        @include('buyer.partials.icon', ['name' => 'send', 'size' => 15]) Send
+      </button>
     </div>
   </div>
 </div>
