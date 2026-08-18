@@ -43,7 +43,7 @@
                     </div>
                 @endif
 
-                <form class="auth-form" method="POST" action="{{ route('login') }}">
+                <form class="auth-form" method="POST" action="{{ route('login.post') }}">
                     @csrf
 
                     <div class="auth-field">
