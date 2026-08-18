@@ -31,6 +31,9 @@ class AdminController extends Controller
             if (auth()->user()->is_admin) {
                 return redirect()->route('admin.dashboard');
             }
+            if (auth()->user()->is_logistics) {
+                return redirect()->route('logistics.dashboard');
+            }
             return redirect()->intended('/');
         }
 
