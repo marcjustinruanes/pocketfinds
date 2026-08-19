@@ -39,6 +39,17 @@ class AdminController extends Controller
             if ($user->account_type === 'buyer') {
                 return redirect()->route('buyer.dashboard');
             }
+            if ($user->account_type === 'seller') {
+                if ($user->status === 'pending') {
+                    Auth::logout();
+                    return back()->withErrors(['email' => 'Your seller account is pending admin approval.'])->withInput();
+                }
+                if ($user->status === 'rejected') {
+                    Auth::logout();
+                    return back()->withErrors(['email' => 'Your seller account has been rejected. Contact support.'])->withInput();
+                }
+                return redirect()->route('seller.dashboard');
+            }
             return redirect()->intended('/');
         }
 

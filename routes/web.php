@@ -5,6 +5,7 @@ use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\SocialAuthController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\BuyerController;
+use App\Http\Controllers\SellerController;
 
 Route::get('/', fn() => view('guest.home'));
 
@@ -31,6 +32,22 @@ Route::prefix('buyer')->name('buyer.')->middleware(['web', 'buyer'])->group(func
     Route::get('/messages', [BuyerController::class, 'messages'])->name('messages');
     Route::get('/account', [BuyerController::class, 'account'])->name('account');
     Route::post('/logout', [BuyerController::class, 'logout'])->name('logout');
+});
+
+// Seller routes
+Route::prefix('seller')->name('seller.')->middleware(['web', 'seller'])->group(function () {
+    Route::get('/dashboard',     [SellerController::class, 'dashboard'])->name('dashboard');
+    Route::get('/orders',        [SellerController::class, 'orders'])->name('orders');
+    Route::get('/inventory',     [SellerController::class, 'inventory'])->name('inventory');
+    Route::get('/notifications', [SellerController::class, 'notifications'])->name('notifications');
+    Route::get('/prepare',       [SellerController::class, 'prepare'])->name('prepare');
+    Route::get('/shipments',     [SellerController::class, 'shipments'])->name('shipments');
+    Route::get('/deliveries',    [SellerController::class, 'deliveries'])->name('deliveries');
+    Route::get('/feedback',      [SellerController::class, 'feedback'])->name('feedback');
+    Route::get('/reports',       [SellerController::class, 'reports'])->name('reports');
+    Route::get('/messages',      [SellerController::class, 'messages'])->name('messages');
+    Route::get('/account',       [SellerController::class, 'account'])->name('account');
+    Route::post('/logout',       [SellerController::class, 'logout'])->name('logout');
 });
 
 // Admin routes
