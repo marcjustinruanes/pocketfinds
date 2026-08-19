@@ -16,9 +16,8 @@
       <span class="ic"><x-admin-icon name="edit" /></span> Delivery Requests
       @if(($pendingDeliveries ?? 0) > 0)<span class="count">{{ $pendingDeliveries }}</span>@endif
     </a>
-    <a href="{{ route('logistics.assign') }}" class="nav-item {{ request()->routeIs('logistics.assign') ? 'active' : '' }}">
-      <span class="ic"><x-admin-icon name="users" /></span> Assign Couriers
-      @if(($unassigned ?? 0) > 0)<span class="count">{{ $unassigned }}</span>@endif
+    <a href="{{ route('logistics.assignments') }}" class="nav-item {{ request()->routeIs('logistics.assignments') ? 'active' : '' }}">
+      <span class="ic"><x-admin-icon name="users" /></span> Courier Assignments
     </a>
 
     <div class="nav-label">Tracking</div>
@@ -43,9 +42,7 @@
     <a href="{{ route('logistics.account') }}" class="nav-item {{ request()->routeIs('logistics.account') ? 'active' : '' }}">
       <span class="ic"><x-admin-icon name="account" /></span> My Account
     </a>
-    <a href="{{ route('logistics.settings') }}" class="nav-item {{ request()->routeIs('logistics.settings') ? 'active' : '' }}">
-      <span class="ic"><x-admin-icon name="settings" /></span> Settings
-    </a>
+
   </div>
 
   <div class="sidebar-foot">
