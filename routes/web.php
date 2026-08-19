@@ -26,7 +26,10 @@ Route::middleware('web')->group(function () {
 Route::prefix('buyer')->name('buyer.')->middleware(['web', 'buyer'])->group(function () {
     Route::get('/dashboard', [BuyerController::class, 'dashboard'])->name('dashboard');
     Route::get('/browse', [BuyerController::class, 'browse'])->name('browse');
+    Route::get('/product/{id}', [BuyerController::class, 'product'])->name('product');
+    Route::get('/shop/{slug}', [BuyerController::class, 'shop'])->name('shop');
     Route::get('/cart', [BuyerController::class, 'cart'])->name('cart');
+    Route::post('/cart/add', [BuyerController::class, 'cartAdd'])->name('cart.add');
     Route::get('/orders', [BuyerController::class, 'orders'])->name('orders');
     Route::get('/messages', [BuyerController::class, 'messages'])->name('messages');
     Route::get('/account', [BuyerController::class, 'account'])->name('account');

@@ -11,7 +11,7 @@
     <input type="text" placeholder="Search products…">
   </div>
   <div class="topbar-actions">
-    <a href="{{ route('buyer.cart') }}" class="icon-btn" title="Cart">
+    <a href="{{ route('buyer.cart') }}" class="icon-btn" id="cartIconBtn" title="Cart">
       @include('buyer.partials.icon', ['name' => 'cart', 'size' => 16])
     </a>
     <a href="{{ route('buyer.messages') }}" class="icon-btn" title="Messages">

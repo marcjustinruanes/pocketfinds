@@ -66,15 +66,32 @@
       </div>
       <div class="card-pad">
         <div class="product-grid">
-          @foreach(range(1,4) as $i)
-          <div class="product-card">
+          @php
+          $featured = [
+            ['id'=>1,'name'=>'Wireless Earbuds Pro','price'=>799,'seller'=>'TechHub PH','seller_slug'=>'techhub-ph','rating'=>4.8,'sold'=>1200,'img'=>'headphones','variants'=>['color'=>['Black','White'],'size'=>[]]],
+            ['id'=>2,'name'=>'Minimal Backpack','price'=>549,'seller'=>'UrbanCarry','seller_slug'=>'urbancarry','rating'=>4.7,'sold'=>856,'img'=>'bag','variants'=>['color'=>['Black','Olive','Navy'],'size'=>[]]],
+            ['id'=>3,'name'=>'LED Desk Lamp','price'=>399,'seller'=>'HomeGlow','seller_slug'=>'homeglow','rating'=>4.8,'sold'=>731,'img'=>'sparkle','variants'=>['color'=>['White','Black'],'size'=>[]]],
+            ['id'=>4,'name'=>'Mechanical Keyboard','price'=>1899,'seller'=>'TechHub PH','seller_slug'=>'techhub-ph','rating'=>4.9,'sold'=>512,'img'=>'phone','variants'=>['color'=>['Space Gray','White'],'size'=>['Blue Switch','Brown Switch','Red Switch']]],
+          ];
+          @endphp
+          @foreach($featured as $p)
+          <div class="product-card" onclick="window.location='{{ route('buyer.product', $p['id']) }}'">
             <div class="product-img">
-              @include('buyer.partials.icon', ['name' => 'bag', 'size' => 36])
+              @include('buyer.partials.icon', ['name' => $p['img'], 'size' => 36])
             </div>
             <div class="product-info">
-              <div class="product-name">Sample Product {{ $i }}</div>
-              <div class="product-price">₱ —</div>
-              <button class="btn btn-sm btn-primary" style="width:100%;margin-top:8px">Add to Cart</button>
+              <div class="product-name">{{ $p['name'] }}</div>
+              <a class="product-seller" href="{{ route('buyer.shop', $p['seller_slug']) }}" onclick="event.stopPropagation()">by {{ $p['seller'] }}</a>
+              <div class="product-price">₱{{ number_format($p['price']) }}</div>
+              <div class="product-rating"><span class="star-ic">@include('buyer.partials.icon',['name'=>'star','size'=>11])</span> {{ $p['rating'] }} · {{ number_format($p['sold']) }} sold</div>
+              <div class="pc-actions">
+                <button class="pc-act pc-act-cart" onclick="event.stopPropagation();openCart('{{ addslashes($p['name']) }}',{{ $p['price'] }},{{ json_encode($p['variants']['color']) }},{{ json_encode($p['variants']['size']) }},false,this,'{{ $p['id'] }}','{{ $p['img'] }}')" title="Add to Cart">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 5m12-5l2 5M9 21a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"/></svg>
+                </button>
+                <button class="pc-act pc-act-buy" onclick="event.stopPropagation();openCart('{{ addslashes($p['name']) }}',{{ $p['price'] }},{{ json_encode($p['variants']['color']) }},{{ json_encode($p['variants']['size']) }},true,this,'{{ $p['id'] }}','{{ $p['img'] }}')" title="Buy Now">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </button>
+              </div>
             </div>
           </div>
           @endforeach
