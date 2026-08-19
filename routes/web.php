@@ -30,6 +30,8 @@ Route::prefix('buyer')->name('buyer.')->middleware(['web', 'buyer'])->group(func
     Route::get('/shop/{slug}', [BuyerController::class, 'shop'])->name('shop');
     Route::get('/cart', [BuyerController::class, 'cart'])->name('cart');
     Route::post('/cart/add', [BuyerController::class, 'cartAdd'])->name('cart.add');
+    Route::patch('/cart/{key}', [BuyerController::class, 'cartUpdate'])->name('cart.update');
+    Route::delete('/cart/{key}', [BuyerController::class, 'cartRemove'])->name('cart.remove');
     Route::get('/orders', [BuyerController::class, 'orders'])->name('orders');
     Route::get('/messages', [BuyerController::class, 'messages'])->name('messages');
     Route::get('/account', [BuyerController::class, 'account'])->name('account');

@@ -70,29 +70,70 @@ class BuyerController extends Controller
 
     public function cart()
     {
-        $items = session('cart', []);
-        return view('buyer.cart', compact('items'));
+        $products = $this->products();
+        $items = collect(session('cart', []))->map(function (array $item, string $key) use ($products) {
+            $product = $products[$item['product_id']] ?? [];
+
+            return array_merge($item, [
+                'key' => $key,
+                'seller' => $product['seller'] ?? 'PocketFinds Seller',
+                'seller_slug' => $product['seller_slug'] ?? 'pocketfinds',
+            ]);
+        });
+        $groups = $items->groupBy('seller_slug');
+
+        return view('buyer.cart', compact('items', 'groups'));
     }
 
     public function cartAdd(Request $request)
     {
+        $data = $request->validate([
+            'product_id' => ['required', 'integer'],
+            'color' => ['nullable', 'string', 'max:100'],
+            'size' => ['nullable', 'string', 'max:100'],
+            'qty' => ['required', 'integer', 'min:1', 'max:99'],
+        ]);
+        $product = $this->products()[$data['product_id']] ?? abort(404);
         $cart = session('cart', []);
-        $key  = $request->product_id . '|' . $request->color . '|' . $request->size;
+        $key  = $product['id'] . '|' . ($data['color'] ?? '') . '|' . ($data['size'] ?? '');
         if (isset($cart[$key])) {
-            $cart[$key]['qty'] += $request->qty;
+            $cart[$key]['qty'] = min(99, $cart[$key]['qty'] + $data['qty']);
         } else {
             $cart[$key] = [
-                'product_id' => $request->product_id,
-                'name'       => $request->name,
-                'price'      => $request->price,
-                'color'      => $request->color,
-                'size'       => $request->size,
-                'qty'        => $request->qty,
-                'img'        => $request->img,
+                'product_id' => $product['id'],
+                'name'       => $product['name'],
+                'price'      => $product['price'],
+                'color'      => $data['color'] ?? '',
+                'size'       => $data['size'] ?? '',
+                'qty'        => $data['qty'],
+                'img'        => $product['img'],
             ];
         }
         session(['cart' => $cart]);
         return response()->json(['count' => array_sum(array_column($cart, 'qty'))]);
+    }
+
+    public function cartUpdate(Request $request, string $key)
+    {
+        $data = $request->validate(['qty' => ['required', 'integer', 'min:1', 'max:99']]);
+        $cart = session('cart', []);
+        abort_unless(isset($cart[$key]), 404);
+
+        $cart[$key]['qty'] = $data['qty'];
+        session(['cart' => $cart]);
+
+        return redirect()->route('buyer.cart');
+    }
+
+    public function cartRemove(string $key)
+    {
+        $cart = session('cart', []);
+        abort_unless(isset($cart[$key]), 404);
+
+        unset($cart[$key]);
+        session(['cart' => $cart]);
+
+        return redirect()->route('buyer.cart');
     }
 
     public function orders()

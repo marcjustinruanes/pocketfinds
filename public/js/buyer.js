@@ -121,16 +121,27 @@ function cmConfirm() {
         // POST to server
         fetch('/buyer/cart/add', {
             method: 'POST',
-            headers: {'Content-Type':'application/json','X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || ''},
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || ''
+            },
             body: JSON.stringify({ product_id: cmProductId, name: cmName, price: cmPrice, color, size, qty: cmQty, img: cmImg })
         })
-        .then(r => r.json())
+        .then(async r => {
+            const data = await r.json();
+            if (!r.ok) throw new Error(data.message || 'Unable to add this item to your cart.');
+            return data;
+        })
         .then(data => {
             // update cart badge if present
             const badge = document.getElementById('cartBadge');
             if (badge) { badge.textContent = data.count; badge.style.display = ''; }
+            flyToCart(cmOrigin);
+        })
+        .catch(error => {
+            showToast(error.message || 'Unable to add this item to your cart.', 'error');
         });
-        flyToCart(cmOrigin);
     } else {
         showToast('Proceeding to checkout…', 'buy');
     }
@@ -147,33 +158,36 @@ function flyToCart(originEl) {
         : { left: window.innerWidth/2 - 14, top: window.innerHeight/2 - 14, width: 28, height: 28 };
     const endRect   = cartBtn.getBoundingClientRect();
 
-    const startX = startRect.left + startRect.width  / 2 - 14;
-    const startY = startRect.top  + startRect.height / 2 - 14;
-    const endX   = endRect.left   + endRect.width    / 2 - 14;
-    const endY   = endRect.top    + endRect.height   / 2 - 14;
+    const startX = startRect.left + startRect.width / 2 - 14;
+    const startY = startRect.top + startRect.height / 2 - 14;
+    const deltaX = endRect.left + endRect.width / 2 - 14 - startX;
+    const deltaY = endRect.top + endRect.height / 2 - 14 - startY;
+    const arcX = deltaX * .48;
+    const arcY = deltaY * .28 - 80;
 
-    fly.style.transition = 'none';
-    fly.style.left       = startX + 'px';
-    fly.style.top        = startY + 'px';
-    fly.style.opacity    = '1';
-    fly.style.transform  = 'scale(1)';
+    fly.getAnimations().forEach(animation => animation.cancel());
+    fly.style.left = startX + 'px';
+    fly.style.top = startY + 'px';
+    fly.style.opacity = '1';
 
-    // force reflow
-    fly.getBoundingClientRect();
+    const animation = fly.animate([
+        { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+        { transform: `translate(${arcX}px, ${arcY}px) scale(1.18) rotate(-14deg)`, opacity: 1, offset: .42 },
+        { transform: `translate(${deltaX}px, ${deltaY}px) scale(.45) rotate(8deg)`, opacity: 1, offset: .82 },
+        { transform: `translate(${deltaX}px, ${deltaY}px) scale(.2)`, opacity: 0 }
+    ], {
+        duration: 1200,
+        easing: 'cubic-bezier(.16,.84,.44,1)',
+        fill: 'forwards'
+    });
 
-    fly.style.transition = 'left .55s cubic-bezier(.25,.46,.45,.94), top .55s cubic-bezier(.55,0,1,.45), opacity .15s .4s, transform .55s';
-    fly.style.left       = endX + 'px';
-    fly.style.top        = endY + 'px';
-    fly.style.transform  = 'scale(0.3)';
-
-    setTimeout(() => {
+    animation.finished.then(() => {
         fly.style.opacity   = '0';
-        fly.style.transform = 'scale(1)';
-        // bounce the cart icon
+        fly.style.transform = '';
         cartBtn.classList.add('cart-bounce');
         setTimeout(() => cartBtn.classList.remove('cart-bounce'), 400);
         showToast('Added to cart!', 'cart');
-    }, 500);
+    }).catch(() => {});
 }
 
 function showToast(msg, type) {

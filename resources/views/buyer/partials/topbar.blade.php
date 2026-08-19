@@ -13,6 +13,8 @@
   <div class="topbar-actions">
     <a href="{{ route('buyer.cart') }}" class="icon-btn" id="cartIconBtn" title="Cart">
       @include('buyer.partials.icon', ['name' => 'cart', 'size' => 16])
+      @php($cartCount = array_sum(array_column(session('cart', []), 'qty')))
+      <span id="cartBadge" style="{{ $cartCount ? '' : 'display:none;' }}position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--pink);color:#fff;font-size:10px;font-weight:700;line-height:16px;text-align:center">{{ $cartCount ?: '' }}</span>
     </a>
     <a href="{{ route('buyer.messages') }}" class="icon-btn" title="Messages">
       @include('buyer.partials.icon', ['name' => 'mail', 'size' => 16])
