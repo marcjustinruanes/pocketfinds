@@ -21,15 +21,23 @@ class AdminController extends Controller
 
     public function loginPost(Request $request)
     {
-        $credentials = $request->validate([
-            'email'    => 'required|email',
+        $request->validate([
+            'email'    => 'required|string',
             'password' => 'required',
         ]);
 
+        $login    = $request->input('email');
+        $field    = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'email';
+        $credentials = [$field => $login, 'password' => $request->input('password')];
+
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
-            if (auth()->user()->is_admin) {
+            $user = auth()->user();
+            if ($user->is_admin) {
                 return redirect()->route('admin.dashboard');
+            }
+            if ($user->account_type === 'buyer') {
+                return redirect()->route('buyer.dashboard');
             }
             return redirect()->intended('/');
         }

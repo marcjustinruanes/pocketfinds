@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\SocialAuthController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\BuyerController;
 
 Route::get('/', fn() => view('guest.home'));
 
@@ -22,6 +23,22 @@ Route::middleware('web')->group(function () {
 
     Route::get('/auth/google/redirect', [SocialAuthController::class, 'redirectToGoogle'])->name('google.redirect');
     Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleCallback'])->name('google.callback');
+});
+
+// Buyer routes
+Route::prefix('buyer')->name('buyer.')->middleware(['web', 'buyer'])->group(function () {
+    Route::get('/dashboard', [BuyerController::class, 'dashboard'])->name('dashboard');
+    Route::get('/browse', [BuyerController::class, 'browse'])->name('browse');
+    Route::get('/product/{id}', [BuyerController::class, 'product'])->name('product');
+    Route::get('/shop/{slug}', [BuyerController::class, 'shop'])->name('shop');
+    Route::get('/cart', [BuyerController::class, 'cart'])->name('cart');
+    Route::post('/cart/add', [BuyerController::class, 'cartAdd'])->name('cart.add');
+    Route::patch('/cart/{key}', [BuyerController::class, 'cartUpdate'])->name('cart.update');
+    Route::delete('/cart/{key}', [BuyerController::class, 'cartRemove'])->name('cart.remove');
+    Route::get('/orders', [BuyerController::class, 'orders'])->name('orders');
+    Route::get('/messages', [BuyerController::class, 'messages'])->name('messages');
+    Route::get('/account', [BuyerController::class, 'account'])->name('account');
+    Route::post('/logout', [BuyerController::class, 'logout'])->name('logout');
 });
 
 // Admin routes
