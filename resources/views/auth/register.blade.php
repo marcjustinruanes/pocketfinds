@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buyer Registration</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Create Your Account — PocketFinds</title>
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
     <link rel="stylesheet" href="{{ asset('css/register.css') }}">
 </head>
@@ -18,7 +19,7 @@
                     <span class="auth-logo-mark"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg></span>
                     <span>PocketFinds</span>
                 </a>
-                <h1 class="auth-brand-title">Create your buyer account.</h1>
+                <h1 class="auth-brand-title">Create your account.</h1>
                 <p class="auth-brand-text">
                     Fill in your details across a few quick steps. Your account will be reviewed and activated by our admin team.
                 </p>
@@ -39,20 +40,24 @@
 
                 {{-- Step indicator --}}
                 <div class="steps" id="stepIndicator">
-                    <div class="step-item active" data-step="1">
+                    <div class="step-item seller-only active" data-step="1" style="display:none">
                         <div class="step-circle">1</div>
+                        <span class="step-label">Category</span>
+                    </div>
+                    <div class="step-item" data-step="2" id="personalStepItem">
+                        <div class="step-circle" id="personalStepCircle">1</div>
                         <span class="step-label">Personal</span>
                     </div>
-                    <div class="step-item" data-step="2">
-                        <div class="step-circle">2</div>
+                    <div class="step-item" data-step="3">
+                        <div class="step-circle" id="contactStepCircle">2</div>
                         <span class="step-label">Contact</span>
                     </div>
-                    <div class="step-item" data-step="3">
-                        <div class="step-circle">3</div>
+                    <div class="step-item" data-step="4">
+                        <div class="step-circle" id="addressStepCircle">3</div>
                         <span class="step-label">Address</span>
                     </div>
-                    <div class="step-item" data-step="4">
-                        <div class="step-circle">4</div>
+                    <div class="step-item" data-step="5">
+                        <div class="step-circle" id="accountStepCircle">4</div>
                         <span class="step-label">Account</span>
                     </div>
                 </div>
@@ -62,11 +67,34 @@
                     <input type="hidden" name="account_type" value="{{ request('type', 'buyer') }}">
                     <input type="hidden" name="auth_method" value="manual">
 
-                    {{-- ── STEP 1: Personal Info ── --}}
-                    <div class="step-panel active" id="panel-1">
-                        <div class="auth-eyebrow"><span class="auth-eyebrow-dot"></span> Step 1 of 3</div>
-                        <h2 class="auth-title">Personal Information</h2>
-                        <p class="auth-subtitle">Tell us about yourself.</p>
+                    {{-- ── STEP 1: Category (sellers only) ── --}}
+                    <div class="step-panel" id="panel-1">
+                        <div class="step-header">
+                            <div class="page-title-row"><h2 class="auth-title">Shop Category</h2></div>
+                            <p class="auth-subtitle">Choose the category your products belong to.</p>
+                        </div>
+
+                        <input type="hidden" name="category_id" id="category_id_input">
+                        <div class="category-scroll-wrap">
+                            <div class="category-box-grid" id="categoryGrid">
+                                <p class="auth-muted-text">Loading categories…</p>
+                            </div>
+                        </div>
+
+                        <div class="step-nav" style="margin-top:16px">
+                            <button type="button" class="btn-next" id="categoryNextBtn" onclick="nextStep(1)" disabled>Continue →</button>
+                        </div>
+                    </div>
+
+                    {{-- ── STEP 2: Personal Info ── --}}
+                    <div class="step-panel active" id="panel-2">
+                        <div class="step-header">
+                            <div class="page-title-row">
+                                <h2 class="auth-title">Personal Information</h2>
+                                <span class="step-badge" id="personalEyebrow">Step 1 of 4</span>
+                            </div>
+                            <p class="auth-subtitle">Tell us about yourself.</p>
+                        </div>
 
                         <div class="auth-form-grid">
                             <div class="auth-field">
@@ -100,40 +128,69 @@
                         </div>
 
                         <div class="step-nav">
-                            <button type="button" class="btn-next" onclick="nextStep(1)">Continue →</button>
-                        </div>
-                    </div>
-
-                    {{-- ── STEP 2: Contact ── --}}
-                    <div class="step-panel" id="panel-2">
-                        <div class="auth-eyebrow"><span class="auth-eyebrow-dot"></span> Step 2 of 4</div>
-                        <h2 class="auth-title">Contact Details</h2>
-                        <p class="auth-subtitle">How can we reach you?</p>
-
-                        <div class="auth-form-grid">
-                            <div class="auth-field full">
-                                <label class="auth-label" for="email">Email address <span class="auth-required">*</span></label>
-                                <input class="auth-input" id="email" name="email" type="email" placeholder="juan@gmail.com" required>
-                                <span class="field-hint">Must be a Gmail address (@gmail.com)</span>
-                            </div>
-                            <div class="auth-field full">
-                                <label class="auth-label" for="contact_no">Contact number <span class="auth-required">*</span></label>
-                                <input class="auth-input" id="contact_no" name="contact_no" type="tel" placeholder="09XXXXXXXXX" maxlength="11" required>
-                                <span class="field-hint">11 digits, must start with 09</span>
-                            </div>
-                        </div>
-
-                        <div class="step-nav">
                             <button type="button" class="btn-prev" onclick="prevStep(2)">← Back</button>
                             <button type="button" class="btn-next" onclick="nextStep(2)">Continue →</button>
                         </div>
                     </div>
 
-                    {{-- ── STEP 3: Address ── --}}
+                    {{-- ── STEP 3: Contact ── --}}
                     <div class="step-panel" id="panel-3">
-                        <div class="auth-eyebrow"><span class="auth-eyebrow-dot"></span> Step 3 of 4</div>
-                        <h2 class="auth-title">Address</h2>
-                        <p class="auth-subtitle">Where are you located?</p>
+                        <div class="step-header">
+                            <div class="page-title-row">
+                                <h2 class="auth-title">Contact Details</h2>
+                                <span class="step-badge" id="contactEyebrow">Step 2 of 4</span>
+                            </div>
+                            <p class="auth-subtitle">How can we reach you?</p>
+                        </div>
+
+                        <div class="auth-form-grid">
+                            <div class="auth-field full">
+                                <label class="auth-label" for="email">Email address <span class="auth-required">*</span></label>
+                                <div class="email-verify-row">
+                                    <input class="auth-input" id="email" name="email" type="email" placeholder="juan@gmail.com" required autocomplete="off">
+                                    <button type="button" class="btn-send-otp" id="sendOtpBtn" onclick="sendOtp()">Send Code</button>
+                                </div>
+                                <span class="field-hint" id="emailHint"></span>
+                            </div>
+
+                            <div class="auth-field full" id="otpField" style="display:none">
+                                <label class="auth-label" for="otp_code">Verification code <span class="auth-required">*</span></label>
+                                <div class="email-verify-row">
+                                    <input class="auth-input" id="otp_code" type="text" placeholder="Enter 6-digit code" maxlength="6" autocomplete="off">
+                                    <button type="button" class="btn-send-otp" id="verifyOtpBtn" onclick="verifyOtp()">Verify</button>
+                                </div>
+                                <span class="field-hint" id="otpHint">Enter the code sent to your email. <button type="button" class="btn-inline-link" id="resendOtpBtn" onclick="resendOtp()" disabled>Resend</button></span>
+                            </div>
+
+                            <div class="auth-field full" id="verifiedBadge" style="display:none">
+                                <div class="email-verified-badge">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                    Email verified
+                                </div>
+                            </div>
+
+                            <div class="auth-field full">
+                                <label class="auth-label" for="contact_no">Contact number <span class="auth-required">*</span></label>
+                                <input class="auth-input" id="contact_no" name="contact_no" type="tel" placeholder="09XXXXXXXXX" maxlength="11" required>
+                                <span class="field-hint" id="contactHint"></span>
+                            </div>
+                        </div>
+
+                        <div class="step-nav">
+                            <button type="button" class="btn-prev" onclick="prevStep(3)">← Back</button>
+                            <button type="button" class="btn-next" id="contactNextBtn" onclick="nextStep(3)">Continue →</button>
+                        </div>
+                    </div>
+
+                    {{-- ── STEP 4: Address ── --}}
+                    <div class="step-panel" id="panel-4">
+                        <div class="step-header">
+                            <div class="page-title-row">
+                                <h2 class="auth-title">Address</h2>
+                                <span class="step-badge" id="addressEyebrow">Step 3 of 4</span>
+                            </div>
+                            <p class="auth-subtitle">Where are you located?</p>
+                        </div>
 
                         <div class="address-grid">
                             <div class="auth-field full">
@@ -165,16 +222,20 @@
                         </div>
 
                         <div class="step-nav">
-                            <button type="button" class="btn-prev" onclick="prevStep(3)">← Back</button>
-                            <button type="button" class="btn-next" onclick="nextStep(3)">Continue →</button>
+                            <button type="button" class="btn-prev" onclick="prevStep(4)">← Back</button>
+                            <button type="button" class="btn-next" onclick="nextStep(4)">Continue →</button>
                         </div>
                     </div>
 
-                    {{-- ── STEP 4: Account + ID Upload ── --}}
-                    <div class="step-panel" id="panel-4">
-                        <div class="auth-eyebrow"><span class="auth-eyebrow-dot"></span> Step 4 of 4</div>
-                        <h2 class="auth-title">Account & Verification</h2>
-                        <p class="auth-subtitle">Set your password and upload a valid ID.</p>
+                    {{-- ── STEP 5: Account + ID Upload ── --}}
+                    <div class="step-panel" id="panel-5">
+                        <div class="step-header">
+                            <div class="page-title-row">
+                                <h2 class="auth-title">Account & Verification</h2>
+                                <span class="step-badge" id="accountStepLabel">Step 4 of 4</span>
+                            </div>
+                            <p class="auth-subtitle">Set your password and upload a valid ID.</p>
+                        </div>
 
                         <p class="form-section-title">Password</p>
                         <div class="auth-form-grid">
@@ -202,7 +263,7 @@
                         </div>
 
                         <div class="step-nav">
-                            <button type="button" class="btn-prev" onclick="prevStep(4)">← Back</button>
+                            <button type="button" class="btn-prev" onclick="prevStep(5)">← Back</button>
                             <button type="submit" class="btn-submit">Submit Registration</button>
                         </div>
                     </div>

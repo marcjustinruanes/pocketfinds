@@ -19,6 +19,7 @@ class SocialAuthController extends Controller
         $googleUser = Socialite::driver('google')->user();
 
         session([
+            'google_id'     => $googleUser->getId(),
             'google_name'   => $googleUser->getName(),
             'google_email'  => $googleUser->getEmail(),
             'google_avatar' => $googleUser->getAvatar(),

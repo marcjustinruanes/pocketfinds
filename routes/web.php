@@ -15,6 +15,9 @@ Route::middleware('web')->group(function () {
     Route::get('/register/google', fn() => view('auth.register-google'))->name('register.google');
     Route::get('/register', fn() => view('auth.register'))->name('register');
     Route::post('/register', [RegisterController::class, 'store'])->name('register.store');
+    Route::get('/register/categories', [RegisterController::class, 'categories'])->name('register.categories');
+    Route::post('/register/send-otp', [RegisterController::class, 'sendOtp'])->name('register.send-otp');
+    Route::post('/register/verify-otp', [RegisterController::class, 'verifyOtp'])->name('register.verify-otp');
     Route::get('/password/reset', fn() => view('auth.login'))->name('password.request');
 
     Route::get('/auth/google/redirect', [SocialAuthController::class, 'redirectToGoogle'])->name('google.redirect');

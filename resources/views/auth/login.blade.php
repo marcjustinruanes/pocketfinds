@@ -5,6 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
+    <style>
+        .auth-form-panel { align-items: center; }
+        .page-header { margin-bottom: 20px; }
+        .page-header p { margin: 4px 0 0; font-size: 13px; color: var(--auth-muted); }
+        .page-title-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 0;
+        }
+        .page-title-row h2 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -.03em;
+            line-height: 1.2;
+        }
+        .role-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: var(--auth-primary-soft);
+            border: 1px solid rgba(217,70,143,.2);
+            color: var(--auth-primary);
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+        }
+    </style>
 </head>
 <body class="auth-page">
 <div class="auth-shell">
@@ -35,9 +68,20 @@
 
         <section class="auth-form-panel">
             <div class="auth-form-wrap">
-                <div class="auth-eyebrow"><span class="auth-eyebrow-dot"></span> Welcome back</div>
-                <h2 class="auth-title">Sign in to your account</h2>
-                <p class="auth-subtitle">Enter your credentials to continue.</p>
+                <button class="auth-back" type="button" onclick="history.back()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                    Back
+                </button>
+
+                <div class="page-header">
+                    <div class="page-title-row">
+                        <h2>Welcome back</h2>
+                        <span class="role-pill" style="margin-left:auto">
+                            Sign in
+                        </span>
+                    </div>
+                    <p>Enter your credentials to continue.</p>
+                </div>
 
                 @if (!empty($errors) && $errors->any())
                     <div class="auth-error">

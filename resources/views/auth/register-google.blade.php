@@ -120,10 +120,11 @@
                     </div>
                 </div>
 
-                <form id="googleRegForm" method="POST" action="{{ route('register') }}" enctype="multipart/form-data" novalidate>
+                <form id="googleRegForm" method="POST" action="{{ route('register.store') }}" enctype="multipart/form-data" novalidate>
                     @csrf
-                    <input type="hidden" name="type" value="{{ request('type', 'buyer') }}">
+                    <input type="hidden" name="account_type" value="{{ session('oauth_account_type', request('type', 'buyer')) }}">
                     <input type="hidden" name="auth_method" value="google">
+                    <input type="hidden" name="google_id" value="{{ session('google_id') }}">
 
                     {{-- ── STEP 1: Personal ── --}}
                     <div class="step-panel active" id="panel-1">
@@ -294,39 +295,59 @@
 <script src="{{ asset('js/auth.js') }}"></script>
 <script src="{{ asset('js/register.js') }}"></script>
 <script>
-    // Simulate Google pre-fill (replace with real OAuth data when Socialite is set up)
-    // These values will come from session after Google OAuth redirect
     const googleData = {
-        name: '{{ session("google_name", "Google User") }}',
-        email: '{{ session("google_email", "") }}',
+        name:   '{{ session("google_name", "") }}',
+        email:  '{{ session("google_email", "") }}',
         avatar: '{{ session("google_avatar", "") }}',
     };
 
-    if (googleData.email) {
-        document.getElementById('email').value = googleData.email;
-    }
     if (googleData.name) {
         const parts = googleData.name.trim().split(' ');
         document.getElementById('first_name').value = parts[0] ?? '';
-        document.getElementById('last_name').value = parts.slice(1).join(' ') ?? '';
+        document.getElementById('last_name').value  = parts.slice(1).join(' ') ?? '';
         document.getElementById('gName').textContent = googleData.name;
     }
     if (googleData.email) {
+        document.getElementById('email').value = googleData.email;
         document.getElementById('gEmail').textContent = googleData.email;
     }
     if (googleData.avatar) {
         document.getElementById('gAvatar').innerHTML = `<img src="${googleData.avatar}" alt="avatar">`;
     }
 
-    // Override form submit to target googleRegForm
     document.getElementById('googleRegForm').addEventListener('submit', function (e) {
         e.preventDefault();
         if (!validateStep(4)) return;
-        this.style.display = 'none';
-        document.getElementById('stepIndicator').style.display = 'none';
-        document.querySelector('.auth-back').style.display = 'none';
-        document.getElementById('signinLink').style.display = 'none';
-        document.getElementById('successScreen').classList.add('active');
+
+        const form = this;
+        const btn  = form.querySelector('.btn-submit');
+        btn.disabled    = true;
+        btn.textContent = 'Submitting…';
+
+        fetch('{{ route("register.store") }}', {
+            method:  'POST',
+            body:    new FormData(form),
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                form.style.display = 'none';
+                document.getElementById('stepIndicator').style.display = 'none';
+                document.querySelector('.auth-back').style.display     = 'none';
+                document.getElementById('signinLink').style.display    = 'none';
+                document.getElementById('successScreen').classList.add('active');
+            } else {
+                btn.disabled    = false;
+                btn.textContent = 'Submit Registration';
+                alert(data.message ?? 'Something went wrong.');
+            }
+        })
+        .catch(() => {
+            btn.disabled    = false;
+            btn.textContent = 'Submit Registration';
+            alert('Network error. Please try again.');
+        });
     });
 </script>
 </body>
