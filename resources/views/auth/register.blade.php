@@ -15,7 +15,7 @@
         <section class="auth-brand-panel">
             <div class="auth-brand-content">
                 <a class="auth-logo" href="{{ url('/') }}">
-                    <span class="auth-logo-mark">◆</span>
+                    <span class="auth-logo-mark"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg></span>
                     <span>PocketFinds</span>
                 </a>
                 <h1 class="auth-brand-title">Create your buyer account.</h1>
@@ -23,9 +23,9 @@
                     Fill in your details across a few quick steps. Your account will be reviewed and activated by our admin team.
                 </p>
                 <ul class="auth-brand-points">
-                    <li><span class="auth-check">✓</span> Secure & verified registration</li>
-                    <li><span class="auth-check">✓</span> Admin-approved accounts</li>
-                    <li><span class="auth-check">✓</span> Confirmation sent to your email</li>
+                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Secure &amp; verified registration</li>
+                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Admin-approved accounts</li>
+                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Confirmation sent to your email</li>
                 </ul>
             </div>
             <div class="auth-brand-footer">© {{ date('Y') }} PocketFinds. All rights reserved.</div>
@@ -35,7 +35,7 @@
         <section class="auth-form-panel">
             <div class="auth-form-wrap">
 
-                <button class="auth-back" type="button" onclick="history.back()">← Change account type</button>
+                <button class="auth-back" type="button" onclick="history.back()"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Change account type</button>
 
                 {{-- Step indicator --}}
                 <div class="steps" id="stepIndicator">
@@ -194,7 +194,7 @@
                         <p class="form-section-title">Valid ID</p>
                         <div class="auth-field">
                             <label class="file-upload-label" for="id_file" id="uploadLabel">
-                                <span class="upload-icon">🪪</span>
+                                <span class="upload-icon"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4V2M16 4V2M3 10h18"/><circle cx="12" cy="15" r="2"/></svg></span>
                                 <span class="upload-text">Click to upload a photo of your valid ID<br><small>JPG, PNG or PDF · max 5MB</small></span>
                                 <span class="upload-name" id="uploadName"></span>
                             </label>
@@ -210,7 +210,7 @@
 
                 {{-- Success screen --}}
                 <div class="success-screen" id="successScreen">
-                    <div class="success-icon">✉️</div>
+                    <div class="success-icon"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
                     <h3>Registration Submitted!</h3>
                     <p>
                         Thank you for registering. Please wait for the administrator's approval — a confirmation will be sent to your email.

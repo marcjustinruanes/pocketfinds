@@ -6,82 +6,17 @@
     <title>Sign Up Method</title>
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
     <style>
-        .method-grid {
-            display: grid;
-            gap: 12px;
-            margin-top: 8px;
-        }
-        .method-card {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            width: 100%;
-            padding: 16px 18px;
-            border: 1px solid var(--auth-border);
-            border-radius: 14px;
-            background: #fff;
-            text-align: left;
-            cursor: pointer;
-            text-decoration: none;
-            color: var(--auth-text);
-            transition: border-color .18s, background .18s, transform .18s, box-shadow .18s;
-        }
-        .method-card:hover {
-            border-color: #f0a4c7;
-            background: #fff8fb;
-            transform: translateY(-1px);
-            box-shadow: var(--auth-shadow-sm);
-        }
-        .method-icon {
-            width: 42px;
-            height: 42px;
-            flex: 0 0 42px;
-            display: grid;
-            place-items: center;
-            border-radius: 12px;
-            font-size: 20px;
-        }
-        .method-icon.google {
-            background: #f1f3f4;
-        }
-        .method-icon.manual {
-            background: var(--auth-primary-soft);
-            color: var(--auth-primary);
-            font-size: 16px;
-            font-weight: 900;
-        }
-        .method-copy { min-width: 0; }
-        .method-name {
-            display: block;
-            font-size: 14px;
-            font-weight: 800;
-        }
-        .method-desc {
-            display: block;
-            margin-top: 3px;
-            font-size: 12px;
-            color: var(--auth-muted);
-            line-height: 1.4;
-        }
-        .method-arrow {
-            margin-left: auto;
-            color: #94a3b8;
-            font-size: 16px;
-        }
-        .type-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            border-radius: 999px;
-            background: var(--auth-primary-soft);
-            color: var(--auth-primary);
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: .06em;
-            margin-bottom: 16px;
-        }
+        .method-grid { display:grid;gap:12px;margin-top:8px }
+        .method-card { display:flex;align-items:center;gap:14px;width:100%;padding:16px 18px;border:1px solid var(--auth-border);border-radius:14px;background:#fff;text-align:left;cursor:pointer;text-decoration:none;color:var(--auth-text);transition:border-color .18s,background .18s,transform .18s,box-shadow .18s }
+        .method-card:hover { border-color:#f0a4c7;background:#fff8fb;transform:translateY(-1px);box-shadow:var(--auth-shadow-sm) }
+        .method-icon { width:42px;height:42px;flex:0 0 42px;display:grid;place-items:center;border-radius:12px }
+        .method-icon.google { background:#f1f3f4 }
+        .method-icon.manual { background:var(--auth-primary-soft);color:var(--auth-primary) }
+        .method-copy { min-width:0 }
+        .method-name { display:block;font-size:14px;font-weight:800 }
+        .method-desc { display:block;margin-top:3px;font-size:12px;color:var(--auth-muted);line-height:1.4 }
+        .method-arrow { margin-left:auto;color:#94a3b8;display:flex;align-items:center }
+        .type-badge { display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--auth-primary-soft);color:var(--auth-primary);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin-bottom:16px }
     </style>
 </head>
 <body class="auth-page">
@@ -91,7 +26,9 @@
         <section class="auth-brand-panel">
             <div class="auth-brand-content">
                 <a class="auth-logo" href="{{ url('/') }}">
-                    <span class="auth-logo-mark">◆</span>
+                    <span class="auth-logo-mark">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+                    </span>
                     <span>PocketFinds</span>
                 </a>
                 <h1 class="auth-brand-title">How would you like to sign up?</h1>
@@ -99,9 +36,9 @@
                     Choose how you want to create your account. Either way, your account will need admin approval before you can start.
                 </p>
                 <ul class="auth-brand-points">
-                    <li><span class="auth-check">✓</span> Google sign-up is quick and easy</li>
-                    <li><span class="auth-check">✓</span> Manual sign-up gives full control</li>
-                    <li><span class="auth-check">✓</span> Both require admin approval</li>
+                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Google sign-up is quick and easy</li>
+                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Manual sign-up gives full control</li>
+                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Both require admin approval</li>
                 </ul>
             </div>
             <div class="auth-brand-footer">© {{ date('Y') }} PocketFinds. All rights reserved.</div>
@@ -109,14 +46,18 @@
 
         <section class="auth-form-panel">
             <div class="auth-form-wrap">
-                <button class="auth-back" type="button" onclick="history.back()">← Change account type</button>
+                <button class="auth-back" type="button" onclick="history.back()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                    Change account type
+                </button>
 
                 <div class="auth-eyebrow"><span class="auth-eyebrow-dot"></span> Registration</div>
                 <h2 class="auth-title">Create your account</h2>
                 <p class="auth-subtitle">You selected:</p>
 
                 <div class="type-badge">
-                    ◆ {{ ucfirst(request('type', 'buyer')) }}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+                    {{ ucfirst(request('type', 'buyer')) }}
                 </div>
 
                 <p class="auth-subtitle" style="margin-top:0;">How would you like to sign up?</p>
@@ -129,19 +70,25 @@
                         </span>
                         <span class="method-copy">
                             <span class="method-name">Continue with Google</span>
-                            <span class="method-desc">Choose your Google account to sign up. You'll still fill in your details and wait for approval.
+                            <span class="method-desc">Choose your Google account to sign up. You'll still fill in your details and wait for approval.</span>
                         </span>
-                        <span class="method-arrow">→</span>
+                        <span class="method-arrow">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                        </span>
                     </a>
 
                     {{-- Manual --}}
                     <a class="method-card" href="{{ url('/register') }}?type={{ request('type', 'buyer') }}">
-                        <span class="method-icon manual">✎</span>
+                        <span class="method-icon manual">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </span>
                         <span class="method-copy">
                             <span class="method-name">Sign up manually</span>
                             <span class="method-desc">Fill in your personal details, contact info, address, and upload a valid ID.</span>
                         </span>
-                        <span class="method-arrow">→</span>
+                        <span class="method-arrow">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                        </span>
                     </a>
                 </div>
 
