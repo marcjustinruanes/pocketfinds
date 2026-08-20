@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Cache;
 
@@ -131,9 +130,9 @@ class RegisterController extends Controller
             'selfie_file'    => 'required|file|mimes:jpg,jpeg,png|max:5120',
             'account_type'   => 'required|in:buyer,rider,seller',
             'auth_method'    => 'required|in:manual,google',
-            'category_id'    => $isSeller ? 'required|exists:categories,id' : 'nullable',
-            'business_name'  => $isSeller ? 'required|string|max:150|unique:users,business_name' : 'nullable',
-            'business_permit_file' => $isSeller ? 'required|file|mimes:jpg,jpeg,png,pdf|max:5120' : 'nullable',
+            'category_id'    => $isSeller ? 'required|exists:categories,id' : 'sometimes|nullable',
+            'business_name'  => $isSeller ? 'required|string|max:150|unique:users,business_name' : 'sometimes|nullable',
+            'business_permit_file' => $isSeller ? 'required|file|mimes:jpg,jpeg,png,pdf|max:5120' : 'sometimes|nullable',
         ];
 
         if ($isRider) {
@@ -147,11 +146,14 @@ class RegisterController extends Controller
                 $rules['cr_file']      = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120';
                 $rules['license_number'] = 'required|string|max:50';
                 $rules['license_expiry'] = 'required|date';
-                $rules['license_file']   = 'required|file|mimes:jpg,jpeg,png|max:5120';
+                $rules['license_file']   = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120';
             }
         }
 
-        $request->validate($rules);
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), $rules);
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => $validator->errors()->first(), 'errors' => $validator->errors()], 422);
+        }
 
         $idPath     = $request->file('id_file')->store('id_files', 'public');
         $selfiePath = $request->file('selfie_file')->store('selfie_files', 'public');
@@ -174,7 +176,7 @@ class RegisterController extends Controller
             'barangay'       => $request->barangay,
             'house_no'       => $request->house_no,
             'street'         => $request->street,
-            'password'       => Hash::make($request->password),
+            'password'       => $request->password,
             'id_file'        => $idPath,
             'id_type_id'     => $request->id_type_id,
             'selfie_file'    => $selfiePath,

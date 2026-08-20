@@ -27,6 +27,7 @@ Route::middleware('web')->group(function () {
     Route::get('/password/reset', fn() => view('auth.login'))->name('password.request');
 
     Route::get('/auth/google/redirect', [SocialAuthController::class, 'redirectToGoogle'])->name('google.redirect');
+    Route::get('/auth/google/login', [SocialAuthController::class, 'redirectToGoogleLogin'])->name('google.login');
     Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleCallback'])->name('google.callback');
 });
 

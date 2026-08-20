@@ -26,13 +26,32 @@ class AdminController extends Controller
             'password' => 'required',
         ]);
 
-        $login    = $request->input('email');
-        $field    = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'email';
-        $credentials = [$field => $login, 'password' => $request->input('password')];
+        $login = $request->input('email');
+
+        // Find user by email or username
+        $user = User::where('email', $login)->orWhere('username', $login)->first();
+
+        if ($user) {
+            if ($user->status === 'pending') {
+                return back()->withErrors(['email' => 'Your account is still pending admin approval. Please wait for confirmation.'])->withInput();
+            }
+            if ($user->status === 'rejected') {
+                return back()->withErrors(['email' => 'Your account has been rejected. Please contact support for assistance.'])->withInput();
+            }
+            // Google-only accounts have no usable password
+            if ($user->auth_method === 'google' && !$user->password) {
+                return back()->withErrors(['email' => 'This account was registered with Google. Please use "Continue with Google" to sign in.'])->withInput();
+            }
+        }
+
+        // Auth::attempt only works with email, so resolve the email from username if needed
+        $email = $user ? $user->email : $login;
+        $credentials = ['email' => $email, 'password' => $request->input('password')];
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
             $user = auth()->user();
+
             if ($user->is_admin) {
                 return redirect()->route('admin.dashboard');
             }

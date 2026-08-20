@@ -222,10 +222,14 @@
                         </div>
                         <div class="auth-field" id="businessPermitField" style="margin-bottom:12px">
                             <label class="auth-label">Business Permit <span class="auth-required">*</span></label>
-                            <div class="upload-box document-upload" id="businessPermitBox" onclick="document.getElementById('business_permit_file').click()">
-                                <div id="businessPermitIdle">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                                    <p style="margin:4px 0 0;font-size:11px;color:#888">Upload file</p>
+                            <div class="upload-box document-upload" id="businessPermitBox" style="cursor:pointer">
+                                <div id="businessPermitIdle" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px 8px;text-align:center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:#aaa;margin-bottom:6px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                                    <p style="margin:0 0 7px;font-size:11px;color:#888">Upload business permit</p>
+                                    <label for="business_permit_file" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border:1px solid var(--auth-primary);color:var(--auth-primary);background:#fff;border-radius:8px;font-size:11px;cursor:pointer">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                        Upload
+                                    </label>
                                     <span class="upload-info">Clear photo or scan · JPG, PNG, or PDF · max 5 MB</span>
                                 </div>
                                 <div id="businessPermitPreview" style="display:none;position:relative">
@@ -719,8 +723,10 @@
 
                         <div class="step-nav" style="margin-top:16px">
                             <button type="button" class="btn-prev" onclick="prevStep(8)">← Back</button>
-                            <button type="submit" class="btn-submit">Submit Registration</button>
+                            <button type="button" class="btn-submit" onclick="if(validateStep(8)) document.getElementById('buyerForm').requestSubmit()">Submit Registration</button>
                         </div>
+                    </div>
+
                 </form>
 
                 {{-- T&C Modal --}}

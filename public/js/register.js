@@ -268,6 +268,9 @@ document.getElementById('id_type_id')?.addEventListener('change', function () {
     }
     if (this.dataset.selectedIdType && this.dataset.selectedIdType !== this.value) {
         resetIdentityUploads();
+    } else if (!this.dataset.selectedIdType) {
+        // First selection — clear any stale OCR notice
+        clearOcrPrefill();
     }
     this.dataset.selectedIdType = this.value;
 });
@@ -320,6 +323,9 @@ function retakeIdPhoto() {
     const pdfCard = document.getElementById('idPhotoPreview')?.querySelector('.pdf-card');
     if (pdfCard) pdfCard.style.display = 'none';
     clearOcrPrefill();
+    // Reset OCR result box to hidden/empty
+    const ocrBox = document.getElementById('ocrResult');
+    if (ocrBox) { ocrBox.className = 'ocr-result'; ocrBox.innerHTML = ''; }
 }
 
 document.getElementById('id_file')?.addEventListener('change', function () {
@@ -496,6 +502,13 @@ if (accountTermSlide) {
 
 let businessPermitBlob = null;
 let businessPermitUrl  = null;
+
+// Prevent the box onclick from firing when clicking preview buttons
+document.getElementById('businessPermitBox')?.addEventListener('click', function (e) {
+    if (businessPermitBlob) return; // preview is showing — don't open file picker
+    document.getElementById('business_permit_file').click();
+});
+
 document.getElementById('business_permit_file')?.addEventListener('change', function () {
     if (!this.files[0]) return;
     businessPermitBlob = this.files[0];
@@ -538,33 +551,46 @@ function clearBusinessPermit() {
     document.getElementById('businessPermitPreview').style.display = 'none';
     const imgEl = document.getElementById('businessPermitImg');
     if (imgEl) { imgEl.src = ''; imgEl.style.display = ''; }
+    const pdfCard = document.getElementById('businessPermitPreview')?.querySelector('.pdf-card');
+    if (pdfCard) pdfCard.style.display = 'none';
 }
 
 let businessNameAvailable = null;
 let businessNameTimer = null;
 const businessNameInput = document.getElementById('business_name');
 if (businessNameInput) {
-    const status = document.createElement('span');
-    status.id = 'businessNameStatus';
-    status.style.cssText = 'margin-top:5px;font-size:11px;display:block';
-    businessNameInput.after(status);
+    // Inline status icon inside the input (same pattern as usernameStatus)
+    const bnWrap = document.createElement('div');
+    bnWrap.style.cssText = 'position:relative';
+    businessNameInput.parentNode.insertBefore(bnWrap, businessNameInput);
+    bnWrap.appendChild(businessNameInput);
+    const bnStatus = document.createElement('span');
+    bnStatus.id = 'businessNameStatus';
+    bnStatus.style.cssText = 'position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:12px;pointer-events:none';
+    bnWrap.appendChild(bnStatus);
+
     businessNameInput.addEventListener('input', function () {
         const value = this.value.trim();
         businessNameAvailable = null;
-        status.textContent = '';
+        bnStatus.innerHTML = '';
         clearTimeout(businessNameTimer);
         if (value.length < 2) return;
-        status.textContent = 'Checking business name…';
-        status.style.color = '#64748b';
+        // Show clock icon while waiting
+        bnStatus.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;color:#94a3b8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
         businessNameTimer = setTimeout(() => {
             fetch(`/register/check-business-name?business_name=${encodeURIComponent(value)}`)
-                .then(response => response.json())
+                .then(r => r.json())
                 .then(data => {
                     businessNameAvailable = data.available;
-                    status.textContent = data.available ? 'Business name is available.' : (data.message || 'Business name is already registered.');
-                    status.style.color = data.available ? '#16a34a' : '#dc2626';
+                    if (data.available) {
+                        bnStatus.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>';
+                        bnStatus.style.color = '#16a34a';
+                    } else {
+                        bnStatus.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+                        bnStatus.style.color = '#dc2626';
+                    }
                 })
-                .catch(() => { businessNameAvailable = null; status.textContent = ''; });
+                .catch(() => { businessNameAvailable = null; bnStatus.innerHTML = ''; });
         }, 500);
     });
 }
@@ -1125,7 +1151,6 @@ function validateStep(step) {
         if (businessName) {
             if (!businessName.value.trim()) { showError(businessName, 'Business name is required.'); valid = false; }
             else if (businessNameAvailable === false) { showError(businessName, 'Business name is already registered.'); valid = false; }
-            else if (businessNameAvailable === null) { showError(businessName, 'Please wait for the business-name check.'); valid = false; }
         }
         if (isSeller && !businessPermitBlob) {
             document.getElementById('businessPermitError').style.display = 'block';
@@ -1242,6 +1267,10 @@ if (document.getElementById('buyerForm')) {
             const idExt = idPhotoBlob.type === 'application/pdf' ? 'pdf' : 'jpg';
             fd.set('id_file', idPhotoBlob, `id_photo.${idExt}`);
         }
+        if (businessPermitBlob) {
+            const bpExt = businessPermitBlob.type === 'application/pdf' ? 'pdf' : 'jpg';
+            fd.set('business_permit_file', businessPermitBlob, `business_permit.${bpExt}`);
+        }
         if (docBlobs.or)      fd.set('or_file',      docBlobs.or,      docBlobs.or.type === 'application/pdf'      ? 'or.pdf'      : 'or.jpg');
         if (docBlobs.cr)      fd.set('cr_file',      docBlobs.cr,      docBlobs.cr.type === 'application/pdf'      ? 'cr.pdf'      : 'cr.jpg');
         if (docBlobs.license) fd.set('license_file', docBlobs.license, docBlobs.license.type === 'application/pdf' ? 'license.pdf' : 'license.jpg');
@@ -1255,7 +1284,8 @@ if (document.getElementById('buyerForm')) {
                     document.getElementById('successScreen').classList.add('active');
                 } else {
                     btn.disabled = false; btn.textContent = 'Submit Registration';
-                    alert(data.message ?? 'Something went wrong. Please try again.');
+                    const errMsg = data.errors ? Object.entries(data.errors).map(([k,v]) => `${k}: ${v}`).join('\n') : (data.message ?? 'Something went wrong.');
+                    alert(errMsg);
                 }
             })
             .catch(() => { btn.disabled = false; btn.textContent = 'Submit Registration'; alert('Network error. Please try again.'); });
