@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Choose Account Type — PocketFinds</title>
-    <link rel="stylesheet" href="{{ asset('css/style.css') }}">
+    <link rel="stylesheet" href="<?php echo e(asset('css/style.css')); ?>">
     <style>
         .role-grid {
             display: grid;
@@ -88,7 +88,7 @@
     <main class="auth-card">
         <section class="auth-brand-panel">
             <div class="auth-brand-content">
-                <a class="auth-logo" href="{{ url('/') }}">
+                <a class="auth-logo" href="<?php echo e(url('/')); ?>">
                     <span class="auth-logo-mark"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg></span>
                     <span>PocketFinds</span>
                 </a>
@@ -102,7 +102,7 @@
                     <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Secure &amp; verified sign-up</li>
                 </ul>
             </div>
-            <div class="auth-brand-footer">© {{ date('Y') }} PocketFinds. All rights reserved.</div>
+            <div class="auth-brand-footer">© <?php echo e(date('Y')); ?> PocketFinds. All rights reserved.</div>
         </section>
 
         <section class="auth-form-panel">
@@ -116,8 +116,8 @@
 
 
                 <div class="role-grid">
-                    {{-- Buyer --}}
-                    <button class="role-card" type="button" data-account-type="buyer" data-target="{{ url('/register/method') }}">
+                    
+                    <button class="role-card" type="button" data-account-type="buyer" data-target="<?php echo e(url('/register/method')); ?>">
                         <span class="role-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 001.95-1.57l1.65-8.42H6"/></svg>
                         </span>
@@ -128,8 +128,8 @@
                         <span class="role-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
                     </button>
 
-                    {{-- Seller --}}
-                    <button class="role-card" type="button" data-account-type="seller" data-target="{{ url('/register/method') }}">
+                    
+                    <button class="role-card" type="button" data-account-type="seller" data-target="<?php echo e(url('/register/method')); ?>">
                         <span class="role-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
                         </span>
@@ -140,8 +140,8 @@
                         <span class="role-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
                     </button>
 
-                    {{-- Rider --}}
-                    <button class="role-card" type="button" data-account-type="rider" data-target="{{ url('/register/method') }}">
+                    
+                    <button class="role-card" type="button" data-account-type="rider" data-target="<?php echo e(url('/register/method')); ?>">
                         <span class="role-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h-5l-3 6h11l-3-6z"/><path d="M12 6V3M15 6l2-3"/></svg>
                         </span>
@@ -155,12 +155,13 @@
 
                 <p class="auth-bottom">
                     Already have an account?
-                    <a class="auth-link" href="{{ url('/login') }}">Sign in</a>
+                    <a class="auth-link" href="<?php echo e(url('/login')); ?>">Sign in</a>
                 </p>
             </div>
         </section>
     </main>
 </div>
-<script src="{{ asset('js/auth.js') }}"></script>
+<script src="<?php echo e(asset('js/auth.js')); ?>"></script>
 </body>
 </html>
+<?php /**PATH C:\Users\Administrator\pocketfinds\resources\views/auth/account-type.blade.php ENDPATH**/ ?>

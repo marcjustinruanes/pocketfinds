@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
-    <link rel="stylesheet" href="{{ asset('css/style.css') }}">
+    <link rel="stylesheet" href="<?php echo e(asset('css/style.css')); ?>">
     <style>
         .auth-form-panel { align-items: center; }
         .page-header { margin-bottom: 20px; }
@@ -44,7 +44,7 @@
     <main class="auth-card">
         <section class="auth-brand-panel">
             <div class="auth-brand-content">
-                <a class="auth-logo" href="{{ url('/') }}">
+                <a class="auth-logo" href="<?php echo e(url('/')); ?>">
                     <span class="auth-logo-mark">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
                     </span>
@@ -63,7 +63,7 @@
                 </ul>
             </div>
 
-            <div class="auth-brand-footer">© {{ date('Y') }} PocketFinds. All rights reserved.</div>
+            <div class="auth-brand-footer">© <?php echo e(date('Y')); ?> PocketFinds. All rights reserved.</div>
         </section>
 
         <section class="auth-form-panel">
@@ -77,23 +77,24 @@
                     </div>
                     <div style="display:flex;align-items:center;justify-content:space-between">
                         <p style="margin:0">Enter your credentials to continue.</p>
-                        <a href="{{ url('/') }}" title="Back to Homepage" style="flex-shrink:0;margin-left:8px;color:var(--auth-muted);text-decoration:none;line-height:1" onmouseover="this.style.color='var(--auth-primary)'" onmouseout="this.style.color='var(--auth-muted)'"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></a>
+                        <a href="<?php echo e(url('/')); ?>" title="Back to Homepage" style="flex-shrink:0;margin-left:8px;color:var(--auth-muted);text-decoration:none;line-height:1" onmouseover="this.style.color='var(--auth-primary)'" onmouseout="this.style.color='var(--auth-muted)'"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></a>
                     </div>
                 </div>
 
-                @if (!empty($errors) && $errors->any())
+                <?php if(!empty($errors) && $errors->any()): ?>
                     <div class="auth-error">
-                        {{ $errors->first() }}
-                    </div>
-                @endif
+                        <?php echo e($errors->first()); ?>
 
-                <form class="auth-form" method="POST" action="{{ route('login.post') }}">
-                    @csrf
+                    </div>
+                <?php endif; ?>
+
+                <form class="auth-form" method="POST" action="<?php echo e(route('login.post')); ?>">
+                    <?php echo csrf_field(); ?>
 
                     <div class="auth-field">
                         <label class="auth-label" for="email">Email or username</label>
                         <input class="auth-input" id="email" name="email"
-                               type="text" value="{{ old('email') }}"
+                               type="text" value="<?php echo e(old('email')); ?>"
                                placeholder="you@example.com" required autofocus>
                     </div>
 
@@ -113,7 +114,7 @@
                             Remember me
                         </label>
 
-                        <a class="auth-link" href="{{ route('password.request') }}">Forgot password?</a>
+                        <a class="auth-link" href="<?php echo e(route('password.request')); ?>">Forgot password?</a>
                     </div>
 
                     <button class="auth-btn" type="submit">Sign in</button>
@@ -121,12 +122,13 @@
 
                 <p class="auth-bottom">
                     Don't have an account?
-                    <a class="auth-link" href="{{ url('/register/type') }}">Create one</a>
+                    <a class="auth-link" href="<?php echo e(url('/register/type')); ?>">Create one</a>
                 </p>
             </div>
         </section>
     </main>
 </div>
-<script src="{{ asset('js/auth.js') }}"></script>
+<script src="<?php echo e(asset('js/auth.js')); ?>"></script>
 </body>
 </html>
+<?php /**PATH C:\Users\Administrator\pocketfinds\resources\views/auth/login.blade.php ENDPATH**/ ?>

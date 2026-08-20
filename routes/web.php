@@ -5,8 +5,11 @@ use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\SocialAuthController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\BuyerController;
+use App\Http\Controllers\GuestController;
 
 Route::get('/', fn() => view('guest.home'));
+Route::get('/product/{id}', [GuestController::class, 'product'])->name('guest.product');
+Route::get('/shop/{slug}', [GuestController::class, 'shop'])->name('guest.shop');
 
 Route::middleware('web')->group(function () {
     Route::get('/login', fn() => view('auth.login'))->name('login');
@@ -19,6 +22,7 @@ Route::middleware('web')->group(function () {
     Route::get('/register/categories', [RegisterController::class, 'categories'])->name('register.categories');
     Route::post('/register/send-otp', [RegisterController::class, 'sendOtp'])->name('register.send-otp');
     Route::post('/register/verify-otp', [RegisterController::class, 'verifyOtp'])->name('register.verify-otp');
+    Route::get('/register/check-username', [RegisterController::class, 'checkUsername'])->name('register.check-username');
     Route::get('/password/reset', fn() => view('auth.login'))->name('password.request');
 
     Route::get('/auth/google/redirect', [SocialAuthController::class, 'redirectToGoogle'])->name('google.redirect');

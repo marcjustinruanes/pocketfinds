@@ -11,11 +11,11 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     protected $fillable = [
-        'account_type', 'auth_method', 'google_id',
-        'last_name', 'first_name', 'middle_initial', 'sex', 'birthday', 'age',
+        'account_type', 'auth_method', 'google_id', 'username',
+        'last_name', 'given_names', 'middle_name', 'sex', 'birthday', 'age',
         'email', 'contact_no',
         'province', 'municipality', 'barangay', 'house_no', 'street',
-        'password', 'id_file', 'status', 'is_admin', 'category_id',
+        'password', 'id_file', 'id_type_id', 'selfie_file', 'status', 'is_admin', 'category_id',
     ];
 
     protected $hidden = ['password', 'remember_token'];
