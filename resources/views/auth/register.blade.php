@@ -118,21 +118,14 @@
         .vehicle-details-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
         .vehicle-details-grid .full { grid-column:auto; }
         .document-upload { min-height:140px; }
+        #vehicleDocsSection { margin-top:8px; }
+        .license-layout { display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:stretch; }
+        .license-fields { display:flex;flex-direction:column;gap:10px; }
         .document-upload .upload-info { display:block;flex-basis:100%;margin-top:6px;font-size:10px;color:var(--auth-muted);line-height:1.35; }
         .document-upload [id$="Idle"] > svg { color:#aaa; }
-        .upload-box #orIdle, .upload-box #crIdle, .upload-box #licenseIdle { text-align: center; }
-        .upload-box #orIdle p, .upload-box #crIdle p, .upload-box #licenseIdle p {
-            display: inline-flex;
-            align-items: center;
-            padding: 5px 10px;
-            border: 1px solid var(--auth-primary);
-            border-radius: 8px;
-            color: var(--auth-primary) !important;
-            background: #fff;
-            font-weight: 600;
-        }
         @media (max-width: 640px) {
             .vehicle-details-grid { grid-template-columns:1fr; }
+            .license-layout { grid-template-columns:1fr; }
         }
     </style>
 </head>
@@ -614,23 +607,29 @@
 
                         {{-- Vehicle Registration Documents (OR & CR) — hidden for bicycle --}}
                         <div id="vehicleDocsSection">
-                            <p class="auth-label" style="margin:14px 0 8px">Vehicle Registration Documents <span class="auth-required">*</span></p>
                             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
                                 {{-- OR --}}
                                 <div>
                                     <label class="auth-label" style="font-size:11px;color:var(--auth-muted)">Official Receipt (OR)</label>
-                                    <div class="upload-box document-upload" id="orBox" onclick="document.getElementById('or_file').click()">
-                                        <div id="orIdle">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:#aaa"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                                            <p style="margin:4px 0 0;font-size:11px;color:#888">Upload file</p>
-                                            <span class="upload-info">JPG, PNG, or PDF · max 5 MB</span>
+                                    <div id="orBox" class="document-upload" style="border:2px dashed var(--auth-border,#ddd);border-radius:10px;overflow:hidden;background:#f9f9f9;min-height:120px;display:flex;flex-direction:column;justify-content:center">
+                                        <div id="orIdle" style="padding:10px;text-align:center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:#aaa;margin-bottom:5px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                                            <p style="margin:0 0 7px;font-size:11px;color:#888">Upload OR document</p>
+                                            <label for="or_file" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border:1px solid var(--auth-primary);color:var(--auth-primary);background:#fff;border-radius:8px;font-size:11px;cursor:pointer">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                                Upload
+                                            </label>
+                                            <span class="upload-info">Clear photo, scan, or PDF · max 5 MB</span>
                                         </div>
                                         <div id="orPreview" style="display:none;position:relative">
-                                        <img id="orImg" style="width:100%;max-height:100px;object-fit:cover;border-radius:6px" alt="OR">
-                                        <button type="button" class="enlarge-btn" onclick="event.stopPropagation();openLightbox('orImg')" aria-label="Enlarge official receipt">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-                                        </button>
-                                            <button type="button" onclick="event.stopPropagation();clearUpload('or')" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer">✕</button>
+                                            <img id="orImg" style="width:100%;max-height:110px;object-fit:cover;display:block" alt="OR">
+                                            <button type="button" class="enlarge-btn" onclick="event.stopPropagation();openDocLightbox('or')" aria-label="Enlarge official receipt">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                                            </button>
+                                            <button type="button" onclick="event.stopPropagation();clearUpload('or')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:2px"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+                                                Retake
+                                            </button>
                                         </div>
                                     </div>
                                     <input type="file" id="or_file" name="or_file" accept="image/*,.pdf" style="display:none" onchange="handleDocUpload('or', this)">
@@ -639,25 +638,32 @@
                                 {{-- CR --}}
                                 <div>
                                     <label class="auth-label" style="font-size:11px;color:var(--auth-muted)">Certificate of Registration (CR)</label>
-                                    <div class="upload-box document-upload" id="crBox" onclick="document.getElementById('cr_file').click()">
-                                        <div id="crIdle">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:#aaa"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                                            <p style="margin:4px 0 0;font-size:11px;color:#888">Upload file</p>
-                                            <span class="upload-info">JPG, PNG, or PDF · max 5 MB</span>
+                                    <div id="crBox" class="document-upload" style="border:2px dashed var(--auth-border,#ddd);border-radius:10px;overflow:hidden;background:#f9f9f9;min-height:120px;display:flex;flex-direction:column;justify-content:center">
+                                        <div id="crIdle" style="padding:10px;text-align:center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:#aaa;margin-bottom:5px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                                            <p style="margin:0 0 7px;font-size:11px;color:#888">Upload CR document</p>
+                                            <label for="cr_file" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border:1px solid var(--auth-primary);color:var(--auth-primary);background:#fff;border-radius:8px;font-size:11px;cursor:pointer">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                                Upload
+                                            </label>
+                                            <span class="upload-info">Clear photo, scan, or PDF · max 5 MB</span>
                                         </div>
                                         <div id="crPreview" style="display:none;position:relative">
-                                        <img id="crImg" style="width:100%;max-height:100px;object-fit:cover;border-radius:6px" alt="CR">
-                                        <button type="button" class="enlarge-btn" onclick="event.stopPropagation();openLightbox('crImg')" aria-label="Enlarge certificate of registration">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-                                        </button>
-                                            <button type="button" onclick="event.stopPropagation();clearUpload('cr')" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer">✕</button>
+                                            <img id="crImg" style="width:100%;max-height:110px;object-fit:cover;display:block" alt="CR">
+                                            <button type="button" class="enlarge-btn" onclick="event.stopPropagation();openDocLightbox('cr')" aria-label="Enlarge certificate of registration">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                                            </button>
+                                            <button type="button" onclick="event.stopPropagation();clearUpload('cr')" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:2px"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+                                                Retake
+                                            </button>
                                         </div>
                                     </div>
                                     <input type="file" id="cr_file" name="cr_file" accept="image/*,.pdf" style="display:none" onchange="handleDocUpload('cr', this)">
                                     <span id="crError" style="display:none;color:red;font-size:11px">Required.</span>
                                 </div>
                             </div>
-                            <p style="margin:8px 0 0;font-size:11px;color:var(--auth-muted)">For a blurry photo, please upload a clear scanned copy of the document.</p>
+                            <p style="margin:6px 0 0;font-size:10px;color:var(--auth-muted)">Upload a clear photo, scan, or PDF — use a scan if the photo is blurry.</p>
                         </div>
 
                         <div class="step-nav" style="margin-top:16px">
@@ -677,16 +683,20 @@
                             <a href="{{ route('register.type') }}" title="Change account type" style="flex-shrink:0;margin-left:8px;color:var(--auth-muted);text-decoration:none;line-height:1" onmouseover="this.style.color='var(--auth-primary)'" onmouseout="this.style.color='var(--auth-muted)'"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg></a>
                         </div>
 
-                        <div class="auth-form-grid">
-                            <div class="auth-field">
-                                <label class="auth-label" for="license_number">License Number <span class="auth-required">*</span></label>
-                                <input class="auth-input" id="license_number" name="license_number" type="text" placeholder="e.g. N01-23-456789">
+                        <div class="license-layout">
+                            <div class="license-fields">
+                                <div class="auth-field">
+                                    <label class="auth-label" for="license_number">License Number <span class="auth-required">*</span></label>
+                                    <input class="auth-input" id="license_number" name="license_number" type="text" placeholder="e.g. N01-23-456789">
+                                    <span id="licenseOcrNote" style="display:none;font-size:11px;color:#15803d">License number pre-filled — please review.</span>
+                                </div>
+                                <div class="auth-field">
+                                    <label class="auth-label" for="license_expiry">Expiry Date <span class="auth-required">*</span></label>
+                                    <input class="auth-input" id="license_expiry" name="license_expiry" type="date">
+                                    <p style="margin:4px 0 0;font-size:10px;color:var(--auth-muted)">For a blurry photo, upload a clear scanned copy.</p>
+                                </div>
                             </div>
                             <div class="auth-field">
-                                <label class="auth-label" for="license_expiry">Expiry Date <span class="auth-required">*</span></label>
-                                <input class="auth-input" id="license_expiry" name="license_expiry" type="date">
-                            </div>
-                            <div class="auth-field full">
                                 <label class="auth-label">Driver's License Photo <span class="auth-required">*</span></label>
                                 <div class="upload-box document-upload" id="licenseBox" onclick="document.getElementById('license_file').click()" style="max-height:140px">
                                     <div id="licenseIdle">
@@ -696,15 +706,14 @@
                                     </div>
                                     <div id="licensePreview" style="display:none;position:relative">
                                         <img id="licenseImg" style="width:100%;max-height:120px;object-fit:cover;border-radius:6px" alt="License">
-                                        <button type="button" class="enlarge-btn" onclick="event.stopPropagation();openLightbox('licenseImg')" aria-label="Enlarge driver's license">
+                                        <button type="button" class="enlarge-btn" onclick="event.stopPropagation();openDocLightbox('license')" aria-label="Enlarge driver's license">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
                                         </button>
                                         <button type="button" onclick="event.stopPropagation();clearUpload('license')" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer">✕</button>
                                     </div>
                                 </div>
-                                <input type="file" id="license_file" name="license_file" accept="image/*" style="display:none" onchange="handleDocUpload('license', this)">
+                                <input type="file" id="license_file" name="license_file" accept="image/*,.pdf" style="display:none" onchange="handleDocUpload('license', this)">
                                 <span id="licenseError" style="display:none;color:red;font-size:11px">Please upload your driver's license.</span>
-                                <p style="margin:8px 0 0;font-size:11px;color:var(--auth-muted)">For a blurry photo, please upload a clear scanned copy of the document.</p>
                             </div>
                         </div>
 
@@ -712,7 +721,6 @@
                             <button type="button" class="btn-prev" onclick="prevStep(8)">← Back</button>
                             <button type="submit" class="btn-submit">Submit Registration</button>
                         </div>
-                    </div>
                 </form>
 
                 {{-- T&C Modal --}}
@@ -812,7 +820,12 @@
                 {{-- Lightbox --}}
                 <div class="img-lightbox" id="imgLightbox" onclick="closeLightbox()">
                     <button class="img-lightbox-close" onclick="closeLightbox()">&times;</button>
-                    <img id="lightboxImg" src="" alt="Preview">
+                    <img id="lightboxImg" src="" alt="Preview" style="display:none">
+                    <div id="lightboxPdf" style="display:none;flex-direction:column;align-items:center;gap:16px">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        <p id="lightboxPdfName" style="color:#fff;font-size:14px;margin:0"></p>
+                        <a id="lightboxPdfLink" href="" target="_blank" onclick="event.stopPropagation()" style="padding:10px 22px;background:var(--auth-primary);color:#fff;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">Open PDF</a>
+                    </div>
                 </div>
 
                 {{-- Success screen --}}

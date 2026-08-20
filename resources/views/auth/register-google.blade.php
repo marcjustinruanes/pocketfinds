@@ -563,7 +563,12 @@
                 {{-- Lightbox --}}
                 <div class="img-lightbox" id="imgLightbox" onclick="closeLightbox()">
                     <button class="img-lightbox-close" onclick="closeLightbox()">&times;</button>
-                    <img id="lightboxImg" src="" alt="Preview">
+                    <img id="lightboxImg" src="" alt="Preview" style="display:none">
+                    <div id="lightboxPdf" style="display:none;flex-direction:column;align-items:center;gap:16px">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        <p id="lightboxPdfName" style="color:#fff;font-size:14px;margin:0"></p>
+                        <a id="lightboxPdfLink" href="" target="_blank" onclick="event.stopPropagation()" style="padding:10px 22px;background:var(--auth-primary);color:#fff;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">Open PDF</a>
+                    </div>
                 </div>
 
                 {{-- Success screen --}}
@@ -610,7 +615,10 @@
 
         const fd = new FormData(form);
         if (selfieBlob)   fd.set('selfie_file', selfieBlob, 'selfie.jpg');
-        if (idPhotoBlob)  fd.set('id_file', idPhotoBlob, 'id_photo.jpg');
+        if (idPhotoBlob) {
+            const idExt = idPhotoBlob.type === 'application/pdf' ? 'pdf' : 'jpg';
+            fd.set('id_file', idPhotoBlob, `id_photo.${idExt}`);
+        }
 
         fetch('{{ route("register.store") }}', {
             method:  'POST',

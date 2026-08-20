@@ -274,6 +274,7 @@ document.getElementById('id_type_id')?.addEventListener('change', function () {
 
 // ── ID camera & upload ──
 let idPhotoBlob = null;
+let idPhotoUrl  = null;
 let idCameraStream = null;
 
 function startIdCamera() {
@@ -296,7 +297,10 @@ function snapIdPhoto() {
     document.getElementById('idVideo').srcObject = null;
     canvas.toBlob(blob => {
         idPhotoBlob = blob;
-        document.getElementById('idPhotoImg').src = URL.createObjectURL(blob);
+        if (idPhotoUrl) URL.revokeObjectURL(idPhotoUrl);
+        idPhotoUrl = URL.createObjectURL(blob);
+        document.getElementById('idPhotoImg').src = idPhotoUrl;
+        document.getElementById('idPhotoImg').style.display = '';
         document.getElementById('idCamera').style.display       = 'none';
         document.getElementById('idPhotoPreview').style.display = 'block';
         const idErrEl = document.getElementById('idPhotoError');
@@ -307,21 +311,52 @@ function snapIdPhoto() {
 
 function retakeIdPhoto() {
     idPhotoBlob = null;
+    if (idPhotoUrl) { URL.revokeObjectURL(idPhotoUrl); idPhotoUrl = null; }
     document.getElementById('idPhotoPreview').style.display = 'none';
     document.getElementById('idPhotoIdle').style.display    = 'block';
     document.getElementById('id_file').value = '';
+    const imgEl = document.getElementById('idPhotoImg');
+    if (imgEl) { imgEl.src = ''; imgEl.style.display = ''; }
+    const pdfCard = document.getElementById('idPhotoPreview')?.querySelector('.pdf-card');
+    if (pdfCard) pdfCard.style.display = 'none';
     clearOcrPrefill();
 }
 
 document.getElementById('id_file')?.addEventListener('change', function () {
     if (!this.files[0]) return;
-    idPhotoBlob = this.files[0];
-    document.getElementById('idPhotoImg').src = URL.createObjectURL(this.files[0]);
+    const file = this.files[0];
+    idPhotoBlob = file;
+    if (idPhotoUrl) URL.revokeObjectURL(idPhotoUrl);
+    idPhotoUrl = URL.createObjectURL(file);
+    const isPdf = file.type === 'application/pdf';
+    const imgEl  = document.getElementById('idPhotoImg');
+    const prevEl = document.getElementById('idPhotoPreview');
     document.getElementById('idPhotoIdle').style.display    = 'none';
-    document.getElementById('idPhotoPreview').style.display = 'block';
+    prevEl.style.display = 'block';
+    if (isPdf) {
+        imgEl.style.display = 'none';
+        let pdfCard = prevEl.querySelector('.pdf-card');
+        if (!pdfCard) {
+            pdfCard = document.createElement('div');
+            pdfCard.className = 'pdf-card';
+            pdfCard.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:14px 8px;min-height:90px;text-align:center';
+            imgEl.after(pdfCard);
+        }
+        pdfCard.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#d9468f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span style="font-size:10px;color:#555;word-break:break-all;max-width:100%">${file.name}</span><span style="font-size:10px;font-weight:700;color:var(--auth-primary);background:var(--auth-primary-soft);padding:2px 8px;border-radius:4px">PDF</span>`;
+        pdfCard.style.display = 'flex';
+        const enlargeBtn = prevEl.querySelector('.enlarge-btn');
+        if (enlargeBtn) enlargeBtn.onclick = (e) => { e.stopPropagation(); window.open(idPhotoUrl, '_blank'); };
+    } else {
+        imgEl.src = idPhotoUrl;
+        imgEl.style.display = '';
+        const pdfCard = prevEl.querySelector('.pdf-card');
+        if (pdfCard) pdfCard.style.display = 'none';
+        const enlargeBtn = prevEl.querySelector('.enlarge-btn');
+        if (enlargeBtn) enlargeBtn.onclick = (e) => { e.stopPropagation(); openLightbox('idPhotoImg'); };
+    }
     const idErrEl = document.getElementById('idPhotoError');
     if (idErrEl) idErrEl.style.display = 'none';
-    runOcr(this.files[0]);
+    runOcr(file);
 });
 
 // ── Selfie / Camera ──
@@ -383,11 +418,32 @@ function resetIdentityUploads() {
 
 // ── Lightbox ──
 function openLightbox(imgId) {
-    document.getElementById('lightboxImg').src = document.getElementById(imgId).src;
+    const imgEl = document.getElementById(imgId);
+    const lightboxImg = document.getElementById('lightboxImg');
+    const lightboxPdf = document.getElementById('lightboxPdf');
+    lightboxImg.style.display = 'block';
+    lightboxPdf.style.display = 'none';
+    lightboxImg.src = imgEl.src;
+    document.getElementById('imgLightbox').classList.add('open');
+}
+function openDocLightbox(key) {
+    const url  = docUrls[key];
+    const file = docBlobs[key];
+    if (!url || !file) return;
+    if (file.type === 'application/pdf') {
+        window.open(url, '_blank');
+        return;
+    }
+    const lightboxImg = document.getElementById('lightboxImg');
+    const lightboxPdf = document.getElementById('lightboxPdf');
+    lightboxImg.style.display = 'block';
+    lightboxPdf.style.display = 'none';
+    lightboxImg.src = url;
     document.getElementById('imgLightbox').classList.add('open');
 }
 function closeLightbox() {
     document.getElementById('imgLightbox').classList.remove('open');
+    document.getElementById('lightboxImg').src = '';
 }
 
 // ── Terms & Conditions quiz ──
@@ -439,22 +495,49 @@ if (accountTermSlide) {
 }
 
 let businessPermitBlob = null;
+let businessPermitUrl  = null;
 document.getElementById('business_permit_file')?.addEventListener('change', function () {
     if (!this.files[0]) return;
     businessPermitBlob = this.files[0];
-    const image = document.getElementById('businessPermitImg');
-    image.src = this.files[0].type.startsWith('image/') ? URL.createObjectURL(this.files[0]) : '';
-    image.alt = this.files[0].name;
+    if (businessPermitUrl) URL.revokeObjectURL(businessPermitUrl);
+    businessPermitUrl = URL.createObjectURL(this.files[0]);
+    const isPdf = this.files[0].type === 'application/pdf';
+    const imgEl = document.getElementById('businessPermitImg');
+    const prevEl = document.getElementById('businessPermitPreview');
+    if (isPdf) {
+        imgEl.style.display = 'none';
+        let pdfCard = prevEl.querySelector('.pdf-card');
+        if (!pdfCard) {
+            pdfCard = document.createElement('div');
+            pdfCard.className = 'pdf-card';
+            pdfCard.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:14px 8px;min-height:90px;text-align:center';
+            imgEl.after(pdfCard);
+        }
+        pdfCard.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#d9468f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span style="font-size:10px;color:#555;word-break:break-all;max-width:100%">${this.files[0].name}</span><span style="font-size:10px;font-weight:700;color:var(--auth-primary);background:var(--auth-primary-soft);padding:2px 8px;border-radius:4px">PDF</span>`;
+        pdfCard.style.display = 'flex';
+        const enlargeBtn = prevEl.querySelector('.enlarge-btn');
+        if (enlargeBtn) enlargeBtn.onclick = (e) => { e.stopPropagation(); window.open(businessPermitUrl, '_blank'); };
+    } else {
+        imgEl.src = businessPermitUrl;
+        imgEl.style.display = '';
+        const pdfCard = prevEl.querySelector('.pdf-card');
+        if (pdfCard) pdfCard.style.display = 'none';
+        const enlargeBtn = prevEl.querySelector('.enlarge-btn');
+        if (enlargeBtn) enlargeBtn.onclick = (e) => { e.stopPropagation(); openLightbox('businessPermitImg'); };
+    }
     document.getElementById('businessPermitIdle').style.display = 'none';
-    document.getElementById('businessPermitPreview').style.display = 'block';
+    prevEl.style.display = 'block';
     document.getElementById('businessPermitError').style.display = 'none';
 });
 
 function clearBusinessPermit() {
     businessPermitBlob = null;
+    if (businessPermitUrl) { URL.revokeObjectURL(businessPermitUrl); businessPermitUrl = null; }
     document.getElementById('business_permit_file').value = '';
     document.getElementById('businessPermitIdle').style.display = 'block';
     document.getElementById('businessPermitPreview').style.display = 'none';
+    const imgEl = document.getElementById('businessPermitImg');
+    if (imgEl) { imgEl.src = ''; imgEl.style.display = ''; }
 }
 
 let businessNameAvailable = null;
@@ -884,23 +967,58 @@ function onVehicleTypeChange() {
 
 // ── Doc upload handlers (OR, CR, license) ──
 const docBlobs = { or: null, cr: null, license: null };
+const docUrls  = { or: null, cr: null, license: null };
 
 function handleDocUpload(key, input) {
     if (!input.files[0]) return;
-    docBlobs[key] = input.files[0];
-    const isImg = input.files[0].type.startsWith('image/');
-    document.getElementById(`${key}Idle`).style.display    = 'none';
-    document.getElementById(`${key}Preview`).style.display = '';
-    if (isImg) document.getElementById(`${key}Img`).src = URL.createObjectURL(input.files[0]);
-    else document.getElementById(`${key}Img`).alt = input.files[0].name;
-    document.getElementById(`${key}Error`).style.display = 'none';
+    const file = input.files[0];
+    docBlobs[key] = file;
+    if (docUrls[key]) URL.revokeObjectURL(docUrls[key]);
+    docUrls[key] = URL.createObjectURL(file);
+    const isPdf = file.type === 'application/pdf';
+    const idleEl   = document.getElementById(`${key}Idle`);
+    const prevEl   = document.getElementById(`${key}Preview`);
+    const imgEl    = document.getElementById(`${key}Img`);
+    const errEl    = document.getElementById(`${key}Error`);
+    idleEl.style.display  = 'none';
+    prevEl.style.display  = '';
+    if (isPdf) {
+        // Show PDF card instead of broken image
+        imgEl.style.display = 'none';
+        let pdfCard = prevEl.querySelector('.pdf-card');
+        if (!pdfCard) {
+            pdfCard = document.createElement('div');
+            pdfCard.className = 'pdf-card';
+            pdfCard.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:14px 8px;min-height:90px;text-align:center';
+            imgEl.after(pdfCard);
+        }
+        pdfCard.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#d9468f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span style="font-size:10px;color:#555;word-break:break-all;max-width:100%">${file.name}</span><span style="font-size:10px;font-weight:700;color:var(--auth-primary);background:var(--auth-primary-soft);padding:2px 8px;border-radius:4px">PDF</span>`;
+        pdfCard.style.display = 'flex';
+        // Update enlarge button to open PDF
+        const enlargeBtn = prevEl.querySelector('.enlarge-btn');
+        if (enlargeBtn) enlargeBtn.onclick = (e) => { e.stopPropagation(); openDocLightbox(key); };
+    } else {
+        imgEl.src = docUrls[key];
+        imgEl.style.display = '';
+        const pdfCard = prevEl.querySelector('.pdf-card');
+        if (pdfCard) pdfCard.style.display = 'none';
+        // Restore enlarge button for image
+        const enlargeBtn = prevEl.querySelector('.enlarge-btn');
+        if (enlargeBtn) enlargeBtn.onclick = (e) => { e.stopPropagation(); openDocLightbox(key); };
+    }
+    if (errEl) errEl.style.display = 'none';
 }
 
 function clearUpload(key) {
+    if (docUrls[key]) { URL.revokeObjectURL(docUrls[key]); docUrls[key] = null; }
     docBlobs[key] = null;
     document.getElementById(`${key}_file`).value = '';
     document.getElementById(`${key}Idle`).style.display    = '';
     document.getElementById(`${key}Preview`).style.display = 'none';
+    const imgEl = document.getElementById(`${key}Img`);
+    if (imgEl) { imgEl.src = ''; imgEl.style.display = ''; }
+    const pdfCard = document.getElementById(`${key}Preview`)?.querySelector('.pdf-card');
+    if (pdfCard) pdfCard.style.display = 'none';
 }
 
 // ── Validation ──
@@ -910,6 +1028,33 @@ function clearUpload(key) {
 const idSelfieStep = isGoogleForm ? 1 : 2;
 const contactStep  = isGoogleForm ? 3 : 4;
 const accountStep  = isGoogleForm ? 5 : 6;
+
+// Rider registration ends with account creation, after vehicle and license details.
+if (isRider) {
+    const indicator = document.getElementById('stepIndicator');
+    const accountItem = indicator?.querySelector(`[data-step="${accountStep}"]`);
+    const vehicleItem = indicator?.querySelector('[data-step="7"]');
+    const licenseItem = indicator?.querySelector('[data-step="8"]');
+    if (accountItem && vehicleItem && licenseItem) {
+        accountItem.dataset.step = '8';
+        vehicleItem.dataset.step = '6';
+        licenseItem.dataset.step = '7';
+        accountItem.querySelector('.step-circle').textContent = '7';
+        vehicleItem.querySelector('.step-circle').textContent = '5';
+        licenseItem.querySelector('.step-circle').textContent = '6';
+        indicator.append(vehicleItem, licenseItem, accountItem);
+    }
+    const accountNext = document.getElementById('btnStep6RiderNext');
+    if (accountNext) accountNext.textContent = 'Submit Registration';
+}
+
+function indicatorStepFor(panelStep) {
+    if (!isRider) return panelStep;
+    if (panelStep === accountStep) return 8;
+    if (panelStep === 7) return 6;
+    if (panelStep === 8) return 7;
+    return panelStep;
+}
 
 function validateStep(step) {
     // Category step
@@ -1034,7 +1179,10 @@ function validateStep(step) {
 function getPrevStep(current) {
     if (current === idSelfieStep && isSeller) return isGoogleForm ? 0 : 1;
     if (current === idSelfieStep) return idSelfieStep;
-    if (current === 7) return accountStep;
+    if (isRider && current === accountStep) {
+        return document.querySelector('input[name="vehicle_type"]:checked')?.value === 'bicycle' ? 7 : 8;
+    }
+    if (current === 7) return isRider ? accountStep - 1 : accountStep;
     if (current === 8) return 7;
     return current - 1;
 }
@@ -1046,8 +1194,9 @@ function setStep(current, target) {
     document.querySelectorAll('.step-item').forEach(item => {
         const s = parseInt(item.dataset.step);
         item.classList.remove('active', 'done');
-        if (s === target) item.classList.add('active');
-        if (s < target) item.classList.add('done');
+        const indicatorTarget = indicatorStepFor(target);
+        if (s === indicatorTarget) item.classList.add('active');
+        if (s < indicatorTarget) item.classList.add('done');
     });
     document.querySelector('.auth-form-panel').scrollTop = 0;
     // Account fields should stay clean until the user explicitly continues or submits.
@@ -1060,12 +1209,17 @@ function setStep(current, target) {
 
 function nextStep(current) {
     if (!validateStep(current)) return;
-    // Riders: after account step go to vehicle; after vehicle go to license (motor) or submit (bicycle)
-    if (isRider && current === accountStep) { setStep(current, 7); return; }
+    // Riders complete vehicle and license details before the final account step.
+    if (isRider && current === accountStep - 1) { setStep(current, 7); return; }
     if (isRider && current === 7) {
         const vt = document.querySelector('input[name="vehicle_type"]:checked')?.value;
-        if (vt === 'bicycle') { document.getElementById('buyerForm').requestSubmit(); return; }
+        if (vt === 'bicycle') { setStep(current, accountStep); return; }
         setStep(current, 8); return;
+    }
+    if (isRider && current === 8) { setStep(current, accountStep); return; }
+    if (isRider && current === accountStep) {
+        document.getElementById(isGoogleForm ? 'googleRegForm' : 'buyerForm')?.requestSubmit();
+        return;
     }
     setStep(current, current + 1);
 }
@@ -1084,10 +1238,13 @@ if (document.getElementById('buyerForm')) {
         btn.disabled = true; btn.textContent = 'Submitting…';
         const fd = new FormData(form);
         if (selfieBlob) fd.set('selfie_file', selfieBlob, 'selfie.jpg');
-        if (idPhotoBlob) fd.set('id_file', idPhotoBlob, 'id_photo.jpg');
-        if (docBlobs.or)      fd.set('or_file',      docBlobs.or,      'or.jpg');
-        if (docBlobs.cr)      fd.set('cr_file',      docBlobs.cr,      'cr.jpg');
-        if (docBlobs.license) fd.set('license_file', docBlobs.license, 'license.jpg');
+        if (idPhotoBlob) {
+            const idExt = idPhotoBlob.type === 'application/pdf' ? 'pdf' : 'jpg';
+            fd.set('id_file', idPhotoBlob, `id_photo.${idExt}`);
+        }
+        if (docBlobs.or)      fd.set('or_file',      docBlobs.or,      docBlobs.or.type === 'application/pdf'      ? 'or.pdf'      : 'or.jpg');
+        if (docBlobs.cr)      fd.set('cr_file',      docBlobs.cr,      docBlobs.cr.type === 'application/pdf'      ? 'cr.pdf'      : 'cr.jpg');
+        if (docBlobs.license) fd.set('license_file', docBlobs.license, docBlobs.license.type === 'application/pdf' ? 'license.pdf' : 'license.jpg');
         fetch('/register', { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(res => res.json())
             .then(data => {
