@@ -58,6 +58,9 @@ class AdminController extends Controller
             if ($user->account_type === 'buyer') {
                 return redirect()->route('buyer.dashboard');
             }
+            if ($user->account_type === 'seller') {
+                return redirect()->route('seller.dashboard');
+            }
             return redirect()->intended('/');
         }
 

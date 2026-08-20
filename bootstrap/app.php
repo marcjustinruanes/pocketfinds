@@ -13,8 +13,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'admin' => \App\Http\Middleware\AdminMiddleware::class,
-            'buyer' => \App\Http\Middleware\BuyerMiddleware::class,
+            'admin'  => \App\Http\Middleware\AdminMiddleware::class,
+            'buyer'  => \App\Http\Middleware\BuyerMiddleware::class,
+            'seller' => \App\Http\Middleware\SellerMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
