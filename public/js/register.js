@@ -4,6 +4,30 @@ const accountTypeVal = document.querySelector('input[name="account_type"]')?.val
 const isSeller = accountTypeVal === 'seller';
 const isRider  = accountTypeVal === 'rider';
 
+if (isSeller) {
+    const businessNameField = document.getElementById('businessNameField');
+    const businessPermitField = document.getElementById('businessPermitField');
+    const accountGrid = document.querySelector(`#panel-${isGoogleForm ? 5 : 6} .auth-form-grid`);
+    const usernameField = document.getElementById('username')?.closest('.auth-field');
+    const passwordField = document.getElementById('password')?.closest('.auth-field');
+    const confirmationField = document.getElementById('password_confirmation')?.closest('.auth-field');
+    if (businessNameField && businessPermitField && accountGrid) {
+        businessNameField.classList.add('full');
+        businessNameField.style.margin = '0 0 2px';
+        businessPermitField.style.margin = '0';
+        accountGrid.style.rowGap = '6px';
+        accountGrid.prepend(businessNameField);
+        businessNameField.insertAdjacentElement('afterend', businessPermitField);
+        const credentials = document.createElement('div');
+        credentials.style.cssText = 'display:flex;flex-direction:column;gap:10px;min-width:0';
+        [usernameField, passwordField, confirmationField].forEach(field => {
+            field?.classList.remove('full');
+            if (field) credentials.appendChild(field);
+        });
+        businessPermitField.insertAdjacentElement('afterend', credentials);
+    }
+}
+
 // For Google buyers, activate panel-1 (ID step) since it has no active class by default
 if (isGoogleForm && !isSeller) {
     document.getElementById('panel-1')?.classList.add('active');
@@ -15,6 +39,8 @@ if (isRider) {
     // Riders: account step continues to vehicle instead of submitting
     document.getElementById('btnStep6RiderNext')?.style.setProperty('display', '');
     document.getElementById('btnStep6Submit')?.style.setProperty('display', 'none');
+} else {
+    document.getElementById('stepIndicator')?.classList.add('account-is-last');
 }
 
 // ── Seller setup ──
@@ -240,6 +266,10 @@ document.getElementById('id_type_id')?.addEventListener('change', function () {
         idBox.style.opacity      = '1'; idBox.style.pointerEvents      = 'auto';
         selfieBox.style.opacity  = '1'; selfieBox.style.pointerEvents  = 'auto';
     }
+    if (this.dataset.selectedIdType && this.dataset.selectedIdType !== this.value) {
+        resetIdentityUploads();
+    }
+    this.dataset.selectedIdType = this.value;
 });
 
 // ── ID camera & upload ──
@@ -280,6 +310,7 @@ function retakeIdPhoto() {
     document.getElementById('idPhotoPreview').style.display = 'none';
     document.getElementById('idPhotoIdle').style.display    = 'block';
     document.getElementById('id_file').value = '';
+    clearOcrPrefill();
 }
 
 document.getElementById('id_file')?.addEventListener('change', function () {
@@ -333,6 +364,21 @@ function retakeSelfie() {
 
 function stopCamera() {
     if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+}
+
+function resetIdentityUploads() {
+    retakeIdPhoto();
+    if (idCameraStream) { idCameraStream.getTracks().forEach(t => t.stop()); idCameraStream = null; }
+    document.getElementById('idCamera').style.display = 'none';
+    document.getElementById('idVideo').srcObject = null;
+    stopCamera();
+    selfieBlob = null;
+    document.getElementById('selfiePreview').style.display = 'none';
+    document.getElementById('selfieCamera').style.display = 'none';
+    document.getElementById('selfieIdle').style.display = 'block';
+    document.getElementById('idPhotoError').style.display = 'none';
+    document.getElementById('selfieError').style.display = 'none';
+    clearOcrPrefill();
 }
 
 // ── Lightbox ──
@@ -390,6 +436,54 @@ if (accountTermSlide) {
             ${typeTerm.answers.map((answer, index) => `<button type="button" class="tc-opt" data-correct="${index === typeTerm.correct}" onclick="tcAnswer(this)">${answer}</button>`).join('')}
         </div>
         <p class="tc-feedback" style="display:none;margin:10px 0 0;font-size:12px;border-radius:8px;padding:8px 12px"></p>`;
+}
+
+let businessPermitBlob = null;
+document.getElementById('business_permit_file')?.addEventListener('change', function () {
+    if (!this.files[0]) return;
+    businessPermitBlob = this.files[0];
+    const image = document.getElementById('businessPermitImg');
+    image.src = this.files[0].type.startsWith('image/') ? URL.createObjectURL(this.files[0]) : '';
+    image.alt = this.files[0].name;
+    document.getElementById('businessPermitIdle').style.display = 'none';
+    document.getElementById('businessPermitPreview').style.display = 'block';
+    document.getElementById('businessPermitError').style.display = 'none';
+});
+
+function clearBusinessPermit() {
+    businessPermitBlob = null;
+    document.getElementById('business_permit_file').value = '';
+    document.getElementById('businessPermitIdle').style.display = 'block';
+    document.getElementById('businessPermitPreview').style.display = 'none';
+}
+
+let businessNameAvailable = null;
+let businessNameTimer = null;
+const businessNameInput = document.getElementById('business_name');
+if (businessNameInput) {
+    const status = document.createElement('span');
+    status.id = 'businessNameStatus';
+    status.style.cssText = 'margin-top:5px;font-size:11px;display:block';
+    businessNameInput.after(status);
+    businessNameInput.addEventListener('input', function () {
+        const value = this.value.trim();
+        businessNameAvailable = null;
+        status.textContent = '';
+        clearTimeout(businessNameTimer);
+        if (value.length < 2) return;
+        status.textContent = 'Checking business name…';
+        status.style.color = '#64748b';
+        businessNameTimer = setTimeout(() => {
+            fetch(`/register/check-business-name?business_name=${encodeURIComponent(value)}`)
+                .then(response => response.json())
+                .then(data => {
+                    businessNameAvailable = data.available;
+                    status.textContent = data.available ? 'Business name is available.' : (data.message || 'Business name is already registered.');
+                    status.style.color = data.available ? '#16a34a' : '#dc2626';
+                })
+                .catch(() => { businessNameAvailable = null; status.textContent = ''; });
+        }, 500);
+    });
 }
 
 // mini popup for answer feedback
@@ -587,6 +681,13 @@ if (usernameInput) {
 }
 
 // ── OCR prefill ──
+function clearOcrPrefill() {
+    const ocrBox = document.getElementById('ocrResult');
+    const noteBox = document.getElementById('ocrPrefillNote');
+    if (ocrBox) { ocrBox.className = 'ocr-result'; ocrBox.innerHTML = ''; }
+    if (noteBox) { noteBox.innerHTML = ''; noteBox.style.display = 'none'; }
+}
+
 function runOcr(source) {
     const ocrBox  = document.getElementById('ocrResult');
     const noteBox = document.getElementById('ocrPrefillNote');
@@ -874,6 +975,18 @@ function validateStep(step) {
             else if (!/^[a-zA-Z0-9_-]+$/.test(uEl.value.trim())) { showError(uEl, 'Only letters, numbers, underscores and dashes.'); valid = false; }
             else if (usernameAvailable === false) { showError(uEl, 'Username is already taken.'); valid = false; }
             else if (usernameAvailable === null) { showError(uEl, 'Please wait for username check to complete.'); valid = false; }
+        }
+        const businessName = document.getElementById('business_name');
+        if (businessName) {
+            if (!businessName.value.trim()) { showError(businessName, 'Business name is required.'); valid = false; }
+            else if (businessNameAvailable === false) { showError(businessName, 'Business name is already registered.'); valid = false; }
+            else if (businessNameAvailable === null) { showError(businessName, 'Please wait for the business-name check.'); valid = false; }
+        }
+        if (isSeller && !businessPermitBlob) {
+            document.getElementById('businessPermitError').style.display = 'block';
+            valid = false;
+        } else if (isSeller) {
+            document.getElementById('businessPermitError').style.display = 'none';
         }
         // password confirmation
         const pw = document.getElementById('password');

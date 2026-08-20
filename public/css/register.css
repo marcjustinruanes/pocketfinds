@@ -102,6 +102,9 @@
 .step-item.active:not(:last-child)::after {
     background: var(--auth-primary);
 }
+.steps.account-is-last .step-item[data-step="6"]::after {
+    display: none;
+}
 .step-circle {
     width: 26px;
     height: 26px;

@@ -89,6 +89,17 @@ class RegisterController extends Controller
         return response()->json(['available' => !$exists, 'suggestions' => $suggestions]);
     }
 
+    public function checkBusinessName(Request $request)
+    {
+        $businessName = trim($request->input('business_name', ''));
+        if (mb_strlen($businessName) < 2) {
+            return response()->json(['available' => false, 'message' => 'Enter a business name.']);
+        }
+
+        $exists = User::whereRaw('LOWER(business_name) = ?', [mb_strtolower($businessName)])->exists();
+        return response()->json(['available' => !$exists]);
+    }
+
     public function categories()
     {
         return response()->json(Category::orderBy('name')->get(['id', 'name']));
@@ -121,6 +132,8 @@ class RegisterController extends Controller
             'account_type'   => 'required|in:buyer,rider,seller',
             'auth_method'    => 'required|in:manual,google',
             'category_id'    => $isSeller ? 'required|exists:categories,id' : 'nullable',
+            'business_name'  => $isSeller ? 'required|string|max:150|unique:users,business_name' : 'nullable',
+            'business_permit_file' => $isSeller ? 'required|file|mimes:jpg,jpeg,png,pdf|max:5120' : 'nullable',
         ];
 
         if ($isRider) {
@@ -167,7 +180,12 @@ class RegisterController extends Controller
             'selfie_file'    => $selfiePath,
             'status'         => 'pending',
             'category_id'    => $isSeller ? $request->category_id : null,
+            'business_name'  => $isSeller ? $request->business_name : null,
         ];
+
+        if ($isSeller) {
+            $userData['business_permit_file'] = $request->file('business_permit_file')->store('business_permits', 'public');
+        }
 
         $user = User::create($userData);
 

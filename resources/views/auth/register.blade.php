@@ -219,10 +219,31 @@
                             <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;background:var(--auth-primary-soft);border:1px solid rgba(217,70,143,.2);color:var(--auth-primary);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em">{!! $typeIcons[$regType] ?? $typeIcons['buyer'] !!} {{ ucfirst($regType) }}</span>
                         </div>
                         <div style="display:flex;align-items:center;justify-content:space-between">
-                            <p class="auth-subtitle" style="margin:0">Choose the category your products belong to.</p>
+                            <p class="auth-subtitle" style="margin:0">Add your business details and choose the category your products belong to.</p>
                             <a href="{{ route('register.type') }}" title="Change account type" style="flex-shrink:0;margin-left:8px;color:var(--auth-muted);text-decoration:none;line-height:1" onmouseover="this.style.color='var(--auth-primary)'" onmouseout="this.style.color='var(--auth-muted)'"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg></a>
                         </div>
                         <input type="hidden" name="category_id" id="category_id_input">
+                        <div class="auth-field" id="businessNameField" style="margin:14px 0 12px">
+                            <label class="auth-label" for="business_name">Business Name <span class="auth-required">*</span></label>
+                            <input class="auth-input" id="business_name" name="business_name" type="text" placeholder="e.g. Dela Cruz Trading" required maxlength="150">
+                        </div>
+                        <div class="auth-field" id="businessPermitField" style="margin-bottom:12px">
+                            <label class="auth-label">Business Permit <span class="auth-required">*</span></label>
+                            <div class="upload-box document-upload" id="businessPermitBox" onclick="document.getElementById('business_permit_file').click()">
+                                <div id="businessPermitIdle">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                    <p style="margin:4px 0 0;font-size:11px;color:#888">Upload file</p>
+                                    <span class="upload-info">Clear photo or scan · JPG, PNG, or PDF · max 5 MB</span>
+                                </div>
+                                <div id="businessPermitPreview" style="display:none;position:relative">
+                                    <img id="businessPermitImg" style="width:100%;max-height:120px;object-fit:cover;border-radius:6px" alt="Business permit">
+                                    <button type="button" class="enlarge-btn" onclick="event.stopPropagation();openLightbox('businessPermitImg')" aria-label="Enlarge business permit">⤢</button>
+                                    <button type="button" onclick="event.stopPropagation();clearBusinessPermit()" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer">✕</button>
+                                </div>
+                            </div>
+                            <input type="file" id="business_permit_file" name="business_permit_file" accept="image/*,.pdf" style="display:none" required>
+                            <span id="businessPermitError" style="display:none;color:red;font-size:11px">Please upload your business permit.</span>
+                        </div>
                         <div class="category-scroll-wrap">
                             <div class="category-box-grid" id="categoryGrid"><p class="auth-muted-text">Loading categories…</p></div>
                         </div>

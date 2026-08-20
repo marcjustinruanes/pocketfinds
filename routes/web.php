@@ -23,6 +23,7 @@ Route::middleware('web')->group(function () {
     Route::post('/register/send-otp', [RegisterController::class, 'sendOtp'])->name('register.send-otp');
     Route::post('/register/verify-otp', [RegisterController::class, 'verifyOtp'])->name('register.verify-otp');
     Route::get('/register/check-username', [RegisterController::class, 'checkUsername'])->name('register.check-username');
+    Route::get('/register/check-business-name', [RegisterController::class, 'checkBusinessName'])->name('register.check-business-name');
     Route::get('/password/reset', fn() => view('auth.login'))->name('password.request');
 
     Route::get('/auth/google/redirect', [SocialAuthController::class, 'redirectToGoogle'])->name('google.redirect');

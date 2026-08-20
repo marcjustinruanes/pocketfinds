@@ -15,7 +15,7 @@ class User extends Authenticatable
         'last_name', 'given_names', 'middle_name', 'sex', 'birthday', 'age',
         'email', 'contact_no',
         'province', 'municipality', 'barangay', 'house_no', 'street',
-        'password', 'id_file', 'id_type_id', 'selfie_file', 'status', 'is_admin', 'category_id',
+        'password', 'id_file', 'id_type_id', 'selfie_file', 'status', 'is_admin', 'category_id', 'business_name', 'business_permit_file',
     ];
 
     protected $hidden = ['password', 'remember_token'];
