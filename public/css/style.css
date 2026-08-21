@@ -185,7 +185,6 @@ a {
     place-items: center;
     border-radius: 50%;
     background: rgba(255, 255, 255, .12);
-    font-size: 12px;
 }
 
 .auth-brand-footer {
@@ -470,8 +469,6 @@ a {
     border-radius: 14px;
     color: var(--auth-primary);
     background: var(--auth-primary-soft);
-    font-size: 18px;
-    font-weight: 900;
 }
 
 .auth-type-copy {
@@ -495,7 +492,8 @@ a {
 .auth-type-arrow {
     margin-left: auto;
     color: #94a3b8;
-    font-size: 18px;
+    display: flex;
+    align-items: center;
 }
 
 .auth-back {
@@ -509,6 +507,7 @@ a {
     background: transparent;
     font-size: 13px;
     font-weight: 700;
+    cursor: pointer;
 }
 
 .auth-back:hover {

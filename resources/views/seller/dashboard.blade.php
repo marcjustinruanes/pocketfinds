@@ -1,7 +1,7 @@
 @extends('seller.layout')
 @section('title', 'Dashboard')
 @section('page-title', 'Dashboard')
-@section('page-sub', 'Welcome back, ' . auth()->user()->first_name . '!')
+@section('page-sub', 'Welcome back, ' . auth()->user()->given_names . '!')
 
 @section('content')
 <div class="kpi-grid">
