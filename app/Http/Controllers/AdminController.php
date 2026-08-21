@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Commission;
 use App\Models\Complaint;
 use App\Models\DocumentUpdateRequest;
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -287,5 +288,52 @@ class AdminController extends Controller
         ]);
 
         return back()->with('success', 'Request rejected and seller notified.');
+    }
+
+    public function products()
+    {
+        $counts     = $this->sidebarCounts();
+        $products   = Product::with(['seller', 'category'])->latest()->get();
+        $categories = \DB::table('categories')->orderBy('name')->get()->keyBy('id');
+        return view('admin.products', array_merge($counts, compact('products', 'categories')));
+    }
+
+    public function approveProduct($id)
+    {
+        $product = Product::findOrFail($id);
+        $product->update(['status' => 'active', 'rejection_note' => null]);
+
+        \DB::table('notifications')->insert([
+            'id'                => (string) \Illuminate\Support\Str::uuid(),
+            'user_id'           => $product->seller_id,
+            'title'             => 'Product Approved',
+            'message'           => 'Your product "' . $product->name . '" has been approved and is now live.',
+            'notification_type' => 'product_approved',
+            'is_read'           => false,
+            'created_at'        => now(),
+        ]);
+
+        return back()->with('success', 'Product approved.');
+    }
+
+    public function rejectProduct(Request $request, $id)
+    {
+        $product = Product::findOrFail($id);
+        $product->update([
+            'status'         => 'rejected',
+            'rejection_note' => $request->input('note'),
+        ]);
+
+        \DB::table('notifications')->insert([
+            'id'                => (string) \Illuminate\Support\Str::uuid(),
+            'user_id'           => $product->seller_id,
+            'title'             => 'Product Rejected',
+            'message'           => 'Your product "' . $product->name . '" was rejected.' . ($request->note ? ' Reason: ' . $request->note : ''),
+            'notification_type' => 'product_rejected',
+            'is_read'           => false,
+            'created_at'        => now(),
+        ]);
+
+        return back()->with('success', 'Product rejected and seller notified.');
     }
 }

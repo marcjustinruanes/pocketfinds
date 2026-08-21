@@ -206,6 +206,16 @@ cartOverlay?.addEventListener('click', e => {
     if (e.target === cartOverlay) closeCart();
 });
 
+// ── Product card helpers (data-attribute based) ─────────────────────────────
+function pcCart(btn) {
+    const d = btn.closest('.pc-actions').dataset;
+    openCart(d.name, parseFloat(d.price), [], [], false, btn, d.id, d.img);
+}
+function pcBuy(btn) {
+    const d = btn.closest('.pc-actions').dataset;
+    openCart(d.name, parseFloat(d.price), [], [], true, btn, d.id, d.img);
+}
+
 // ── Browse filter ─────────────────────────────────────────────────────────────
 function filterBrowse() {
     const q   = (document.getElementById('browseSearch')?.value || '').toLowerCase();

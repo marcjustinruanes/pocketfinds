@@ -887,7 +887,8 @@ function populateSelect(sel, items, valueKey, labelKey, placeholder) {
     sel.innerHTML = `<option value="" disabled selected>${placeholder}</option>`;
     [...items].sort((a, b) => a[labelKey].localeCompare(b[labelKey])).forEach(item => {
         const o = document.createElement('option');
-        o.value = item[valueKey]; o.textContent = item[labelKey];
+        // Store the name as the submitted value; keep code in data-code for cascade fetches
+        o.value = item[labelKey]; o.dataset.code = item[valueKey]; o.textContent = item[labelKey];
         sel.appendChild(o);
     });
     sel.disabled = false;
@@ -907,17 +908,17 @@ async function ocrMatchAddress(rawText) {
     const filled  = [];
     const provMatch = matchFromList(psgcProvinces, rawText);
     if (!provMatch) return filled;
-    provSel.value = provMatch.code; provSel.dispatchEvent(new Event('change')); filled.push('province');
+    provSel.value = provMatch.name; provSel.dispatchEvent(new Event('change')); filled.push('province');
     const munis = await fetchJSON(`${PSGC}/provinces/${provMatch.code}/cities-municipalities/`);
     populateSelect(muniSel, munis, 'code', 'name', 'Select city / municipality');
     const muniMatch = matchFromList(munis, rawText);
     if (!muniMatch) return filled;
-    muniSel.value = muniMatch.code; muniSel.dispatchEvent(new Event('change')); filled.push('city/municipality');
+    muniSel.value = muniMatch.name; muniSel.dispatchEvent(new Event('change')); filled.push('city/municipality');
     const brgys = await fetchJSON(`${PSGC}/cities-municipalities/${muniMatch.code}/barangays/`);
     populateSelect(brgysel, brgys, 'code', 'name', 'Select barangay');
     const brgyMatch = matchFromList(brgys, rawText);
     if (!brgyMatch) return filled;
-    brgysel.value = brgyMatch.code; filled.push('barangay');
+    brgysel.value = brgyMatch.name; filled.push('barangay');
     return filled;
 }
 
@@ -931,7 +932,8 @@ document.getElementById('province')?.addEventListener('change', function () {
     const barSel = document.getElementById('barangay');
     setLoading(munSel, 'Loading cities / municipalities…');
     setLoading(barSel, 'Select municipality first');
-    fetchJSON(`${PSGC}/provinces/${this.value}/cities-municipalities/`)
+    const code = this.options[this.selectedIndex]?.dataset.code ?? this.value;
+    fetchJSON(`${PSGC}/provinces/${code}/cities-municipalities/`)
         .then(data => populateSelect(munSel, data, 'code', 'name', 'Select city / municipality'))
         .catch(() => setLoading(munSel, 'Failed to load'));
 });
@@ -939,7 +941,8 @@ document.getElementById('province')?.addEventListener('change', function () {
 document.getElementById('municipality')?.addEventListener('change', function () {
     const barSel = document.getElementById('barangay');
     setLoading(barSel, 'Loading barangays…');
-    fetchJSON(`${PSGC}/cities-municipalities/${this.value}/barangays/`)
+    const code = this.options[this.selectedIndex]?.dataset.code ?? this.value;
+    fetchJSON(`${PSGC}/cities-municipalities/${code}/barangays/`)
         .then(data => populateSelect(barSel, data, 'code', 'name', 'Select barangay'))
         .catch(() => setLoading(barSel, 'Failed to load'));
 });

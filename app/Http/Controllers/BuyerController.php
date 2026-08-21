@@ -2,111 +2,153 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\FetchesProducts;
+use App\Models\Product;
+use App\Models\User;
+use App\Models\Message;
+use App\Models\Complaint;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class BuyerController extends Controller
 {
-    // Shared dummy data — replace with DB queries later
-    private function products(): array
-    {
-        return [
-            1  => ['id'=>1,  'name'=>'Wireless Earbuds Pro',      'seller'=>'TechHub PH',   'seller_slug'=>'techhub-ph',   'price'=>799,   'old_price'=>999,   'badge'=>'20% OFF', 'rating'=>4.8, 'sold'=>1200, 'cat'=>'Electronics',  'img'=>'headphones', 'desc'=>'Premium wireless earbuds with active noise cancellation, 30-hour battery life, and IPX5 water resistance. Perfect for workouts and daily commutes.', 'specs'=>[['Brand','SoundCore'],['Connectivity','Bluetooth 5.3'],['Battery','30 hrs'],['Water Rating','IPX5'],['Colors','Black, White'],['Warranty','1 year']], 'variants'=>['color'=>['Black','White'],'size'=>[]], 'reviews'=>[['name'=>'Maria S.','rating'=>5,'date'=>'Dec 12, 2024','text'=>'Amazing sound quality! The noise cancellation is top-notch and battery lasts all day.'],['name'=>'Juan D.','rating'=>4,'date'=>'Dec 8, 2024','text'=>'Great earbuds for the price. Comfortable fit and solid bass.'],['name'=>'Ana R.','rating'=>5,'date'=>'Nov 30, 2024','text'=>'Best purchase this year. Highly recommend!']]],
-            2  => ['id'=>2,  'name'=>'Minimal Everyday Backpack', 'seller'=>'UrbanCarry',    'seller_slug'=>'urbancarry',    'price'=>549,   'old_price'=>699,   'badge'=>'HOT',     'rating'=>4.7, 'sold'=>856,  'cat'=>'Fashion',      'img'=>'bag',        'desc'=>'Sleek 20L backpack made from water-resistant nylon. Features a padded laptop sleeve (up to 15"), multiple organizer pockets, and ergonomic shoulder straps.', 'specs'=>[['Capacity','20L'],['Material','Water-resistant nylon'],['Laptop Fit','Up to 15"'],['Dimensions','45×30×15 cm'],['Colors','Black, Olive, Navy'],['Warranty','6 months']], 'variants'=>['color'=>['Black','Olive','Navy'],'size'=>[]], 'reviews'=>[['name'=>'Carlo M.','rating'=>5,'date'=>'Dec 10, 2024','text'=>'Perfect size for daily use. Fits my laptop and all my stuff easily.'],['name'=>'Lea T.','rating'=>4,'date'=>'Dec 1, 2024','text'=>'Good quality material. Looks exactly like the photos.']]],
-            3  => ['id'=>3,  'name'=>'Smart Watch Series 5',      'seller'=>'TechHub PH',   'seller_slug'=>'techhub-ph',   'price'=>1299,  'old_price'=>1499,  'badge'=>'15% OFF', 'rating'=>4.9, 'sold'=>2400, 'cat'=>'Electronics',  'img'=>'phone',      'desc'=>'Feature-packed smartwatch with health monitoring, GPS, 7-day battery, and 50+ workout modes. Compatible with iOS and Android.', 'specs'=>[['Display','1.4" AMOLED'],['Battery','7 days'],['GPS','Built-in'],['Water Rating','5ATM'],['Compatibility','iOS & Android'],['Warranty','1 year']], 'variants'=>['color'=>['Black','Silver','Rose Gold'],'size'=>[]], 'reviews'=>[['name'=>'Ben A.','rating'=>5,'date'=>'Dec 14, 2024','text'=>'Incredible watch for the price. GPS is accurate and battery is impressive.'],['name'=>'Sofia L.','rating'=>5,'date'=>'Dec 9, 2024','text'=>'Love the health tracking features. Sleep tracking is very accurate.'],['name'=>'Mark P.','rating'=>4,'date'=>'Dec 3, 2024','text'=>'Great value. Only wish the screen was a bit brighter outdoors.']]],
-            4  => ['id'=>4,  'name'=>'Lightweight Running Shoes', 'seller'=>'StepUp Store',  'seller_slug'=>'stepup-store',  'price'=>899,   'old_price'=>1199,  'badge'=>'SALE',    'rating'=>4.6, 'sold'=>648,  'cat'=>'Fashion',      'img'=>'bag',        'desc'=>'Ultra-lightweight running shoes with responsive foam cushioning and breathable mesh upper. Available in sizes 36–45.', 'specs'=>[['Weight','220g per shoe'],['Upper','Breathable mesh'],['Sole','Responsive foam'],['Sizes','36–45'],['Colors','White, Black, Blue'],['Warranty','3 months']], 'variants'=>['color'=>['White','Black','Blue'],'size'=>['36','37','38','39','40','41','42','43','44','45']], 'reviews'=>[['name'=>'Rina C.','rating'=>5,'date'=>'Dec 11, 2024','text'=>'So comfortable! Wore them for a 10k run and my feet felt great.'],['name'=>'Paolo G.','rating'=>4,'date'=>'Nov 28, 2024','text'=>'Good shoes, true to size. Very lightweight.']]],
-            5  => ['id'=>5,  'name'=>'LED Desk Lamp',             'seller'=>'HomeGlow',      'seller_slug'=>'homeglow',      'price'=>399,   'old_price'=>499,   'badge'=>'NEW',     'rating'=>4.8, 'sold'=>731,  'cat'=>'Home & Living','img'=>'sparkle',    'desc'=>'Adjustable LED desk lamp with 5 color temperatures, 10 brightness levels, USB charging port, and touch control. Eye-care certified.', 'specs'=>[['Power','12W LED'],['Color Temp','2700K–6500K'],['Brightness','10 levels'],['USB Port','5V/1A'],['Arm','Fully adjustable'],['Warranty','1 year']], 'variants'=>['color'=>['White','Black'],'size'=>[]], 'reviews'=>[['name'=>'Trisha V.','rating'=>5,'date'=>'Dec 13, 2024','text'=>'Perfect for studying. The eye-care mode really makes a difference.'],['name'=>'Kevin B.','rating'=>5,'date'=>'Dec 5, 2024','text'=>'Great lamp, very bright. USB port is a nice bonus.']]],
-            6  => ['id'=>6,  'name'=>'Premium Phone Case',        'seller'=>'TechHub PH',   'seller_slug'=>'techhub-ph',   'price'=>249,   'old_price'=>null,  'badge'=>null,      'rating'=>4.8, 'sold'=>2000, 'cat'=>'Electronics',  'img'=>'phone',      'desc'=>'Military-grade drop protection with a slim profile. Compatible with all major phone models. Available in 8 colors.', 'specs'=>[['Protection','MIL-STD-810G'],['Profile','Slim 1.2mm'],['Material','TPU + Polycarbonate'],['Colors','8 options'],['Compatibility','All major models'],['Warranty','6 months']], 'variants'=>['color'=>['Black','Clear','Navy','Red','Green','Pink','Yellow','Purple'],'size'=>[]], 'reviews'=>[['name'=>'Gab N.','rating'=>5,'date'=>'Dec 15, 2024','text'=>'Dropped my phone twice already and not a scratch. Worth every peso.'],['name'=>'Mia F.','rating'=>4,'date'=>'Dec 7, 2024','text'=>'Slim and protective. Exactly what I needed.']]],
-            7  => ['id'=>7,  'name'=>'Insulated Coffee Tumbler',  'seller'=>'HomeGlow',      'seller_slug'=>'homeglow',      'price'=>329,   'old_price'=>null,  'badge'=>null,      'rating'=>4.7, 'sold'=>945,  'cat'=>'Home & Living','img'=>'sparkle',    'desc'=>'Double-wall vacuum insulated tumbler keeps drinks hot for 12 hours and cold for 24 hours. BPA-free, leak-proof lid.', 'specs'=>[['Capacity','500ml'],['Hot','12 hours'],['Cold','24 hours'],['Material','18/8 Stainless Steel'],['BPA Free','Yes'],['Warranty','1 year']], 'variants'=>['color'=>['Black','White','Pink','Blue'],'size'=>[]], 'reviews'=>[['name'=>'Diane O.','rating'=>5,'date'=>'Dec 12, 2024','text'=>'My coffee stays hot until lunch! Love the design too.'],['name'=>'Ryan S.','rating'=>4,'date'=>'Dec 4, 2024','text'=>'Great tumbler. Lid is very secure, no leaks at all.']]],
-            8  => ['id'=>8,  'name'=>'Mechanical Keyboard',       'seller'=>'TechHub PH',   'seller_slug'=>'techhub-ph',   'price'=>1899,  'old_price'=>null,  'badge'=>null,      'rating'=>4.9, 'sold'=>512,  'cat'=>'Electronics',  'img'=>'phone',      'desc'=>'Compact TKL mechanical keyboard with hot-swappable switches, RGB backlighting, and aluminum frame. Available in Blue, Brown, and Red switches.', 'specs'=>[['Layout','TKL (87 keys)'],['Switches','Hot-swappable'],['Backlight','Per-key RGB'],['Frame','Aluminum'],['Connection','USB-C'],['Warranty','2 years']], 'variants'=>['color'=>['Space Gray','White'],'size'=>['Blue Switch','Brown Switch','Red Switch']], 'reviews'=>[['name'=>'Nico A.','rating'=>5,'date'=>'Dec 14, 2024','text'=>"Best keyboard I've ever owned. The typing feel is incredible."],['name'=>'Jess M.','rating'=>5,'date'=>'Dec 6, 2024','text'=>'Hot-swap feature is amazing. Changed switches in minutes.']]],
-            9  => ['id'=>9,  'name'=>'Oversized Hoodie',          'seller'=>'UrbanCarry',    'seller_slug'=>'urbancarry',    'price'=>699,   'old_price'=>null,  'badge'=>null,      'rating'=>4.8, 'sold'=>1100, 'cat'=>'Fashion',      'img'=>'shirt',      'desc'=>'Premium 380gsm fleece oversized hoodie. Soft, warm, and perfect for layering. Available in 6 neutral colors, sizes XS–3XL.', 'specs'=>[['Weight','380gsm fleece'],['Fit','Oversized'],['Sizes','XS–3XL'],['Colors','6 neutral tones'],['Care','Machine washable'],['Warranty','3 months']], 'variants'=>['color'=>['Black','White','Beige','Sage','Navy','Charcoal'],'size'=>['XS','S','M','L','XL','2XL','3XL']], 'reviews'=>[['name'=>'Camille R.','rating'=>5,'date'=>'Dec 13, 2024','text'=>'So soft and cozy! The quality is way better than expected.'],['name'=>'Luis T.','rating'=>4,'date'=>'Dec 2, 2024','text'=>'Great hoodie. Sizing runs a bit large which I actually prefer.']]],
-            10 => ['id'=>10, 'name'=>'Daily Skincare Set',        'seller'=>'GlowUp PH',    'seller_slug'=>'glowup-ph',    'price'=>599,   'old_price'=>null,  'badge'=>null,      'rating'=>4.6, 'sold'=>782,  'cat'=>'Beauty',       'img'=>'sparkle',    'desc'=>'Complete 4-step skincare routine: cleanser, toner, serum, and moisturizer. Dermatologist-tested, suitable for all skin types.', 'specs'=>[['Steps','4-step routine'],['Skin Type','All skin types'],['Tested','Dermatologist-approved'],['Volume','30–50ml each'],['Fragrance','Fragrance-free'],['Shelf Life','24 months']], 'variants'=>['color'=>[],'size'=>[]], 'reviews'=>[['name'=>'Aika P.','rating'=>5,'date'=>'Dec 11, 2024','text'=>'My skin has never looked better! The serum is amazing.'],['name'=>'Bea C.','rating'=>4,'date'=>'Dec 3, 2024','text'=>'Good set for beginners. Gentle on sensitive skin.']]],
-            11 => ['id'=>11, 'name'=>'Bluetooth Speaker',         'seller'=>'TechHub PH',   'seller_slug'=>'techhub-ph',   'price'=>1199,  'old_price'=>null,  'badge'=>'NEW',     'rating'=>4.7, 'sold'=>430,  'cat'=>'Electronics',  'img'=>'headphones', 'desc'=>'360° surround sound portable speaker with 20W output, 15-hour battery, IPX7 waterproof rating, and built-in mic for calls.', 'specs'=>[['Output','20W'],['Battery','15 hours'],['Water Rating','IPX7'],['Connectivity','Bluetooth 5.0'],['Mic','Built-in'],['Warranty','1 year']], 'variants'=>['color'=>['Black','Blue','Red'],'size'=>[]], 'reviews'=>[['name'=>'Enzo V.','rating'=>5,'date'=>'Dec 10, 2024','text'=>'Loud and clear sound. Waterproof feature is great for outdoor use.'],['name'=>'Tina L.','rating'=>4,'date'=>'Nov 29, 2024','text'=>'Good speaker for the price. Bass could be a bit stronger.']]],
-            12 => ['id'=>12, 'name'=>'Yoga Mat',                  'seller'=>'FitLife PH',   'seller_slug'=>'fitlife-ph',   'price'=>449,   'old_price'=>null,  'badge'=>null,      'rating'=>4.5, 'sold'=>320,  'cat'=>'Sports',       'img'=>'puzzle',     'desc'=>'6mm thick non-slip yoga mat with alignment lines, carrying strap, and eco-friendly TPE material. 183cm × 61cm.', 'specs'=>[['Thickness','6mm'],['Material','Eco-friendly TPE'],['Size','183×61 cm'],['Non-slip','Both sides'],['Includes','Carrying strap'],['Warranty','6 months']], 'variants'=>['color'=>['Purple','Blue','Black','Pink'],'size'=>[]], 'reviews'=>[['name'=>'Lara M.','rating'=>5,'date'=>'Dec 9, 2024','text'=>'Great grip even when sweaty. The alignment lines are super helpful.'],['name'=>'Chris D.','rating'=>4,'date'=>'Nov 25, 2024','text'=>'Good mat, nice thickness. Strap makes it easy to carry.']]],
-        ];
-    }
-
-    private function shops(): array
-    {
-        return [
-            'techhub-ph'  => ['name'=>'TechHub PH',   'initial'=>'T', 'rating'=>4.9, 'products'=>12, 'sales'=>'8.2k', 'joined'=>'Jan 2023', 'desc'=>'Your go-to store for the latest gadgets, accessories, and tech essentials. All products are authentic and come with warranty.',   'items'=>[1,3,6,8,11]],
-            'urbancarry'  => ['name'=>'UrbanCarry',    'initial'=>'U', 'rating'=>4.8, 'products'=>6,  'sales'=>'3.1k', 'joined'=>'Mar 2023', 'desc'=>'Minimalist bags, clothing, and lifestyle accessories for the modern urban commuter.',                                              'items'=>[2,9]],
-            'homeglow'    => ['name'=>'HomeGlow',      'initial'=>'H', 'rating'=>4.8, 'products'=>8,  'sales'=>'2.4k', 'joined'=>'Jun 2023', 'desc'=>'Curated home essentials and lifestyle products to make your space more comfortable and beautiful.',                               'items'=>[5,7]],
-            'stepup-store'=> ['name'=>'StepUp Store',  'initial'=>'S', 'rating'=>4.6, 'products'=>5,  'sales'=>'1.8k', 'joined'=>'Aug 2023', 'desc'=>'Quality footwear and athletic gear for every lifestyle and budget.',                                                              'items'=>[4]],
-            'glowup-ph'   => ['name'=>'GlowUp PH',    'initial'=>'G', 'rating'=>4.7, 'products'=>9,  'sales'=>'2.9k', 'joined'=>'Feb 2023', 'desc'=>'Affordable, dermatologist-approved skincare and beauty products for all skin types.',                                             'items'=>[10]],
-            'fitlife-ph'  => ['name'=>'FitLife PH',   'initial'=>'F', 'rating'=>4.5, 'products'=>7,  'sales'=>'1.2k', 'joined'=>'Sep 2023', 'desc'=>'Fitness equipment and wellness products to support your active lifestyle.',                                                       'items'=>[12]],
-        ];
-    }
+    use FetchesProducts;
 
     public function dashboard()
     {
-        return view('buyer.dashboard');
+        $featured = $this->dbProducts(8);
+        return view('buyer.dashboard', compact('featured'));
     }
 
     public function browse()
     {
-        return view('buyer.browse', ['products' => $this->products()]);
+        return view('buyer.browse', ['products' => $this->dbProducts()]);
     }
 
     public function product($id)
     {
-        $products = $this->products();
-        $product  = $products[$id] ?? abort(404);
-        $shops    = $this->shops();
-        $shop     = $shops[$product['seller_slug']] ?? null;
-        $related     = array_filter($products, fn($p) => $p['id'] !== (int)$id && $p['cat'] === $product['cat']);
-        $shopProducts = $shop ? array_filter($products, fn($p) => $p['id'] !== (int)$id && in_array($p['id'], $shop['items'])) : [];
-        return view('buyer.product', compact('product', 'shop', 'related', 'shopProducts'));
+        $p = Product::with(['seller', 'category'])->where('id', $id)->where('status', 'active')->firstOrFail();
+        $product      = $this->mapProduct($p);
+        $sellerOnline = Cache::has('seller-online-' . $p->seller_id);
+        $shopProducts = Product::with(['seller','category'])->where('seller_id', $p->seller_id)->where('status','active')->where('id','!=',$id)->limit(6)->get()->map(fn($r) => $this->mapProduct($r))->all();
+        $titleTerms = collect(preg_split('/[^\\pL\\pN]+/u', $p->name))
+            ->filter(fn ($term) => mb_strlen($term) > 2)
+            ->unique()
+            ->take(5);
+        $related = Product::with(['seller', 'category'])
+            ->where('status', 'active')
+            ->where('id', '!=', $id)
+            ->when($titleTerms->isNotEmpty(), function ($query) use ($titleTerms) {
+                $query->where(function ($matches) use ($titleTerms) {
+                    foreach ($titleTerms as $term) {
+                        $matches->orWhere('name', 'like', '%' . $term . '%');
+                    }
+                });
+            }, fn ($query) => $query->whereRaw('1 = 0'))
+            ->limit(8)
+            ->get()
+            ->map(fn($r) => $this->mapProduct($r))
+            ->all();
+        $shop = null;
+        return view('buyer.product', compact('product', 'shop', 'related', 'shopProducts', 'sellerOnline'));
     }
 
     public function shop($slug)
     {
-        $shops   = $this->shops();
-        $shop    = $shops[$slug] ?? abort(404);
-        $products = $this->products();
-        $items   = array_filter($products, fn($p) => in_array($p['id'], $shop['items']));
+        $seller = User::where('username', $slug)->where('account_type', 'seller')->firstOrFail();
+        $items  = Product::with(['seller','category'])->where('seller_id', $seller->id)->where('status','active')->get()->map(fn($p) => $this->mapProduct($p))->all();
+        $shop   = [
+            'name'     => $seller->business_name ?? ($seller->given_names . ' ' . $seller->last_name),
+            'initial'  => strtoupper(substr($seller->given_names, 0, 1)),
+            'rating'   => 0,
+            'products' => count($items),
+            'sales'    => '0',
+            'joined'   => $seller->created_at->format('M Y'),
+            'desc'     => '',
+        ];
         return view('buyer.shop', compact('shop', 'items', 'slug'));
     }
 
     public function cart()
     {
-        $products = $this->products();
-        $items = collect(session('cart', []))->map(function (array $item, string $key) use ($products) {
-            $product = $products[$item['product_id']] ?? [];
-
-            return array_merge($item, [
-                'key' => $key,
-                'seller' => $product['seller'] ?? 'PocketFinds Seller',
-                'seller_slug' => $product['seller_slug'] ?? 'pocketfinds',
-            ]);
+        $items = collect(session('cart', []))->map(function (array $item, string $key) {
+            return array_merge($item, ['key' => $key]);
         });
         $groups = $items->groupBy('seller_slug');
+        $voucherData = $this->cartVoucherData($groups);
+        $shippingOptions = [
+            ['id' => 'standard', 'label' => 'Standard delivery', 'detail' => '3-5 days', 'amount' => 65],
+            ['id' => 'express', 'label' => 'Express delivery', 'detail' => '1-2 days', 'amount' => 120],
+        ];
 
-        return view('buyer.cart', compact('items', 'groups'));
+        return view('buyer.cart', compact('items', 'groups', 'voucherData', 'shippingOptions'));
+    }
+
+    private function cartVoucherData($groups): array
+    {
+        $rules = [
+            ['type' => 'shop', 'code' => 'SHOP50', 'discount' => 50, 'minimum' => 500],
+            ['type' => 'shop', 'code' => 'SHOP100', 'discount' => 100, 'minimum' => 1000],
+            ['type' => 'system', 'code' => 'POCKET30', 'discount' => 30, 'minimum' => 300],
+        ];
+
+        $all = [];
+        foreach ($groups as $slug => $shopItems) {
+            $shopTotal = $shopItems->sum(fn ($item) => $item['price'] * $item['qty']);
+            $seller = $shopItems->first()['seller'];
+            foreach ($rules as $rule) {
+                if ($rule['type'] === 'system' && $slug !== $groups->keys()->first()) continue;
+                $all[] = array_merge($rule, [
+                    'id' => $rule['type'] . '-' . $slug . '-' . $rule['code'],
+                    'shop' => $rule['type'] === 'shop' ? $seller : 'PocketFinds',
+                    'shop_slug' => $slug,
+                    'current_total' => $rule['type'] === 'shop' ? $shopTotal : $groups->flatten(1)->sum(fn ($item) => $item['price'] * $item['qty']),
+                ]);
+            }
+        }
+
+        $all = collect($all)->map(function ($voucher) {
+            $voucher['shortfall'] = max(0, $voucher['minimum'] - $voucher['current_total']);
+            $voucher['applicable'] = $voucher['shortfall'] === 0;
+            return $voucher;
+        })->values();
+
+        return [
+            'all' => $all,
+            'applicable' => $all->where('applicable', true)->values(),
+        ];
     }
 
     public function cartAdd(Request $request)
     {
         $data = $request->validate([
-            'product_id' => ['required', 'integer'],
-            'color' => ['nullable', 'string', 'max:100'],
-            'size' => ['nullable', 'string', 'max:100'],
-            'qty' => ['required', 'integer', 'min:1', 'max:99'],
+            'product_id' => ['required'],
+            'color'      => ['nullable', 'string', 'max:100'],
+            'size'       => ['nullable', 'string', 'max:100'],
+            'qty'        => ['required', 'integer', 'min:1', 'max:99'],
         ]);
-        $product = $this->products()[$data['product_id']] ?? abort(404);
+
+        $p    = Product::with(['seller','category'])->where('id', $data['product_id'])->where('status','active')->firstOrFail();
+        $prod = $this->mapProduct($p);
         $cart = session('cart', []);
-        $key  = $product['id'] . '|' . ($data['color'] ?? '') . '|' . ($data['size'] ?? '');
+        $key  = $p->id . '|' . ($data['color'] ?? '') . '|' . ($data['size'] ?? '');
+
         if (isset($cart[$key])) {
             $cart[$key]['qty'] = min(99, $cart[$key]['qty'] + $data['qty']);
         } else {
             $cart[$key] = [
-                'product_id' => $product['id'],
-                'name'       => $product['name'],
-                'price'      => $product['price'],
-                'color'      => $data['color'] ?? '',
-                'size'       => $data['size'] ?? '',
-                'qty'        => $data['qty'],
-                'img'        => $product['img'],
+                'product_id'  => $p->id,
+                'name'        => $p->name,
+                'price'       => (float) $p->price,
+                'color'       => $data['color'] ?? '',
+                'size'        => $data['size'] ?? '',
+                'qty'         => $data['qty'],
+                'img'         => $prod['img'],
+                'seller'      => $prod['seller'],
+                'seller_slug' => $prod['seller_slug'],
             ];
         }
         session(['cart' => $cart]);
@@ -118,10 +160,8 @@ class BuyerController extends Controller
         $data = $request->validate(['qty' => ['required', 'integer', 'min:1', 'max:99']]);
         $cart = session('cart', []);
         abort_unless(isset($cart[$key]), 404);
-
         $cart[$key]['qty'] = $data['qty'];
         session(['cart' => $cart]);
-
         return redirect()->route('buyer.cart');
     }
 
@@ -129,27 +169,180 @@ class BuyerController extends Controller
     {
         $cart = session('cart', []);
         abort_unless(isset($cart[$key]), 404);
-
         unset($cart[$key]);
         session(['cart' => $cart]);
-
         return redirect()->route('buyer.cart');
     }
 
-    public function orders()
+    public function orders()   { return view('buyer.orders'); }
+    public function messages(Request $request)
     {
-        return view('buyer.orders');
+        $product = null;
+        if ($request->filled('product')) {
+            $product = Product::with('seller')->where('id', $request->query('product'))->where('status', 'active')->first();
+        }
+
+        $seller = null;
+        $sellerOnline = false;
+        if ($request->filled('seller')) {
+            $seller = User::where('username', $request->query('seller'))->where('account_type', 'seller')->first();
+            if ($seller) $sellerOnline = Cache::has('seller-online-' . $seller->id);
+        }
+
+        $messages = [];
+        if ($seller) {
+            $messages = Message::with('product')
+                ->where(function($q) use ($seller) {
+                    $q->where('sender_id', auth()->id())->where('receiver_id', $seller->id);
+                })->orWhere(function($q) use ($seller) {
+                    $q->where('sender_id', $seller->id)->where('receiver_id', auth()->id());
+                })
+                ->orderBy('created_at')
+                ->get();
+
+            // Opening a conversation marks only the seller's persisted messages as read.
+            Message::where('sender_id', $seller->id)
+                ->where('receiver_id', auth()->id())
+                ->where('read', false)
+                ->update(['read' => true]);
+        }
+
+        $sellerProducts = $seller
+            ? Product::where('seller_id', $seller->id)->where('status', 'active')->orderBy('name')->get()
+            : collect();
+
+        // All conversations this buyer has
+        $conversations = Message::with(['sender','receiver','product'])
+            ->where('sender_id', auth()->id())
+            ->orWhere('receiver_id', auth()->id())
+            ->orderByDesc('created_at')
+            ->get()
+            ->groupBy(fn($m) => $m->sender_id === auth()->id() ? $m->receiver_id : $m->sender_id)
+            ->map(fn($msgs) => $msgs->first());
+
+        return view('buyer.messages', compact('product', 'seller', 'sellerOnline', 'messages', 'conversations', 'sellerProducts'));
     }
 
-    public function messages()
+    public function messagesPoll(Request $request)
     {
-        return view('buyer.messages');
+        $data = $request->validate(['receiver_id' => ['required', 'integer']]);
+        $seller = User::whereKey($data['receiver_id'])->where('account_type', 'seller')->firstOrFail();
+
+        Message::where('sender_id', $seller->id)
+            ->where('receiver_id', auth()->id())
+            ->where('read', false)
+            ->update(['read' => true]);
+
+        $messages = Message::with('product')
+            ->where(function ($query) use ($seller) {
+                $query->where('sender_id', auth()->id())->where('receiver_id', $seller->id);
+            })->orWhere(function ($query) use ($seller) {
+                $query->where('sender_id', $seller->id)->where('receiver_id', auth()->id());
+            })->orderBy('created_at')->get()
+            ->map(fn ($message) => $this->formatMessage($message));
+
+        return response()->json(['ok' => true, 'messages' => $messages]);
     }
 
-    public function account()
+    public function reportMessage(Request $request)
     {
-        return view('buyer.account');
+        $data = $request->validate([
+            'message_id' => ['required', 'integer'],
+            'reason' => ['required', 'string', 'max:120'],
+            'description' => ['nullable', 'string', 'max:3000'],
+            'evidence' => ['nullable', 'file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi'],
+        ]);
+        $message = Message::with(['sender', 'receiver'])->whereKey($data['message_id'])
+            ->where(fn ($query) => $query->where('sender_id', auth()->id())->orWhere('receiver_id', auth()->id()))
+            ->firstOrFail();
+        $evidence = $request->file('evidence');
+        $values = [
+            'id' => (string) Str::uuid(), 'order_id' => null, 'complainant_id' => auth()->id(),
+            'respondent_id' => $message->sender_id === auth()->id() ? $message->receiver_id : $message->sender_id,
+            'complaint_type' => $data['reason'], 'subject' => 'Reported chat message',
+            'description' => $data['description'] ?? null, 'status' => 'open',
+            'message_id' => $message->id, 'shop_name' => $message->receiver?->business_name ?? $message->sender?->business_name,
+            'message_body' => $message->body, 'message_type' => $message->attachment_type ?: ($message->body ? 'text' : 'message'),
+        ];
+        if ($evidence) {
+            $values['evidence_path'] = $evidence->store('report_evidence', 'public');
+            $values['evidence_name'] = $evidence->getClientOriginalName();
+            $values['evidence_mime'] = $evidence->getMimeType();
+            $values['evidence_type'] = str_starts_with($values['evidence_mime'], 'video/') ? 'video' : 'image';
+            $values['evidence_size'] = $evidence->getSize();
+        }
+        Complaint::create($values);
+        return response()->json(['ok' => true, 'message' => 'Report sent to admin.']);
     }
+
+    public function messagesSend(Request $request)
+    {
+        $data = $request->validate([
+            'receiver_id' => ['required', 'integer'],
+            'body'        => ['nullable', 'string', 'max:2000'],
+            'product_id'  => ['nullable', 'string'],
+            'attachments'   => ['nullable', 'array', 'max:5'],
+            'attachments.*' => ['file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi'],
+            'attachment'    => ['nullable', 'file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi'],
+        ]);
+
+        $receiver = User::whereKey($data['receiver_id'])->where('account_type', 'seller')->firstOrFail();
+        $files = $request->file('attachments', []);
+        if ($request->hasFile('attachment')) $files[] = $request->file('attachment');
+        abort_unless(filled($data['body'] ?? null) || $files || filled($data['product_id'] ?? null), 422, 'Send a message, product, image, or video.');
+
+        $product = null;
+        if (filled($data['product_id'] ?? null)) {
+            $product = Product::whereKey($data['product_id'])->where('seller_id', $receiver->id)->where('status', 'active')->firstOrFail();
+        }
+
+        $messages = [];
+        foreach ($files ?: [null] as $index => $file) {
+            $msg = ['sender_id' => auth()->id(), 'receiver_id' => $data['receiver_id'], 'read' => false];
+            if ($index === 0 && filled($data['body'] ?? null)) $msg['body'] = $data['body'];
+            if ($index === 0 && $product) $msg['product_id'] = $product->id;
+            if ($file) $this->addAttachment($msg, $file);
+            $saved = Message::create($msg); $saved->load('product');
+            $messages[] = $this->formatMessage($saved);
+        }
+
+        return response()->json(['ok' => true, 'message' => $messages[0], 'messages' => $messages]);
+    }
+
+    private function addAttachment(array &$msg, $file): void
+    {
+        $mime = $file->getMimeType();
+        $extension = strtolower($file->getClientOriginalExtension());
+        $msg['attachment_path'] = $file->store('message_attachments', 'public');
+        $msg['attachment_name'] = $file->getClientOriginalName();
+        $msg['attachment_mime'] = $mime;
+        $msg['attachment_size'] = $file->getSize();
+        $msg['attachment_type'] = str_starts_with($mime, 'image/') || in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)
+            ? 'image'
+            : (str_starts_with($mime, 'video/') || in_array($extension, ['mp4', 'mov', 'avi'], true) ? 'video' : 'document');
+    }
+
+    private function formatMessage(\App\Models\Message $m): array
+    {
+        return [
+            'id'              => $m->id,
+            'sender_id'       => $m->sender_id,
+            'body'            => $m->body,
+            'product_id'      => $m->product_id,
+            'product_name'    => $m->product?->name,
+            'product_price'   => $m->product?->price,
+            'product_img'     => $m->product?->image ? \Illuminate\Support\Facades\Storage::url($m->product->image) : null,
+            'product_url'     => $m->product_id ? route('buyer.product', $m->product_id) : null,
+            'attachment_path' => $m->attachment_path ? route('message.media', ['path' => $m->attachment_path]) : null,
+            'attachment_name' => $m->attachment_name,
+            'attachment_type' => $m->attachment_type,
+            'attachment_mime' => $m->attachment_mime,
+            'attachment_size' => $m->attachment_size,
+            'read'            => $m->read,
+            'created_at'      => $m->created_at->format('g:i A'),
+        ];
+    }
+    public function account()  { return view('buyer.account'); }
 
     public function logout(Request $request)
     {

@@ -12,34 +12,34 @@
   $total   = count($reviews) ?: 1;
 @endphp
 
-<a href="{{ url()->previous() }}" class="pd-back">
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-  Back
-</a>
+<section class="pd-shop-card">
+  <a href="{{ url()->previous() }}" class="pd-shop-back" aria-label="Back"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></a>
+  <div class="pd-shop-more-av">{{ strtoupper(substr($product['seller'], 0, 1)) }}</div>
+  <div class="pd-shop-card-info">
+    <div class="pd-shop-more-name">{{ $product['seller'] }}</div>
+    <div class="pd-shop-card-location">
+      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      {{ $product['location'] ?: 'Location not provided' }}
+    </div>
+  </div>
+  <div class="pd-shop-stats"><span><strong>{{ $avg > 0 ? number_format($avg, 1) : '—' }}</strong> Rating</span><span><strong>{{ count($shopProducts) + 1 }}</strong> Products</span><span><strong>—</strong> Followers</span></div>
+  <div class="pd-shop-card-actions">
+    <a href="{{ route('buyer.messages', ['seller' => $product['seller_slug']]) }}" class="pd-shop-chat">@include('buyer.partials.icon', ['name' => 'chat', 'size' => 13]) Chat with Seller</a>
+    <a href="{{ route('buyer.shop', $product['seller_slug']) }}" class="pd-shop-more-link pd-shop-view"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg>View Shop</a>
+  </div>
+</section>
 
 <div class="pd-main-grid">
 
   {{-- LEFT COL: thumb strip + main image --}}
+  @php $hasRealImg = !empty($product['img']); @endphp
   <div class="pd-img-col">
-    <div class="pd-thumb-col">
-      <button class="pd-arr" id="arrUp" onclick="scrollThumbs(-1)">
-        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
-      </button>
-      <div class="pd-thumb-viewport" id="pdThumbViewport">
-        <div class="pd-thumb-track" id="pdThumbTrack">
-          @foreach(range(1,6) as $t)
-          <button class="pd-thumb {{ $t===1?'active':'' }}" onclick="switchThumb(this)">
-            @include('buyer.partials.icon', ['name' => $product['img'], 'size' => 18])
-          </button>
-          @endforeach
-        </div>
-      </div>
-      <button class="pd-arr" id="arrDown" onclick="scrollThumbs(1)">
-        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-      </button>
-    </div>
     <div class="pd-main-img">
-      @include('buyer.partials.icon', ['name' => $product['img'], 'size' => 110])
+      @if($hasRealImg)
+        <img src="{{ $product['img'] }}" style="width:100%;height:100%;object-fit:contain;border-radius:12px">
+      @else
+        <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity=".25"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      @endif
     </div>
   </div>
 
@@ -70,6 +70,7 @@
         @if($product['old_price'])<span class="pd-old" style="margin-left:auto">₱{{ number_format($product['old_price']) }}</span>@endif
       </div>
       <div class="pd-actions">
+        <a class="pd-btn-chat" href="{{ route('buyer.messages', ['seller' => $product['seller_slug'], 'product' => $product['id']]) }}">@include('buyer.partials.icon', ['name' => 'chat', 'size' => 15]) Chat</a>
         <button class="pd-btn-cart" onclick="openCart('{{ addslashes($product['name']) }}',{{ $product['price'] }},{{ json_encode($product['variants']['color'] ?? []) }},{{ json_encode($product['variants']['size'] ?? []) }},false,this,'{{ $product['id'] }}','{{ $product['img'] }}')">
           <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 5m12-5l2 5M9 21a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"/></svg>
           Add to Cart
@@ -85,21 +86,43 @@
     <div class="pd-tabs-wrap">
       <div class="pd-tab-bar">
         <button class="pd-tab active" data-tab="options" onclick="switchTab(this,'options')">Options</button>
+        <button class="pd-tab"        data-tab="description" onclick="switchTab(this,'description')">Description</button>
         <button class="pd-tab"        data-tab="details" onclick="switchTab(this,'details')">Details</button>
-        <button class="pd-tab"        data-tab="reviews" onclick="switchTab(this,'reviews')">Reviews <span class="pd-tab-count">{{ count($reviews) }}</span></button>
+        <button class="pd-tab"        data-tab="reviews" onclick="switchTab(this,'reviews')">Reviews</button>
       </div>
 
       {{-- Options --}}
       <div class="pd-tab-pane active" id="tab-options">
-        @if(!empty($product['variants']['color']))
-        <div class="pd-opt-group">
-          <div class="pd-opt-label">Color</div>
-          <div class="pd-opt-row">
-            @foreach($product['variants']['color'] as $c)
-            <button class="pd-opt-btn {{ $loop->first?'active':'' }}" onclick="selectVariant(this)">{{ $c }}</button>
-            @endforeach
+        @if(!empty($product['variations']))
+          @foreach($product['variations'] as $variation)
+          <div class="pd-opt-group">
+            <div class="pd-opt-label">{{ $variation['name'] }}</div>
+            <div class="pd-opt-row">
+              @foreach($variation['options'] as $opt)
+              <button class="pd-opt-btn {{ $loop->first?'active':'' }}"
+                onclick="selectVariant(this)"
+                data-stock="{{ $opt['stock'] }}"
+                style="{{ $opt['stock'] == 0 ? 'opacity:.4;cursor:not-allowed' : '' }}">
+                {{ $opt['value'] }}
+                @if($opt['stock'] > 0)
+                  <span style="font-size:10px;color:var(--muted);display:block">{{ $opt['stock'] }} left</span>
+                @else
+                  <span style="font-size:10px;color:var(--danger);display:block">Out of stock</span>
+                @endif
+              </button>
+              @endforeach
+            </div>
           </div>
-        </div>
+          @endforeach
+        @elseif(!empty($product['variants']['color']))
+          <div class="pd-opt-group">
+            <div class="pd-opt-label">Color</div>
+            <div class="pd-opt-row">
+              @foreach($product['variants']['color'] as $c)
+              <button class="pd-opt-btn {{ $loop->first?'active':'' }}" onclick="selectVariant(this)">{{ $c }}</button>
+              @endforeach
+            </div>
+          </div>
         @endif
         @if(!empty($product['variants']['size']))
         <div class="pd-opt-group">
@@ -111,6 +134,13 @@
           </div>
         </div>
         @endif
+        @if(empty($product['variations']) && empty($product['variants']['color']) && empty($product['variants']['size']))
+          @if(isset($product['stock']))
+          <div style="font-size:13px;color:var(--muted);padding:8px 0">
+            Stock: <strong style="color:{{ $product['stock'] > 0 ? 'var(--success)' : 'var(--danger)' }}">{{ $product['stock'] > 0 ? $product['stock'] . ' available' : 'Out of stock' }}</strong>
+          </div>
+          @endif
+        @endif
         <div class="pd-opt-group">
           <div class="pd-opt-label">Quantity</div>
           <div class="pd-qty-row">
@@ -121,18 +151,26 @@
         </div>
       </div>
 
+      {{-- Description --}}
+      <div class="pd-tab-pane" id="tab-description">
+        <p class="pd-desc-text">{{ $product['desc'] ?: 'No description provided.' }}</p>
+      </div>
+
       {{-- Details --}}
       <div class="pd-tab-pane" id="tab-details">
-        <p class="pd-desc-text">{{ $product['desc'] }}</p>
-        <div class="pd-details-divider"></div>
+        @if(!empty($product['specs']))
+        <div class="pd-section-label">Specifications</div>
         <div class="pd-specs-grid">
-          @foreach($product['specs'] as [$label, $val])
+          @foreach($product['specs'] as $spec)
           <div class="pd-spec-row">
-            <span class="pd-spec-key">{{ $label }}</span>
-            <span class="pd-spec-val">{{ $val }}</span>
+            <span class="pd-spec-key">{{ $spec[0] }}</span>
+            <span class="pd-spec-val">{{ $spec[1] }}</span>
           </div>
           @endforeach
         </div>
+        @else
+        <p class="pd-desc-text">No specification provided.</p>
+        @endif
       </div>
 
       {{-- Reviews --}}
@@ -198,13 +236,19 @@
         <div class="pd-shop-more-sub">More from this shop</div>
       </div>
     </div>
+    <a href="{{ route('buyer.messages', ['seller' => $product['seller_slug']]) }}" class="pd-shop-chat">@include('buyer.partials.icon', ['name' => 'chat', 'size' => 14]) Chat with Seller</a>
     <a href="{{ route('buyer.shop', $product['seller_slug']) }}" class="pd-shop-more-link">View Shop →</a>
   </div>
+  @if(count($shopProducts))
   <div class="pd-shop-more-grid">
     @foreach($shopProducts as $sp)
     <div class="pd-mini-card" onclick="window.location='{{ route('buyer.product', $sp['id']) }}'">
       <div class="pd-mini-img">
-        @include('buyer.partials.icon', ['name' => $sp['img'], 'size' => 28])
+        @if(is_string($sp['img']) && str_starts_with($sp['img'], '/'))
+          <img src="{{ $sp['img'] }}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">
+        @else
+          @include('buyer.partials.icon', ['name' => $sp['img'], 'size' => 28])
+        @endif
         @if($sp['badge'])<span class="pd-mini-badge">{{ $sp['badge'] }}</span>@endif
       </div>
       <div class="pd-mini-info">
@@ -218,6 +262,7 @@
     </div>
     @endforeach
   </div>
+  @endif
 </div>
 @endif
 
@@ -231,7 +276,11 @@
     @foreach($related as $rp)
     <div class="product-card" onclick="window.location='{{ route('buyer.product', $rp['id']) }}'">
       <div class="product-img">
-        @include('buyer.partials.icon', ['name' => $rp['img'], 'size' => 36])
+        @if(is_string($rp['img']) && str_starts_with($rp['img'], '/'))
+          <img src="{{ $rp['img'] }}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">
+        @else
+          @include('buyer.partials.icon', ['name' => $rp['img'], 'size' => 36])
+        @endif
         @if($rp['badge'])<span class="product-badge">{{ $rp['badge'] }}</span>@endif
       </div>
       <div class="product-info">
@@ -258,21 +307,6 @@
 @endif
 
 <script>
-const THUMB_STEP = 68;
-let thumbPos = 0;
-function scrollThumbs(dir) {
-  const track = document.getElementById('pdThumbTrack');
-  const vp    = document.getElementById('pdThumbViewport');
-  const max   = Math.max(0, track.scrollHeight - vp.clientHeight);
-  thumbPos = Math.max(0, Math.min(max, thumbPos + dir * THUMB_STEP));
-  track.style.transform = `translateY(-${thumbPos}px)`;
-  document.getElementById('arrUp').style.opacity   = thumbPos <= 0   ? '.3' : '1';
-  document.getElementById('arrDown').style.opacity = thumbPos >= max ? '.3' : '1';
-}
-function switchThumb(btn) {
-  btn.closest('.pd-thumb-track').querySelectorAll('.pd-thumb').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-}
 function selectVariant(btn) {
   btn.closest('.pd-opt-row').querySelectorAll('.pd-opt-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
@@ -313,18 +347,5 @@ function filterReviews(star) {
   document.getElementById('pdRevCountLbl').textContent = lbl;
 }
 document.querySelectorAll('.rev-hidden').forEach(el => el.style.display = 'none');
-document.getElementById('arrUp').style.opacity = '.3';
-function fitTabsWrap() {
-  const imgCol  = document.querySelector('.pd-img-col');
-  const infoCard = document.querySelector('.pd-info-card');
-  const tabsWrap = document.querySelector('.pd-tabs-wrap');
-  const rightCol = document.querySelector('.pd-right-col');
-  const imgH    = imgCol.offsetHeight;
-  const infoH   = infoCard.offsetHeight;
-  const gap     = parseInt(getComputedStyle(rightCol).gap) || 12;
-  tabsWrap.style.height = (imgH - infoH - gap) + 'px';
-}
-fitTabsWrap();
-window.addEventListener('resize', fitTabsWrap);
 </script>
 @endsection

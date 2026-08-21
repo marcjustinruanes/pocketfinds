@@ -7,10 +7,30 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\BuyerController;
 use App\Http\Controllers\GuestController;
 use App\Http\Controllers\SellerController;
+use App\Models\Message;
+use App\Models\Complaint;
+use Illuminate\Support\Facades\Storage;
 
-Route::get('/', fn() => view('guest.home'));
+Route::get('/', [GuestController::class, 'home']);
 Route::get('/product/{id}', [GuestController::class, 'product'])->name('guest.product');
 Route::get('/shop/{slug}', [GuestController::class, 'shop'])->name('guest.shop');
+
+Route::middleware('web', 'auth')->get('/message-media/{path}', function (string $path) {
+    $message = Message::where('attachment_path', $path)
+        ->where(function ($query) {
+            $query->where('sender_id', auth()->id())->orWhere('receiver_id', auth()->id());
+        })->firstOrFail();
+
+    abort_unless(Storage::disk('public')->exists($message->attachment_path), 404);
+    return response()->file(Storage::disk('public')->path($message->attachment_path));
+})->where('path', '.*')->name('message.media');
+
+Route::middleware('web', 'auth')->get('/report-evidence/{path}', function (string $path) {
+    $complaint = Complaint::where('evidence_path', $path)->firstOrFail();
+    abort_unless(auth()->user()->is_admin || auth()->id() === $complaint->complainant_id || auth()->id() === $complaint->respondent_id, 403);
+    abort_unless(Storage::disk('public')->exists($complaint->evidence_path), 404);
+    return response()->file(Storage::disk('public')->path($complaint->evidence_path));
+})->where('path', '.*')->name('report.evidence');
 
 Route::middleware('web')->group(function () {
     Route::get('/login', fn() => view('auth.login'))->name('login');
@@ -44,6 +64,9 @@ Route::prefix('buyer')->name('buyer.')->middleware(['web', 'buyer'])->group(func
     Route::delete('/cart/{key}', [BuyerController::class, 'cartRemove'])->name('cart.remove');
     Route::get('/orders', [BuyerController::class, 'orders'])->name('orders');
     Route::get('/messages', [BuyerController::class, 'messages'])->name('messages');
+    Route::get('/messages/poll', [BuyerController::class, 'messagesPoll'])->name('messages.poll');
+    Route::post('/messages/report', [BuyerController::class, 'reportMessage'])->name('messages.report');
+    Route::post('/messages/send', [BuyerController::class, 'messagesSend'])->name('messages.send');
     Route::get('/account', [BuyerController::class, 'account'])->name('account');
     Route::post('/logout', [BuyerController::class, 'logout'])->name('logout');
 });
@@ -53,6 +76,8 @@ Route::prefix('seller')->name('seller.')->middleware(['web', 'seller'])->group(f
     Route::get('/dashboard',     [SellerController::class, 'dashboard'])->name('dashboard');
     Route::get('/orders',        [SellerController::class, 'orders'])->name('orders');
     Route::get('/inventory',     [SellerController::class, 'inventory'])->name('inventory');
+    Route::post('/inventory',     [SellerController::class, 'storeProduct'])->name('inventory.store');
+    Route::delete('/inventory/{product}', [SellerController::class, 'destroyProduct'])->name('inventory.destroy');
     Route::get('/notifications', [SellerController::class, 'notifications'])->name('notifications');
     Route::get('/prepare',       [SellerController::class, 'prepare'])->name('prepare');
     Route::get('/shipments',     [SellerController::class, 'shipments'])->name('shipments');
@@ -60,6 +85,9 @@ Route::prefix('seller')->name('seller.')->middleware(['web', 'seller'])->group(f
     Route::get('/feedback',      [SellerController::class, 'feedback'])->name('feedback');
     Route::get('/reports',       [SellerController::class, 'reports'])->name('reports');
     Route::get('/messages',      [SellerController::class, 'messages'])->name('messages');
+    Route::get('/messages/poll', [SellerController::class, 'messagesPoll'])->name('messages.poll');
+    Route::post('/messages/report', [SellerController::class, 'reportMessage'])->name('messages.report');
+    Route::post('/messages/send', [SellerController::class, 'messagesSend'])->name('messages.send');
     Route::post('/notifications/read', [SellerController::class, 'markNotifRead'])->name('notifications.read');
     Route::get('/account',       [SellerController::class, 'account'])->name('account');
     Route::post('/account/profile',  [SellerController::class, 'updateProfile'])->name('account.profile');
@@ -94,5 +122,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/doc-requests', [AdminController::class, 'docRequests'])->name('doc-requests');
         Route::patch('/doc-requests/{id}/approve', [AdminController::class, 'approveDocRequest'])->name('doc-requests.approve');
         Route::patch('/doc-requests/{id}/reject', [AdminController::class, 'rejectDocRequest'])->name('doc-requests.reject');
+        Route::get('/products', [AdminController::class, 'products'])->name('products');
+        Route::patch('/products/{id}/approve', [AdminController::class, 'approveProduct'])->name('products.approve');
+        Route::patch('/products/{id}/reject', [AdminController::class, 'rejectProduct'])->name('products.reject');
     });
 });

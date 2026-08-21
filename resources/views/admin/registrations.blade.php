@@ -94,7 +94,10 @@
                 {{-- Address --}}
                 <p class="crumb" style="margin:14px 0 10px">Address</p>
                 <div class="detail-grid">
-                  <div class="full"><div class="field-label">Full Address</div><div class="field-value">{{ collect([$user->house_no, $user->street, $user->barangay, $user->municipality, $user->province])->filter()->implode(', ') ?: '—' }}</div></div>
+                  <div class="full"><div class="field-label">Full Address</div><div class="field-value">@php
+                    $mun  = is_numeric(trim($user->municipality ?? ''))  ? null : $user->municipality;
+                    $prov = is_numeric(trim($user->province ?? '')) ? null : $user->province;
+                  @endphp{{ collect([$user->house_no, $user->street, $user->barangay, $mun, $prov])->filter()->implode(', ') ?: '—' }}</div></div>
                 </div>
 
                 {{-- Documents --}}

@@ -14,6 +14,8 @@ class Complaint extends Model
         'order_id', 'complainant_id', 'respondent_id',
         'complaint_type', 'subject', 'description',
         'status', 'resolution', 'handled_by', 'resolved_at',
+        'message_id', 'shop_name', 'message_body', 'message_type',
+        'evidence_path', 'evidence_name', 'evidence_mime', 'evidence_type', 'evidence_size',
     ];
 
     protected $casts = [

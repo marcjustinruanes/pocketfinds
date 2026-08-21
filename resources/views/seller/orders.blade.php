@@ -72,7 +72,7 @@
     <div class="modal-body">
       <div style="display:flex;flex-direction:column;gap:14px">
         <div><div class="field-label">Customer</div><div class="field-value">Sample Customer</div></div>
-        <div><div class="field-label">Delivery Address</div><div class="field-value">123 Sample St., Barangay Sample, City, Province</div></div>
+        <div><div class="field-label">Delivery Address</div><div class="field-value">Available when a customer places an order.</div></div>
         <div><div class="field-label">Payment Method</div><div class="field-value">Cash on Delivery</div></div>
         <div>
           <div class="field-label" style="margin-bottom:10px">Items Ordered</div>
