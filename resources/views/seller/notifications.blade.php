@@ -1,33 +1,54 @@
 @extends('seller.layout')
 @section('title', 'Notifications')
-@section('page-title', 'Order Notifications')
-@section('page-sub', 'New orders and alerts requiring your attention')
+@section('page-title', 'Notifications')
+@section('page-sub', 'Your alerts and account updates')
 
 @section('content')
 <div class="dash-grid">
   <div class="stack">
     <div class="card">
       <div class="card-head">
-        <div><h2>New Orders</h2><p>Requires your action</p></div>
-        <button class="btn btn-sm btn-outline">Mark all read</button>
+        <div><h2>All Notifications</h2><p>{{ $notifications->count() }} total</p></div>
+        @if($notifications->where('is_read', false)->count())
+          <form method="POST" action="{{ route('seller.notifications.read') }}">
+            @csrf
+            <button class="btn btn-sm btn-outline" type="submit" style="display:inline-flex;align-items:center;gap:6px">
+              @include('seller.partials.icon',['name'=>'check','size'=>13]) Mark all read
+            </button>
+          </form>
+        @endif
       </div>
       <div class="card-pad">
-        @php $notifs = [
-          ['New order received','Order #00001 — 1 item · ₱299.00','2 min ago', false],
-          ['New order received','Order #00002 — 3 items · ₱850.00','15 min ago', false],
-          ['Low stock alert','Sample Product has only 2 units left','1 hr ago', false],
-          ['Order delivered','Order #99998 was confirmed delivered','Yesterday', true],
-        ]; @endphp
-        @foreach($notifs as [$title,$sub,$time,$read])
-        <div class="notif-row">
-          <div class="notif-dot {{ $read ? 'read' : '' }}"></div>
-          <div class="notif-body">
-            <div class="notif-title">{{ $title }}</div>
-            <div class="notif-sub">{{ $sub }}</div>
+        @forelse($notifications as $notif)
+          @php
+            $isDoc = in_array($notif->notification_type, ['doc_approved','doc_rejected']);
+            $icon  = $notif->notification_type === 'doc_approved' ? 'check-circle'
+                   : ($notif->notification_type === 'doc_rejected' ? 'x' : 'bell');
+            $color = $notif->notification_type === 'doc_approved' ? 'var(--success)'
+                   : ($notif->notification_type === 'doc_rejected' ? 'var(--danger)' : 'var(--pink)');
+          @endphp
+          <div class="notif-row">
+            <div style="width:32px;height:32px;border-radius:50%;background:var(--paper);border:1px solid var(--border);display:grid;place-items:center;flex:none;color:{{ $color }}">
+              @include('seller.partials.icon',['name'=>$icon,'size'=>15])
+            </div>
+            <div class="notif-body">
+              <div class="notif-title" style="{{ $notif->is_read ? 'font-weight:500' : '' }}">{{ $notif->title }}</div>
+              <div class="notif-sub">{{ $notif->message }}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none">
+              <div class="notif-time">{{ \Carbon\Carbon::parse($notif->created_at)->diffForHumans() }}</div>
+              @if(!$notif->is_read)
+                <div style="width:7px;height:7px;border-radius:50%;background:var(--pink)"></div>
+              @endif
+            </div>
           </div>
-          <div class="notif-time">{{ $time }}</div>
-        </div>
-        @endforeach
+        @empty
+          <div class="empty">
+            @include('seller.partials.icon',['name'=>'bell','size'=>32,'class'=>'ic'])
+            <h3>No notifications yet</h3>
+            <p>You'll be notified here about orders and account updates.</p>
+          </div>
+        @endforelse
       </div>
     </div>
   </div>
@@ -36,9 +57,18 @@
     <div class="card">
       <div class="card-head"><h2>Summary</h2></div>
       <div class="card-pad" style="display:flex;flex-direction:column;gap:10px">
-        @foreach([['bell','Unread Notifications',3,'stamp-new'],['orders','Pending Orders',2,'stamp-pending'],['truck','In Transit',0,'stamp-transit'],['check-circle','Delivered Today',1,'stamp-delivered']] as [$icon,$label,$count,$stamp])
+        @php
+          $unread  = $notifications->where('is_read', false)->count();
+          $docAppr = $notifications->where('notification_type','doc_approved')->count();
+          $docRej  = $notifications->where('notification_type','doc_rejected')->count();
+        @endphp
+        @foreach([
+          ['bell',        'Unread',           $unread,  'stamp-new'],
+          ['check-circle','Doc Approved',      $docAppr, 'stamp-approved'],
+          ['x',           'Doc Rejected',      $docRej,  'stamp-rejected'],
+        ] as [$icon,$label,$count,$stamp])
         <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:9px">
-          <span style="color:var(--pink-dark)">@include('seller.partials.icon', ['name' => $icon, 'size' => 18])</span>
+          <span style="color:var(--pink-dark)">@include('seller.partials.icon',['name'=>$icon,'size'=>18])</span>
           <span style="font-size:13px;font-weight:600;flex:1">{{ $label }}</span>
           <span class="stamp {{ $stamp }}">{{ $count }}</span>
         </div>
@@ -48,8 +78,12 @@
     <div class="card">
       <div class="card-head"><h2>Quick Actions</h2></div>
       <div class="card-pad" style="display:flex;flex-direction:column;gap:8px">
-        <a href="{{ route('seller.orders') }}" class="btn btn-primary">@include('seller.partials.icon', ['name' => 'orders', 'size' => 15]) View All Orders</a>
-        <a href="{{ route('seller.prepare') }}" class="btn btn-outline">@include('seller.partials.icon', ['name' => 'package', 'size' => 15]) Prepare Orders</a>
+        <a href="{{ route('seller.orders') }}" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:7px">
+          @include('seller.partials.icon',['name'=>'orders','size'=>15]) View All Orders
+        </a>
+        <a href="{{ route('seller.account') }}" class="btn btn-outline" style="display:inline-flex;align-items:center;gap:7px">
+          @include('seller.partials.icon',['name'=>'shield','size'=>15]) My Documents
+        </a>
       </div>
     </div>
   </div>

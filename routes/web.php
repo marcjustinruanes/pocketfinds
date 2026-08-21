@@ -46,7 +46,13 @@ Route::prefix('seller')->name('seller.')->middleware(['web', 'seller'])->group(f
     Route::get('/feedback',      [SellerController::class, 'feedback'])->name('feedback');
     Route::get('/reports',       [SellerController::class, 'reports'])->name('reports');
     Route::get('/messages',      [SellerController::class, 'messages'])->name('messages');
+    Route::post('/notifications/read', [SellerController::class, 'markNotifRead'])->name('notifications.read');
     Route::get('/account',       [SellerController::class, 'account'])->name('account');
+    Route::post('/account/profile',  [SellerController::class, 'updateProfile'])->name('account.profile');
+    Route::post('/account/address',  [SellerController::class, 'updateAddress'])->name('account.address');
+    Route::post('/account/shop',     [SellerController::class, 'updateShop'])->name('account.shop');
+    Route::post('/account/documents', [SellerController::class, 'updateDocuments'])->name('account.documents');
+    Route::post('/account/password', [SellerController::class, 'updatePassword'])->name('account.password');
     Route::post('/logout',       [SellerController::class, 'logout'])->name('logout');
 });
 
@@ -71,5 +77,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/account', [AdminController::class, 'account'])->name('account');
         Route::post('/account/update', [AdminController::class, 'accountUpdate'])->name('account.update');
         Route::post('/account/password', [AdminController::class, 'passwordUpdate'])->name('account.password');
+        Route::get('/doc-requests', [AdminController::class, 'docRequests'])->name('doc-requests');
+        Route::patch('/doc-requests/{id}/approve', [AdminController::class, 'approveDocRequest'])->name('doc-requests.approve');
+        Route::patch('/doc-requests/{id}/reject', [AdminController::class, 'rejectDocRequest'])->name('doc-requests.reject');
     });
 });

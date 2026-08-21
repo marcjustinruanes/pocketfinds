@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Commission;
 use App\Models\Complaint;
+use App\Models\DocumentUpdateRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -196,10 +197,10 @@ class AdminController extends Controller
     {
         $user = auth()->user();
         $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name'  => 'required|string|max:255',
+            'given_names' => 'required|string|max:255',
+            'last_name'   => 'required|string|max:255',
         ]);
-        $user->update($request->only('first_name', 'last_name'));
+        $user->update($request->only('given_names', 'last_name'));
         return back()->with('success', 'Profile updated.');
     }
 
@@ -216,5 +217,64 @@ class AdminController extends Controller
 
         auth()->user()->update(['password' => Hash::make($request->password)]);
         return back()->with('success', 'Password updated.');
+    }
+
+    public function docRequests()
+    {
+        $counts   = $this->sidebarCounts();
+        $requests = DocumentUpdateRequest::with('user')->latest()->get();
+        $idTypes  = \DB::table('id_types')->orderBy('id')->get()->keyBy('id');
+        return view('admin.doc-requests', array_merge($counts, compact('requests', 'idTypes')));
+    }
+
+    public function approveDocRequest($id)
+    {
+        $req = DocumentUpdateRequest::findOrFail($id);
+        $req->update(['status' => 'approved', 'reviewed_by' => auth()->id(), 'reviewed_at' => now()]);
+
+        // Apply changes to user
+        $data = array_filter([
+            'id_type_id'           => $req->id_type_id,
+            'id_file'              => $req->id_file,
+            'business_permit_file' => $req->business_permit_file,
+        ], fn($v) => !is_null($v));
+        $req->user->update($data);
+
+        // Notify seller
+        \DB::table('notifications')->insert([
+            'id'                => (string) \Illuminate\Support\Str::uuid(),
+            'user_id'           => $req->user_id,
+            'title'             => 'Document Update Approved',
+            'message'           => 'Your document update request has been approved and your account has been updated.',
+            'notification_type' => 'doc_approved',
+            'is_read'           => false,
+            'created_at'        => now(),
+        ]);
+
+        return back()->with('success', 'Request approved and seller notified.');
+    }
+
+    public function rejectDocRequest(Request $request, $id)
+    {
+        $req = DocumentUpdateRequest::findOrFail($id);
+        $req->update([
+            'status'      => 'rejected',
+            'reviewed_by' => auth()->id(),
+            'reviewed_at' => now(),
+            'note'        => $request->input('note'),
+        ]);
+
+        // Notify seller
+        \DB::table('notifications')->insert([
+            'id'                => (string) \Illuminate\Support\Str::uuid(),
+            'user_id'           => $req->user_id,
+            'title'             => 'Document Update Rejected',
+            'message'           => 'Your document update request was rejected.' . ($request->note ? ' Reason: ' . $request->note : ''),
+            'notification_type' => 'doc_rejected',
+            'is_read'           => false,
+            'created_at'        => now(),
+        ]);
+
+        return back()->with('success', 'Request rejected and seller notified.');
     }
 }

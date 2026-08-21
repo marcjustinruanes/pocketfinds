@@ -24,6 +24,11 @@
     <a href="{{ route('admin.compliance') }}" class="nav-item {{ request()->routeIs('admin.compliance') ? 'active' : '' }}">
       <span class="ic">🛡</span> Seller Compliance
     </a>
+    <a href="{{ route('admin.doc-requests') }}" class="nav-item {{ request()->routeIs('admin.doc-requests') ? 'active' : '' }}">
+      <span class="ic">📄</span> Doc Requests
+      @php $pendingDocs = \App\Models\DocumentUpdateRequest::where('status','pending')->count(); @endphp
+      @if($pendingDocs) <span class="count">{{ $pendingDocs }}</span> @endif
+    </a>
     <a href="{{ route('admin.complaints') }}" class="nav-item {{ request()->routeIs('admin.complaints') ? 'active' : '' }}">
       <span class="ic">⚑</span> Complaints &amp; Disputes
       <span class="count">{{ $openDisputes }}</span>
