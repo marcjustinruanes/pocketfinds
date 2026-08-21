@@ -55,9 +55,9 @@
 
   <div class="sidebar-foot">
     <div class="sidebar-user">
-      <div class="avatar">{{ strtoupper(substr(auth()->user()->first_name, 0, 1)) }}</div>
+      <div class="avatar">{{ strtoupper(substr(auth()->user()->given_names, 0, 1)) }}</div>
       <div class="who">
-        <strong>{{ auth()->user()->first_name }} {{ auth()->user()->last_name }}</strong>
+        <strong>{{ auth()->user()->given_names }} {{ auth()->user()->last_name }}</strong>
         <span>Seller</span>
       </div>
     </div>

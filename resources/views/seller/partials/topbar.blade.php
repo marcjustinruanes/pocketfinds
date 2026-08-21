@@ -19,7 +19,7 @@
       @include('seller.partials.icon', ['name' => 'mail', 'size' => 16])
     </a>
     <a href="{{ route('seller.account') }}" class="topbar-avatar">
-      {{ strtoupper(substr(auth()->user()->first_name, 0, 1)) }}
+      {{ strtoupper(substr(auth()->user()->given_names, 0, 1)) }}
     </a>
   </div>
 </header>

@@ -59,6 +59,7 @@ class SocialAuthController extends Controller
 
             if ($existing->is_admin) return redirect()->route('admin.dashboard');
             if ($existing->account_type === 'buyer') return redirect()->route('buyer.dashboard');
+            if ($existing->account_type === 'seller') return redirect()->route('seller.dashboard');
             return redirect()->intended('/');
         }
 
