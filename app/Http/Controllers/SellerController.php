@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\User;
 use App\Models\Message;
 use App\Models\Complaint;
+use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,16 @@ use Illuminate\Validation\Rules\Password;
 class SellerController extends Controller
 {
     public function dashboard()    { return view('seller.dashboard'); }
-    public function orders()       { return view('seller.orders'); }
+    public function orders(Request $request)
+    {
+        $status = $request->query('status', 'all');
+        $orders = Order::with(['buyer', 'paymentMethod'])
+            ->where('app_seller_id', auth()->id())
+            ->when($status !== 'all', fn ($query) => $query->where('status', $status))
+            ->latest()
+            ->get();
+        return view('seller.orders', compact('orders', 'status'));
+    }
     public function prepare()      { return view('seller.prepare'); }
     public function shipments()    { return view('seller.shipments'); }
     public function deliveries()   { return view('seller.deliveries'); }

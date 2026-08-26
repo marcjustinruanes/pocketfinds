@@ -20,7 +20,7 @@
           <div>
             <div style="font-size:16px;font-weight:700"><?php echo e($u->given_names); ?> <?php echo e($u->last_name); ?></div>
             <div style="font-size:12px;color:var(--muted)"><?php echo e($u->email); ?></div>
-            <span class="stamp stamp-active" style="margin-top:4px">Seller</span>
+            <span class="stamp stamp-active" style="margin-top:4px"><?php echo e(ucfirst($u->account_type ?: 'Account')); ?></span>
           </div>
         </div>
         <?php if(session('profile_success')): ?>
@@ -240,29 +240,29 @@ unset($__errorArgs, $__bag); ?>
       <div class="card-head"><h2>Account Overview</h2></div>
       <div class="card-pad" style="display:flex;flex-direction:column">
         <?php $__currentLoopData = [
-          ['Account Type',   ucfirst($u->account_type)],
-          ['Status',         ucfirst($u->status)],
-          ['Auth Method',    ucfirst($u->auth_method)],
-          ['Member Since',   $u->created_at?->format('M d, Y') ?? '—'],
-          ['Given Names',    $u->given_names],
-          ['Last Name',      $u->last_name],
-          ['Middle Name',    $u->middle_name ?? '—'],
-          ['Sex',            ucfirst($u->sex)],
-          ['Birthday',       $u->birthday?->format('M d, Y') ?? '—'],
-          ['Age',            $u->age],
-          ['Email',          $u->email],
-          ['Contact No.',    $u->contact_no],
-          ['Province',       '<span id="ov-province" data-code="'.e($u->province).'">—</span>'],
-          ['Municipality',   '<span id="ov-municipality" data-code="'.e($u->municipality).'">—</span>'],
-          ['Barangay',       '<span id="ov-barangay" data-code="'.e($u->barangay).'">—</span>'],
-          ['House No.',      $u->house_no ?? '—'],
-          ['Street',         $u->street ?? '—'],
-          ['Business Name',  $u->business_name ?? '—'],
-          ['Username',       $u->username ?? '—'],
-          ['Shop Category',  $u->category_id ? ($categories->firstWhere('id', $u->category_id)->name ?? '—') : '—'],
-          ['ID Type',        $u->id_type_id ? ($idTypes->firstWhere('id', $u->id_type_id)->name ?? '—') : '—'],
-          ['ID File',        $u->id_file ? '<button type="button" class="doc-preview-btn" data-src="'.asset('storage/'.$u->id_file).'" data-type="'.(in_array(strtolower(pathinfo($u->id_file,PATHINFO_EXTENSION)),['jpg','jpeg','png'])?'image':'pdf').'" style="background:none;border:none;padding:0;color:var(--pink);font-weight:600;cursor:pointer;font-size:13px">View File</button>' : '—'],
-          ['Business Permit',$u->business_permit_file ? '<button type="button" class="doc-preview-btn" data-src="'.asset('storage/'.$u->business_permit_file).'" data-type="'.(in_array(strtolower(pathinfo($u->business_permit_file,PATHINFO_EXTENSION)),['jpg','jpeg','png'])?'image':'pdf').'" style="background:none;border:none;padding:0;color:var(--pink);font-weight:600;cursor:pointer;font-size:13px">View File</button>' : '—'],
+          ['Account Type',   filled($u->account_type) ? ucfirst($u->account_type) : 'Not provided'],
+          ['Status',         filled($u->status) ? ucfirst($u->status) : 'Not provided'],
+          ['Auth Method',    filled($u->auth_method) ? ucfirst($u->auth_method) : 'Not provided'],
+          ['Member Since',   $u->created_at?->format('M d, Y') ?? 'Not provided'],
+          ['Given Names',    $u->given_names ?: 'Not provided'],
+          ['Last Name',      $u->last_name ?: 'Not provided'],
+          ['Middle Name',    $u->middle_name ?: 'Not provided'],
+          ['Sex',            $u->sex ? ucfirst($u->sex) : 'Not provided'],
+          ['Birthday',       $u->birthday?->format('M d, Y') ?? 'Not provided'],
+          ['Age',            $u->age ?: 'Not provided'],
+          ['Email',          $u->email ?: 'Not provided'],
+          ['Contact No.',    $u->contact_no ?: 'Not provided'],
+          ['Province',       '<span id="ov-province" data-code="'.e($u->province).'">'.e($u->province ?: 'Not provided').'</span>'],
+          ['Municipality',   '<span id="ov-municipality" data-code="'.e($u->municipality).'">'.e($u->municipality ?: 'Not provided').'</span>'],
+          ['Barangay',       '<span id="ov-barangay" data-code="'.e($u->barangay).'">'.e($u->barangay ?: 'Not provided').'</span>'],
+          ['House No.',      $u->house_no ?: 'Not provided'],
+          ['Street',         $u->street ?: 'Not provided'],
+          ['Business Name',  $u->business_name ?: 'Not provided'],
+          ['Username',       $u->username ?: 'Not provided'],
+          ['Shop Category',  $u->category_id ? ($categories->firstWhere('id', $u->category_id)->name ?? 'Not provided') : 'Not provided'],
+          ['ID Type',        $u->id_type_id ? ($idTypes->firstWhere('id', $u->id_type_id)->name ?? 'Not provided') : 'Not provided'],
+          ['ID File',        $u->id_file ? '<button type="button" class="doc-preview-btn" data-src="'.asset('storage/'.$u->id_file).'" data-type="'.(in_array(strtolower(pathinfo($u->id_file,PATHINFO_EXTENSION)),['jpg','jpeg','png'])?'image':'pdf').'" style="background:none;border:none;padding:0;color:var(--pink);font-weight:600;cursor:pointer;font-size:13px">View File</button>' : 'Not provided'],
+          ['Business Permit',$u->business_permit_file ? '<button type="button" class="doc-preview-btn" data-src="'.asset('storage/'.$u->business_permit_file).'" data-type="'.(in_array(strtolower(pathinfo($u->business_permit_file,PATHINFO_EXTENSION)),['jpg','jpeg','png'])?'image':'pdf').'" style="background:none;border:none;padding:0;color:var(--pink);font-weight:600;cursor:pointer;font-size:13px">View File</button>' : 'Not provided'],
         ]; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as [$label, $val]): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
         <div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border)">
           <span style="color:var(--muted)"><?php echo e($label); ?></span>

@@ -33,21 +33,20 @@
         <th>Order ID</th><th>Date</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th><th>Actions</th>
       </tr></thead>
       <tbody>
+        <?php $__empty_1 = true; $__currentLoopData = $orders; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $order): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
         <tr>
-          <td class="mono">#00001</td>
-          <td style="color:var(--muted);font-size:12px"><?php echo e(now()->format('M d, Y')); ?></td>
-          <td>Sample Customer</td>
-          <td>1 item</td>
-          <td class="mono">₱299.00</td>
-          <td><span class="stamp stamp-new">New</span></td>
-          <td>
-            <div class="tbl-actions">
-              <button class="btn btn-sm btn-outline" data-modal="orderDetailModal"><?php echo $__env->make('seller.partials.icon', ['name' => 'eye', 'size' => 13], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?> View</button>
-              <a href="<?php echo e(route('seller.prepare')); ?>" class="btn btn-sm btn-primary">Prepare</a>
-            </div>
-          </td>
+          <td class="mono"><?php echo e($order->order_number); ?></td>
+          <td style="color:var(--muted);font-size:12px"><?php echo e($order->created_at->format('M d, Y')); ?></td>
+          <td><?php echo e($order->buyer?->given_names ?: 'Customer not provided'); ?> <?php echo e($order->buyer?->last_name); ?></td>
+          <td><?php echo e(count($order->items)); ?> item<?php echo e(count($order->items) === 1 ? '' : 's'); ?></td>
+          <td class="mono">PHP <?php echo e(number_format($order->total, 2)); ?></td>
+          <td><span class="stamp stamp-<?php echo e($order->status === 'to_ship' ? 'new' : $order->status); ?>"><?php echo e(str_replace('_', ' ', ucfirst($order->status))); ?></span></td>
+          <td><a href="#order-<?php echo e($order->id); ?>" class="btn btn-sm btn-outline"><?php echo $__env->make('seller.partials.icon', ['name' => 'eye', 'size' => 13], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?> View</a></td>
         </tr>
-        <tr><td colspan="7"><div class="empty" style="padding:30px 20px"><h3>No more orders</h3><p>Orders will appear here once customers place them.</p></div></td></tr>
+        <tr id="order-<?php echo e($order->id); ?>"><td colspan="7" style="background:var(--paper);font-size:12px;line-height:1.7"><strong>Delivery:</strong> <?php echo e(collect([$order->shipping_address['house_no'] ?? null, $order->shipping_address['street'] ?? null, $order->shipping_address['barangay'] ?? null, $order->shipping_address['municipality'] ?? null, $order->shipping_address['province'] ?? null])->filter()->join(', ') ?: 'Address not provided'); ?><br><strong>Payment:</strong> <?php echo e($order->paymentMethod?->name ?: 'Payment not provided'); ?><br><strong>Items:</strong> <?php $__currentLoopData = $order->items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php echo e($item['name'] ?: 'Product not provided'); ?> × <?php echo e($item['qty']); ?><?php echo e(!$loop->last ? ', ' : ''); ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><br><strong>Shipping:</strong> PHP <?php echo e(number_format($order->shipping_amount, 2)); ?> | <strong>Total:</strong> PHP <?php echo e(number_format($order->total, 2)); ?></td></tr>
+        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+        <tr><td colspan="7"><div class="empty" style="padding:30px 20px"><h3>No orders yet</h3><p>Orders will appear here once customers place them.</p></div></td></tr>
+        <?php endif; ?>
       </tbody>
     </table>
   </div>

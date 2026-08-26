@@ -34,21 +34,20 @@
         <th>Order ID</th><th>Date</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th><th>Actions</th>
       </tr></thead>
       <tbody>
+        @forelse($orders as $order)
         <tr>
-          <td class="mono">#00001</td>
-          <td style="color:var(--muted);font-size:12px">{{ now()->format('M d, Y') }}</td>
-          <td>Sample Customer</td>
-          <td>1 item</td>
-          <td class="mono">₱299.00</td>
-          <td><span class="stamp stamp-new">New</span></td>
-          <td>
-            <div class="tbl-actions">
-              <button class="btn btn-sm btn-outline" data-modal="orderDetailModal">@include('seller.partials.icon', ['name' => 'eye', 'size' => 13]) View</button>
-              <a href="{{ route('seller.prepare') }}" class="btn btn-sm btn-primary">Prepare</a>
-            </div>
-          </td>
+          <td class="mono">{{ $order->order_number }}</td>
+          <td style="color:var(--muted);font-size:12px">{{ $order->created_at->format('M d, Y') }}</td>
+          <td>{{ $order->buyer?->given_names ?: 'Customer not provided' }} {{ $order->buyer?->last_name }}</td>
+          <td>{{ count($order->items) }} item{{ count($order->items) === 1 ? '' : 's' }}</td>
+          <td class="mono">PHP {{ number_format($order->total, 2) }}</td>
+          <td><span class="stamp stamp-{{ $order->status === 'to_ship' ? 'new' : $order->status }}">{{ str_replace('_', ' ', ucfirst($order->status)) }}</span></td>
+          <td><a href="#order-{{ $order->id }}" class="btn btn-sm btn-outline">@include('seller.partials.icon', ['name' => 'eye', 'size' => 13]) View</a></td>
         </tr>
-        <tr><td colspan="7"><div class="empty" style="padding:30px 20px"><h3>No more orders</h3><p>Orders will appear here once customers place them.</p></div></td></tr>
+        <tr id="order-{{ $order->id }}"><td colspan="7" style="background:var(--paper);font-size:12px;line-height:1.7"><strong>Delivery:</strong> {{ collect([$order->shipping_address['house_no'] ?? null, $order->shipping_address['street'] ?? null, $order->shipping_address['barangay'] ?? null, $order->shipping_address['municipality'] ?? null, $order->shipping_address['province'] ?? null])->filter()->join(', ') ?: 'Address not provided' }}<br><strong>Payment:</strong> {{ $order->paymentMethod?->name ?: 'Payment not provided' }}<br><strong>Items:</strong> @foreach($order->items as $item){{ $item['name'] ?: 'Product not provided' }} × {{ $item['qty'] }}{{ !$loop->last ? ', ' : '' }}@endforeach<br><strong>Shipping:</strong> PHP {{ number_format($order->shipping_amount, 2) }} | <strong>Total:</strong> PHP {{ number_format($order->total, 2) }}</td></tr>
+        @empty
+        <tr><td colspan="7"><div class="empty" style="padding:30px 20px"><h3>No orders yet</h3><p>Orders will appear here once customers place them.</p></div></td></tr>
+        @endforelse
       </tbody>
     </table>
   </div>

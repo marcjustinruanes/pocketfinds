@@ -7,7 +7,11 @@ use App\Models\Product;
 use App\Models\User;
 use App\Models\Message;
 use App\Models\Complaint;
+use App\Models\PaymentMethod;
+use App\Models\Order;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -74,17 +78,51 @@ class BuyerController extends Controller
 
     public function cart()
     {
-        $items = collect(session('cart', []))->map(function (array $item, string $key) {
-            return array_merge($item, ['key' => $key]);
+        $cart = collect(session('cart', []));
+        $products = Product::whereIn('id', $cart->pluck('product_id')->filter()->unique())->get()->keyBy('id');
+        $items = $cart->map(function (array $item, string $key) use ($products) {
+            $options = collect($products->get($item['product_id'])?->variations ?? [])->mapWithKeys(function ($variation) {
+                return [strtolower($variation['name']) => collect($variation['options'] ?? [])->pluck('value')->values()->all()];
+            })->all();
+
+            return array_merge($item, [
+                'key' => $key,
+                'variation_options' => [
+                    'color' => $options['color'] ?? [],
+                    'size' => $options['size'] ?? [],
+                ],
+            ]);
         });
         $groups = $items->groupBy('seller_slug');
         $voucherData = $this->cartVoucherData($groups);
-        $shippingOptions = [
-            ['id' => 'standard', 'label' => 'Standard delivery', 'detail' => '3-5 days', 'amount' => 65],
-            ['id' => 'express', 'label' => 'Express delivery', 'detail' => '1-2 days', 'amount' => 120],
-        ];
+        $shippingOptions = $this->cartShippingOptions($groups);
+        $paymentMethods = PaymentMethod::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get();
 
-        return view('buyer.cart', compact('items', 'groups', 'voucherData', 'shippingOptions'));
+        return view('buyer.cart', compact('items', 'groups', 'voucherData', 'shippingOptions', 'paymentMethods'));
+    }
+
+    private function cartShippingOptions($groups): array
+    {
+        $buyer = auth()->user();
+        $sellerLocations = User::whereIn('username', $groups->keys())->get();
+        $transitDays = $sellerLocations->map(fn ($seller) => $this->locationTransitDays($buyer, $seller))->max() ?: 7;
+        $arrival = Carbon::today()->addDays($transitDays);
+        $location = $buyer->municipality ?: ($buyer->province ?: 'No buyer location provided');
+
+        return [
+            ['id' => 'standard', 'label' => 'Standard delivery', 'detail' => 'Arrives by ' . $arrival->format('M d, Y') . ' from seller locations to ' . $location, 'amount' => 65],
+            ['id' => 'express', 'label' => 'Express delivery', 'detail' => 'Arrives by ' . $arrival->copy()->subDays(2)->max(Carbon::today())->format('M d, Y') . ' from seller locations to ' . $location, 'amount' => 120],
+        ];
+    }
+
+    private function locationTransitDays(User $buyer, User $seller): int
+    {
+        if (!$buyer->province || !$seller->province) return 7;
+        if (strcasecmp($buyer->province, $seller->province) !== 0) return 7;
+        if (!$buyer->municipality || !$seller->municipality) return 5;
+        if (strcasecmp($buyer->municipality, $seller->municipality) !== 0) return 5;
+        if (!$buyer->barangay || !$seller->barangay) return 3;
+        return strcasecmp($buyer->barangay, $seller->barangay) === 0 ? 2 : 3;
     }
 
     private function cartVoucherData($groups): array
@@ -165,16 +203,102 @@ class BuyerController extends Controller
         return redirect()->route('buyer.cart');
     }
 
-    public function cartRemove(string $key)
+    public function cartEdit(Request $request, string $key)
     {
+        $data = $request->validate([
+            'qty' => ['required', 'integer', 'min:1', 'max:99'],
+            'color' => ['nullable', 'string', 'max:100'],
+            'size' => ['nullable', 'string', 'max:100'],
+        ]);
         $cart = session('cart', []);
         abort_unless(isset($cart[$key]), 404);
-        unset($cart[$key]);
+        $item = $cart[$key];
+        $product = Product::findOrFail($item['product_id']);
+        $allowed = collect($product->variations ?? [])->mapWithKeys(fn ($variation) => [
+            strtolower($variation['name']) => collect($variation['options'] ?? [])->pluck('value')->all(),
+        ]);
+        foreach (['color', 'size'] as $field) {
+            if (filled($data[$field] ?? null) && $allowed->has($field)) {
+                abort_unless(in_array($data[$field], $allowed->get($field), true), 422);
+            }
+        }
+        $newColor = $data['color'] ?? '';
+        $newSize = $data['size'] ?? '';
+        $newKey = $product->id . '|' . $newColor . '|' . $newSize;
+        $item['qty'] = $data['qty'];
+        $item['color'] = $newColor;
+        $item['size'] = $newSize;
+        if ($newKey !== $key && isset($cart[$newKey])) {
+            $cart[$newKey]['qty'] = min(99, $cart[$newKey]['qty'] + $item['qty']);
+            unset($cart[$key]);
+        } else {
+            $cart[$newKey] = $item;
+            if ($newKey !== $key) unset($cart[$key]);
+        }
         session(['cart' => $cart]);
         return redirect()->route('buyer.cart');
     }
 
-    public function orders()   { return view('buyer.orders'); }
+    public function cartRemove(string $key)
+    {
+        $cart = session('cart', []);
+        $key = urldecode($key);
+        $matchedKey = array_key_exists($key, $cart) ? $key : collect(array_keys($cart))->first(fn ($cartKey) => urldecode($cartKey) === $key);
+        abort_unless($matchedKey !== null, 404);
+        unset($cart[$matchedKey]);
+        session(['cart' => $cart]);
+        return redirect()->route('buyer.cart');
+    }
+
+    public function orders(Request $request)
+    {
+        $tab = $request->query('tab', 'to_ship');
+        $orders = Order::with(['seller', 'paymentMethod'])
+            ->where('app_buyer_id', auth()->id())
+            ->where('status', $tab)
+            ->latest()
+            ->get();
+        return view('buyer.orders', compact('orders', 'tab'));
+    }
+
+    public function checkout(Request $request)
+    {
+        $data = $request->validate([
+            'items' => ['required', 'array', 'min:1'],
+            'items.*' => ['string'],
+            'shipping_amount' => ['nullable', 'numeric', 'min:0'],
+            'payment_method' => ['nullable', 'integer', 'exists:payment_methods,id'],
+        ]);
+        $cart = session('cart', []);
+        $selected = collect($data['items'])->filter(fn ($key) => array_key_exists($key, $cart));
+        abort_if($selected->isEmpty(), 422, 'Select at least one cart item.');
+        $items = $selected->map(fn ($key) => array_merge($cart[$key], ['key' => $key]))->values();
+        $buyer = auth()->user();
+        $address = collect(['house_no', 'street', 'barangay', 'municipality', 'province'])
+            ->mapWithKeys(fn ($field) => [$field => $buyer->{$field} ?: 'Not provided'])->all();
+        $created = [];
+
+        DB::transaction(function () use ($items, $data, $address, &$created, $cart) {
+            foreach ($items->groupBy('seller_slug') as $sellerSlug => $sellerItems) {
+                $seller = User::where('username', $sellerSlug)->where('account_type', 'seller')->first();
+                if (!$seller) continue;
+                $subtotal = $sellerItems->sum(fn ($item) => $item['price'] * $item['qty']);
+                $shipping = (float) ($data['shipping_amount'] ?? 0);
+                $order = Order::create([
+                    'order_number' => 'PF-' . now()->format('YmdHis') . '-' . strtoupper(Str::random(5)),
+                    'app_buyer_id' => auth()->id(), 'app_seller_id' => $seller->id, 'status' => 'to_ship',
+                    'items' => $sellerItems->all(), 'subtotal' => $subtotal,
+                    'shipping_amount' => $shipping, 'discount_amount' => 0,
+                    'total' => $subtotal + $shipping, 'shipping_address' => $address,
+                    'payment_method_id' => $data['payment_method'] ?? null,
+                ]);
+                $created[] = $order;
+                foreach ($sellerItems as $item) unset($cart[$item['key']]);
+            }
+        });
+        session(['cart' => $cart]);
+        return redirect()->route('buyer.orders', ['tab' => 'to_ship'])->with('success', 'Order submitted successfully.');
+    }
     public function messages(Request $request)
     {
         $product = null;
