@@ -56,6 +56,20 @@
                   @if($c->description)
                   <div class="full"><div class="field-label">Description</div><div class="field-value" style="font-size:13px;line-height:1.6">{{ $c->description }}</div></div>
                   @endif
+                  @if($c->shop_name || $c->message_id)
+                  <div class="full"><div class="field-label">Reported Shop</div><div class="field-value">{{ $c->shop_name ?: '—' }}</div></div>
+                  <div class="full"><div class="field-label">Reported Message</div><div class="field-value" style="font-size:13px;line-height:1.6">{{ $c->message_body ?: ucfirst($c->message_type ?: 'Attachment') }}</div></div>
+                  @endif
+                  @if($c->evidence_path)
+                  <div class="full"><div class="field-label">Evidence</div>
+                    @if($c->evidence_type === 'video')
+                      <video src="{{ route('report.evidence', ['path' => $c->evidence_path]) }}" controls style="max-width:100%;max-height:280px;border-radius:9px"></video>
+                    @else
+                      <img src="{{ route('report.evidence', ['path' => $c->evidence_path]) }}" alt="Report evidence" style="max-width:100%;max-height:280px;object-fit:contain;border-radius:9px">
+                    @endif
+                    <div style="font-size:11px;color:var(--muted);margin-top:5px">{{ $c->evidence_name }}</div>
+                  </div>
+                  @endif
                   @if($c->resolution)
                   <div class="full"><div class="field-label">Resolution</div><div class="field-value">{{ $c->resolution }}</div></div>
                   @endif

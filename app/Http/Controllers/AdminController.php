@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Announcement;
 use App\Models\Commission;
 use App\Models\Complaint;
+use App\Models\DocumentUpdateRequest;
 use App\Models\Message;
 use App\Models\Policy;
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -27,21 +29,50 @@ class AdminController extends Controller
 
     public function loginPost(Request $request)
     {
-        $credentials = $request->validate([
-            'email'    => 'required|email',
+        $request->validate([
+            'email'    => 'required|string',
             'password' => 'required',
         ]);
+
+        $login = $request->input('email');
+
+        // Find user by email or username
+        $user = User::where('email', $login)->orWhere('username', $login)->first();
+
+        if ($user) {
+            if ($user->status === 'pending') {
+                return back()->withErrors(['email' => 'Your account is still pending admin approval. Please wait for confirmation.'])->withInput();
+            }
+            if ($user->status === 'rejected') {
+                return back()->withErrors(['email' => 'Your account has been rejected. Please contact support for assistance.'])->withInput();
+            }
+            // Google-only accounts have no usable password
+            if ($user->auth_method === 'google' && !$user->password) {
+                return back()->withErrors(['email' => 'This account was registered with Google. Please use "Continue with Google" to sign in.'])->withInput();
+            }
+        }
+
+        // Auth::attempt only works with email, so resolve the email from username if needed
+        $email = $user ? $user->email : $login;
+        $credentials = ['email' => $email, 'password' => $request->input('password')];
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
             $user = auth()->user();
+
             if ($user->is_admin) {
                 return redirect()->route('admin.dashboard');
             }
             if ($user->is_logistics) {
                 return redirect()->route('logistics.dashboard');
             }
-            return redirect('/');
+            if ($user->account_type === 'buyer') {
+                return redirect()->route('buyer.dashboard');
+            }
+            if ($user->account_type === 'seller') {
+                return redirect()->route('seller.dashboard');
+            }
+            return redirect()->intended('/');
         }
 
         return back()->withErrors(['email' => 'Invalid credentials.'])->withInput();
@@ -388,5 +419,111 @@ class AdminController extends Controller
 
         auth()->user()->update(['password' => Hash::make($request->password)]);
         return back()->with('success', 'Password updated.');
+    }
+
+    public function docRequests()
+    {
+        $counts   = $this->sidebarCounts();
+        $requests = DocumentUpdateRequest::with('user')->latest()->get();
+        $idTypes  = \DB::table('id_types')->orderBy('id')->get()->keyBy('id');
+        return view('admin.doc-requests', array_merge($counts, compact('requests', 'idTypes')));
+    }
+
+    public function approveDocRequest($id)
+    {
+        $req = DocumentUpdateRequest::findOrFail($id);
+        $req->update(['status' => 'approved', 'reviewed_by' => auth()->id(), 'reviewed_at' => now()]);
+
+        // Apply changes to user
+        $data = array_filter([
+            'id_type_id'           => $req->id_type_id,
+            'id_file'              => $req->id_file,
+            'business_permit_file' => $req->business_permit_file,
+        ], fn($v) => !is_null($v));
+        $req->user->update($data);
+
+        // Notify seller
+        \DB::table('notifications')->insert([
+            'id'                => (string) \Illuminate\Support\Str::uuid(),
+            'user_id'           => $req->user_id,
+            'title'             => 'Document Update Approved',
+            'message'           => 'Your document update request has been approved and your account has been updated.',
+            'notification_type' => 'doc_approved',
+            'is_read'           => false,
+            'created_at'        => now(),
+        ]);
+
+        return back()->with('success', 'Request approved and seller notified.');
+    }
+
+    public function rejectDocRequest(Request $request, $id)
+    {
+        $req = DocumentUpdateRequest::findOrFail($id);
+        $req->update([
+            'status'      => 'rejected',
+            'reviewed_by' => auth()->id(),
+            'reviewed_at' => now(),
+            'note'        => $request->input('note'),
+        ]);
+
+        // Notify seller
+        \DB::table('notifications')->insert([
+            'id'                => (string) \Illuminate\Support\Str::uuid(),
+            'user_id'           => $req->user_id,
+            'title'             => 'Document Update Rejected',
+            'message'           => 'Your document update request was rejected.' . ($request->note ? ' Reason: ' . $request->note : ''),
+            'notification_type' => 'doc_rejected',
+            'is_read'           => false,
+            'created_at'        => now(),
+        ]);
+
+        return back()->with('success', 'Request rejected and seller notified.');
+    }
+
+    public function products()
+    {
+        $counts     = $this->sidebarCounts();
+        $products   = Product::with(['seller', 'category'])->latest()->get();
+        $categories = \DB::table('categories')->orderBy('name')->get()->keyBy('id');
+        return view('admin.products', array_merge($counts, compact('products', 'categories')));
+    }
+
+    public function approveProduct($id)
+    {
+        $product = Product::findOrFail($id);
+        $product->update(['status' => 'active', 'rejection_note' => null]);
+
+        \DB::table('notifications')->insert([
+            'id'                => (string) \Illuminate\Support\Str::uuid(),
+            'user_id'           => $product->seller_id,
+            'title'             => 'Product Approved',
+            'message'           => 'Your product "' . $product->name . '" has been approved and is now live.',
+            'notification_type' => 'product_approved',
+            'is_read'           => false,
+            'created_at'        => now(),
+        ]);
+
+        return back()->with('success', 'Product approved.');
+    }
+
+    public function rejectProduct(Request $request, $id)
+    {
+        $product = Product::findOrFail($id);
+        $product->update([
+            'status'         => 'rejected',
+            'rejection_note' => $request->input('note'),
+        ]);
+
+        \DB::table('notifications')->insert([
+            'id'                => (string) \Illuminate\Support\Str::uuid(),
+            'user_id'           => $product->seller_id,
+            'title'             => 'Product Rejected',
+            'message'           => 'Your product "' . $product->name . '" was rejected.' . ($request->note ? ' Reason: ' . $request->note : ''),
+            'notification_type' => 'product_rejected',
+            'is_read'           => false,
+            'created_at'        => now(),
+        ]);
+
+        return back()->with('success', 'Product rejected and seller notified.');
     }
 }
