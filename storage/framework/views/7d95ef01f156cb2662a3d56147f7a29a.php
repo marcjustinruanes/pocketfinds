@@ -8,8 +8,27 @@
   <div class="card-pad">
     <div class="filter-bar">
       <div class="search-mini">
-        <span class="ic">🔍</span>
-        <input type="text" placeholder="Search case…" data-table-search="dispTable">
+        <span class="ic"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'search']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('admin-icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'search']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
+<?php $attributes = $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
+<?php unset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
+<?php $component = $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
+<?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
+<?php endif; ?></span>
+        <input type="text" placeholder="Search case..." data-table-search="dispTable">
       </div>
     </div>
     <div data-tabs>
@@ -43,7 +62,26 @@
               <div class="modal-head">
                 <div><h3>Case #<?php echo e(strtoupper(substr($c->id, 0, 8))); ?></h3>
                   <p><?php echo e($c->complainant?->first_name); ?> vs <?php echo e($c->respondent?->first_name); ?></p></div>
-                <button class="modal-close" data-modal-close>✕</button>
+                <button class="modal-close" data-modal-close aria-label="Close"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'close']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('admin-icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'close']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
+<?php $attributes = $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
+<?php unset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
+<?php $component = $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
+<?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
+<?php endif; ?></button>
               </div>
               <div class="modal-body">
                 <div class="detail-grid">
@@ -86,7 +124,26 @@
             </div>
           </div>
           <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
-          <tr><td colspan="8"><div class="empty"><div class="ic">⚑</div><h3>No complaints yet</h3></div></td></tr>
+          <tr><td colspan="8"><div class="empty"><div class="ic"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'flag']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('admin-icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'flag']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
+<?php $attributes = $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
+<?php unset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
+<?php $component = $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
+<?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
+<?php endif; ?></div><h3>No complaints yet</h3></div></td></tr>
           <?php endif; ?>
         </tbody>
       </table>

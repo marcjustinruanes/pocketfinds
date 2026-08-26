@@ -312,7 +312,7 @@ class AdminController extends Controller
     {
         $counts = $this->sidebarCounts();
         $users = User::where('is_admin', false)
-            ->orderBy('first_name')
+            ->orderBy('given_names')
             ->orderBy('last_name')
             ->get();
 

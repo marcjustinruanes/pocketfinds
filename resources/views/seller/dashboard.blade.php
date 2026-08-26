@@ -7,23 +7,23 @@
 <div class="kpi-grid">
   <div class="kpi">
     <div class="label">Total Sales</div>
-    <div class="value">₱0</div>
-    <div class="delta up">This month</div>
+    <div class="value">₱{{ number_format($totalSales, 2) }}</div>
+    <div class="delta up">Completed orders</div>
   </div>
   <div class="kpi">
     <div class="label">New Orders</div>
-    <div class="value">0</div>
-    <div class="delta">Pending action</div>
+    <div class="value">{{ number_format($newOrders) }}</div>
+    <div class="delta">Orders to prepare</div>
   </div>
   <div class="kpi">
     <div class="label">Products Listed</div>
-    <div class="value">0</div>
+    <div class="value">{{ number_format($productsListed) }}</div>
     <div class="delta">Active listings</div>
   </div>
   <div class="kpi">
     <div class="label">Avg. Rating</div>
     <div class="value">—</div>
-    <div class="delta">From reviews</div>
+    <div class="delta">No ratings yet</div>
   </div>
 </div>
 
@@ -37,13 +37,13 @@
       </div>
       <div class="card-pad">
         <div class="chart-area">
-          @foreach([40,65,50,80,55,90,70] as $h)
-          <div class="chart-bar {{ $h === 90 ? 'highlight' : '' }}" style="height:{{ $h }}%"></div>
+          @foreach($salesChart as $day)
+          <div class="chart-bar {{ $day['amount'] === $chartMax ? 'highlight' : '' }}" style="height:{{ max(5, ($day['amount'] / $chartMax) * 100) }}%" title="PHP {{ number_format($day['amount'], 2) }}"></div>
           @endforeach
         </div>
         <div style="display:flex;justify-content:space-between;margin-top:8px;font-family:var(--font-mono);font-size:10px;color:var(--muted)">
-          @foreach(['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] as $d)
-          <span>{{ $d }}</span>
+          @foreach($salesChart as $day)
+          <span>{{ $day['label'] }}</span>
           @endforeach
         </div>
       </div>
@@ -61,16 +61,11 @@
             <th>Order ID</th><th>Customer</th><th>Amount</th><th>Status</th><th></th>
           </tr></thead>
           <tbody>
-            <tr>
-              <td class="mono">#00001</td>
-              <td>Sample Customer</td>
-              <td class="mono">₱299.00</td>
-              <td><span class="stamp stamp-new">New</span></td>
-              <td><a href="{{ route('seller.orders') }}" class="btn btn-sm btn-outline">View</a></td>
-            </tr>
-            <tr>
-              <td colspan="5"><div class="empty" style="padding:30px 20px"><h3>No more orders</h3><p>New orders will appear here.</p></div></td>
-            </tr>
+            @forelse($recentOrders as $order)
+            <tr><td class="mono">{{ $order->order_number }}</td><td>{{ $order->buyer?->given_names }} {{ $order->buyer?->last_name }}</td><td class="mono">₱{{ number_format($order->total, 2) }}</td><td><span class="stamp stamp-{{ $order->status === 'to_ship' ? 'new' : $order->status }}">{{ str_replace('_', ' ', ucfirst($order->status)) }}</span></td><td><a href="{{ route('seller.orders') }}" class="btn btn-sm btn-outline">View</a></td></tr>
+            @empty
+            <tr><td colspan="5"><div class="empty" style="padding:30px 20px"><h3>No orders yet</h3><p>Incoming orders will appear here.</p></div></td></tr>
+            @endforelse
           </tbody>
         </table>
       </div>
@@ -83,10 +78,10 @@
       <div class="card-head"><h2>Order Pipeline</h2></div>
       <div class="card-pad" style="display:flex;flex-direction:column;gap:8px">
         @php $pipeline = [
-          ['bell','New Orders','notifications','stamp-new',3],
-          ['package','To Prepare','prepare','stamp-pending',1],
-          ['truck','With Courier','shipments','stamp-transit',0],
-          ['check-circle','Delivered','deliveries','stamp-delivered',0],
+          ['bell','New Orders','notifications','stamp-new',$pipelineCounts['new']],
+          ['package','To Prepare','prepare','stamp-pending',$pipelineCounts['prepare']],
+          ['truck','With Courier','shipments','stamp-transit',$pipelineCounts['shipments']],
+          ['check-circle','Delivered','deliveries','stamp-delivered',$pipelineCounts['deliveries']],
         ]; @endphp
         @foreach($pipeline as [$icon,$label,$route,$stamp,$count])
         <a href="{{ route('seller.'.$route) }}" class="order-status-row" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-weight:600;color:var(--text);background:#fff">
@@ -105,7 +100,11 @@
         <a href="{{ route('seller.inventory') }}" class="btn btn-sm btn-outline">Manage</a>
       </div>
       <div class="card-pad">
-        <div class="empty"><div class="ic">@include('seller.partials.icon', ['name' => 'inventory', 'size' => 26])</div><h3>All stocked up</h3><p>No low-stock items right now.</p></div>
+        @forelse($lowStock as $product)
+          <div class="stock-row"><strong>{{ $product->name }}</strong><span>{{ $product->total_stock }} left</span></div>
+        @empty
+          <div class="empty"><div class="ic">@include('seller.partials.icon', ['name' => 'inventory', 'size' => 26])</div><h3>All stocked up</h3><p>No low-stock items right now.</p></div>
+        @endforelse
       </div>
     </div>
 

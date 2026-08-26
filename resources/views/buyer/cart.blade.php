@@ -130,6 +130,16 @@
     </div>
   </div>
 </div>
+<div class="cart-confirm-modal" id="orderConfirmModal" aria-hidden="true">
+  <div class="cart-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="orderConfirmTitle">
+    <h3 id="orderConfirmTitle">Place this order?</h3>
+    <p id="orderConfirmMessage">Are you sure you want to place this order?</p>
+    <div class="cart-confirm-actions">
+      <button type="button" class="btn btn-outline" id="orderCancelButton">Cancel</button>
+      <button type="button" class="btn btn-primary" id="orderConfirmButton">Place Order</button>
+    </div>
+  </div>
+</div>
 <div class="cart-voucher-modal" id="voucherModal" aria-hidden="true">
   <div class="cart-voucher-dialog" role="dialog" aria-modal="true" aria-labelledby="voucherModalTitle">
     <div class="cart-voucher-modal-head">
@@ -213,8 +223,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const itemEditModal = document.getElementById('itemEditModal');
   const itemEditForm = document.getElementById('itemEditForm');
   const paymentModal = document.getElementById('paymentModal');
+  const orderConfirmModal = document.getElementById('orderConfirmModal');
+  const orderCancelButton = document.getElementById('orderCancelButton');
+  const orderConfirmButton = document.getElementById('orderConfirmButton');
   const paymentSelect = document.querySelector('[name="payment_method"]');
   let appliedVoucher = null;
+  let submittingOrder = false;
   if (!selectAll || !checkoutButton) return;
   const money = new Intl.NumberFormat('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -352,8 +366,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
   checkoutForm.addEventListener('submit', event => {
     const selected = itemChecks.filter(input => input.checked);
-    if (!selected.length || !confirm(`Are you sure you want to place this order for ${selected.length} item${selected.length === 1 ? '' : 's'}?`)) {
-      event.preventDefault();
+    if (submittingOrder) return;
+    event.preventDefault();
+    if (!selected.length) {
+      return;
+    }
+    document.getElementById('orderConfirmMessage').textContent = `Are you sure you want to place this order for ${selected.length} item${selected.length === 1 ? '' : 's'}?`;
+    orderConfirmModal.classList.add('open');
+    orderConfirmModal.setAttribute('aria-hidden', 'false');
+  });
+
+  function closeOrderConfirm() {
+    orderConfirmModal.classList.remove('open');
+    orderConfirmModal.setAttribute('aria-hidden', 'true');
+  }
+
+  orderCancelButton.addEventListener('click', closeOrderConfirm);
+  orderConfirmModal.addEventListener('click', event => {
+    if (event.target === orderConfirmModal) closeOrderConfirm();
+  });
+  orderConfirmButton.addEventListener('click', () => {
+    const selected = itemChecks.filter(input => input.checked);
+    if (!selected.length) {
+      closeOrderConfirm();
       return;
     }
     selected.forEach(input => {
@@ -365,6 +400,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.getElementById('checkoutShipping').value = shippingOptions.find(input => input.checked)?.value || 0;
     document.getElementById('checkoutPayment').value = paymentSelect?.value || '';
+    submittingOrder = true;
+    closeOrderConfirm();
+    checkoutForm.submit();
   });
 
   refreshSummary();

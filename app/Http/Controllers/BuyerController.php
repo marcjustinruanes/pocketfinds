@@ -254,11 +254,29 @@ class BuyerController extends Controller
     {
         $tab = $request->query('tab', 'to_ship');
         $orders = Order::with(['seller', 'paymentMethod'])
-            ->where('app_buyer_id', auth()->id())
+            ->where('buyer_id', auth()->id())
             ->where('status', $tab)
             ->latest()
             ->get();
         return view('buyer.orders', compact('orders', 'tab'));
+    }
+
+    public function cancelOrder(Request $request, Order $order)
+    {
+        abort_unless($order->buyer_id === auth()->id(), 403);
+        abort_unless($order->status === 'to_ship', 422, 'This order can no longer be cancelled.');
+
+        $data = $request->validate([
+            'cancellation_reason' => ['required', 'string', 'in:Changed my mind,Found a better price,Ordered by mistake,Payment issue,Other'],
+            'cancellation_note' => ['nullable', 'string', 'max:500'],
+        ]);
+        $order->update([
+            'status' => 'cancelled',
+            'cancellation_reason' => $data['cancellation_reason'],
+            'cancellation_note' => $data['cancellation_note'] ?? null,
+        ]);
+
+        return redirect()->route('buyer.orders', ['tab' => 'cancelled'])->with('success', 'Order cancelled successfully.');
     }
 
     public function checkout(Request $request)
@@ -267,7 +285,7 @@ class BuyerController extends Controller
             'items' => ['required', 'array', 'min:1'],
             'items.*' => ['string'],
             'shipping_amount' => ['nullable', 'numeric', 'min:0'],
-            'payment_method' => ['nullable', 'integer', 'exists:payment_methods,id'],
+            'payment_method' => ['required', 'integer', 'exists:payment_methods,id'],
         ]);
         $cart = session('cart', []);
         $selected = collect($data['items'])->filter(fn ($key) => array_key_exists($key, $cart));
@@ -276,9 +294,10 @@ class BuyerController extends Controller
         $buyer = auth()->user();
         $address = collect(['house_no', 'street', 'barangay', 'municipality', 'province'])
             ->mapWithKeys(fn ($field) => [$field => $buyer->{$field} ?: 'Not provided'])->all();
+        $paymentMethod = PaymentMethod::findOrFail($data['payment_method']);
         $created = [];
 
-        DB::transaction(function () use ($items, $data, $address, &$created, $cart) {
+        DB::transaction(function () use ($items, $data, $address, $paymentMethod, &$created, &$cart) {
             foreach ($items->groupBy('seller_slug') as $sellerSlug => $sellerItems) {
                 $seller = User::where('username', $sellerSlug)->where('account_type', 'seller')->first();
                 if (!$seller) continue;
@@ -286,10 +305,11 @@ class BuyerController extends Controller
                 $shipping = (float) ($data['shipping_amount'] ?? 0);
                 $order = Order::create([
                     'order_number' => 'PF-' . now()->format('YmdHis') . '-' . strtoupper(Str::random(5)),
-                    'app_buyer_id' => auth()->id(), 'app_seller_id' => $seller->id, 'status' => 'to_ship',
+                    'buyer_id' => auth()->id(), 'seller_id' => $seller->id, 'status' => 'to_ship',
                     'items' => $sellerItems->all(), 'subtotal' => $subtotal,
                     'shipping_amount' => $shipping, 'discount_amount' => 0,
                     'total' => $subtotal + $shipping, 'shipping_address' => $address,
+                    'payment_method' => $paymentMethod->name,
                     'payment_method_id' => $data['payment_method'] ?? null,
                 ]);
                 $created[] = $order;

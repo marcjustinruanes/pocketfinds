@@ -11,8 +11,27 @@
   <div class="card-pad">
     <div class="filter-bar">
       <div class="search-mini">
-        <span class="ic">🔍</span>
-        <input type="text" placeholder="Search seller…" data-table-search="compTable">
+        <span class="ic"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'search']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('admin-icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'search']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
+<?php $attributes = $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
+<?php unset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
+<?php $component = $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
+<?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
+<?php endif; ?></span>
+        <input type="text" placeholder="Search seller..." data-table-search="compTable">
       </div>
     </div>
     <div data-tabs>
@@ -31,11 +50,27 @@
           <tr class="rail-row rail-<?php echo e($seller->status); ?>" data-type="<?php echo e($seller->status); ?>">
             <td>
               <div class="cell-user">
-                <div class="avatar-sm"><?php echo e(strtoupper(substr($seller->given_names,0,1).substr($seller->last_name,0,1))); ?></div>
-                <div>
-                  <strong><?php echo e($seller->given_names); ?> <?php echo e($seller->last_name); ?></strong>
-                  <span><?php echo e($seller->email); ?></span>
-                </div>
+                <?php if (isset($component)) { $__componentOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.user-avatar','data' => ['user' => $seller,'size' => '30','class' => 'avatar-sm']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('user-avatar'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['user' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($seller),'size' => '30','class' => 'avatar-sm']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e)): ?>
+<?php $attributes = $__attributesOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e; ?>
+<?php unset($__attributesOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e)): ?>
+<?php $component = $__componentOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e; ?>
+<?php unset($__componentOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e); ?>
+<?php endif; ?>
+                <div><strong><?php echo e($seller->given_names); ?> <?php echo e($seller->last_name); ?></strong><span><?php echo e($seller->email); ?></span></div>
               </div>
             </td>
             <td style="font-size:12.5px"><?php echo e($seller->business_name ?? '—'); ?></td>
@@ -68,11 +103,27 @@
           <div class="modal-overlay" id="compModal-<?php echo e($seller->id); ?>">
             <div class="modal modal-lg">
               <div class="modal-head">
-                <div>
-                  <h3>Compliance Review</h3>
-                  <p><?php echo e($seller->given_names); ?> <?php echo e($seller->last_name); ?> — <?php echo e($seller->business_name ?? 'No business name'); ?></p>
-                </div>
-                <button class="modal-close" data-modal-close>✕</button>
+                <div><h3>Compliance Review</h3><p><?php echo e($seller->given_names); ?> <?php echo e($seller->last_name); ?> — <?php echo e($seller->business_name ?? 'No business name'); ?></p></div>
+                <button class="modal-close" data-modal-close aria-label="Close"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'close']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('admin-icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'close']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
+<?php $attributes = $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
+<?php unset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
+<?php $component = $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
+<?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
+<?php endif; ?></button>
               </div>
               <div class="modal-body">
 
@@ -131,7 +182,26 @@
             </div>
           </div>
           <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
-          <tr><td colspan="7"><div class="empty"><div class="ic">🛡</div><h3>No sellers yet</h3></div></td></tr>
+          <tr><td colspan="7"><div class="empty"><div class="ic"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'shield']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('admin-icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'shield']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
+<?php $attributes = $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
+<?php unset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
+<?php $component = $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
+<?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
+<?php endif; ?></div><h3>No sellers yet</h3></div></td></tr>
           <?php endif; ?>
         </tbody>
       </table>

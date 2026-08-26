@@ -1,15 +1,15 @@
 <nav class="sidebar" id="sidebar">
   <div class="sidebar-brand">
-    <div class="mark">A</div>
+    <div class="mark">L</div>
     <div>
       <div class="name">PocketFinds</div>
-      <span class="tag">Admin Console</span>
+      <span class="tag">Logistics</span>
     </div>
   </div>
 
   <div class="nav-groups">
     <div class="nav-label">Main</div>
-    <a href="<?php echo e(route('admin.dashboard')); ?>" class="nav-item <?php echo e(request()->routeIs('admin.dashboard') ? 'active' : ''); ?>">
+    <a href="<?php echo e(route('logistics.dashboard')); ?>" class="nav-item <?php echo e(request()->routeIs('logistics.dashboard') ? 'active' : ''); ?>">
       <span class="ic"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'dashboard']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -31,7 +31,7 @@
 <?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
 <?php endif; ?></span> Dashboard
     </a>
-    <a href="<?php echo e(route('admin.registrations')); ?>" class="nav-item <?php echo e(request()->routeIs('admin.registrations') ? 'active' : ''); ?>">
+    <a href="<?php echo e(route('logistics.requests')); ?>" class="nav-item <?php echo e(request()->routeIs('logistics.requests') ? 'active' : ''); ?>">
       <span class="ic"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'edit']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -51,10 +51,10 @@
 <?php if (isset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
 <?php $component = $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
 <?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
-<?php endif; ?></span> Registrations
-      <span class="count"><?php echo e($pendingRegistrations); ?></span>
+<?php endif; ?></span> Delivery Requests
+      <?php if(($pendingDeliveries ?? 0) > 0): ?><span class="count"><?php echo e($pendingDeliveries); ?></span><?php endif; ?>
     </a>
-    <a href="<?php echo e(route('admin.users')); ?>" class="nav-item <?php echo e(request()->routeIs('admin.users') ? 'active' : ''); ?>">
+    <a href="<?php echo e(route('logistics.assignments')); ?>" class="nav-item <?php echo e(request()->routeIs('logistics.assignments') ? 'active' : ''); ?>">
       <span class="ic"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'users']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -74,21 +74,21 @@
 <?php if (isset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
 <?php $component = $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
 <?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
-<?php endif; ?></span> User Accounts
+<?php endif; ?></span> Courier Assignments
     </a>
 
-    <div class="nav-label">Compliance</div>
-    <a href="<?php echo e(route('admin.compliance')); ?>" class="nav-item <?php echo e(request()->routeIs('admin.compliance') ? 'active' : ''); ?>">
+    <div class="nav-label">Tracking</div>
+    <a href="<?php echo e(route('logistics.monitor')); ?>" class="nav-item <?php echo e(request()->routeIs('logistics.monitor') ? 'active' : ''); ?>">
       <span class="ic"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'shield']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'chart']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('admin-icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => 'shield']); ?>
+<?php $component->withAttributes(['name' => 'chart']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
@@ -98,14 +98,10 @@
 <?php if (isset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
 <?php $component = $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
 <?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
-<?php endif; ?></span> Seller Compliance
+<?php endif; ?></span> Live Monitor
+      <?php if(($activeDeliveries ?? 0) > 0): ?><span class="count"><?php echo e($activeDeliveries); ?></span><?php endif; ?>
     </a>
-    <a href="<?php echo e(route('admin.doc-requests')); ?>" class="nav-item <?php echo e(request()->routeIs('admin.doc-requests') ? 'active' : ''); ?>">
-      <span class="ic">📄</span> Doc Requests
-      <?php $pendingDocs = \App\Models\DocumentUpdateRequest::where('status','pending')->count(); ?>
-      <?php if($pendingDocs): ?> <span class="count"><?php echo e($pendingDocs); ?></span> <?php endif; ?>
-    </a>
-    <a href="<?php echo e(route('admin.complaints')); ?>" class="nav-item <?php echo e(request()->routeIs('admin.complaints') ? 'active' : ''); ?>">
+    <a href="<?php echo e(route('logistics.issues')); ?>" class="nav-item <?php echo e(request()->routeIs('logistics.issues') ? 'active' : ''); ?>">
       <span class="ic"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'flag']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -125,22 +121,19 @@
 <?php if (isset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
 <?php $component = $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
 <?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
-<?php endif; ?></span> Complaints &amp; Disputes
-      <span class="count"><?php echo e($openDisputes); ?></span>
+<?php endif; ?></span> Issues
     </a>
-
-    <div class="nav-label">Finance</div>
-    <a href="<?php echo e(route('admin.commission')); ?>" class="nav-item <?php echo e(request()->routeIs('admin.commission') ? 'active' : ''); ?>">
+    <a href="<?php echo e(route('logistics.history')); ?>" class="nav-item <?php echo e(request()->routeIs('logistics.history') ? 'active' : ''); ?>">
       <span class="ic"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'peso']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'shield']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('admin-icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => 'peso']); ?>
+<?php $component->withAttributes(['name' => 'shield']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
@@ -150,9 +143,11 @@
 <?php if (isset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
 <?php $component = $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
 <?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
-<?php endif; ?></span> Commission
+<?php endif; ?></span> Delivery History
     </a>
-    <a href="<?php echo e(route('admin.reports')); ?>" class="nav-item <?php echo e(request()->routeIs('admin.reports') ? 'active' : ''); ?>">
+
+    <div class="nav-label">System</div>
+    <a href="<?php echo e(route('logistics.reports')); ?>" class="nav-item <?php echo e(request()->routeIs('logistics.reports') ? 'active' : ''); ?>">
       <span class="ic"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'chart']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -174,9 +169,7 @@
 <?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
 <?php endif; ?></span> Reports
     </a>
-
-    <div class="nav-label">System</div>
-    <a href="<?php echo e(route('admin.messages')); ?>" class="nav-item <?php echo e(request()->routeIs('admin.messages*') ? 'active' : ''); ?>">
+    <a href="<?php echo e(route('logistics.messages')); ?>" class="nav-item <?php echo e(request()->routeIs('logistics.messages*') ? 'active' : ''); ?>">
       <span class="ic"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'mail']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -197,11 +190,8 @@
 <?php $component = $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
 <?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
 <?php endif; ?></span> Messages
-      <?php if(!empty($unreadMessages)): ?>
-      <span class="count"><?php echo e($unreadMessages); ?></span>
-      <?php endif; ?>
     </a>
-    <a href="<?php echo e(route('admin.account')); ?>" class="nav-item <?php echo e(request()->routeIs('admin.account') ? 'active' : ''); ?>">
+    <a href="<?php echo e(route('logistics.account')); ?>" class="nav-item <?php echo e(request()->routeIs('logistics.account') ? 'active' : ''); ?>">
       <span class="ic"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'account']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -223,55 +213,15 @@
 <?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
 <?php endif; ?></span> My Account
     </a>
-    <a href="<?php echo e(route('admin.settings')); ?>" class="nav-item <?php echo e(request()->routeIs('admin.settings') ? 'active' : ''); ?>">
-      <span class="ic"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'settings']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('admin-icon'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['name' => 'settings']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
-<?php $attributes = $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
-<?php unset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
-<?php $component = $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
-<?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
-<?php endif; ?></span> Settings
-    </a>
+
   </div>
 
   <div class="sidebar-foot">
     <div class="sidebar-user">
-      <?php if (isset($component)) { $__componentOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.user-avatar','data' => ['user' => auth()->user(),'size' => '36','class' => 'avatar']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('user-avatar'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['user' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(auth()->user()),'size' => '36','class' => 'avatar']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e)): ?>
-<?php $attributes = $__attributesOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e; ?>
-<?php unset($__attributesOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e)): ?>
-<?php $component = $__componentOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e; ?>
-<?php unset($__componentOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e); ?>
-<?php endif; ?>
+      <div class="avatar"><?php echo e(strtoupper(substr(auth()->user()->first_name, 0, 1))); ?></div>
       <div class="who">
         <strong><?php echo e(auth()->user()->first_name); ?> <?php echo e(auth()->user()->last_name); ?></strong>
-        <span><?php echo e(ucfirst(auth()->user()->account_type)); ?></span>
+        <span>Logistics</span>
       </div>
     </div>
     <button class="logout-btn" data-logout><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
@@ -296,4 +246,4 @@
 <?php endif; ?> Sign out</button>
   </div>
 </nav>
-<?php /**PATH C:\Users\Administrator\pocketfinds\resources\views\admin\partials\sidebar.blade.php ENDPATH**/ ?>
+<?php /**PATH C:\Users\Administrator\pocketfinds\resources\views\logistics\partials\sidebar.blade.php ENDPATH**/ ?>

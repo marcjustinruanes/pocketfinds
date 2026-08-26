@@ -17,12 +17,37 @@ use Illuminate\Validation\Rules\Password;
 
 class SellerController extends Controller
 {
-    public function dashboard()    { return view('seller.dashboard'); }
+    public function dashboard()
+    {
+        $sellerId = auth()->id();
+        $orders = Order::where('seller_id', $sellerId);
+        $totalSales = (clone $orders)->where('status', 'completed')->sum('total');
+        $newOrders = (clone $orders)->where('status', 'to_ship')->count();
+        $productsListed = Product::where('seller_id', $sellerId)->where('status', 'active')->count();
+        $recentOrders = Order::with('buyer')->where('seller_id', $sellerId)->latest()->limit(5)->get();
+        $pipelineCounts = [
+            'new' => (clone $orders)->where('status', 'to_ship')->count(),
+            'prepare' => (clone $orders)->where('status', 'to_ship')->count(),
+            'shipments' => (clone $orders)->where('status', 'in_transit')->count(),
+            'deliveries' => (clone $orders)->whereIn('status', ['completed', 'delivered'])->count(),
+        ];
+        $chartStart = now()->startOfDay()->subDays(6);
+        $salesByDay = (clone $orders)->where('status', 'completed')->where('created_at', '>=', $chartStart)
+            ->get(['total', 'created_at'])->groupBy(fn ($order) => $order->created_at->format('Y-m-d'));
+        $salesChart = collect(range(0, 6))->map(function ($days) use ($chartStart, $salesByDay) {
+            $date = $chartStart->copy()->addDays($days);
+            return ['label' => $date->format('D'), 'amount' => (float) $salesByDay->get($date->format('Y-m-d'), collect())->sum('total')];
+        });
+        $chartMax = max(1, $salesChart->max('amount'));
+        $lowStock = Product::where('seller_id', $sellerId)->where('status', 'active')->get()->filter(fn ($product) => $product->total_stock <= 5)->take(5);
+
+        return view('seller.dashboard', compact('totalSales', 'newOrders', 'productsListed', 'recentOrders', 'pipelineCounts', 'salesChart', 'chartMax', 'lowStock'));
+    }
     public function orders(Request $request)
     {
         $status = $request->query('status', 'all');
         $orders = Order::with(['buyer', 'paymentMethod'])
-            ->where('app_seller_id', auth()->id())
+            ->where('seller_id', auth()->id())
             ->when($status !== 'all', fn ($query) => $query->where('status', $status))
             ->latest()
             ->get();
@@ -290,8 +315,10 @@ class SellerController extends Controller
             ->first();
 
         return view('seller.account', [
+            'seller'          => auth()->user(),
             'idTypes'        => DB::table('id_types')->orderBy('id')->get(),
             'categories'     => DB::table('categories')->orderBy('name')->get(),
+            'sexes'          => User::whereNotNull('sex')->distinct()->orderBy('sex')->pluck('sex'),
             'pendingRequest' => $pendingRequest,
             'lastRequest'    => $lastRequest,
         ]);

@@ -7,8 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 class Order extends Model
 {
     protected $fillable = [
-        'order_number', 'app_buyer_id', 'app_seller_id', 'status', 'items', 'subtotal',
+        'order_number', 'buyer_id', 'seller_id', 'status', 'items', 'subtotal',
         'shipping_amount', 'discount_amount', 'total', 'shipping_address', 'payment_method_id',
+        'payment_method',
+        'cancellation_reason', 'cancellation_note',
     ];
 
     protected $casts = [
@@ -20,7 +22,7 @@ class Order extends Model
         'total' => 'decimal:2',
     ];
 
-    public function buyer() { return $this->belongsTo(User::class, 'app_buyer_id'); }
-    public function seller() { return $this->belongsTo(User::class, 'app_seller_id'); }
+    public function buyer() { return $this->belongsTo(User::class, 'buyer_id'); }
+    public function seller() { return $this->belongsTo(User::class, 'seller_id'); }
     public function paymentMethod() { return $this->belongsTo(PaymentMethod::class); }
 }

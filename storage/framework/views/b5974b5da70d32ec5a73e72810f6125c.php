@@ -3,7 +3,7 @@
 <?php $__env->startSection('page-sub', 'Manage your seller profile and settings'); ?>
 
 <?php $__env->startSection('content'); ?>
-<?php $u = auth()->user(); ?>
+<?php $u = $seller; ?>
 
 <div class="dash-grid">
   <div class="stack">
@@ -40,8 +40,10 @@
             <div class="form-row">
               <label>Sex</label>
               <select name="sex">
-                <option value="male" <?php echo e($u->sex === 'male' ? 'selected' : ''); ?>>Male</option>
-                <option value="female" <?php echo e($u->sex === 'female' ? 'selected' : ''); ?>>Female</option>
+                <option value="" <?php echo e(blank($u->sex) ? 'selected' : ''); ?>>Select sex</option>
+                <?php $__currentLoopData = $sexes; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sex): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                  <option value="<?php echo e($sex); ?>" <?php echo e($u->sex === $sex ? 'selected' : ''); ?>><?php echo e(ucfirst($sex)); ?></option>
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
               </select>
             </div>
             <div class="form-row"><label>Birthday</label><input type="date" name="birthday" value="<?php echo e(old('birthday', $u->birthday?->format('Y-m-d'))); ?>"></div>
@@ -63,21 +65,15 @@
           <?php echo csrf_field(); ?>
           <div class="form-row">
             <label>Province</label>
-            <select name="province" id="acc-province" required>
-              <option value="" disabled>Loading provinces…</option>
-            </select>
+            <input type="text" name="province" value="<?php echo e(old('province', $u->province)); ?>" required>
           </div>
           <div class="form-row">
             <label>Municipality / City</label>
-            <select name="municipality" id="acc-municipality" required disabled>
-              <option value="" disabled>Select province first</option>
-            </select>
+            <input type="text" name="municipality" value="<?php echo e(old('municipality', $u->municipality)); ?>" required>
           </div>
           <div class="form-row">
             <label>Barangay</label>
-            <select name="barangay" id="acc-barangay" required disabled>
-              <option value="" disabled>Select municipality first</option>
-            </select>
+            <input type="text" name="barangay" value="<?php echo e(old('barangay', $u->barangay)); ?>" required>
           </div>
           <div class="form-grid-2">
             <div class="form-row"><label>House No. / Unit</label><input type="text" name="house_no" value="<?php echo e(old('house_no', $u->house_no)); ?>" placeholder="e.g. 123"></div>
@@ -295,80 +291,6 @@ unset($__errorArgs, $__bag); ?>
 </div>
 
 <script>
-const PSGC = 'https://psgc.gitlab.io/api';
-const savedProvince     = '<?php echo e($u->province); ?>';
-const savedMunicipality = '<?php echo e($u->municipality); ?>';
-const savedBarangay     = '<?php echo e($u->barangay); ?>';
-
-async function fetchJSON(url) {
-  const r = await fetch(url);
-  return r.json();
-}
-
-function populate(sel, items, saved, placeholder) {
-  sel.innerHTML = `<option value="" disabled>${placeholder}</option>`;
-  [...items].sort((a,b) => a.name.localeCompare(b.name)).forEach(item => {
-    const o = document.createElement('option');
-    o.value = item.code;
-    o.textContent = item.name;
-    if (item.code === saved) o.selected = true;
-    sel.appendChild(o);
-  });
-  sel.disabled = false;
-  // update overview label
-  const selected = items.find(i => i.code === saved);
-  return selected ? selected.name : null;
-}
-
-async function initAddress() {
-  const provSel = document.getElementById('acc-province');
-  const munSel  = document.getElementById('acc-municipality');
-  const barSel  = document.getElementById('acc-barangay');
-
-  // Load provinces
-  const provinces = await fetchJSON(`${PSGC}/provinces/`);
-  const provName = populate(provSel, provinces, savedProvince, 'Select province');
-  if (provName) document.getElementById('ov-province').textContent = provName;
-
-  if (!savedProvince) return;
-
-  // Load municipalities
-  munSel.innerHTML = '<option value="" disabled selected>Loading…</option>';
-  const muns = await fetchJSON(`${PSGC}/provinces/${savedProvince}/cities-municipalities/`);
-  const munName = populate(munSel, muns, savedMunicipality, 'Select municipality');
-  if (munName) document.getElementById('ov-municipality').textContent = munName;
-
-  if (!savedMunicipality) return;
-
-  // Load barangays
-  barSel.innerHTML = '<option value="" disabled selected>Loading…</option>';
-  const bars = await fetchJSON(`${PSGC}/cities-municipalities/${savedMunicipality}/barangays/`);
-  const barName = populate(barSel, bars, savedBarangay, 'Select barangay');
-  if (barName) document.getElementById('ov-barangay').textContent = barName;
-}
-
-// Cascade on change
-document.getElementById('acc-province').addEventListener('change', async function () {
-  const munSel = document.getElementById('acc-municipality');
-  const barSel = document.getElementById('acc-barangay');
-  munSel.innerHTML = '<option value="" disabled selected>Loading…</option>';
-  munSel.disabled = true;
-  barSel.innerHTML = '<option value="" disabled selected>Select municipality first</option>';
-  barSel.disabled = true;
-  const muns = await fetchJSON(`${PSGC}/provinces/${this.value}/cities-municipalities/`);
-  populate(munSel, muns, '', 'Select municipality');
-});
-
-document.getElementById('acc-municipality').addEventListener('change', async function () {
-  const barSel = document.getElementById('acc-barangay');
-  barSel.innerHTML = '<option value="" disabled selected>Loading…</option>';
-  barSel.disabled = true;
-  const bars = await fetchJSON(`${PSGC}/cities-municipalities/${this.value}/barangays/`);
-  populate(barSel, bars, '', 'Select barangay');
-});
-
-initAddress();
-
 // Document lightbox
 const docModal      = document.getElementById('docModal');
 const docModalBody  = document.getElementById('docModalBody');

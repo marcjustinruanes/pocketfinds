@@ -70,6 +70,7 @@ Route::prefix('buyer')->name('buyer.')->middleware(['web', 'buyer'])->group(func
     Route::patch('/cart/{key}', [BuyerController::class, 'cartUpdate'])->where('key', '.*')->name('cart.update');
     Route::delete('/cart/{key}', [BuyerController::class, 'cartRemove'])->where('key', '.*')->name('cart.remove');
     Route::get('/orders', [BuyerController::class, 'orders'])->name('orders');
+    Route::patch('/orders/{order}/cancel', [BuyerController::class, 'cancelOrder'])->name('orders.cancel');
     Route::get('/messages', [BuyerController::class, 'messages'])->name('messages');
     Route::get('/messages/poll', [BuyerController::class, 'messagesPoll'])->name('messages.poll');
     Route::post('/messages/report', [BuyerController::class, 'reportMessage'])->name('messages.report');
