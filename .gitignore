@@ -25,3 +25,17 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# ── Flutter ──
+/.dart_tool/
+/.flutter-plugins
+/.flutter-plugins-dependencies
+/.pub-cache/
+/.pub/
+/build/
+*.iml
+.metadata
+Flutter/ephemeral/
+Flutter/flutter_export_environment.sh
+ephemeral/
+
