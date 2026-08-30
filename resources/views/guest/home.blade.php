@@ -18,11 +18,20 @@
 </div></header>
 
 <main class="container">
-<section class="hero"><div class="hero-grid"><div class="hero-main"><div class="hero-copy"><div class="eyebrow">Guest shopping</div><h1>Discover products you'll love.</h1><p>Browse products, explore categories, compare deals, and find something worth adding to your cart.</p><a class="primary" href="#products">Explore products →</a></div></div><div class="hero-side"><div class="promo"><strong>New Arrivals</strong><span>Fresh products from local sellers.</span></div><div class="promo dark"><strong>Real Products</strong><span>Discover authentic items from verified sellers.</span></div></div></div></section>
+<section class="hero"><div class="hero-grid"><div class="hero-main"><div class="hero-copy"><div class="eyebrow">Guest shopping</div><h1>Discover products you'll love.</h1><p>Browse products, explore categories, compare deals, and find something worth adding to your cart.</p><a class="primary" href="#products">Explore products</a></div></div><div class="hero-side">
+  <div class="promo">
+    <span class="promo-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></span>
+    <strong>New Arrivals</strong><span>Fresh products from local sellers.</span>
+  </div>
+  <div class="promo dark">
+    <span class="promo-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-5"/></svg></span>
+    <strong>Real Products</strong><span>Discover authentic items from verified sellers.</span>
+  </div>
+</div></div></section>
 
-<div class="guest-notice"><div><strong>You're browsing as a guest.</strong><span>Sign in to save items, checkout, and track orders.</span></div><a class="notice-link" href="{{ url('/login') }}">Sign in now →</a></div>
+<div class="guest-notice"><div><strong>You're browsing as a guest.</strong><span>Sign in to save items, checkout, and track orders.</span></div><a class="notice-link" href="{{ url('/login') }}">Sign in now</a></div>
 
-<section class="section"><div class="section-head"><h2 class="section-title">Browse Categories</h2><a class="see-all" href="#">See All →</a></div><div class="category-grid" id="browseCategories"><p class="cat-loading">Loading…</p></div></section>
+<section class="section"><div class="section-head"><h2 class="section-title">Browse Categories</h2><a class="see-all" href="#">See All</a></div><div class="category-grid" id="browseCategories"><p class="cat-loading">Loading…</p></div></section>
 
 <section class="section" id="products">
   <div class="section-head"><h2 class="section-title">All Products</h2></div>

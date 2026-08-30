@@ -16,7 +16,7 @@ class User extends Authenticatable
         'email', 'contact_no',
         'province', 'municipality', 'barangay', 'house_no', 'street',
         'password', 'id_file', 'id_type_id', 'selfie_file',
-        'status', 'is_admin', 'is_logistics', 'category_id',
+        'status', 'is_admin', 'is_logistics', 'category_id', 'category_other',
         'profile_picture', 'business_name', 'business_permit_file',
     ];
 
@@ -31,5 +31,10 @@ class User extends Authenticatable
             'is_admin'          => 'boolean',
             'is_logistics'      => 'boolean',
         ];
+    }
+
+    public function categories()
+    {
+        return $this->belongsToMany(Category::class, 'category_seller');
     }
 }

@@ -13,11 +13,14 @@
         <input type="text" placeholder="Search case..." data-table-search="dispTable">
       </div>
     </div>
+    @php
+      $complaintsByStatus = $complaints->countBy('status');
+    @endphp
     <div data-tabs>
-      <a class="tab active" data-tab="all">All</a>
-      <a class="tab" data-tab="open">Open</a>
-      <a class="tab" data-tab="escalated">Escalated</a>
-      <a class="tab" data-tab="resolved">Resolved</a>
+      <a class="tab active" data-tab="all">All <span class="tab-count">{{ $complaints->count() }}</span></a>
+      <a class="tab" data-tab="open">Open <span class="tab-count">{{ $complaintsByStatus->get('open', 0) }}</span></a>
+      <a class="tab" data-tab="escalated">Escalated <span class="tab-count">{{ $complaintsByStatus->get('escalated', 0) }}</span></a>
+      <a class="tab" data-tab="resolved">Resolved <span class="tab-count">{{ $complaintsByStatus->get('resolved', 0) }}</span></a>
     </div>
     <div class="table-wrap">
       <table class="dtable" id="dispTable">
@@ -26,11 +29,25 @@
           @forelse($complaints as $c)
           <tr class="rail-row rail-{{ $c->status }}" data-type="{{ $c->status }}">
             <td class="mono">#{{ strtoupper(substr($c->id, 0, 8)) }}</td>
-            <td>{{ $c->complainant ? $c->complainant->first_name.' '.$c->complainant->last_name : '—' }}</td>
-            <td>{{ $c->respondent ? $c->respondent->first_name.' '.$c->respondent->last_name : '—' }}</td>
-            <td>{{ $c->complaint_type ?? '—' }}</td>
-            <td>{{ $c->subject }}</td>
-            <td class="mono">{{ $c->created_at?->format('Y-m-d') }}</td>
+            <td>
+              @if($c->complainant)
+                <div class="cell-user">
+                  <div class="avatar-sm">{{ strtoupper(substr($c->complainant->given_names,0,1).substr($c->complainant->last_name,0,1)) }}</div>
+                  <div><strong>{{ $c->complainant->given_names }} {{ $c->complainant->last_name }}</strong><span>{{ ucfirst($c->complainant->account_type) }}</span></div>
+                </div>
+              @else — @endif
+            </td>
+            <td>
+              @if($c->respondent)
+                <div class="cell-user">
+                  <div class="avatar-sm">{{ strtoupper(substr($c->respondent->given_names,0,1).substr($c->respondent->last_name,0,1)) }}</div>
+                  <div><strong>{{ $c->respondent->given_names }} {{ $c->respondent->last_name }}</strong><span>{{ ucfirst($c->respondent->account_type) }}</span></div>
+                </div>
+              @else — @endif
+            </td>
+            <td style="font-size:12px">{{ $c->complaint_type ?? '—' }}</td>
+            <td style="font-size:12.5px;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ $c->subject }}</td>
+            <td class="mono" style="font-size:12px">{{ $c->created_at?->format('M d, Y') }}</td>
             <td><span class="stamp stamp-{{ $c->status }}">{{ ucfirst($c->status) }}</span></td>
             <td>
               <div class="row-actions">
@@ -42,14 +59,19 @@
           <div class="modal-overlay" id="dispModal-{{ $c->id }}">
             <div class="modal modal-lg">
               <div class="modal-head">
-                <div><h3>Case #{{ strtoupper(substr($c->id, 0, 8)) }}</h3>
-                  <p>{{ $c->complainant?->first_name }} vs {{ $c->respondent?->first_name }}</p></div>
+                <div class="modal-head-main">
+                  <span class="modal-icon"><x-admin-icon name="flag" /></span>
+                  <div class="modal-head-copy">
+                    <h3>Case #{{ strtoupper(substr($c->id, 0, 8)) }}</h3>
+                    <p>{{ $c->complainant?->given_names }} vs {{ $c->respondent?->given_names }}</p>
+                  </div>
+                </div>
                 <button class="modal-close" data-modal-close aria-label="Close"><x-admin-icon name="close" /></button>
               </div>
               <div class="modal-body">
                 <div class="detail-grid">
-                  <div><div class="field-label">Filed By</div><div class="field-value">{{ $c->complainant ? $c->complainant->first_name.' '.$c->complainant->last_name.' ('.ucfirst($c->complainant->account_type).')' : '—' }}</div></div>
-                  <div><div class="field-label">Against</div><div class="field-value">{{ $c->respondent ? $c->respondent->first_name.' '.$c->respondent->last_name.' ('.ucfirst($c->respondent->account_type).')' : '—' }}</div></div>
+                  <div><div class="field-label">Filed By</div><div class="field-value">{{ $c->complainant ? $c->complainant->given_names.' '.$c->complainant->last_name.' ('.ucfirst($c->complainant->account_type).')' : '—' }}</div></div>
+                  <div><div class="field-label">Against</div><div class="field-value">{{ $c->respondent ? $c->respondent->given_names.' '.$c->respondent->last_name.' ('.ucfirst($c->respondent->account_type).')' : '—' }}</div></div>
                   <div><div class="field-label">Type</div><div class="field-value">{{ $c->complaint_type ?? '—' }}</div></div>
                   <div><div class="field-label">Status</div><div class="field-value"><span class="stamp stamp-{{ $c->status }}">{{ ucfirst($c->status) }}</span></div></div>
                   <div class="full"><div class="field-label">Subject</div><div class="field-value">{{ $c->subject }}</div></div>

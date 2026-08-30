@@ -1,106 +1,112 @@
-@extends('seller.layout')
-@section('title', 'Messages')
-@section('page-title', 'Messages')
-@section('page-sub', 'Chat with your customers')
+<?php $__env->startSection('title', 'Messages'); ?>
+<?php $__env->startSection('page-title', 'Messages'); ?>
+<?php $__env->startSection('page-sub', 'Chat with sellers'); ?>
 
-@section('content')
-@php $myId = auth()->id(); @endphp
+<?php $__env->startSection('content'); ?>
+<?php
+  $sellerName = $seller ? ($seller->business_name ?? ($seller->given_names . ' ' . $seller->last_name)) : null;
+  $myId = auth()->id();
+?>
 
 <div class="chat-shell">
+  
   <div class="chat-list" id="chatList">
     <div class="chat-list-head"><strong style="font-size:13.5px">Conversations</strong></div>
-    @if($admin && !$conversations->has($admin->id))
-      <a href="{{ route('seller.messages', ['buyer' => $admin->id]) }}" class="chat-list-item {{ $buyer && $buyer->id === $admin->id ? 'active' : '' }}">
-        <div class="cli-av">🛟</div>
-        <div class="cli-body">
-          <div class="cli-name">PocketFinds Support</div>
-          <div class="cli-preview">Message the admin team</div>
-        </div>
-      </a>
-    @endif
-    @forelse($conversations as $otherId => $last)
-      @php
+    <?php $__empty_1 = true; $__currentLoopData = $conversations; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $otherId => $last): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+      <?php
         $other = $last->sender_id === $myId ? $last->receiver : $last->sender;
-        $otherName = $other->is_admin ? 'PocketFinds Support' : ($other->given_names . ' ' . $other->last_name);
-        $isActive = $buyer && $buyer->id === $other->id;
-      @endphp
-      @php $isUnread = $last->receiver_id === $myId && !$last->read; @endphp
-      <a href="{{ route('seller.messages', ['buyer' => $other->id]) }}" class="chat-list-item {{ $isActive ? 'active' : '' }} {{ $isUnread ? 'chat-unread' : '' }}">
-        <div class="cli-av">{{ strtoupper(substr($otherName,0,1)) }}</div>
+        $otherName = $other->business_name ?? ($other->given_names . ' ' . $other->last_name);
+        $isActive = $seller && $seller->id === $other->id;
+      ?>
+      <?php $isUnread = $last->receiver_id === $myId && !$last->read; ?>
+      <a href="<?php echo e(route('buyer.messages', ['seller' => $other->username])); ?>" class="chat-list-item <?php echo e($isActive ? 'active' : ''); ?> <?php echo e($isUnread ? 'chat-unread' : ''); ?>">
+        <div class="cli-av"><?php echo e(strtoupper(substr($otherName,0,1))); ?></div>
         <div class="cli-body">
-          <div class="cli-name">{{ $otherName }}</div>
-          <div class="cli-preview">{{ $last->body ?: ($last->product_id ? '📦 Product' : '📎 Attachment') }} · {{ $last->created_at->format('g:i A') }} {{ $last->sender_id === $myId ? ($last->read ? '✓✓ Seen' : '✓ Delivered') : '' }}</div>
+          <div class="cli-name"><?php echo e($otherName); ?></div>
+          <div class="cli-preview"><?php echo e($last->body ?: ($last->product_id ? '📦 Product' : '📎 Attachment')); ?> · <?php echo e($last->created_at->format('g:i A')); ?> <?php echo e($last->sender_id === $myId ? ($last->read ? '✓✓ Seen' : '✓ Delivered') : ''); ?></div>
         </div>
       </a>
-    @empty
+    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+      <?php if(!$seller): ?>
       <div class="empty" style="padding:40px 20px">
-        <div class="ic">@include('seller.partials.icon', ['name' => 'mail', 'size' => 28])</div>
-        <h3>No messages</h3><p>Buyers will appear here when they message you.</p>
+        <div class="ic"><?php echo $__env->make('buyer.partials.icon', ['name' => 'mail', 'size' => 28], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?></div>
+        <h3>No messages</h3><p>Start a conversation with a seller.</p>
       </div>
-    @endforelse
+      <?php endif; ?>
+    <?php endif; ?>
+    <?php if($seller && !$conversations->has($seller->id)): ?>
+      <a href="<?php echo e(route('buyer.messages', ['seller' => $seller->username])); ?>" class="chat-list-item active">
+        <div class="cli-av"><?php echo e(strtoupper(substr($sellerName,0,1))); ?></div>
+        <div class="cli-body">
+          <div class="cli-name"><?php echo e($sellerName); ?></div>
+          <div class="cli-preview">New conversation</div>
+        </div>
+      </a>
+    <?php endif; ?>
   </div>
 
+  
   <div class="chat-main">
     <div class="chat-head">
-      @if($buyer)
-        @php $buyerName = $buyer->given_names . ' ' . $buyer->last_name; @endphp
-        <div class="chat-head-av">{{ strtoupper(substr($buyerName,0,1)) }}</div>
+      <?php if($seller): ?>
+        <div class="chat-head-av"><?php echo e(strtoupper(substr($sellerName,0,1))); ?></div>
         <div class="chat-head-info">
-          <div class="chat-head-name">{{ $buyer->is_admin ? 'PocketFinds Support' : $buyerName }}</div>
-          <div style="font-size:11px;color:var(--muted)">{{ $buyer->is_admin ? 'Admin' : 'Customer' }}</div>
+          <div class="chat-head-name"><?php echo e($sellerName); ?></div>
+          <div class="pd-shop-status <?php echo e($sellerOnline ? 'online' : 'offline'); ?>"><i></i><?php echo e($sellerOnline ? 'Online' : 'Offline'); ?></div>
         </div>
-      @else
+      <?php else: ?>
         <div style="color:var(--muted);font-size:13px">Select a conversation</div>
-      @endif
+      <?php endif; ?>
     </div>
 
-    <div class="chat-body" id="chatBody" style="{{ !$buyer ? 'align-items:center;justify-content:center' : '' }}">
-      @if(!$buyer)
+    <div class="chat-body" id="chatBody" style="<?php echo e(!$seller ? 'align-items:center;justify-content:center' : ''); ?>">
+      <?php if(!$seller): ?>
         <div style="text-align:center;color:var(--muted)">
-          <div style="margin-bottom:8px;opacity:.4">@include('seller.partials.icon', ['name' => 'chat', 'size' => 36])</div>
+          <div style="margin-bottom:8px;opacity:.4"><?php echo $__env->make('buyer.partials.icon', ['name' => 'chat', 'size' => 36], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?></div>
           <p style="font-size:13px">No conversation selected</p>
         </div>
-      @else
-        @foreach($messages as $msg)
-          @php $isMe = $msg->sender_id === $myId; @endphp
-          <div class="chat-msg-wrap {{ $isMe ? '' : 'chat-msg-wrap-in' }}" data-message-id="{{ $msg->id }}">
+      <?php else: ?>
+        <?php $__currentLoopData = $messages; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $msg): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+          <?php $isMe = $msg->sender_id === $myId; ?>
+          <div class="chat-msg-wrap <?php echo e($isMe ? '' : 'chat-msg-wrap-in'); ?>" data-message-id="<?php echo e($msg->id); ?>">
             <div class="chat-msg-content">
-            @if($msg->product_id && $msg->product)
-              <a href="{{ route('seller.inventory') }}" class="chat-product-card">
+            <?php if($msg->product_id && $msg->product): ?>
+              <a href="<?php echo e(route('buyer.product', $msg->product_id)); ?>" class="chat-product-card">
                 <div class="chat-product-img">
-                  @if($msg->product->image)
-                    <img src="{{ Storage::url($msg->product->image) }}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">
-                  @else
-                    @include('seller.partials.icon', ['name' => 'bag', 'size' => 20])
-                  @endif
+                  <?php if($msg->product->image): ?>
+                    <img src="<?php echo e(Storage::url($msg->product->image)); ?>" style="width:100%;height:100%;object-fit:cover;border-radius:8px">
+                  <?php else: ?>
+                    <?php echo $__env->make('buyer.partials.icon', ['name' => 'bag', 'size' => 20], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
+                  <?php endif; ?>
                 </div>
                 <div class="chat-product-info">
-                  <div class="chat-product-name">{{ $msg->product->name }}</div>
-                  <div class="chat-product-price">₱{{ number_format($msg->product->price) }}</div>
+                  <div class="chat-product-name"><?php echo e($msg->product->name); ?></div>
+                  <div class="chat-product-price">₱<?php echo e(number_format($msg->product->price)); ?></div>
                 </div>
               </a>
-            @endif
-            @if($msg->attachment_path)
-              @php $attachmentType = $msg->attachment_type ?: (str_starts_with((string) $msg->attachment_mime, 'image/') ? 'image' : (str_starts_with((string) $msg->attachment_mime, 'video/') ? 'video' : 'document')); @endphp
-              @if($attachmentType === 'image')
-                <button type="button" class="chat-media-button" data-media-type="image" data-media-url="{{ route('message.media', ['path' => $msg->attachment_path]) }}"><img src="{{ route('message.media', ['path' => $msg->attachment_path]) }}" class="chat-attach-preview-img" alt="{{ $msg->attachment_name ?: 'Image attachment' }}"></button>
-              @elseif($attachmentType === 'video')
-                <button type="button" class="chat-media-button" data-media-type="video" data-media-url="{{ route('message.media', ['path' => $msg->attachment_path]) }}"><video src="{{ route('message.media', ['path' => $msg->attachment_path]) }}" class="chat-attach-preview-img" controls preload="metadata" playsinline></video></button>
-              @else
-                <a href="{{ Storage::disk('public')->url($msg->attachment_path) }}" target="_blank" class="chat-doc-bubble">
+            <?php endif; ?>
+            <?php if($msg->attachment_path): ?>
+              <?php $attachmentType = $msg->attachment_type ?: (str_starts_with((string) $msg->attachment_mime, 'image/') ? 'image' : (str_starts_with((string) $msg->attachment_mime, 'video/') ? 'video' : 'document')); ?>
+              <?php if($attachmentType === 'image'): ?>
+                <button type="button" class="chat-media-button" data-media-type="image" data-media-url="<?php echo e(route('message.media', ['path' => $msg->attachment_path])); ?>"><img src="<?php echo e(route('message.media', ['path' => $msg->attachment_path])); ?>" class="chat-attach-preview-img" alt="<?php echo e($msg->attachment_name ?: 'Image attachment'); ?>"></button>
+              <?php elseif($attachmentType === 'video'): ?>
+                <button type="button" class="chat-media-button" data-media-type="video" data-media-url="<?php echo e(route('message.media', ['path' => $msg->attachment_path])); ?>"><video src="<?php echo e(route('message.media', ['path' => $msg->attachment_path])); ?>" class="chat-attach-preview-img" controls preload="metadata" playsinline></video></button>
+              <?php else: ?>
+                <a href="<?php echo e(Storage::disk('public')->url($msg->attachment_path)); ?>" target="_blank" class="chat-doc-bubble">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                  {{ $msg->attachment_name }}
+                  <?php echo e($msg->attachment_name); ?>
+
                 </a>
-              @endif
-            @endif
-            @if($msg->body)
-              <div class="chat-bubble {{ $isMe ? 'chat-bubble-out' : 'chat-bubble-in' }}">{{ $msg->body }}</div>
-            @endif
+              <?php endif; ?>
+            <?php endif; ?>
+            <?php if($msg->body): ?>
+              <div class="chat-bubble <?php echo e($isMe ? 'chat-bubble-out' : 'chat-bubble-in'); ?>"><?php echo e($msg->body); ?></div>
+            <?php endif; ?>
             <div class="chat-time">
-              <span>{{ $msg->created_at->format('g:i A') }}</span>
-              @if($isMe)
-                <span class="chat-status">{{ $msg->read ? '✓✓ Seen' : '✓ Delivered' }}</span>
-              @endif
+              <span><?php echo e($msg->created_at->format('g:i A')); ?></span>
+              <?php if($isMe): ?>
+                <span class="chat-status"><?php echo e($msg->read ? '✓✓ Seen' : '✓ Delivered'); ?></span>
+              <?php endif; ?>
             </div>
             </div>
             <div class="chat-msg-actions">
@@ -109,26 +115,48 @@
               <button type="button" class="chat-msg-action" title="Report" onclick="reportMessage(this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4m0 1h10l-2 3 2 3H5"/></svg></button>
             </div>
           </div>
-        @endforeach
-      @endif
+        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+      <?php endif; ?>
     </div>
 
-    @if($buyer)
-      <div class="chat-attachments" id="chatAttachments" style="display:none">
+    <?php if($seller): ?>
+      <div class="chat-attachments" id="chatAttachments" style="<?php echo e($product ? '' : 'display:none'); ?>">
+      
+      <?php if($product): ?>
+      <?php $productJson = json_encode(['id'=>$product->id,'name'=>$product->name,'price'=>$product->price,'img'=>$product->image ? Storage::url($product->image) : null,'url'=>route('buyer.product',$product->id)]); ?>
+      <div class="chat-attachment" id="chatAttachment">
+        <div class="chat-attach-inner">
+          <div class="chat-attach-img">
+            <?php if($product->image): ?><img src="<?php echo e(Storage::url($product->image)); ?>" style="width:100%;height:100%;object-fit:cover;border-radius:6px">
+            <?php else: ?> <?php echo $__env->make('buyer.partials.icon', ['name' => 'bag', 'size' => 20], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?> <?php endif; ?>
+          </div>
+          <div class="chat-attach-info">
+            <div class="chat-attach-label">Product</div>
+            <div class="chat-attach-name"><?php echo e($product->name); ?></div>
+            <div class="chat-attach-price">₱<?php echo e(number_format($product->price)); ?></div>
+          </div>
+          <button class="chat-attach-remove" onclick="removeAttachment()" title="Remove">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+      <?php endif; ?>
+
+      
       <div id="filePreview" style="display:none"></div>
       </div>
 
       <div class="chat-picker" id="productPickerPanel">
         <div id="productPicker" class="chat-picker-grid">
-          @forelse($sellerProducts as $shopProduct)
+          <?php $__empty_1 = true; $__currentLoopData = $sellerProducts; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $shopProduct): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
             <div class="chat-picker-item">
-              @if($shopProduct->image)<img src="{{ Storage::url($shopProduct->image) }}" alt="{{ $shopProduct->name }}">@else <div class="chat-attach-img">@include('seller.partials.icon', ['name' => 'bag', 'size' => 18])</div>@endif
-              <div class="chat-picker-info"><div class="chat-picker-name">{{ $shopProduct->name }}</div><div class="chat-picker-price">₱{{ number_format($shopProduct->price) }}</div></div>
-              <button type="button" class="chat-picker-send" data-product-id="{{ $shopProduct->id }}" data-product-name="{{ $shopProduct->name }}" data-product-price="{{ $shopProduct->price }}" data-product-img="{{ $shopProduct->image ? Storage::url($shopProduct->image) : '' }}">Send</button>
+              <?php if($shopProduct->image): ?><img src="<?php echo e(Storage::url($shopProduct->image)); ?>" alt="<?php echo e($shopProduct->name); ?>"><?php else: ?> <div class="chat-attach-img"><?php echo $__env->make('buyer.partials.icon', ['name' => 'bag', 'size' => 18], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?></div><?php endif; ?>
+              <div class="chat-picker-info"><div class="chat-picker-name"><?php echo e($shopProduct->name); ?></div><div class="chat-picker-price">₱<?php echo e(number_format($shopProduct->price)); ?></div></div>
+              <button type="button" class="chat-picker-send" data-product-id="<?php echo e($shopProduct->id); ?>" data-product-name="<?php echo e($shopProduct->name); ?>" data-product-price="<?php echo e($shopProduct->price); ?>" data-product-img="<?php echo e($shopProduct->image ? Storage::url($shopProduct->image) : ''); ?>">Send</button>
             </div>
-          @empty
-            <div class="chat-picker-empty">No active products in your shop.</div>
-          @endforelse
+          <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+            <div class="chat-picker-empty">No active products in this shop.</div>
+          <?php endif; ?>
         </div>
       </div>
       <div class="chat-picker" id="orderPickerPanel" style="display:none"><div class="chat-picker-empty">No orders are available yet.</div></div>
@@ -143,19 +171,19 @@
         <button class="icon-btn" type="button" onclick="document.getElementById('fileInput').click()" title="Attach file">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
         </button>
-        <button class="icon-btn" type="button" title="Products" onclick="togglePicker('products')">@include('seller.partials.icon', ['name' => 'inventory', 'size' => 16])</button>
-        <button class="icon-btn" type="button" title="Orders" onclick="togglePicker('orders')">@include('seller.partials.icon', ['name' => 'orders', 'size' => 16])</button>
+        <button class="icon-btn" type="button" title="Products" onclick="togglePicker('products')"><?php echo $__env->make('buyer.partials.icon', ['name' => 'bag', 'size' => 16], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?></button>
+        <button class="icon-btn" type="button" title="Orders" onclick="togglePicker('orders')"><?php echo $__env->make('buyer.partials.icon', ['name' => 'package', 'size' => 16], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?></button>
         <input type="text" id="chatInput" placeholder="Type a message…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}">
         <button type="submit" class="btn btn-primary">
-          @include('seller.partials.icon', ['name' => 'send', 'size' => 15]) <span class="send-button-label">Send</span>
+          <?php echo $__env->make('buyer.partials.icon', ['name' => 'send', 'size' => 15], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?> <span class="send-button-label">Send</span>
         </button>
       </form>
-    @else
+    <?php else: ?>
       <div class="chat-input">
         <input type="text" placeholder="Type a message…" disabled>
-        <button class="btn btn-primary" disabled>@include('seller.partials.icon', ['name' => 'send', 'size' => 15]) Send</button>
+        <button class="btn btn-primary" disabled><?php echo $__env->make('buyer.partials.icon', ['name' => 'send', 'size' => 15], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?> Send</button>
       </div>
-    @endif
+    <?php endif; ?>
   </div>
 </div>
 
@@ -176,15 +204,15 @@
   </div>
 </div>
 
-@if($buyer)
+<?php if($seller): ?>
 <script>
-const SEND_URL = '{{ route('seller.messages.send') }}';
-const POLL_URL = '{{ route('seller.messages.poll') }}';
-const CSRF     = '{{ csrf_token() }}';
-const MY_ID    = {{ $myId }};
-const RECEIVER = {{ $buyer->id }};
-const REPORT_URL = '{{ route('seller.messages.report') }}';
-let attachedProduct = null;
+const SEND_URL   = '<?php echo e(route('buyer.messages.send')); ?>';
+const POLL_URL   = '<?php echo e(route('buyer.messages.poll')); ?>';
+const CSRF       = '<?php echo e(csrf_token()); ?>';
+const MY_ID      = <?php echo e($myId); ?>;
+const RECEIVER   = <?php echo e($seller->id); ?>;
+const productData = <?php echo isset($productJson) ? $productJson : 'null'; ?>;
+const REPORT_URL = '<?php echo e(route('buyer.messages.report')); ?>';
 
 function openMediaViewer(url, type) {
   let viewer = document.getElementById('mediaViewer');
@@ -239,8 +267,8 @@ function clearReply() { document.getElementById('chatReplyBox').classList.remove
 function reportMessage(button) {
   const wrap = button.closest('.chat-msg-wrap');
   document.getElementById('reportMessageId').value = wrap.dataset.messageId || '';
-  document.getElementById('reportSender').textContent = '{{ $buyerName ?? ($buyer->given_names . " " . $buyer->last_name) }}';
-  document.getElementById('reportShop').textContent = '{{ auth()->user()->business_name ?? "Shop" }}';
+  document.getElementById('reportSender').textContent = '<?php echo e($sellerName); ?>';
+  document.getElementById('reportShop').textContent = '<?php echo e($sellerName); ?>';
   document.getElementById('reportPreview').textContent = wrap.querySelector('.chat-bubble')?.textContent || (wrap.querySelector('video') ? 'Video attachment' : wrap.querySelector('img') ? 'Image attachment' : wrap.querySelector('.chat-product-card') ? 'Product attachment' : 'Attachment');
   document.getElementById('reportModal').classList.add('open');
 }
@@ -249,13 +277,26 @@ document.getElementById('reportForm').addEventListener('submit', async event => 
   event.preventDefault(); const button = document.getElementById('reportSubmit'); button.disabled = true; button.textContent = 'Sending...';
   try { const response = await fetch(REPORT_URL, { method: 'POST', body: new FormData(event.target), headers: { Accept: 'application/json', 'X-CSRF-TOKEN': CSRF } }); const data = await response.json(); if (!response.ok || !data.ok) throw new Error(data.message || 'Report could not be sent.'); closeReportModal(); alert('Report sent to admin.'); } catch (error) { const errorBox = document.getElementById('reportError'); errorBox.textContent = error.message; errorBox.style.display = 'block'; } finally { button.disabled = false; button.textContent = 'Send Report'; }
 });
-let attachedFiles = [];
+
+let attachedProduct = productData;
+let attachedFiles   = [];
+
+function removeAttachment() {
+  attachedProduct = null;
+  const el = document.getElementById('chatAttachment');
+  if (el) el.style.display = 'none';
+  updateAttachmentsVisibility();
+}
+
+function updateAttachmentsVisibility() {
+  document.getElementById('chatAttachments').style.display = (attachedProduct || attachedFiles.length) ? 'flex' : 'none';
+}
 
 function previewFile(input) {
   attachedFiles.push(...Array.from(input.files));
   input.value = '';
   renderFileTabs();
-  document.getElementById('chatAttachments').style.display = attachedFiles.length ? 'flex' : 'none';
+  updateAttachmentsVisibility();
 }
 
 function renderFileTabs() {
@@ -263,7 +304,8 @@ function renderFileTabs() {
   preview.replaceChildren();
   preview.style.display = attachedFiles.length ? 'contents' : 'none';
   attachedFiles.forEach((file, index) => {
-    const tab = document.createElement('div'); tab.className = 'chat-attachment';
+    const tab = document.createElement('div');
+    tab.className = 'chat-attachment';
     const inner = document.createElement('div'); inner.className = 'chat-attach-inner';
     const thumb = document.createElement('div'); thumb.className = 'chat-attach-img'; thumb.style.background = 'var(--paper)';
     const mime = file.type;
@@ -288,20 +330,21 @@ function removeFile(index = null) {
   if (index === null) attachedFiles = [];
   else attachedFiles.splice(index, 1);
   renderFileTabs();
-  document.getElementById('chatAttachments').style.display = attachedFiles.length ? 'flex' : 'none';
+  updateAttachmentsVisibility();
 }
 
 async function sendMessage(event) {
   event?.preventDefault();
   const input = document.getElementById('chatInput');
   const text  = input.value.trim();
-  if (!text && !attachedFiles.length) return;
+  const productId = attachedProduct?.id;
+  if (!text && !productId && !attachedFiles.length) return;
 
   const fd = new FormData();
   fd.append('_token', CSRF);
   fd.append('receiver_id', RECEIVER);
-  if (text)         fd.append('body', text);
-  if (attachedProduct?.id) fd.append('product_id', attachedProduct.id);
+  if (text)                          fd.append('body', text);
+  if (productId)                      fd.append('product_id', productId);
   attachedFiles.forEach(file => fd.append('attachments[]', file));
 
   const sendButton = document.querySelector('.chat-input .btn-primary');
@@ -315,11 +358,12 @@ async function sendMessage(event) {
     try { data = JSON.parse(raw); } catch (_) { throw new Error(`Message could not be sent (${res.status}).`); }
     if (!res.ok || !data.ok) throw new Error(data.message || data.errors?.body?.[0] || 'Message was not saved.');
     input.value = '';
+    const prodSnap = attachedProduct;
     const fileSnapshots = attachedFiles.map(file => ({ url: URL.createObjectURL(file), type: file.type.startsWith('video/') ? 'video' : file.type.startsWith('image/') ? 'image' : 'document' }));
+    removeAttachment();
     removeFile();
     const sentMessages = data.messages?.length ? data.messages : [data.message];
-    sentMessages.forEach((message, index) => appendMessage(message || {}, true, fileSnapshots[index]?.url, fileSnapshots[index]?.type));
-    attachedProduct = null;
+    sentMessages.forEach((message, index) => appendMessage(message || {}, prodSnap, true, fileSnapshots[index]?.url, fileSnapshots[index]?.type));
   } catch (error) {
     alert(error.message || 'Message could not be sent.');
   } finally {
@@ -330,7 +374,15 @@ async function sendMessage(event) {
 
 document.getElementById('chatForm').addEventListener('submit', sendMessage);
 
-function appendMessage(msg, isMe = msg.sender_id === MY_ID, localMediaUrl = null, localMediaType = null) {
+function appendMessage(msg, prodSnap, isMe = msg.sender_id === MY_ID, localMediaUrl = null, localMediaType = null) {
+  // Render only the product returned after Supabase has saved the message.
+  prodSnap = msg.product_id ? {
+    id: msg.product_id,
+    name: msg.product_name,
+    price: msg.product_price,
+    img: msg.product_img,
+    url: msg.product_url
+  } : null;
   const body = document.getElementById('chatBody');
   const wrap = document.createElement('div');
   wrap.className = `chat-msg-wrap ${isMe ? '' : 'chat-msg-wrap-in'}`;
@@ -339,21 +391,21 @@ function appendMessage(msg, isMe = msg.sender_id === MY_ID, localMediaUrl = null
   const content = document.createElement('div');
   content.className = 'chat-msg-content';
 
-  if (msg.product_id) {
+  if (prodSnap) {
     const card = document.createElement('a');
-    card.href = msg.product_url;
+    card.href = prodSnap.url;
     card.className = 'chat-product-card';
     const imageWrap = document.createElement('div');
     imageWrap.className = 'chat-product-img';
-    if (msg.product_img) {
+    if (prodSnap.img) {
       const image = document.createElement('img');
-      image.src = msg.product_img;
+      image.src = prodSnap.img;
       image.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:8px';
       imageWrap.appendChild(image);
     }
     const info = document.createElement('div'); info.className = 'chat-product-info';
-    const name = document.createElement('div'); name.className = 'chat-product-name'; name.textContent = msg.product_name;
-    const price = document.createElement('div'); price.className = 'chat-product-price'; price.textContent = `PHP ${Number(msg.product_price).toLocaleString()}`;
+    const name = document.createElement('div'); name.className = 'chat-product-name'; name.textContent = prodSnap.name;
+    const price = document.createElement('div'); price.className = 'chat-product-price'; price.textContent = `₱${Number(prodSnap.price).toLocaleString()}`;
     info.append(name, price);
     card.append(imageWrap, info);
     content.appendChild(card);
@@ -426,7 +478,7 @@ async function pollMessages() {
           }
         }
       } else {
-        appendMessage(msg, msg.sender_id === MY_ID);
+        appendMessage(msg, null, msg.sender_id === MY_ID);
       }
     });
   } catch (_) {}
@@ -434,7 +486,10 @@ async function pollMessages() {
 
 setInterval(pollMessages, 3000);
 
+// scroll to bottom on load
 document.getElementById('chatBody').scrollTop = document.getElementById('chatBody').scrollHeight;
 </script>
-@endif
-@endsection
+<?php endif; ?>
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('buyer.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\resources\views/buyer/messages.blade.php ENDPATH**/ ?>

@@ -13,25 +13,44 @@
       </div>
     </div>
     @forelse($users as $u)
-    <a href="{{ route('admin.messages.user', $u->id) }}" class="chat-conv {{ isset($selectedUser) && $selectedUser?->id == $u->id ? 'active' : '' }}" style="text-decoration:none;color:inherit">
-      <div class="avatar-sm">{{ strtoupper(substr($u->first_name,0,1).substr($u->last_name,0,1)) }}</div>
+    <a href="{{ route('admin.messages.user', $u->id) }}" class="chat-conv {{ isset($selectedUser) && $selectedUser?->id == $u->id ? 'active' : '' }} {{ $u->unread_count > 0 ? 'has-unread' : '' }}" style="text-decoration:none;color:inherit">
+      <div class="avatar-sm">{{ strtoupper(substr($u->given_names,0,1).substr($u->last_name,0,1)) }}</div>
       <div class="meta">
-        <strong>{{ $u->first_name }} {{ $u->last_name }}</strong>
+        <strong>{{ $u->given_names }} {{ $u->last_name }}</strong>
         <div class="role-tag">{{ ucfirst($u->account_type) }}</div>
-        <p>{{ $u->email }}</p>
+        <p>
+          @if($u->last_message)
+            @if($u->last_message->sender_id === auth()->id())<span style="color:var(--muted)">You: </span>@endif
+            {{ $u->last_message->body ?: '📎 Attachment' }}
+          @else
+            {{ $u->email }}
+          @endif
+        </p>
+      </div>
+      <div class="chat-conv-side">
+        @if($u->last_message)
+        <span class="chat-conv-time">{{ $u->last_message->created_at->diffForHumans(null, true) }}</span>
+        @endif
+        @if($u->unread_count > 0)
+        <span class="unread">{{ $u->unread_count }}</span>
+        @endif
       </div>
     </a>
     @empty
-    <div style="padding:20px;text-align:center;color:var(--muted);font-size:13px;font-family:var(--font-body)">No users yet.</div>
+    <div class="empty" style="padding:40px 20px">
+      <div class="ic"><x-admin-icon name="users" /></div>
+      <h3>No users yet</h3>
+      <p>Platform accounts will appear here.</p>
+    </div>
     @endforelse
   </div>
 
   <div class="chat-main">
     @if(isset($selectedUser) && $selectedUser)
     <div class="chat-head">
-      <div class="avatar-sm">{{ strtoupper(substr($selectedUser->first_name,0,1).substr($selectedUser->last_name,0,1)) }}</div>
+      <div class="avatar-sm">{{ strtoupper(substr($selectedUser->given_names,0,1).substr($selectedUser->last_name,0,1)) }}</div>
       <div>
-        <strong style="font-size:13.5px;font-family:var(--font-body)">{{ $selectedUser->first_name }} {{ $selectedUser->last_name }}</strong>
+        <strong style="font-size:13.5px;font-family:var(--font-body)">{{ $selectedUser->given_names }} {{ $selectedUser->last_name }}</strong>
         <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">{{ ucfirst($selectedUser->account_type) }} · {{ $selectedUser->email }}</div>
       </div>
     </div>

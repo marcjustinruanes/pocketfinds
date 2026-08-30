@@ -114,8 +114,8 @@ class RegisterController extends Controller
             'given_names'  => 'required|string|max:100',
             'middle_name'  => 'nullable|string|max:50',
             'sex'            => 'required|in:male,female',
-            'birthday'       => 'required|date',
-            'age'            => 'required|integer|min:0',
+            'birthday'       => 'required|date|before_or_equal:' . now()->subYears(16)->toDateString(),
+            'age'            => 'sometimes|integer|min:0',
             'email'          => 'required|email|unique:users,email|regex:/@gmail\.com$/i',
             'contact_no'     => 'required|regex:/^09\d{9}$/',
             'province'       => 'required|string',
@@ -131,7 +131,9 @@ class RegisterController extends Controller
             'account_type'   => 'required|in:buyer,rider,seller',
             'auth_method'    => 'required|in:manual,google',
             'google_id'      => 'nullable|string',
-            'category_id'    => $isSeller ? 'required|exists:categories,id' : 'sometimes|nullable',
+            'category_ids'   => $isSeller ? 'array' : 'sometimes|nullable',
+            'category_ids.*' => 'integer|exists:categories,id',
+            'category_other' => 'nullable|string|max:100',
             'business_name'  => $isSeller ? 'required|string|max:150|unique:users,business_name' : 'sometimes|nullable',
             'business_permit_file' => $isSeller ? 'required|file|mimes:jpg,jpeg,png,pdf|max:5120' : 'sometimes|nullable',
         ];
@@ -151,7 +153,30 @@ class RegisterController extends Controller
             }
         }
 
-        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), $rules);
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), $rules, [
+            'birthday.before_or_equal' => 'You must be at least 16 years old to register.',
+        ]);
+
+        $validator->after(function ($validator) use ($request, $isSeller) {
+            // Same-person check: block a second account under the same full name.
+            if ($request->filled('given_names') && $request->filled('last_name')) {
+                $duplicate = User::whereRaw('LOWER(given_names) = ?', [mb_strtolower(trim($request->given_names))])
+                    ->whereRaw('LOWER(last_name) = ?', [mb_strtolower(trim($request->last_name))])
+                    ->when($request->filled('middle_name'), fn ($q) => $q->whereRaw('LOWER(COALESCE(middle_name, \'\')) = ?', [mb_strtolower(trim($request->middle_name))]))
+                    ->exists();
+                if ($duplicate) {
+                    $validator->errors()->add('given_names', 'An account under this name is already registered.');
+                }
+            }
+
+            if ($isSeller) {
+                $categoryCount = count($request->input('category_ids', [])) + ($request->filled('category_other') ? 1 : 0);
+                if ($categoryCount < 2) {
+                    $validator->errors()->add('category_ids', 'Please select at least 2 categories.');
+                }
+            }
+        });
+
         if ($validator->fails()) {
             return response()->json(['success' => false, 'message' => $validator->errors()->first(), 'errors' => $validator->errors()], 422);
         }
@@ -182,7 +207,7 @@ class RegisterController extends Controller
             'id_type_id'     => $request->id_type_id,
             'selfie_file'    => $selfiePath,
             'status'         => 'pending',
-            'category_id'    => $isSeller ? $request->category_id : null,
+            'category_other' => $isSeller ? $request->category_other : null,
             'business_name'  => $isSeller ? $request->business_name : null,
         ];
 
@@ -191,6 +216,10 @@ class RegisterController extends Controller
         }
 
         $user = User::create($userData);
+
+        if ($isSeller) {
+            $user->categories()->sync($request->input('category_ids', []));
+        }
 
         if ($isRider) {
             $riderData = array_merge($userData, [
@@ -214,7 +243,7 @@ class RegisterController extends Controller
             }
 
             // Remove user-only keys not in rider_profiles
-            unset($riderData['category_id'], $riderData['is_admin']);
+            unset($riderData['category_id'], $riderData['category_other'], $riderData['is_admin']);
 
             \App\Models\RiderProfile::create($riderData);
         }

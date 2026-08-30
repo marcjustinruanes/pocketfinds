@@ -71,13 +71,12 @@ if (isSeller) {
         pet:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 015 5v3.5a3.5 3.5 0 01-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 018 10z"/></svg>`,
         drink:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2h8l1 7H7L8 2z"/><path d="M7 9c0 5 2 8 5 8s5-3 5-8"/><line x1="12" y1="17" x2="12" y2="21"/><line x1="8" y1="21" x2="16" y2="21"/></svg>`,
         automotive:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v9a2 2 0 01-2 2h-2"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>`,
-        garden:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22V12"/><path d="M5 12C5 7 8 4 12 4c4 0 7 3 7 8"/><path d="M5 12c0-3 2-5 7-5"/></svg>`,
         music:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`,
         art:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8.56 2.75c4.37 6.03 6.02 9.42 8.03 17.72m2.54-15.38c-3.72 4.35-8.94 5.66-16.88 5.85m19.5 1.9c-3.5-.93-6.63-.82-8.94 0-2.58.92-5.01 2.86-7.44 6.32"/></svg>`,
         craft:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8.56 2.75c4.37 6.03 6.02 9.42 8.03 17.72m2.54-15.38c-3.72 4.35-8.94 5.66-16.88 5.85m19.5 1.9c-3.5-.93-6.63-.82-8.94 0-2.58.92-5.01 2.86-7.44 6.32"/></svg>`,
         electronics:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>`,
-        men:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="2"/><path d="M9 9h6l1 5h-2l-1 6h-2l-1-6H8l1-5z"/></svg>`,
         women:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="2"/><path d="M9 9h6l3 11H6l3-11z"/><line x1="12" y1="20" x2="12" y2="23"/></svg>`,
+        men:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="2"/><path d="M9 9h6l1 5h-2l-1 6h-2l-1-6H8l1-5z"/></svg>`,
         kid:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2.5"/><path d="M9 10c0 0-3 .5-3 3.5h3v6h6v-6h3c0-3-3-3.5-3-3.5"/><path d="M9 10h6"/><circle cx="7" cy="14" r="1"/><circle cx="17" cy="14" r="1"/></svg>`,
         fashion:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>`,
         clothing:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.57a1 1 0 00.99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.57a2 2 0 00-1.34-2.23z"/></svg>`,
@@ -86,6 +85,7 @@ if (isSeller) {
         health:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>`,
         beauty:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>`,
         home:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`,
+        garden:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22V12"/><path d="M5 12C5 7 8 4 12 4c4 0 7 3 7 8"/><path d="M5 12c0-3 2-5 7-5"/></svg>`,
         living:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>`,
         sports:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M4.93 4.93l4.24 4.24M14.83 9.17l4.24-4.24M14.83 14.83l4.24 4.24M9.17 14.83l-4.24 4.24"/><circle cx="12" cy="12" r="4"/></svg>`,
         outdoors:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l4-8 4 5 3-3 4 6H3z"/><circle cx="18" cy="5" r="2"/></svg>`,
@@ -104,6 +104,33 @@ if (isSeller) {
         return categoryIcons.default;
     }
 
+    // Sellers must pick at least MIN_CATEGORIES categories (an "Other" tile with
+    // custom text counts as one of them).
+    const MIN_CATEGORIES = 2;
+    const selectedCategoryIds = new Set();
+
+    function categorySelectionCount() {
+        const otherFilled = (document.getElementById('category_other_input')?.value.trim().length ?? 0) > 0;
+        return selectedCategoryIds.size + (otherFilled ? 1 : 0);
+    }
+
+    function syncCategorySelection() {
+        const container = document.getElementById('categoryIdsContainer');
+        container.innerHTML = '';
+        selectedCategoryIds.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'category_ids[]';
+            input.value = id;
+            container.appendChild(input);
+        });
+        const nextBtn = document.getElementById('categoryNextBtn');
+        if (nextBtn) nextBtn.disabled = categorySelectionCount() < MIN_CATEGORIES;
+        document.getElementById('categoryError')?.remove();
+    }
+
+    document.getElementById('categoryNextBtn').disabled = true;
+
     fetch('/register/categories')
         .then(r => r.json())
         .then(data => {
@@ -116,18 +143,37 @@ if (isSeller) {
                 btn.dataset.categoryId = cat.id;
                 btn.innerHTML = `<span class="category-box-icon">${getCategoryIcon(cat.name)}</span><span class="category-box-name">${cat.name}</span>`;
                 btn.addEventListener('click', () => {
-                    document.querySelectorAll('.category-box').forEach(c => c.classList.remove('selected'));
-                    btn.classList.add('selected');
-                    document.getElementById('category_id_input').value = cat.id;
-                    document.getElementById('categoryNextBtn').disabled = false;
-                    document.getElementById('categoryError')?.remove();
+                    btn.classList.toggle('selected');
+                    const id = String(cat.id);
+                    if (btn.classList.contains('selected')) selectedCategoryIds.add(id);
+                    else selectedCategoryIds.delete(id);
+                    syncCategorySelection();
                 });
                 grid.appendChild(btn);
             });
+
+            // "Other" tile — lets the seller type a category that isn't listed.
+            const otherBtn = document.createElement('button');
+            otherBtn.type = 'button';
+            otherBtn.className = 'category-box';
+            otherBtn.id = 'categoryOtherBox';
+            otherBtn.innerHTML = `<span class="category-box-icon">${categoryIcons.default}</span><span class="category-box-name">Other</span>`;
+            otherBtn.addEventListener('click', () => {
+                otherBtn.classList.toggle('selected');
+                const show = otherBtn.classList.contains('selected');
+                const wrap = document.getElementById('categoryOtherWrap');
+                const input = document.getElementById('category_other_input');
+                wrap.style.display = show ? '' : 'none';
+                if (show) input.focus(); else input.value = '';
+                syncCategorySelection();
+            });
+            grid.appendChild(otherBtn);
         })
         .catch(() => {
             document.getElementById('categoryGrid').innerHTML = '<p style="color:var(--auth-danger);font-size:13px">Failed to load categories. Please refresh.</p>';
         });
+
+    document.getElementById('category_other_input')?.addEventListener('input', syncCategorySelection);
 }
 
 // ── Email OTP (manual form only) ──
@@ -960,7 +1006,18 @@ const rules = {
         if (!/^09\d{9}$/.test(v)) return 'Must be 11 digits starting with 09.';
         return null;
     },
+    age: (v) => {
+        if (!v) return 'Birthday is required.';
+        if (parseInt(v, 10) < 16) return 'You must be at least 16 years old to register.';
+        return null;
+    },
 };
+
+// Contact number: strip anything that isn't a digit as the user types, so
+// letters can't be entered at all.
+document.getElementById('contact_no')?.addEventListener('input', function () {
+    this.value = this.value.replace(/\D/g, '').slice(0, 11);
+});
 
 function showError(el, msg) {
     el.classList.add('error');
@@ -1088,15 +1145,15 @@ function indicatorStepFor(panelStep) {
 function validateStep(step) {
     // Category step
     if ((isGoogleForm && step === 0) || (!isGoogleForm && step === 1)) {
-        const val = document.getElementById('category_id_input')?.value;
+        const count = typeof categorySelectionCount === 'function' ? categorySelectionCount() : 0;
         const wrap = document.getElementById('categoryGrid').closest('.category-scroll-wrap');
         document.getElementById('categoryError')?.remove();
-        if (!val) {
+        if (count < 2) {
             wrap.style.outline = '2px solid var(--auth-danger,#e74c3c)';
             const err = document.createElement('p');
             err.id = 'categoryError';
             err.style.cssText = 'color:var(--auth-danger,#e74c3c);font-size:12px;margin:6px 0 0';
-            err.textContent = 'Please select a category to continue.';
+            err.textContent = 'Please select at least 2 categories to continue.';
             wrap.after(err);
             return false;
         }

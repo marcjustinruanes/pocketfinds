@@ -47,14 +47,14 @@
 /* Thumb strip — matches .pd-thumb-col */
 .gp-thumb-col {
   display:flex;flex-direction:column;align-items:center;gap:6px;
-  padding:8px 6px;background:#fff;border:1px solid #e9e4ea;
+  padding:8px 6px;background:var(--white);border:1px solid #e9e4ea;
   border-radius:12px;flex:none;
 }
 
 /* Arrow buttons — matches .pd-arr */
 .gp-arr {
   width:40px;height:26px;border:1px solid #e9e4ea;border-radius:8px;
-  background:#fff;display:grid;place-items:center;color:#79737f;
+  background:var(--white);display:grid;place-items:center;color:#79737f;
   cursor:pointer;flex:none;transition:border-color .15s,color .15s,background .15s;
 }
 .gp-arr:hover { border-color:#f3c9de;color:#be3a7d;background:#fdf2f8; }
@@ -84,7 +84,7 @@
 
 /* ── Info card — matches .pd-info-card ── */
 .gp-info-card {
-  background:#fff;border:1px solid #e9e4ea;border-radius:12px;
+  background:var(--white);border:1px solid #e9e4ea;border-radius:12px;
   padding:18px;flex:none;box-shadow:0 1px 2px rgba(27,22,32,.06);
 }
 
@@ -136,7 +136,7 @@
   cursor:pointer;transition:background .15s,transform .1s;
 }
 .gp-btn-cart {
-  background:#fff;border:1.5px solid #d9468f;color:#be3a7d;
+  background:var(--white);border:1.5px solid #d9468f;color:#be3a7d;
 }
 .gp-btn-cart:hover { background:#fdf2f8; }
 .gp-btn-buy  { background:#d9468f;color:#fff;border:none; }
@@ -145,7 +145,7 @@
 
 /* ── Tabs wrap — matches .pd-tabs-wrap ── */
 .gp-tabs-wrap {
-  background:#fff;border:1px solid #e9e4ea;border-radius:12px;
+  background:var(--white);border:1px solid #e9e4ea;border-radius:12px;
   overflow:hidden;display:flex;flex-direction:column;flex:none;
   box-shadow:0 1px 2px rgba(27,22,32,.06);
 }
@@ -182,7 +182,7 @@
 .gp-opt-row { display:flex;flex-wrap:wrap;gap:7px; }
 .gp-opt-btn {
   padding:6px 14px;border:1px solid #e9e4ea;border-radius:8px;
-  font-size:12.5px;font-weight:600;background:#fff;color:#211f26;
+  font-size:12.5px;font-weight:600;background:var(--white);color:#211f26;
   transition:border-color .15s,background .15s,color .15s;cursor:pointer;
 }
 .gp-opt-btn:hover  { border-color:#f3c9de;background:#fdf2f8; }
@@ -194,7 +194,7 @@
   border-radius:9px;overflow:hidden;width:fit-content;
 }
 .gp-qty-btn {
-  width:36px;height:36px;border:0;background:#fff;font-size:18px;
+  width:36px;height:36px;border:0;background:var(--white);font-size:18px;
   font-weight:600;color:#211f26;display:grid;place-items:center;cursor:pointer;
 }
 .gp-qty-btn:hover { background:#fdf2f8;color:#be3a7d; }
@@ -234,7 +234,7 @@
 .gp-rev-chip {
   display:inline-flex;align-items:center;justify-content:center;gap:2px;
   padding:0 9px;height:26px;border-radius:20px;border:1px solid #e9e4ea;
-  background:#fff;font-size:11px;font-weight:700;color:#79737f;
+  background:var(--white);font-size:11px;font-weight:700;color:#79737f;
   cursor:pointer;white-space:nowrap;transition:border-color .15s,background .15s,color .15s;
 }
 .gp-rev-chip:hover  { border-color:#f3c9de;background:#fdf2f8;color:#be3a7d; }
@@ -270,14 +270,14 @@
 .gp-see-more {
   display:inline-flex;align-items:center;gap:7px;margin-top:6px;
   padding:8px 14px;border:1px solid #e9e4ea;border-radius:9px;
-  background:#fff;font-size:12.5px;font-weight:700;color:#211f26;
+  background:var(--white);font-size:12.5px;font-weight:700;color:#211f26;
   cursor:pointer;transition:border-color .15s,background .15s,color .15s;
 }
 .gp-see-more:hover { border-color:#f3c9de;background:#fdf2f8;color:#be3a7d; }
 
 /* ── More from shop — matches .pd-shop-more ── */
 .gp-shop-more {
-  background:#fff;border:1px solid #e9e4ea;border-radius:12px;
+  background:var(--white);border:1px solid #e9e4ea;border-radius:12px;
   margin-bottom:24px;overflow:hidden;
 }
 .gp-shop-more-head {
@@ -341,7 +341,7 @@
    SHOP PAGE — matches sp-* classes
 ══════════════════════════════════════ */
 .gs-hero {
-  background:#fff;border:1px solid #e9e4ea;border-radius:12px;padding:28px;
+  background:var(--white);border:1px solid #e9e4ea;border-radius:12px;padding:28px;
   display:grid;grid-template-columns:auto 1fr auto;gap:22px;
   align-items:start;margin-bottom:24px;
   box-shadow:0 1px 2px rgba(27,22,32,.06);

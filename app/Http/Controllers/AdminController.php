@@ -7,9 +7,11 @@ use App\Models\Commission;
 use App\Models\Complaint;
 use App\Models\DocumentUpdateRequest;
 use App\Models\Message;
+use App\Models\Order;
 use App\Models\Policy;
 use App\Models\Product;
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -44,7 +46,12 @@ class AdminController extends Controller
                 return back()->withErrors(['email' => 'Your account is still pending admin approval. Please wait for confirmation.'])->withInput();
             }
             if ($user->status === 'rejected') {
-                return back()->withErrors(['email' => 'Your account has been rejected. Please contact support for assistance.'])->withInput();
+                return back()->withErrors(['email' => 'Your account application was rejected.'])
+                    ->with('accountStatus', 'rejected')->withInput();
+            }
+            if ($user->status === 'suspended') {
+                return back()->withErrors(['email' => 'Your account has been suspended.'])
+                    ->with('accountStatus', 'suspended')->withInput();
             }
             // Google-only accounts have no usable password
             if ($user->auth_method === 'google' && !$user->password) {
@@ -92,6 +99,7 @@ class AdminController extends Controller
             'pendingRegistrations' => User::where('status', 'pending')->where('is_admin', false)->count(),
             'openDisputes'         => Complaint::whereIn('status', ['open', 'escalated'])->count(),
             'unreadMessages'       => Message::where('receiver_id', auth()->id())->where('read', false)->count(),
+            'pendingDocs'          => DocumentUpdateRequest::where('status', 'pending')->count(),
         ];
     }
 
@@ -115,40 +123,54 @@ class AdminController extends Controller
 
     public function suspendUser(User $user)
     {
-        $user->update(['status' => 'rejected']);
+        $user->update(['status' => 'suspended']);
         return back();
     }
 
-    public function dashboard()
+    public function dashboard(Request $request)
     {
         $counts     = $this->sidebarCounts();
         $totalUsers = User::where('is_admin', false)->count();
         $pendingCount = $counts['pendingRegistrations'];
         $recentUsers  = User::where('is_admin', false)->latest()->take(5)->get();
+        $latestAnnouncement = Announcement::latest()->first();
+
+        // Sales performance: real per-day order totals for the selected window (0 where no orders).
+        $salesDays  = in_array((int) $request->query('days'), [7, 14, 30, 90], true) ? (int) $request->query('days') : 30;
+        $rangeStart = now()->subDays($salesDays - 1)->startOfDay();
+        $dailySales = Order::where('created_at', '>=', $rangeStart)
+            ->selectRaw('DATE(created_at) as day, SUM(total) as total')
+            ->groupBy('day')
+            ->pluck('total', 'day');
+        $salesSeries = collect(range(0, $salesDays - 1))->map(function ($i) use ($rangeStart, $dailySales) {
+            $date = $rangeStart->copy()->addDays($i);
+            return ['date' => $date, 'total' => (float) ($dailySales[$date->format('Y-m-d')] ?? 0)];
+        });
+        $salesTotal = $salesSeries->sum('total');
 
         return view('admin.dashboard', array_merge($counts, compact(
-            'totalUsers', 'pendingCount', 'recentUsers'
+            'totalUsers', 'pendingCount', 'recentUsers', 'latestAnnouncement', 'salesSeries', 'salesTotal', 'salesDays'
         )));
     }
 
     public function registrations()
     {
         $counts = $this->sidebarCounts();
-        $users  = User::where('is_admin', false)->latest()->get();
+        $users  = User::with('categories')->where('is_admin', false)->latest()->get();
         return view('admin.registrations', array_merge($counts, compact('users')));
     }
 
     public function users()
     {
         $counts = $this->sidebarCounts();
-        $users  = User::where('is_admin', false)->latest()->get();
+        $users  = User::with('categories')->where('is_admin', false)->latest()->get();
         return view('admin.users', array_merge($counts, compact('users')));
     }
 
     public function compliance()
     {
         $counts  = $this->sidebarCounts();
-        $sellers = User::where('account_type', 'seller')->where('is_admin', false)->latest()->get();
+        $sellers = User::with('categories')->where('account_type', 'seller')->where('is_admin', false)->latest()->get();
         return view('admin.compliance', array_merge($counts, compact('sellers')));
     }
 
@@ -203,7 +225,7 @@ class AdminController extends Controller
         $commissions = Commission::with('seller')->latest()->get();
         $csv = "Order ID,Seller,Sale Amount,Commission Rate,Commission,Seller Earnings,Date\n";
         foreach ($commissions as $c) {
-            $seller = $c->seller ? $c->seller->first_name.' '.$c->seller->last_name : 'Unknown';
+            $seller = $c->seller ? $c->seller->given_names.' '.$c->seller->last_name : 'Unknown';
             $csv .= implode(',', [
                 strtoupper(substr($c->order_id ?? $c->id, 0, 8)),
                 $seller,
@@ -220,6 +242,16 @@ class AdminController extends Controller
         ]);
     }
 
+    public function exportSalesReportPdf()
+    {
+        $commissions = Commission::with('seller')->latest()->get();
+        $totalAmount = $commissions->sum('order_amount');
+        $totalCommission = $commissions->sum('commission_amount');
+        $pdf = Pdf::loadView('admin.reports-sales-pdf', compact('commissions', 'totalAmount', 'totalCommission'))
+            ->setPaper('a4', 'portrait');
+        return $pdf->download('sales_report_'.now()->format('Ymd').'.pdf');
+    }
+
     public function exportCommissionReport()
     {
         $commissions = Commission::with('seller')->latest()->get();
@@ -227,7 +259,7 @@ class AdminController extends Controller
         $grouped = $commissions->groupBy('seller_id');
         foreach ($grouped as $sellerId => $items) {
             $seller = $items->first()->seller;
-            $name   = $seller ? $seller->first_name.' '.$seller->last_name : 'Unknown';
+            $name   = $seller ? $seller->given_names.' '.$seller->last_name : 'Unknown';
             $csv .= implode(',', [
                 $name,
                 $items->count(),
@@ -243,10 +275,24 @@ class AdminController extends Controller
 
     public function settings()
     {
+        $counts   = $this->sidebarCounts();
+        $policies = Policy::latest()->get();
+        return view('admin.settings', array_merge($counts, compact('policies')));
+    }
+
+    public function announcements()
+    {
         $counts        = $this->sidebarCounts();
         $announcements = Announcement::latest()->get();
-        $policies      = Policy::latest()->get();
-        return view('admin.settings', array_merge($counts, compact('announcements', 'policies')));
+
+        $total  = $announcements->count();
+        $active = $announcements->where('is_active', true)->count();
+        $byAudience = $announcements->groupBy('audience')->map->count();
+        $latest = $announcements->first();
+
+        return view('admin.announcements', array_merge($counts, compact(
+            'announcements', 'total', 'active', 'byAudience', 'latest'
+        )));
     }
 
     public function storeAnnouncement(Request $request)
@@ -316,6 +362,20 @@ class AdminController extends Controller
             ->orderBy('last_name')
             ->get();
 
+        // Enrich each user with their latest message + unread count against this admin,
+        // so the inbox reads like a real conversation list, not a bare directory.
+        $adminId = auth()->id();
+        $threads = Message::where('sender_id', $adminId)->orWhere('receiver_id', $adminId)
+            ->latest('created_at')->get()
+            ->groupBy(fn ($m) => $m->sender_id === $adminId ? $m->receiver_id : $m->sender_id);
+
+        $users = $users->map(function ($u) use ($threads, $adminId) {
+            $thread = $threads->get($u->id);
+            $u->last_message  = $thread?->first();
+            $u->unread_count  = $thread ? $thread->where('receiver_id', $adminId)->where('read', false)->count() : 0;
+            return $u;
+        })->sortByDesc(fn ($u) => $u->last_message?->created_at ?? \Carbon\Carbon::createFromTimestamp(0))->values();
+
         $selectedUser = $user && ! $user->is_admin ? $user : $users->first();
         $messages = collect();
 
@@ -369,7 +429,7 @@ class AdminController extends Controller
     {
         $user = auth()->user();
         $request->validate([
-            'first_name'   => 'required|string|max:255',
+            'given_names'  => 'required|string|max:255',
             'last_name'    => 'required|string|max:255',
             'email'        => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'contact_no'   => 'required|string|max:11',
@@ -382,7 +442,7 @@ class AdminController extends Controller
         ]);
 
         $data = $request->only([
-            'first_name',
+            'given_names',
             'last_name',
             'email',
             'contact_no',
@@ -483,7 +543,7 @@ class AdminController extends Controller
     public function products()
     {
         $counts     = $this->sidebarCounts();
-        $products   = Product::with(['seller', 'category'])->latest()->get();
+        $products   = Product::with(['seller.categories', 'category', 'images'])->latest()->get();
         $categories = \DB::table('categories')->orderBy('name')->get()->keyBy('id');
         return view('admin.products', array_merge($counts, compact('products', 'categories')));
     }

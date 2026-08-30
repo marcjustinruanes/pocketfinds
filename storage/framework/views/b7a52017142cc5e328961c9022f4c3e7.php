@@ -35,7 +35,7 @@ foreach ($attributes->all() as $__key => $__value) {
 unset($__defined_vars, $__key, $__value); ?>
 
 <?php
-    $name = trim(($user->first_name ?? '').' '.($user->last_name ?? ''));
+    $name = trim(($user->given_names ?? '').' '.($user->last_name ?? ''));
     $baseStyle = "width:{$size}px;height:{$size}px;border-radius:50%;display:grid;place-items:center;object-fit:cover;flex:none;overflow:hidden";
     $customStyle = $attributes->get('style');
 ?>
