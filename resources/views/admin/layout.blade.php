@@ -21,7 +21,13 @@
 <div class="modal-overlay" id="logoutOverlay">
   <div class="modal" style="max-width:380px">
     <div class="modal-head">
-      <div><h3>Sign out?</h3><p>You will be returned to the login screen.</p></div>
+      <div class="modal-head-main">
+        <span class="modal-icon"><x-admin-icon name="logout" /></span>
+        <div class="modal-head-copy">
+          <h3>Sign out?</h3>
+          <p>You will be returned to the login screen.</p>
+        </div>
+      </div>
       <button class="modal-close" data-modal-close aria-label="Close"><x-admin-icon name="close" /></button>
     </div>
     <div class="modal-foot">

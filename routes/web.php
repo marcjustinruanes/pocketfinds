@@ -121,8 +121,10 @@ Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
     Route::get('/commission', [AdminController::class, 'commission'])->name('commission');
     Route::get('/reports', [AdminController::class, 'reports'])->name('reports');
     Route::get('/reports/export/sales', [AdminController::class, 'exportSalesReport'])->name('reports.export.sales');
+    Route::get('/reports/export/sales-pdf', [AdminController::class, 'exportSalesReportPdf'])->name('reports.export.sales-pdf');
     Route::get('/reports/export/commission', [AdminController::class, 'exportCommissionReport'])->name('reports.export.commission');
     Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
+    Route::get('/announcements', [AdminController::class, 'announcements'])->name('announcements');
     Route::post('/settings/announcements', [AdminController::class, 'storeAnnouncement'])->name('settings.announcements.store');
     Route::delete('/settings/announcements/{id}', [AdminController::class, 'destroyAnnouncement'])->name('settings.announcements.destroy');
     Route::post('/settings/policies', [AdminController::class, 'storePolicy'])->name('settings.policies.store');

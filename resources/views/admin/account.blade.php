@@ -29,12 +29,12 @@
 
 <div class="account-grid">
   <div class="card">
-    <div class="card-head"><h2>Account Information</h2></div>
+    <div class="card-head"><div><h2>Account Information</h2><p>Your profile as shown to the platform</p></div></div>
     <div class="card-pad">
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
         <x-user-avatar :user="$admin" size="72" />
         <div>
-          <div style="font-weight:700;font-size:15px">{{ $admin->first_name }} {{ $admin->last_name }}</div>
+          <div style="font-weight:700;font-size:15px">{{ $admin->given_names }} {{ $admin->last_name }}</div>
           <div style="font-size:12px;color:var(--muted)">{{ $admin->email }}</div>
           <span class="stamp stamp-active" style="margin-top:4px">{{ ucfirst($admin->account_type) }}</span>
         </div>
@@ -49,9 +49,9 @@
           @error('profile_picture')<div class="hint" style="color:var(--danger);margin-top:5px">{{ $message }}</div>@enderror
         </div>
         <div class="form-row">
-          <label>First Name</label>
-          <input type="text" name="first_name" value="{{ old('first_name', $admin->first_name) }}" required>
-          @error('first_name')<div class="hint" style="color:var(--danger);margin-top:5px">{{ $message }}</div>@enderror
+          <label>Given Names</label>
+          <input type="text" name="given_names" value="{{ old('given_names', $admin->given_names) }}" required>
+          @error('given_names')<div class="hint" style="color:var(--danger);margin-top:5px">{{ $message }}</div>@enderror
         </div>
         <div class="form-row">
           <label>Last Name</label>
@@ -102,29 +102,53 @@
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-head"><h2>Change Password</h2></div>
-    <div class="card-pad">
-      @error('current_password')
-      <div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px">{{ $message }}</div>
-      @enderror
-      <form method="POST" action="{{ route('admin.account.password') }}">
-        @csrf
-        <div class="form-row">
-          <label>Current Password</label>
-          <input type="password" name="current_password" required>
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><div><h2>Change Password</h2><p>Update your login credentials</p></div></div>
+      <div class="card-pad">
+        @error('current_password')
+        <div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px">{{ $message }}</div>
+        @enderror
+        <form method="POST" action="{{ route('admin.account.password') }}">
+          @csrf
+          <div class="form-row">
+            <label>Current Password</label>
+            <input type="password" name="current_password" required>
+          </div>
+          <div class="form-row">
+            <label>New Password</label>
+            <input type="password" name="password" required>
+            @error('password')<div class="hint" style="color:var(--danger);margin-top:5px">{{ $message }}</div>@enderror
+          </div>
+          <div class="form-row">
+            <label>Confirm New Password</label>
+            <input type="password" name="password_confirmation" required>
+          </div>
+          <button class="btn btn-primary" type="submit">Update Password</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><h2>Account Overview</h2><p>Role &amp; account details</p></div></div>
+      <div class="card-pad" style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:12.5px;color:var(--muted)">Role</span>
+          <span class="stamp stamp-admin">Administrator</span>
         </div>
-        <div class="form-row">
-          <label>New Password</label>
-          <input type="password" name="password" required>
-          @error('password')<div class="hint" style="color:var(--danger);margin-top:5px">{{ $message }}</div>@enderror
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:12.5px;color:var(--muted)">Account Status</span>
+          <span class="stamp stamp-{{ $admin->status }}">{{ ucfirst($admin->status) }}</span>
         </div>
-        <div class="form-row">
-          <label>Confirm New Password</label>
-          <input type="password" name="password_confirmation" required>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:12.5px;color:var(--muted)">Sign-in Method</span>
+          <span class="mono" style="font-size:12.5px">{{ ucfirst($admin->auth_method) }}</span>
         </div>
-        <button class="btn btn-primary" type="submit">Update Password</button>
-      </form>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:12.5px;color:var(--muted)">Member Since</span>
+          <span class="mono" style="font-size:12.5px">{{ $admin->created_at?->format('M d, Y') ?? '—' }}</span>
+        </div>
+      </div>
     </div>
   </div>
 </div>

@@ -29,7 +29,7 @@
 
 <div class="account-grid">
   <div class="card">
-    <div class="card-head"><h2>Account Information</h2></div>
+    <div class="card-head"><div><h2>Account Information</h2><p>Your profile as shown to the platform</p></div></div>
     <div class="card-pad">
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
         <?php if (isset($component)) { $__componentOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e = $component; } ?>
@@ -53,7 +53,7 @@
 <?php unset($__componentOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e); ?>
 <?php endif; ?>
         <div>
-          <div style="font-weight:700;font-size:15px"><?php echo e($admin->first_name); ?> <?php echo e($admin->last_name); ?></div>
+          <div style="font-weight:700;font-size:15px"><?php echo e($admin->given_names); ?> <?php echo e($admin->last_name); ?></div>
           <div style="font-size:12px;color:var(--muted)"><?php echo e($admin->email); ?></div>
           <span class="stamp stamp-active" style="margin-top:4px"><?php echo e(ucfirst($admin->account_type)); ?></span>
         </div>
@@ -75,9 +75,9 @@ endif;
 unset($__errorArgs, $__bag); ?>
         </div>
         <div class="form-row">
-          <label>First Name</label>
-          <input type="text" name="first_name" value="<?php echo e(old('first_name', $admin->first_name)); ?>" required>
-          <?php $__errorArgs = ['first_name'];
+          <label>Given Names</label>
+          <input type="text" name="given_names" value="<?php echo e(old('given_names', $admin->given_names)); ?>" required>
+          <?php $__errorArgs = ['given_names'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
 if (isset($message)) { $__messageOriginal = $message; }
@@ -191,29 +191,30 @@ unset($__errorArgs, $__bag); ?>
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-head"><h2>Change Password</h2></div>
-    <div class="card-pad">
-      <?php $__errorArgs = ['current_password'];
+  <div class="stack">
+    <div class="card">
+      <div class="card-head"><div><h2>Change Password</h2><p>Update your login credentials</p></div></div>
+      <div class="card-pad">
+        <?php $__errorArgs = ['current_password'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
 if (isset($message)) { $__messageOriginal = $message; }
 $message = $__bag->first($__errorArgs[0]); ?>
-      <div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px"><?php echo e($message); ?></div>
-      <?php unset($message);
+        <div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px"><?php echo e($message); ?></div>
+        <?php unset($message);
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?>
-      <form method="POST" action="<?php echo e(route('admin.account.password')); ?>">
-        <?php echo csrf_field(); ?>
-        <div class="form-row">
-          <label>Current Password</label>
-          <input type="password" name="current_password" required>
-        </div>
-        <div class="form-row">
-          <label>New Password</label>
-          <input type="password" name="password" required>
-          <?php $__errorArgs = ['password'];
+        <form method="POST" action="<?php echo e(route('admin.account.password')); ?>">
+          <?php echo csrf_field(); ?>
+          <div class="form-row">
+            <label>Current Password</label>
+            <input type="password" name="current_password" required>
+          </div>
+          <div class="form-row">
+            <label>New Password</label>
+            <input type="password" name="password" required>
+            <?php $__errorArgs = ['password'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
 if (isset($message)) { $__messageOriginal = $message; }
@@ -221,13 +222,36 @@ $message = $__bag->first($__errorArgs[0]); ?><div class="hint" style="color:var(
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?>
+          </div>
+          <div class="form-row">
+            <label>Confirm New Password</label>
+            <input type="password" name="password_confirmation" required>
+          </div>
+          <button class="btn btn-primary" type="submit">Update Password</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><h2>Account Overview</h2><p>Role &amp; account details</p></div></div>
+      <div class="card-pad" style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:12.5px;color:var(--muted)">Role</span>
+          <span class="stamp stamp-admin">Administrator</span>
         </div>
-        <div class="form-row">
-          <label>Confirm New Password</label>
-          <input type="password" name="password_confirmation" required>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:12.5px;color:var(--muted)">Account Status</span>
+          <span class="stamp stamp-<?php echo e($admin->status); ?>"><?php echo e(ucfirst($admin->status)); ?></span>
         </div>
-        <button class="btn btn-primary" type="submit">Update Password</button>
-      </form>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:12.5px;color:var(--muted)">Sign-in Method</span>
+          <span class="mono" style="font-size:12.5px"><?php echo e(ucfirst($admin->auth_method)); ?></span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:12.5px;color:var(--muted)">Member Since</span>
+          <span class="mono" style="font-size:12.5px"><?php echo e($admin->created_at?->format('M d, Y') ?? '—'); ?></span>
+        </div>
+      </div>
     </div>
   </div>
 </div>

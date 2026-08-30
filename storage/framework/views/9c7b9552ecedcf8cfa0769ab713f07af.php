@@ -81,6 +81,18 @@
             letter-spacing: -.03em;
             line-height: 1.2;
         }
+        .back-home-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 18px;
+            color: var(--auth-muted);
+            font-size: 12.5px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: color .15s ease;
+        }
+        .back-home-link:hover { color: var(--auth-primary); }
     </style>
 </head>
 <body class="auth-page">
@@ -107,13 +119,17 @@
 
         <section class="auth-form-panel">
             <div class="auth-form-wrap">
+                <a href="<?php echo e(url('/')); ?>" class="back-home-link">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+                    Back to homepage
+                </a>
+
                 <div class="page-header">
                     <div class="page-title-row">
                         <h2>Get started</h2>
                     </div>
                     <p>Select the account type that matches what you want to do.</p>
                 </div>
-
 
                 <div class="role-grid">
                     

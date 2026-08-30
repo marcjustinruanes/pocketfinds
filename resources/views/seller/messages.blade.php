@@ -9,10 +9,19 @@
 <div class="chat-shell">
   <div class="chat-list" id="chatList">
     <div class="chat-list-head"><strong style="font-size:13.5px">Conversations</strong></div>
+    @if($admin && !$conversations->has($admin->id))
+      <a href="{{ route('seller.messages', ['buyer' => $admin->id]) }}" class="chat-list-item {{ $buyer && $buyer->id === $admin->id ? 'active' : '' }}">
+        <div class="cli-av">🛟</div>
+        <div class="cli-body">
+          <div class="cli-name">PocketFinds Support</div>
+          <div class="cli-preview">Message the admin team</div>
+        </div>
+      </a>
+    @endif
     @forelse($conversations as $otherId => $last)
       @php
         $other = $last->sender_id === $myId ? $last->receiver : $last->sender;
-        $otherName = $other->given_names . ' ' . $other->last_name;
+        $otherName = $other->is_admin ? 'PocketFinds Support' : ($other->given_names . ' ' . $other->last_name);
         $isActive = $buyer && $buyer->id === $other->id;
       @endphp
       @php $isUnread = $last->receiver_id === $myId && !$last->read; @endphp
@@ -37,8 +46,8 @@
         @php $buyerName = $buyer->given_names . ' ' . $buyer->last_name; @endphp
         <div class="chat-head-av">{{ strtoupper(substr($buyerName,0,1)) }}</div>
         <div class="chat-head-info">
-          <div class="chat-head-name">{{ $buyerName }}</div>
-          <div style="font-size:11px;color:var(--muted)">Customer</div>
+          <div class="chat-head-name">{{ $buyer->is_admin ? 'PocketFinds Support' : $buyerName }}</div>
+          <div style="font-size:11px;color:var(--muted)">{{ $buyer->is_admin ? 'Admin' : 'Customer' }}</div>
         </div>
       @else
         <div style="color:var(--muted);font-size:13px">Select a conversation</div>

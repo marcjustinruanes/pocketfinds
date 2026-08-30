@@ -1,7 +1,7 @@
 @extends('admin.layout')
 @section('title', 'Settings')
 @section('page-title', 'Platform Settings')
-@section('page-sub', 'Manage announcements and platform policies')
+@section('page-sub', 'Manage platform policies and preferences')
 
 @section('content')
 @if(session('success'))
@@ -11,69 +11,11 @@
 @endif
 
 <div data-tabs style="margin-bottom:20px">
-  <a class="tab active" data-tab="announcements"><x-admin-icon name="megaphone" /> Announcements</a>
-  <a class="tab" data-tab="policies"><x-admin-icon name="file" /> Platform Policies</a>
+  <a class="tab active" data-tab="policies"><x-admin-icon name="file" /> Platform Policies</a>
   <a class="tab" data-tab="general"><x-admin-icon name="settings" /> General</a>
 </div>
 
-<div data-tab-panel="announcements">
-  <div class="dash-grid">
-    <div class="card">
-      <div class="card-head"><div><h2>Post Announcement</h2><p>Broadcast a message to platform users</p></div></div>
-      <div class="card-pad">
-        <form method="POST" action="{{ route('admin.settings.announcements.store') }}">
-          @csrf
-          <div class="form-row">
-            <label>Title</label>
-            <input type="text" name="title" placeholder="Announcement title" required value="{{ old('title') }}">
-          </div>
-          <div class="form-row">
-            <label>Message</label>
-            <textarea name="body" rows="4" placeholder="Write your announcement here..." required>{{ old('body') }}</textarea>
-          </div>
-          <div class="form-row">
-            <label>Audience</label>
-            <select name="audience">
-              <option value="all">All Users</option>
-              <option value="buyer">Buyers Only</option>
-              <option value="seller">Sellers Only</option>
-              <option value="rider">Riders Only</option>
-            </select>
-          </div>
-          <button class="btn btn-primary" type="submit">Post Announcement</button>
-        </form>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-head"><div><h2>Active Announcements</h2><p>{{ $announcements->count() }} total</p></div></div>
-      <div style="max-height:480px;overflow-y:auto">
-        @forelse($announcements as $ann)
-        <div style="padding:14px 18px;border-bottom:1px solid var(--border)">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-            <div style="min-width:0">
-              <div style="font-weight:700;font-size:13.5px">{{ $ann->title }}</div>
-              <div style="font-size:12px;color:var(--muted);margin:3px 0">{{ $ann->body }}</div>
-              <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
-                <span class="stamp stamp-approved">{{ ucfirst($ann->audience) }}</span>
-                <span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">{{ $ann->created_at?->format('Y-m-d') }}</span>
-              </div>
-            </div>
-            <form method="POST" action="{{ route('admin.settings.announcements.destroy', $ann->id) }}" style="flex:none">
-              @csrf @method('DELETE')
-              <button class="btn btn-sm btn-danger icon-only" type="submit" onclick="return confirm('Delete this announcement?')" aria-label="Delete announcement"><x-admin-icon name="trash" /></button>
-            </form>
-          </div>
-        </div>
-        @empty
-        <div class="empty"><div class="ic"><x-admin-icon name="megaphone" /></div><h3>No announcements yet</h3></div>
-        @endforelse
-      </div>
-    </div>
-  </div>
-</div>
-
-<div data-tab-panel="policies" style="display:none">
+<div data-tab-panel="policies">
   <div class="dash-grid">
     <div class="card">
       <div class="card-head"><div><h2>Add New Policy</h2><p>Create a platform policy document</p></div></div>
@@ -118,7 +60,13 @@
       <div class="modal-overlay" id="policyModal-{{ $policy->id }}">
         <div class="modal modal-lg">
           <div class="modal-head">
-            <div><h3>Edit Policy</h3><p>{{ $policy->title }}</p></div>
+            <div class="modal-head-main">
+              <span class="modal-icon"><x-admin-icon name="file" /></span>
+              <div class="modal-head-copy">
+                <h3>Edit Policy</h3>
+                <p>{{ $policy->title }}</p>
+              </div>
+            </div>
             <button class="modal-close" data-modal-close aria-label="Close"><x-admin-icon name="close" /></button>
           </div>
           <form method="POST" action="{{ route('admin.settings.policies.update', $policy->id) }}">
@@ -150,7 +98,7 @@
 <div data-tab-panel="general" style="display:none">
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px">
     <div class="card">
-      <div class="card-head"><h2>General</h2></div>
+      <div class="card-head"><div><h2>General</h2><p>Platform-wide defaults</p></div></div>
       <div class="card-pad">
         <div class="form-row"><label>Platform Name</label><input type="text" value="PocketFinds"></div>
         <div class="form-row"><label>Support Email</label><input type="email" value="support@pocketfinds.com"></div>
@@ -160,7 +108,7 @@
     </div>
 
     <div class="card">
-      <div class="card-head"><h2>Feature Toggles</h2></div>
+      <div class="card-head"><div><h2>Feature Toggles</h2><p>Turn platform features on or off</p></div></div>
       <div class="card-pad">
         <div class="switch-row">
           <div><strong>Google Sign-In</strong><span>Allow users to register via Google</span></div>
@@ -182,7 +130,7 @@
     </div>
 
     <div class="card">
-      <div class="card-head"><h2>Danger Zone</h2></div>
+      <div class="card-head"><div><h2>Danger Zone</h2><p>Irreversible maintenance actions</p></div></div>
       <div class="card-pad" style="display:flex;flex-direction:column;gap:10px">
         <button class="btn btn-danger" data-toast="Cache cleared!">Clear Application Cache</button>
         <button class="btn btn-danger" data-toast="Sessions cleared!">Clear All Sessions</button>

@@ -209,7 +209,7 @@
         <div class="gp-shop-sub">More from this shop</div>
       </div>
     </div>
-    <a href="{{ route('guest.shop', $product['seller_slug']) }}" class="gp-shop-link">View Shop →</a>
+    <a href="{{ route('guest.shop', $product['seller_slug']) }}" class="gp-shop-link">View Shop</a>
   </div>
   <div class="gp-mini-grid">
     @foreach($shopProducts as $sp)

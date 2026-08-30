@@ -3,186 +3,133 @@
 <?php $__env->startSection('page-sub', 'Platform messaging and support inbox'); ?>
 
 <?php $__env->startSection('content'); ?>
-<style>
-  .content { padding: 0 !important; }
-  .chat-shell { border-radius: 0; border-left: 0; border-right: 0; border-bottom: 0; height: calc(100vh - 66px); display: flex; }
-  .chat-main { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-  .chat-body { flex: 1; overflow-y: auto; }
-  .chat-input { flex-shrink: 0; }
-  .chat-list { overflow-y: auto; }
-</style>
-<?php if(session('success')): ?>
-<div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">
-  <?php echo e(session('success')); ?>
-
-</div>
-<?php endif; ?>
-<?php $__errorArgs = ['body'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?>
-<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">
-  <?php echo e($message); ?>
-
-</div>
-<?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?>
-
 <div class="chat-shell">
   <div class="chat-list">
     <div class="chat-list-head">
-      <input type="text" data-chat-search style="width:100%;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px" placeholder="Search users...">
+      <div style="position:relative">
+        <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted)" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" width="14" height="14"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M15 15l-3-3"/></svg>
+        <input type="text" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:8px 12px 8px 32px;font-size:13px;font-family:var(--font-body)" placeholder="Search users…">
+      </div>
     </div>
-    <?php $__empty_1 = true; $__currentLoopData = $users; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $user): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
-    <?php
-      $unread = \App\Models\Message::where('sender_id', $user->id)->where('receiver_id', auth()->id())->where('read', false)->count();
-    ?>
-    <a href="<?php echo e(route('admin.messages.user', $user)); ?>" class="chat-conv <?php echo e($selectedUser && $selectedUser->id === $user->id ? 'active' : ''); ?>" data-chat-user>
-      <?php if (isset($component)) { $__componentOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.user-avatar','data' => ['user' => $user,'size' => '36','class' => 'avatar-sm']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('user-avatar'); ?>
+    <?php $__empty_1 = true; $__currentLoopData = $users; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $u): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+    <a href="<?php echo e(route('admin.messages.user', $u->id)); ?>" class="chat-conv <?php echo e(isset($selectedUser) && $selectedUser?->id == $u->id ? 'active' : ''); ?> <?php echo e($u->unread_count > 0 ? 'has-unread' : ''); ?>" style="text-decoration:none;color:inherit">
+      <div class="avatar-sm"><?php echo e(strtoupper(substr($u->given_names,0,1).substr($u->last_name,0,1))); ?></div>
+      <div class="meta">
+        <strong><?php echo e($u->given_names); ?> <?php echo e($u->last_name); ?></strong>
+        <div class="role-tag"><?php echo e(ucfirst($u->account_type)); ?></div>
+        <p>
+          <?php if($u->last_message): ?>
+            <?php if($u->last_message->sender_id === auth()->id()): ?><span style="color:var(--muted)">You: </span><?php endif; ?>
+            <?php echo e($u->last_message->body ?: '📎 Attachment'); ?>
+
+          <?php else: ?>
+            <?php echo e($u->email); ?>
+
+          <?php endif; ?>
+        </p>
+      </div>
+      <div class="chat-conv-side">
+        <?php if($u->last_message): ?>
+        <span class="chat-conv-time"><?php echo e($u->last_message->created_at->diffForHumans(null, true)); ?></span>
+        <?php endif; ?>
+        <?php if($u->unread_count > 0): ?>
+        <span class="unread"><?php echo e($u->unread_count); ?></span>
+        <?php endif; ?>
+      </div>
+    </a>
+    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+    <div class="empty" style="padding:40px 20px">
+      <div class="ic"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'users']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('admin-icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['user' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($user),'size' => '36','class' => 'avatar-sm']); ?>
+<?php $component->withAttributes(['name' => 'users']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
-<?php if (isset($__attributesOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e)): ?>
-<?php $attributes = $__attributesOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e; ?>
-<?php unset($__attributesOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e); ?>
+<?php if (isset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
+<?php $attributes = $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
+<?php unset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
 <?php endif; ?>
-<?php if (isset($__componentOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e)): ?>
-<?php $component = $__componentOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e; ?>
-<?php unset($__componentOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e); ?>
-<?php endif; ?>
-      <div class="meta">
-        <strong><?php echo e($user->first_name); ?> <?php echo e($user->last_name); ?></strong>
-        <div class="role-tag"><?php echo e(ucfirst($user->account_type)); ?></div>
-        <p><?php echo e($user->email); ?></p>
-      </div>
-      <?php if($unread): ?>
-      <span class="unread"><?php echo e($unread); ?></span>
-      <?php endif; ?>
-    </a>
-    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
-    <div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">No users yet.</div>
+<?php if (isset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
+<?php $component = $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
+<?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
+<?php endif; ?></div>
+      <h3>No users yet</h3>
+      <p>Platform accounts will appear here.</p>
+    </div>
     <?php endif; ?>
   </div>
 
   <div class="chat-main">
-    <?php if($selectedUser): ?>
+    <?php if(isset($selectedUser) && $selectedUser): ?>
     <div class="chat-head">
-      <?php if (isset($component)) { $__componentOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.user-avatar','data' => ['user' => $selectedUser,'size' => '36','class' => 'avatar-sm']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('user-avatar'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['user' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($selectedUser),'size' => '36','class' => 'avatar-sm']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e)): ?>
-<?php $attributes = $__attributesOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e; ?>
-<?php unset($__attributesOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e)): ?>
-<?php $component = $__componentOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e; ?>
-<?php unset($__componentOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e); ?>
-<?php endif; ?>
+      <div class="avatar-sm"><?php echo e(strtoupper(substr($selectedUser->given_names,0,1).substr($selectedUser->last_name,0,1))); ?></div>
       <div>
-        <strong><?php echo e($selectedUser->first_name); ?> <?php echo e($selectedUser->last_name); ?></strong>
-        <div style="font-size:11px;color:var(--muted)"><?php echo e(ucfirst($selectedUser->account_type)); ?> - <?php echo e($selectedUser->email); ?></div>
+        <strong style="font-size:13.5px;font-family:var(--font-body)"><?php echo e($selectedUser->given_names); ?> <?php echo e($selectedUser->last_name); ?></strong>
+        <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"><?php echo e(ucfirst($selectedUser->account_type)); ?> · <?php echo e($selectedUser->email); ?></div>
       </div>
     </div>
-    <div class="chat-body" id="chatBody">
-      <?php $__empty_1 = true; $__currentLoopData = $messages; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $message): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
-      <div class="bubble <?php echo e($message->sender_id === auth()->id() ? 'out' : 'in'); ?>">
-        <?php echo e($message->body); ?>
+    <div class="chat-body">
+      <?php $__empty_1 = true; $__currentLoopData = $messages; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $msg): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+      <div class="bubble <?php echo e($msg->sender_id == auth()->id() ? 'out' : 'in'); ?>">
+        <?php echo e($msg->body); ?>
 
-        <time><?php echo e($message->created_at?->format('M d, Y g:i A')); ?></time>
+        <time><?php echo e(\Carbon\Carbon::parse($msg->created_at)->format('M d, H:i')); ?></time>
       </div>
       <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
       <div class="empty" style="margin:auto">
-        <div class="ic"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'mail']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('admin-icon'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['name' => 'mail']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
-<?php $attributes = $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
-<?php unset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
-<?php $component = $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
-<?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
-<?php endif; ?></div>
+        <div class="ic">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" width="28" height="28"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
         <h3>No messages yet</h3>
-        <p>Start the conversation with <?php echo e($selectedUser->first_name); ?>.</p>
+        <p>Start the conversation below.</p>
       </div>
       <?php endif; ?>
     </div>
-    <form class="chat-input" method="POST" action="<?php echo e(route('admin.messages.send', $selectedUser)); ?>">
-      <?php echo csrf_field(); ?>
-      <input type="text" name="body" value="<?php echo e(old('body')); ?>" placeholder="Type a message..." maxlength="2000" required>
-      <button class="btn btn-primary" type="submit">Send</button>
-    </form>
+    <div class="chat-input">
+      <form method="POST" action="<?php echo e(route('admin.messages.send', $selectedUser->id)); ?>" style="display:flex;gap:10px;flex:1">
+        <?php echo csrf_field(); ?>
+        <input type="text" name="body" placeholder="Type a message…" style="font-family:var(--font-body);font-size:13px" required autocomplete="off">
+        <button class="btn btn-primary" type="submit">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M18 2L2 9l6 3 3 6 7-16z"/></svg>
+          Send
+        </button>
+      </form>
+    </div>
     <?php else: ?>
-    <div class="empty" style="margin:auto">
-      <div class="ic"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
-<?php if (isset($attributes)) { $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'mail']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
-<?php $component->withName('admin-icon'); ?>
-<?php if ($component->shouldRender()): ?>
-<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
-<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
-<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
-<?php endif; ?>
-<?php $component->withAttributes(['name' => 'mail']); ?>
-<?php echo $__env->renderComponent(); ?>
-<?php endif; ?>
-<?php if (isset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
-<?php $attributes = $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
-<?php unset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
-<?php endif; ?>
-<?php if (isset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
-<?php $component = $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
-<?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
-<?php endif; ?></div>
-      <h3>No users to message</h3>
+    <div class="chat-head">
+      <div class="avatar-sm">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16"><circle cx="10" cy="7" r="3.5"/><path d="M3 17c0-3.3 3.1-6 7-6s7 2.7 7 6"/></svg>
+      </div>
+      <div>
+        <strong style="font-size:13.5px;font-family:var(--font-body)">Select a conversation</strong>
+        <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">Choose a user from the list</div>
+      </div>
+    </div>
+    <div class="chat-body">
+      <div class="empty" style="margin:auto">
+        <div class="ic">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" width="28" height="28"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <h3>No conversation selected</h3>
+        <p>Pick a user from the left to start messaging.</p>
+      </div>
+    </div>
+    <div class="chat-input">
+      <input type="text" placeholder="Type a message…" disabled style="font-family:var(--font-body);font-size:13px;opacity:.5">
+      <button class="btn btn-primary" disabled style="opacity:.5">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M18 2L2 9l6 3 3 6 7-16z"/></svg>
+        Send
+      </button>
     </div>
     <?php endif; ?>
   </div>
 </div>
 <?php $__env->stopSection(); ?>
-
-<?php $__env->startPush('scripts'); ?>
-<script>
-  const chatBody = document.getElementById('chatBody');
-  if (chatBody) chatBody.scrollTop = chatBody.scrollHeight;
-
-  document.querySelector('[data-chat-search]')?.addEventListener('input', (event) => {
-    const query = event.target.value.trim().toLowerCase();
-    document.querySelectorAll('[data-chat-user]').forEach((item) => {
-      item.hidden = query && !item.textContent.toLowerCase().includes(query);
-    });
-  });
-</script>
-<?php $__env->stopPush(); ?>
 
 <?php echo $__env->make('admin.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\resources\views/admin/messages.blade.php ENDPATH**/ ?>

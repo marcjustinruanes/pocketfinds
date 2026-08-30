@@ -37,8 +37,12 @@ class SellerController extends Controller
     {
         $buyer = null;
         if ($request->filled('buyer')) {
-            $buyer = User::where('id', $request->query('buyer'))->where('account_type', 'buyer')->first();
+            $buyer = User::where('id', $request->query('buyer'))
+                ->where(fn ($q) => $q->where('account_type', 'buyer')->orWhere('is_admin', true))
+                ->first();
         }
+
+        $admin = User::where('is_admin', true)->first();
 
         $messages = [];
         if ($buyer) {
@@ -67,13 +71,15 @@ class SellerController extends Controller
             ->groupBy(fn($m) => $m->sender_id === auth()->id() ? $m->receiver_id : $m->sender_id)
             ->map(fn($msgs) => $msgs->first());
 
-        return view('seller.messages', compact('buyer', 'messages', 'conversations', 'sellerProducts'));
+        return view('seller.messages', compact('buyer', 'admin', 'messages', 'conversations', 'sellerProducts'));
     }
 
     public function messagesPoll(Request $request)
     {
         $data = $request->validate(['receiver_id' => ['required', 'integer']]);
-        $buyer = User::whereKey($data['receiver_id'])->where('account_type', 'buyer')->firstOrFail();
+        $buyer = User::whereKey($data['receiver_id'])
+            ->where(fn ($q) => $q->where('account_type', 'buyer')->orWhere('is_admin', true))
+            ->firstOrFail();
 
         Message::where('sender_id', $buyer->id)
             ->where('receiver_id', auth()->id())
@@ -132,7 +138,9 @@ class SellerController extends Controller
             'attachment'    => ['nullable', 'file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi'],
         ]);
 
-        User::whereKey($data['receiver_id'])->where('account_type', 'buyer')->firstOrFail();
+        User::whereKey($data['receiver_id'])
+            ->where(fn ($q) => $q->where('account_type', 'buyer')->orWhere('is_admin', true))
+            ->firstOrFail();
         $files = $request->file('attachments', []);
         if ($request->hasFile('attachment')) $files[] = $request->file('attachment');
         abort_unless(filled($data['body'] ?? null) || $files || filled($data['product_id'] ?? null), 422, 'Send a message, product, image, or video.');

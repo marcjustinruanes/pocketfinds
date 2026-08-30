@@ -52,7 +52,7 @@
 <?php $component = $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
 <?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
 <?php endif; ?></span> Registrations
-      <span class="count"><?php echo e($pendingRegistrations); ?></span>
+      <?php if($pendingRegistrations): ?> <span class="count"><?php echo e($pendingRegistrations); ?></span> <?php endif; ?>
     </a>
     <a href="<?php echo e(route('admin.users')); ?>" class="nav-item <?php echo e(request()->routeIs('admin.users') ? 'active' : ''); ?>">
       <span class="ic"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
@@ -76,19 +76,17 @@
 <?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
 <?php endif; ?></span> User Accounts
     </a>
-
-    <div class="nav-label">Compliance</div>
-    <a href="<?php echo e(route('admin.compliance')); ?>" class="nav-item <?php echo e(request()->routeIs('admin.compliance') ? 'active' : ''); ?>">
+    <a href="<?php echo e(route('admin.products')); ?>" class="nav-item <?php echo e(request()->routeIs('admin.products') ? 'active' : ''); ?>">
       <span class="ic"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'shield']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'bag']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('admin-icon'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['name' => 'shield']); ?>
+<?php $component->withAttributes(['name' => 'bag']); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
@@ -98,12 +96,32 @@
 <?php if (isset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
 <?php $component = $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
 <?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
-<?php endif; ?></span> Seller Compliance
+<?php endif; ?></span> Products
     </a>
+
+    <div class="nav-label">Compliance</div>
     <a href="<?php echo e(route('admin.doc-requests')); ?>" class="nav-item <?php echo e(request()->routeIs('admin.doc-requests') ? 'active' : ''); ?>">
-      <span class="ic">📄</span> Doc Requests
-      <?php $pendingDocs = \App\Models\DocumentUpdateRequest::where('status','pending')->count(); ?>
-      <?php if($pendingDocs): ?> <span class="count"><?php echo e($pendingDocs); ?></span> <?php endif; ?>
+      <span class="ic"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'file']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('admin-icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'file']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
+<?php $attributes = $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
+<?php unset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
+<?php $component = $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
+<?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
+<?php endif; ?></span> Doc Requests
+      <?php if(!empty($pendingDocs)): ?> <span class="count"><?php echo e($pendingDocs); ?></span> <?php endif; ?>
     </a>
     <a href="<?php echo e(route('admin.complaints')); ?>" class="nav-item <?php echo e(request()->routeIs('admin.complaints') ? 'active' : ''); ?>">
       <span class="ic"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
@@ -126,7 +144,7 @@
 <?php $component = $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
 <?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
 <?php endif; ?></span> Complaints &amp; Disputes
-      <span class="count"><?php echo e($openDisputes); ?></span>
+      <?php if($openDisputes): ?> <span class="count"><?php echo e($openDisputes); ?></span> <?php endif; ?>
     </a>
 
     <div class="nav-label">Finance</div>
@@ -201,6 +219,28 @@
       <span class="count"><?php echo e($unreadMessages); ?></span>
       <?php endif; ?>
     </a>
+    <a href="<?php echo e(route('admin.announcements')); ?>" class="nav-item <?php echo e(request()->routeIs('admin.announcements') ? 'active' : ''); ?>">
+      <span class="ic"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin-icon','data' => ['name' => 'megaphone']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('admin-icon'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['name' => 'megaphone']); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
+<?php $attributes = $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
+<?php unset($__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92)): ?>
+<?php $component = $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92; ?>
+<?php unset($__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92); ?>
+<?php endif; ?></span> Announcements
+    </a>
     <a href="<?php echo e(route('admin.account')); ?>" class="nav-item <?php echo e(request()->routeIs('admin.account') ? 'active' : ''); ?>">
       <span class="ic"><?php if (isset($component)) { $__componentOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalc4dbd72dbbda5b9097ae9fdad9927c92 = $attributes; } ?>
@@ -270,7 +310,7 @@
 <?php unset($__componentOriginalaa6ddd3b8ee0acee5a2d1d7ac5c7e40e); ?>
 <?php endif; ?>
       <div class="who">
-        <strong><?php echo e(auth()->user()->first_name); ?> <?php echo e(auth()->user()->last_name); ?></strong>
+        <strong><?php echo e(auth()->user()->given_names); ?> <?php echo e(auth()->user()->last_name); ?></strong>
         <span><?php echo e(ucfirst(auth()->user()->account_type)); ?></span>
       </div>
     </div>

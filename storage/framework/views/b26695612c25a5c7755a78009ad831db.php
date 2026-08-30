@@ -23,20 +23,18 @@
             letter-spacing: -.03em;
             line-height: 1.2;
         }
-        .role-pill {
+        .back-home-link {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 4px 10px;
-            border-radius: 999px;
-            background: var(--auth-primary-soft);
-            border: 1px solid rgba(217,70,143,.2);
-            color: var(--auth-primary);
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: .05em;
+            margin-bottom: 18px;
+            color: var(--auth-muted);
+            font-size: 12.5px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: color .15s ease;
         }
+        .back-home-link:hover { color: var(--auth-primary); }
     </style>
 </head>
 <body class="auth-page">
@@ -68,24 +66,39 @@
 
         <section class="auth-form-panel">
             <div class="auth-form-wrap">
+                <a href="<?php echo e(url('/')); ?>" class="back-home-link">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+                    Back to homepage
+                </a>
+
                 <div class="page-header">
                     <div class="page-title-row">
                         <h2>Welcome back</h2>
-                        <span class="role-pill" style="margin-left:auto">
-                            Sign in
-                        </span>
                     </div>
-                    <div style="display:flex;align-items:center;justify-content:space-between">
-                        <p style="margin:0">Enter your credentials to continue.</p>
-                        <a href="<?php echo e(url('/')); ?>" title="Back to Homepage" style="flex-shrink:0;margin-left:8px;color:var(--auth-muted);text-decoration:none;line-height:1" onmouseover="this.style.color='var(--auth-primary)'" onmouseout="this.style.color='var(--auth-muted)'"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></a>
-                    </div>
+                    <p>Enter your credentials to continue.</p>
                 </div>
 
                 <?php if(!empty($errors) && $errors->any()): ?>
-                    <div class="auth-error">
-                        <?php echo e($errors->first()); ?>
+                    <?php if(session('accountStatus')): ?>
+                        <div class="auth-status-banner">
+                            <span class="auth-status-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            </span>
+                            <div class="auth-status-body">
+                                <p class="auth-status-title"><?php echo e(session('accountStatus') === 'suspended' ? 'Account suspended' : 'Application rejected'); ?></p>
+                                <p class="auth-status-text"><?php echo e($errors->first()); ?></p>
+                                <a href="mailto:pocketfindssupport@gmail.com" class="auth-status-action">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+                                    Contact Support
+                                </a>
+                            </div>
+                        </div>
+                    <?php else: ?>
+                        <div class="auth-error">
+                            <?php echo e($errors->first()); ?>
 
-                    </div>
+                        </div>
+                    <?php endif; ?>
                 <?php endif; ?>
 
                 <form class="auth-form" method="POST" action="<?php echo e(route('login.post')); ?>">
