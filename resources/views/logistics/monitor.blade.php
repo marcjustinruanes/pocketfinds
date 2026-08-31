@@ -4,6 +4,9 @@
 @section('page-sub', 'Track and manage ongoing delivery statuses')
 
 @section('content')
+@if($errors->has('status'))
+<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ $errors->first('status') }}</div>
+@endif
 <div class="card">
   <div class="card-head"><h2>Active Deliveries</h2></div>
   <div class="table-wrap">
@@ -34,15 +37,22 @@
           <td><span class="stamp stamp-{{ $s->shipping_status }}">{{ ucfirst(str_replace('_',' ',$s->shipping_status)) }}</span></td>
           <td class="mono" style="font-size:11.5px">{{ $s->updated_at?->format('M d, Y H:i') ?? '—' }}</td>
           <td>
+            @php($allowedNext = $transitions[$s->shipping_status] ?? [])
+            @if(count($allowedNext))
             <form method="POST" action="{{ route('logistics.status.update', $s->id) }}" style="display:flex;gap:8px">
               @csrf @method('PATCH')
               <select name="status" class="select">
-                @foreach(['pending','for_verification','verified','available','accepted','picked_up','out_for_delivery','delivered','completed','cancelled','failed'] as $st)
-                <option value="{{ $st }}" {{ $s->shipping_status === $st ? 'selected' : '' }}>{{ ucfirst(str_replace('_',' ',$st)) }}</option>
+                @foreach($allowedNext as $st)
+                <option value="{{ $st }}">{{ ucfirst(str_replace('_',' ',$st)) }}</option>
                 @endforeach
               </select>
               <button class="btn btn-sm btn-primary">Update</button>
             </form>
+            @elseif($s->shipping_status === 'available')
+            <a href="{{ route('logistics.assignments') }}" style="color:var(--pink-dark);font-size:12px;font-weight:600">Assign a courier →</a>
+            @else
+            <span style="color:var(--muted);font-size:12px">No action needed</span>
+            @endif
           </td>
         </tr>
         @empty

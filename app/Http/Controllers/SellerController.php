@@ -284,7 +284,7 @@ class SellerController extends Controller
             'message_body' => $message->body, 'message_type' => $message->attachment_type ?: ($message->body ? 'text' : 'message'),
         ];
         if ($evidence) {
-            $values['evidence_path'] = $evidence->store('report_evidence', 'public');
+            $values['evidence_path'] = $evidence->store('report_evidence', 'supabase');
             $values['evidence_name'] = $evidence->getClientOriginalName();
             $values['evidence_mime'] = $evidence->getMimeType();
             $values['evidence_type'] = str_starts_with($values['evidence_mime'], 'video/') ? 'video' : 'image';
@@ -334,7 +334,7 @@ class SellerController extends Controller
     {
         $mime = $file->getMimeType();
         $extension = strtolower($file->getClientOriginalExtension());
-        $msg['attachment_path'] = $file->store('message_attachments', 'public');
+        $msg['attachment_path'] = $file->store('message_attachments', 'supabase_messages');
         $msg['attachment_name'] = $file->getClientOriginalName();
         $msg['attachment_mime'] = $mime;
         $msg['attachment_size'] = $file->getSize();
@@ -352,7 +352,7 @@ class SellerController extends Controller
             'product_id'      => $m->product_id,
             'product_name'    => $m->product?->name,
             'product_price'   => $m->product?->price,
-            'product_img'     => $m->product?->image ? \Illuminate\Support\Facades\Storage::url($m->product->image) : null,
+            'product_img'     => $m->product?->image ? (rtrim(config('filesystems.disks.supabase.url'), '/') . '/' . ltrim($m->product->image, '/')) : null,
             'product_url'     => $m->product_id ? route('buyer.product', $m->product_id) : null,
             'attachment_path' => $m->attachment_path ? route('message.media', ['path' => $m->attachment_path]) : null,
             'attachment_name' => $m->attachment_name,
@@ -408,7 +408,7 @@ class SellerController extends Controller
             return back()->withErrors(['images' => 'Please set your shop category in Account settings before adding products.']);
         }
 
-        $imagePaths = collect($request->file('images', []))->map(fn ($file) => $file->store('product_images', 'public'))->values();
+        $imagePaths = collect($request->file('images', []))->map(fn ($file) => $file->store('product_images', 'supabase'))->values();
         $variations = $request->filled('variations') ? json_decode($request->variations, true) : null;
         $details    = $request->filled('details') ? json_decode($request->details, true) : null;
 
@@ -419,7 +419,7 @@ class SellerController extends Controller
         }
 
         $coverImages = $imagePaths->isNotEmpty() ? $imagePaths->all() : [$firstVariationImage];
-        $videoPath   = $request->hasFile('video') ? $request->file('video')->store('product_videos', 'public') : null;
+        $videoPath   = $request->hasFile('video') ? $request->file('video')->store('product_videos', 'supabase') : null;
 
         Product::create([
             'seller_id'    => $seller->id,
@@ -485,7 +485,7 @@ class SellerController extends Controller
         $seller = auth()->user();
 
         $keptImages = collect($request->input('existing_images', []));
-        $newImages  = collect($request->file('images', []))->map(fn ($file) => $file->store('product_images', 'public'));
+        $newImages  = collect($request->file('images', []))->map(fn ($file) => $file->store('product_images', 'supabase'));
         $variations = $request->filled('variations') ? json_decode($request->variations, true) : null;
         $details    = $request->filled('details') ? json_decode($request->details, true) : null;
 
@@ -500,7 +500,7 @@ class SellerController extends Controller
         if ($coverImages->isEmpty()) $coverImages = collect([$firstVariationImage]);
 
         $videoPath = $request->hasFile('video')
-            ? $request->file('video')->store('product_videos', 'public')
+            ? $request->file('video')->store('product_videos', 'supabase')
             : ($request->boolean('keep_video') ? $product->video : null);
 
         $product->update([
@@ -548,7 +548,7 @@ class SellerController extends Controller
                 $key = $option['image_key'] ?? null;
                 unset($option['image_key']);
                 if ($key && isset($variationImages[$key])) {
-                    $path = $variationImages[$key]->store('product_images', 'public');
+                    $path = $variationImages[$key]->store('product_images', 'supabase');
                     $option['image'] = $path;
                 } elseif (!empty($option['existing_image'])) {
                     $option['image'] = $option['existing_image'];
@@ -765,10 +765,10 @@ class SellerController extends Controller
         ];
 
         if ($request->hasFile('id_file')) {
-            $data['id_file'] = $request->file('id_file')->store('id_files', 'public');
+            $data['id_file'] = $request->file('id_file')->store('id_files', 'supabase');
         }
         if ($request->hasFile('business_permit_file')) {
-            $data['business_permit_file'] = $request->file('business_permit_file')->store('permit_files', 'public');
+            $data['business_permit_file'] = $request->file('business_permit_file')->store('permit_files', 'supabase');
         }
 
         DocumentUpdateRequest::create($data);

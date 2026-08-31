@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HandlesMessaging;
 use App\Models\Announcement;
 use App\Models\Commission;
 use App\Models\Complaint;
@@ -19,6 +20,14 @@ use Illuminate\Validation\Rule;
 
 class AdminController extends Controller
 {
+    use HandlesMessaging;
+
+    /** Admin can message any non-admin platform user. */
+    protected function isAllowedContact(User $user): bool
+    {
+        return !$user->is_admin;
+    }
+
     public function login()
     {
         if (auth()->check()) {
@@ -364,24 +373,6 @@ class AdminController extends Controller
         return view('admin.messages', array_merge($counts, compact('users', 'selectedUser', 'messages')));
     }
 
-    public function sendMessage(Request $request, User $user)
-    {
-        abort_if($user->is_admin, 404);
-
-        $request->validate([
-            'body' => 'required|string|max:2000',
-        ]);
-
-        Message::create([
-            'sender_id'   => auth()->id(),
-            'receiver_id' => $user->id,
-            'body'        => $request->body,
-            'read'        => false,
-        ]);
-
-        return redirect()->route('admin.messages.user', $user)->with('success', 'Message sent.');
-    }
-
     public function account()
     {
         $counts = $this->sidebarCounts();
@@ -418,10 +409,10 @@ class AdminController extends Controller
 
         if ($request->hasFile('profile_picture')) {
             if ($user->profile_picture) {
-                Storage::disk('public')->delete($user->profile_picture);
+                Storage::disk('supabase')->delete($user->profile_picture);
             }
 
-            $data['profile_picture'] = $request->file('profile_picture')->store('profile-pictures', 'public');
+            $data['profile_picture'] = $request->file('profile_picture')->store('profile-pictures', 'supabase');
         }
 
         $user->update($data);

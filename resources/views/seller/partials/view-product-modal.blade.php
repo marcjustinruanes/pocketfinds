@@ -40,9 +40,9 @@ $statusMeta = match($product->status) {
       {{-- Gallery + KPI stat cards --}}
       <div style="display:grid;grid-template-columns:210px 1fr;gap:18px">
         <div>
-          <div style="width:210px;height:210px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:flex;align-items:center;justify-content:center;background:var(--paper);box-shadow:var(--shadow-sm)">
+          <div style="width:210px;height:210px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:flex;align-items:center;justify-content:center;background:var(--paper);box-shadow:var(--shadow-sm);cursor:zoom-in" onclick="sellerOpenImgViewer('{{ $product->id }}')">
             @if($galleryImages->isNotEmpty())
-              <img id="viewMainImg-{{ $product->id }}" src="{{ $galleryImages->first() }}" style="width:100%;height:100%;object-fit:contain">
+              <img id="viewMainImg-{{ $product->id }}" src="{{ $galleryImages->first() }}" style="max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block">
             @else
               <span style="color:var(--pink-line)">@include('seller.partials.icon',['name'=>'bag','size'=>40])</span>
             @endif
@@ -50,7 +50,7 @@ $statusMeta = match($product->status) {
           @if($galleryImages->count() > 1)
           <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
             @foreach($galleryImages as $i => $src)
-            <img src="{{ $src }}" onclick="document.getElementById('viewMainImg-{{ $product->id }}').src=this.src"
+            <img src="{{ $src }}" onclick="document.getElementById('viewMainImg-{{ $product->id }}').src=this.src;this.closest('div').querySelectorAll('img').forEach(t=>t.style.borderColor='var(--border)');this.style.borderColor='var(--pink)'"
               style="width:32px;height:32px;object-fit:cover;border-radius:6px;cursor:pointer;border:2px solid {{ $i === 0 ? 'var(--pink)' : 'var(--border)' }}">
             @endforeach
           </div>
@@ -150,3 +150,24 @@ $statusMeta = match($product->status) {
 
   </div>
 </div>
+
+<div id="sellerImgViewer-{{ $product->id }}" style="display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.85);align-items:center;justify-content:center;cursor:zoom-out" onclick="sellerCloseImgViewer('{{ $product->id }}')">
+  <img id="sellerImgViewerImg-{{ $product->id }}" src="" style="max-width:92vw;max-height:92vh;border-radius:10px;object-fit:contain;box-shadow:0 18px 60px rgba(0,0,0,.5);display:block">
+  <button onclick="sellerCloseImgViewer('{{ $product->id }}')" style="position:absolute;top:18px;right:22px;width:38px;height:38px;border:1px solid rgba(255,255,255,.35);border-radius:50%;background:rgba(0,0,0,.4);color:#fff;font-size:22px;line-height:1;cursor:pointer">×</button>
+</div>
+<script>
+function sellerOpenImgViewer(id) {
+  const img = document.getElementById('viewMainImg-' + id);
+  if (!img) return;
+  document.getElementById('sellerImgViewerImg-' + id).src = img.src;
+  const v = document.getElementById('sellerImgViewer-' + id);
+  v.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  const esc = e => { if (e.key === 'Escape') { sellerCloseImgViewer(id); document.removeEventListener('keydown', esc); } };
+  document.addEventListener('keydown', esc);
+}
+function sellerCloseImgViewer(id) {
+  document.getElementById('sellerImgViewer-' + id).style.display = 'none';
+  document.body.style.overflow = '';
+}
+</script>

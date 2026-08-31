@@ -19,6 +19,9 @@
     <a href="{{ route('logistics.assignments') }}" class="nav-item {{ request()->routeIs('logistics.assignments') ? 'active' : '' }}">
       <span class="ic"><x-admin-icon name="users" /></span> Courier Assignments
     </a>
+    <a href="{{ route('logistics.scan') }}" class="nav-item {{ request()->routeIs('logistics.scan') ? 'active' : '' }}">
+      <span class="ic"><x-admin-icon name="scan" /></span> Scan Parcel
+    </a>
 
     <div class="nav-label">Tracking</div>
     <a href="{{ route('logistics.monitor') }}" class="nav-item {{ request()->routeIs('logistics.monitor') ? 'active' : '' }}">
@@ -47,9 +50,13 @@
 
   <div class="sidebar-foot">
     <div class="sidebar-user">
-      <div class="avatar">{{ strtoupper(substr(auth()->user()->first_name, 0, 1)) }}</div>
+      @if(auth()->user()->profile_picture)
+      <img class="avatar" src="{{ \Illuminate\Support\Facades\Storage::disk('profile_images')->url(auth()->user()->profile_picture) }}" alt="" style="object-fit:cover">
+      @else
+      <div class="avatar">{{ strtoupper(substr(auth()->user()->given_names, 0, 1)) }}</div>
+      @endif
       <div class="who">
-        <strong>{{ auth()->user()->first_name }} {{ auth()->user()->last_name }}</strong>
+        <strong>{{ auth()->user()->given_names }} {{ auth()->user()->last_name }}</strong>
         <span>Logistics</span>
       </div>
     </div>

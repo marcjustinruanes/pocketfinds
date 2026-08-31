@@ -192,8 +192,8 @@ class RegisterController extends Controller
             return response()->json(['success' => false, 'message' => $validator->errors()->first(), 'errors' => $validator->errors()], 422);
         }
 
-        $idPath     = $request->file('id_file')->store('id_files', 'public');
-        $selfiePath = $request->file('selfie_file')->store('selfie_files', 'public');
+        $idPath     = $request->file('id_file')->store('id_files', 'supabase');
+        $selfiePath = $request->file('selfie_file')->store('selfie_files', 'supabase');
 
         $userData = [
             'account_type'   => $request->account_type,
@@ -224,7 +224,7 @@ class RegisterController extends Controller
         ];
 
         if ($isSeller) {
-            $userData['business_permit_file'] = $request->file('business_permit_file')->store('business_permits', 'public');
+            $userData['business_permit_file'] = $request->file('business_permit_file')->store('business_permits', 'supabase');
         }
 
         if ($isRider) {
@@ -234,15 +234,15 @@ class RegisterController extends Controller
             $userData['plate_number']  = $request->plate_number;
 
             if ($request->hasFile('or_file')) {
-                $userData['or_file'] = $request->file('or_file')->store('vehicle_docs', 'public');
+                $userData['or_file'] = $request->file('or_file')->store('vehicle_docs', 'supabase');
             }
             if ($request->hasFile('cr_file')) {
-                $userData['cr_file'] = $request->file('cr_file')->store('vehicle_docs', 'public');
+                $userData['cr_file'] = $request->file('cr_file')->store('vehicle_docs', 'supabase');
             }
             if ($request->hasFile('license_file')) {
                 $userData['license_number'] = $request->license_number;
                 $userData['license_expiry'] = $request->license_expiry;
-                $userData['license_file']   = $request->file('license_file')->store('license_files', 'public');
+                $userData['license_file']   = $request->file('license_file')->store('license_files', 'supabase');
             }
         }
 

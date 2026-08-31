@@ -22,8 +22,11 @@ Route::middleware('web', 'auth')->get('/message-media/{path}', function (string 
             $query->where('sender_id', auth()->id())->orWhere('receiver_id', auth()->id());
         })->firstOrFail();
 
-    abort_unless(Storage::disk('public')->exists($message->attachment_path), 404);
-    return response()->file(Storage::disk('public')->path($message->attachment_path));
+    // Attachments live in the public 'messages' Supabase bucket — the access
+    // check above (must be sender/receiver) is what actually gates this,
+    // the redirect just hands off to the CDN once that's confirmed.
+    abort_unless(Storage::disk('supabase_messages')->exists($message->attachment_path), 404);
+    return redirect(rtrim(config('filesystems.disks.supabase_messages.url'), '/') . '/' . ltrim($message->attachment_path, '/'));
 })->where('path', '.*')->name('message.media');
 
 Route::middleware('web', 'auth')->get('/report-evidence/{path}', function (string $path) {
@@ -150,8 +153,9 @@ Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
     Route::post('/settings/announcements', [AdminController::class, 'storeAnnouncement'])->name('settings.announcements.store');
     Route::delete('/settings/announcements/{id}', [AdminController::class, 'destroyAnnouncement'])->name('settings.announcements.destroy');
     Route::get('/messages', [AdminController::class, 'messages'])->name('messages');
+    Route::get('/messages/poll', [AdminController::class, 'messagesPoll'])->name('messages.poll');
+    Route::post('/messages/send', [AdminController::class, 'messagesSend'])->name('messages.send');
     Route::get('/messages/{user}', [AdminController::class, 'messages'])->name('messages.user');
-    Route::post('/messages/{user}', [AdminController::class, 'sendMessage'])->name('messages.send');
     Route::get('/account', [AdminController::class, 'account'])->name('account');
     Route::post('/account/update', [AdminController::class, 'accountUpdate'])->name('account.update');
     Route::post('/account/password', [AdminController::class, 'passwordUpdate'])->name('account.password');
@@ -172,16 +176,20 @@ Route::prefix('logistics')->name('logistics.')->middleware('logistics')->group(f
     Route::patch('/requests/{id}/reject', [LogisticsController::class, 'rejectRequest'])->name('requests.reject');
     Route::get('/assignments', [LogisticsController::class, 'assignments'])->name('assignments');
     Route::patch('/assignments/{id}/assign', [LogisticsController::class, 'assignCourier'])->name('assignments.assign');
+    Route::get('/scan', [LogisticsController::class, 'scan'])->name('scan');
+    Route::post('/scan/lookup', [LogisticsController::class, 'scanLookup'])->name('scan.lookup');
     Route::get('/monitor', [LogisticsController::class, 'monitor'])->name('monitor');
     Route::patch('/status/{id}', [LogisticsController::class, 'updateStatus'])->name('status.update');
     Route::get('/issues', [LogisticsController::class, 'issues'])->name('issues');
     Route::get('/history', [LogisticsController::class, 'history'])->name('history');
     Route::get('/reports', [LogisticsController::class, 'reports'])->name('reports');
-    Route::get('/notifications', [LogisticsController::class, 'notifications'])->name('notifications');
     Route::get('/messages', [LogisticsController::class, 'messages'])->name('messages');
+    Route::get('/messages/poll', [LogisticsController::class, 'messagesPoll'])->name('messages.poll');
+    Route::post('/messages/report', [LogisticsController::class, 'reportMessage'])->name('messages.report');
+    Route::post('/messages/send', [LogisticsController::class, 'messagesSend'])->name('messages.send');
     Route::get('/messages/{userId}', [LogisticsController::class, 'messagesThread'])->name('messages.thread');
-    Route::post('/messages/{userId}', [LogisticsController::class, 'messagesSend'])->name('messages.send');
     Route::get('/account', [LogisticsController::class, 'account'])->name('account');
     Route::post('/account/update', [LogisticsController::class, 'accountUpdate'])->name('account.update');
+    Route::post('/account/address', [LogisticsController::class, 'accountAddressUpdate'])->name('account.address');
     Route::post('/account/password', [LogisticsController::class, 'passwordUpdate'])->name('account.password');
 });

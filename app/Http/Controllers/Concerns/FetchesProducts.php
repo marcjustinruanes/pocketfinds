@@ -4,10 +4,15 @@ namespace App\Http\Controllers\Concerns;
 
 use App\Models\Product;
 use App\Models\Review;
-use Illuminate\Support\Facades\Storage;
 
 trait FetchesProducts
 {
+    private function supabaseUrl(?string $path): ?string
+    {
+        if (!$path) return null;
+        return rtrim(config('filesystems.disks.supabase.url'), '/') . '/' . ltrim($path, '/');
+    }
+
     private function dbProducts(int $limit = 0, ?int $categoryId = null, ?string $search = null, ?string $sort = null)
     {
         $q = Product::with(['seller', 'category'])
@@ -38,32 +43,24 @@ trait FetchesProducts
 
         $reviews = Review::with('buyer')->where('product_id', $p->id)->latest('created_at')->get();
 
-        // Variation options may carry their own photo (e.g. one per color) —
-        // resolve those to full URLs so both the swatch buttons and the cover
-        // fallback below can use them.
         $variations = collect($p->variations ?? [])->map(function ($variation) {
             $variation['options'] = collect($variation['options'] ?? [])->map(function ($option) {
-                if (!empty($option['image'])) $option['image'] = Storage::url($option['image']);
+                if (!empty($option['image'])) $option['image'] = $this->supabaseUrl($option['image']);
                 return $option;
             })->all();
             return $variation;
         })->all();
+
         $variationImageUrls = collect($variations)
             ->flatMap(fn ($v) => collect($v['options'])->pluck('image')->filter())
             ->values();
 
-        // The mini-picture gallery should include every photo the seller
-        // uploaded for this product — the general product photos AND any
-        // per-variation-option photos — not just whichever one happens to
-        // be set, so the thumbnail rail always reflects everything shown.
         $coverImageUrls = !empty($p->images)
-            ? collect($p->images)->map(fn ($path) => Storage::url($path))
-            : ($p->image ? collect([Storage::url($p->image)]) : collect());
+            ? collect($p->images)->map(fn ($path) => $this->supabaseUrl($path))
+            : ($p->image ? collect([$this->supabaseUrl($p->image)]) : collect());
 
         $imageUrls = $coverImageUrls->merge($variationImageUrls)->unique()->values()->all();
 
-        // A seller-set discount price is what the buyer actually pays; the
-        // regular price is then shown struck through alongside a % off badge.
         $hasDiscount = $p->discount_price !== null && (float) $p->discount_price < (float) $p->price;
         $displayPrice = $hasDiscount ? (float) $p->discount_price : (float) $p->price;
         $percentOff = $hasDiscount ? (int) round((1 - ($p->discount_price / $p->price)) * 100) : 0;
@@ -84,7 +81,7 @@ trait FetchesProducts
             'category_id' => $p->category_id,
             'img'         => $imageUrls[0] ?? null,
             'images'      => $imageUrls,
-            'video'       => $p->video ? Storage::url($p->video) : null,
+            'video'       => $this->supabaseUrl($p->video),
             'desc'        => $p->description ?? '',
             'sku'         => $p->sku,
             'specs'       => !empty($p->details)

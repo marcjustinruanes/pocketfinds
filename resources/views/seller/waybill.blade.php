@@ -13,7 +13,8 @@
   .label-head span { font-size: 11px; color: #79737f; }
   .tracking { padding: 16px 20px; text-align: center; border-bottom: 1px solid #e9e4ea; }
   .tracking .code { font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; letter-spacing: 2px; }
-  .tracking .barcode { margin-top: 8px; height: 40px; background: repeating-linear-gradient(90deg, #1b1620 0 2px, transparent 2px 5px); }
+  .tracking .qrcode { margin-top: 10px; display: flex; justify-content: center; }
+  .tracking .qrcode img, .tracking .qrcode canvas { image-rendering: pixelated; }
   .section { padding: 14px 20px; border-bottom: 1px solid #e9e4ea; }
   .section:last-child { border-bottom: 0; }
   .section .label-title { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #79737f; margin-bottom: 6px; }
@@ -35,7 +36,7 @@
     <div class="tracking">
       <div class="label-title" style="color:#79737f;font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px">Tracking Number</div>
       <div class="code">{{ $order->shipment->tracking_number }}</div>
-      <div class="barcode"></div>
+      <div class="qrcode" id="waybillQr"></div>
     </div>
     <div class="section">
       <div class="label-title">From</div>
@@ -70,5 +71,14 @@
       <button onclick="window.print()">Print Waybill</button>
     </div>
   @endunless
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    new QRCode(document.getElementById('waybillQr'), {
+      text: @json($order->shipment->tracking_number),
+      width: 110,
+      height: 110,
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+  </script>
 </body>
 </html>

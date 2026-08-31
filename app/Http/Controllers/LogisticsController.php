@@ -2,22 +2,53 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HandlesMessaging;
 use App\Models\DeliveryAssignment;
 use App\Models\Message;
 use App\Models\Order;
 use App\Models\Shipment;
+use App\Models\UnserviceableArea;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class LogisticsController extends Controller
 {
+    use HandlesMessaging;
+
     const STATUSES = [
         'pending', 'for_verification', 'verified', 'available',
         'accepted', 'picked_up', 'out_for_delivery',
         'delivered', 'completed', 'cancelled', 'failed',
+    ];
+
+    /**
+     * Valid forward moves for a shipment's status, keyed by its current status.
+     * A shipment can only ever move to one of these — never backward, never skipped
+     * ahead. This is the single source of truth for both the Monitor page's status
+     * dropdown and the Scan page's action buttons, and is enforced server-side in
+     * updateStatus() so a crafted request can't bypass it either.
+     *
+     * 'available' → 'accepted' is deliberately absent: that move only happens through
+     * assignCourier(), which also sets courier_id — flipping the status alone here
+     * would leave a shipment marked "accepted" with no courier attached.
+     */
+    private const STATUS_TRANSITIONS = [
+        'accepted'         => ['picked_up', 'failed'],
+        'picked_up'        => ['out_for_delivery', 'failed'],
+        'out_for_delivery' => ['delivered', 'failed'],
+        'delivered'        => ['completed'],
+    ];
+
+    /** Human label for the primary (non-failure) target of each transition. */
+    private const STAGE_LABELS = [
+        'picked_up'        => 'Mark Picked Up',
+        'out_for_delivery' => 'Mark Out for Delivery',
+        'delivered'        => 'Mark Delivered',
+        'completed'        => 'Mark Completed',
     ];
 
     private function sidebarCounts(): array
@@ -50,7 +81,7 @@ class LogisticsController extends Controller
     public function requests()
     {
         $counts    = $this->sidebarCounts();
-        $shipments = Shipment::with(['order.buyer', 'order.items'])
+        $shipments = Shipment::with(['order.buyer'])
             ->where('shipping_status', 'pending')
             ->latest('created_at')->get();
         return view('logistics.requests', array_merge($counts, compact('shipments')));
@@ -93,13 +124,124 @@ class LogisticsController extends Controller
         return back()->with('success', 'Courier assigned.');
     }
 
+    /** Scan-station entry point: barcode/QR camera scan or USB scanner keyboard input. */
+    public function scan()
+    {
+        $counts = $this->sidebarCounts();
+        return view('logistics.scan', $counts);
+    }
+
+    public function scanLookup(Request $request)
+    {
+        $data = $request->validate(['code' => 'required|string|max:100']);
+        $code = trim($data['code']);
+
+        $shipment = Shipment::with(['order.buyer', 'courier'])
+            ->where('tracking_number', $code)
+            ->first();
+
+        if (!$shipment) {
+            $order = Order::where('order_number', $code)->first();
+            if ($order) {
+                $shipment = Shipment::with(['order.buyer', 'courier'])->where('order_id', $order->id)->first();
+            }
+        }
+
+        if (!$shipment) {
+            return response()->json(['ok' => false, 'message' => 'No shipment found for "' . $code . '".'], 404);
+        }
+
+        $buyer       = $shipment->order?->buyer;
+        $addr        = $shipment->order?->shipping_address ?? [];
+        $area        = $addr['municipality'] ?? null; // delivery area = the order's destination municipality
+        $allowedNext = self::STATUS_TRANSITIONS[$shipment->shipping_status] ?? [];
+        $forwardNext = collect($allowedNext)->first(fn ($s) => $s !== 'failed');
+        $canFail     = in_array('failed', $allowedNext, true);
+
+        // Sorting-center stage this parcel is at: receive it in, sort/assign it to an area rider,
+        // or (once assigned) advance it through the normal delivery statuses.
+        $stage            = 'none';
+        $areaRiders       = [];
+        $areaMatched      = false;
+        $areaServiceable  = true;
+        $areaNote         = null;
+        if ($shipment->shipping_status === 'pending') {
+            $stage = 'receive';
+        } elseif ($shipment->shipping_status === 'available') {
+            $stage = 'assign';
+
+            $unserviceable = $area
+                ? UnserviceableArea::whereRaw('LOWER(municipality) = ?', [strtolower($area)])->first()
+                : null;
+
+            if ($unserviceable) {
+                // Set from Logistics Settings — don't silently hand back a rider
+                // list for an area the sorting center isn't currently dispatching to.
+                $areaServiceable = false;
+                $areaNote        = $unserviceable->note;
+            } else {
+                $riders = User::where('account_type', 'rider')->where('status', 'approved');
+                if ($area) {
+                    $matched = (clone $riders)->whereRaw('LOWER(municipality) = ?', [strtolower($area)])
+                        ->orderBy('given_names')->get();
+                    if ($matched->isNotEmpty()) {
+                        $riders      = $matched;
+                        $areaMatched = true;
+                    } else {
+                        $riders = $riders->orderBy('given_names')->get();
+                    }
+                } else {
+                    $riders = $riders->orderBy('given_names')->get();
+                }
+                $areaRiders = $riders->map(fn ($r) => [
+                    'id'           => $r->id,
+                    'name'         => trim($r->given_names . ' ' . $r->last_name),
+                    'municipality' => $r->municipality,
+                ])->values();
+            }
+        } elseif ($forwardNext) {
+            $stage = 'advance';
+        }
+
+        return response()->json([
+            'ok'       => true,
+            'shipment' => [
+                'id'              => $shipment->id,
+                'tracking_number' => $shipment->tracking_number ?? substr($shipment->id, 0, 8),
+                'order_number'    => $shipment->order?->order_number,
+                'buyer_name'      => trim(($buyer->given_names ?? '') . ' ' . ($buyer->last_name ?? '')) ?: null,
+                'buyer_contact'   => $buyer->contact_no ?? null,
+                'address'         => implode(', ', array_filter([
+                    $addr['house_no'] ?? null, $addr['street'] ?? null, $addr['barangay'] ?? null,
+                    $addr['municipality'] ?? null, $addr['province'] ?? null,
+                ])) ?: null,
+                'delivery_area'   => $area,
+                'courier_name'    => $shipment->courier
+                    ? trim($shipment->courier->given_names . ' ' . $shipment->courier->last_name)
+                    : null,
+                'status'          => $shipment->shipping_status,
+                'status_label'    => ucfirst(str_replace('_', ' ', $shipment->shipping_status)),
+                'updated_at'      => optional($shipment->updated_at)->format('M d, Y H:i'),
+            ],
+            'stage'             => $stage,
+            'area_riders'       => $areaRiders,
+            'area_matched'      => $areaMatched,
+            'area_serviceable'  => $areaServiceable,
+            'area_note'         => $areaNote,
+            'next_status'  => $forwardNext,
+            'next_label'   => $forwardNext ? (self::STAGE_LABELS[$forwardNext] ?? ucfirst(str_replace('_', ' ', $forwardNext))) : null,
+            'can_fail'     => $canFail,
+        ]);
+    }
+
     public function monitor()
     {
-        $counts    = $this->sidebarCounts();
-        $shipments = Shipment::with(['order.buyer', 'courier', 'assignment'])
+        $counts      = $this->sidebarCounts();
+        $shipments   = Shipment::with(['order.buyer', 'courier', 'assignment'])
             ->whereIn('shipping_status', ['for_verification', 'verified', 'available', 'accepted', 'picked_up', 'out_for_delivery'])
             ->latest('created_at')->get();
-        return view('logistics.monitor', array_merge($counts, compact('shipments')));
+        $transitions = self::STATUS_TRANSITIONS;
+        return view('logistics.monitor', array_merge($counts, compact('shipments', 'transitions')));
     }
 
     /** Shipment stage → the buyer-facing Order.status it should roll up into. */
@@ -124,6 +266,16 @@ class LogisticsController extends Controller
         $request->validate(['status' => 'required|in:' . implode(',', self::STATUSES)]);
         $shipment = Shipment::with('order')->findOrFail($id);
         $status   = $request->status;
+
+        // Guard the transition server-side too — the UI only ever offers valid next
+        // statuses, but this stops a crafted request from skipping stages or moving
+        // a shipment backward.
+        $allowed = self::STATUS_TRANSITIONS[$shipment->shipping_status] ?? [];
+        if (!in_array($status, $allowed, true)) {
+            return back()->withErrors(['status' => 'Cannot move this shipment from '
+                . ucfirst(str_replace('_', ' ', $shipment->shipping_status)) . ' to '
+                . ucfirst(str_replace('_', ' ', $status)) . '.']);
+        }
 
         $updates = ['shipping_status' => $status];
         if (isset(self::STAGE_TIMESTAMPS[$status])) {
@@ -207,23 +359,32 @@ class LogisticsController extends Controller
         )));
     }
 
-    public function notifications()
+    /** Enrich a set of contacts with their latest message + unread count against this staff member. */
+    private function withThreadPreview($users)
     {
-        $counts        = $this->sidebarCounts();
-        $notifications = collect();
-        return view('logistics.notifications', array_merge($counts, compact('notifications')));
+        $myId    = auth()->id();
+        $threads = Message::where('sender_id', $myId)->orWhere('receiver_id', $myId)
+            ->latest('created_at')->get()
+            ->groupBy(fn ($m) => $m->sender_id === $myId ? $m->receiver_id : $m->sender_id);
+
+        return $users->map(function ($u) use ($threads, $myId) {
+            $thread          = $threads->get($u->id);
+            $u->last_message = $thread?->first();
+            $u->unread_count = $thread ? $thread->where('receiver_id', $myId)->where('read', false)->count() : 0;
+            return $u;
+        })->sortByDesc(fn ($u) => $u->last_message?->created_at ?? \Carbon\Carbon::createFromTimestamp(0))->values();
     }
 
     private function allowedContacts(): array
     {
         return [
-            'admins'  => User::where('is_admin', true)->get(),
-            'couriers' => User::where('account_type', 'rider')->where('status', 'approved')->get(),
-            'sellers'  => User::where('account_type', 'seller')->where('status', 'approved')->get(),
+            'admins'   => $this->withThreadPreview(User::where('is_admin', true)->get()),
+            'couriers' => $this->withThreadPreview(User::where('account_type', 'rider')->where('status', 'approved')->get()),
+            'sellers'  => $this->withThreadPreview(User::where('account_type', 'seller')->where('status', 'approved')->get()),
         ];
     }
 
-    private function isAllowedContact(User $user): bool
+    protected function isAllowedContact(User $user): bool
     {
         return $user->is_admin
             || $user->account_type === 'rider'
@@ -243,25 +404,11 @@ class LogisticsController extends Controller
         $counts     = $this->sidebarCounts();
         $activeUser = User::findOrFail($userId);
         abort_if(!$this->isAllowedContact($activeUser), 403);
-        Message::where('sender_id', $activeUser->id)->where('receiver_id', auth()->id())->update(['read' => true]);
+        Message::where('sender_id', $activeUser->id)->where('receiver_id', auth()->id())->where('read', false)->update(['read' => true]);
         $messages = Message::where(fn($q) => $q->where('sender_id', auth()->id())->where('receiver_id', $activeUser->id))
             ->orWhere(fn($q) => $q->where('sender_id', $activeUser->id)->where('receiver_id', auth()->id()))
             ->oldest()->get();
         return view('logistics.messages', array_merge($counts, $this->allowedContacts(), compact('activeUser', 'messages')));
-    }
-
-    public function messagesSend(Request $request, $userId)
-    {
-        $request->validate(['body' => 'required|string|max:2000']);
-        $receiver = User::findOrFail($userId);
-        abort_if(!$this->isAllowedContact($receiver), 403);
-        Message::create([
-            'sender_id'   => auth()->id(),
-            'receiver_id' => $userId,
-            'body'        => $request->body,
-            'read'        => false,
-        ]);
-        return back();
     }
 
     public function account()
@@ -272,12 +419,44 @@ class LogisticsController extends Controller
 
     public function accountUpdate(Request $request)
     {
-        $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name'  => 'required|string|max:255',
+        $data = $request->validate([
+            'given_names'      => 'required|string|max:255',
+            'last_name'        => 'required|string|max:255',
+            'middle_name'      => ['nullable', 'regex:/^[A-Za-z]$/'],
+            'contact_no'       => ['nullable', 'regex:/^09[0-9]{9}$/'],
+            'sex'              => 'nullable|in:male,female,other',
+            'profile_picture'  => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+        ], [
+            'middle_name.regex' => 'Middle name must be a single letter.',
+            'contact_no.regex'  => 'Contact number must start with 09 and be exactly 11 digits.',
         ]);
-        auth()->user()->update($request->only('first_name', 'last_name'));
-        return back()->with('success', 'Profile updated.');
+
+        $user = auth()->user();
+
+        if ($request->hasFile('profile_picture')) {
+            if ($user->profile_picture) {
+                Storage::disk('profile_images')->delete($user->profile_picture);
+            }
+            $data['profile_picture'] = $request->file('profile_picture')->store('avatars', 'profile_images');
+        } else {
+            unset($data['profile_picture']);
+        }
+
+        $user->update($data);
+        return back()->with('profile_success', 'Profile updated.');
+    }
+
+    public function accountAddressUpdate(Request $request)
+    {
+        $data = $request->validate([
+            'province'     => 'required|string|max:255',
+            'municipality' => 'required|string|max:255',
+            'barangay'     => 'required|string|max:255',
+            'house_no'     => 'nullable|string|max:255',
+            'street'       => 'nullable|string|max:255',
+        ]);
+        auth()->user()->update($data);
+        return back()->with('address_success', 'Address updated.');
     }
 
     public function passwordUpdate(Request $request)
@@ -290,6 +469,6 @@ class LogisticsController extends Controller
             return back()->withErrors(['current_password' => 'Current password is incorrect.']);
         }
         auth()->user()->update(['password' => Hash::make($request->password)]);
-        return back()->with('success', 'Password updated.');
+        return back()->with('password_success', 'Password updated.');
     }
 }

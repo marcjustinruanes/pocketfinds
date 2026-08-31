@@ -17,7 +17,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class BuyerController extends Controller
@@ -601,7 +600,7 @@ class BuyerController extends Controller
                     'value' => $request->query('variation_value'),
                     'label' => $request->query('variation_group') . ': ' . $option['value'],
                     'price' => (float) ($option['price'] ?? $product->price),
-                    'image' => !empty($option['image']) ? Storage::url($option['image']) : null,
+                    'image' => !empty($option['image']) ? (rtrim(config('filesystems.disks.supabase.url'), '/') . '/' . ltrim($option['image'], '/')) : null,
                 ];
             }
         }
@@ -695,7 +694,7 @@ class BuyerController extends Controller
             'message_body' => $message->body, 'message_type' => $message->attachment_type ?: ($message->body ? 'text' : 'message'),
         ];
         if ($evidence) {
-            $values['evidence_path'] = $evidence->store('report_evidence', 'public');
+            $values['evidence_path'] = $evidence->store('report_evidence', 'supabase');
             $values['evidence_name'] = $evidence->getClientOriginalName();
             $values['evidence_mime'] = $evidence->getMimeType();
             $values['evidence_type'] = str_starts_with($values['evidence_mime'], 'video/') ? 'video' : 'image';
@@ -726,7 +725,7 @@ class BuyerController extends Controller
             'message_body' => $product->name, 'message_type' => 'product',
         ];
         if ($evidence) {
-            $values['evidence_path'] = $evidence->store('report_evidence', 'public');
+            $values['evidence_path'] = $evidence->store('report_evidence', 'supabase');
             $values['evidence_name'] = $evidence->getClientOriginalName();
             $values['evidence_mime'] = $evidence->getMimeType();
             $values['evidence_type'] = str_starts_with($values['evidence_mime'], 'video/') ? 'video' : 'image';
@@ -793,7 +792,7 @@ class BuyerController extends Controller
     {
         $mime = $file->getMimeType();
         $extension = strtolower($file->getClientOriginalExtension());
-        $msg['attachment_path'] = $file->store('message_attachments', 'public');
+        $msg['attachment_path'] = $file->store('message_attachments', 'supabase_messages');
         $msg['attachment_name'] = $file->getClientOriginalName();
         $msg['attachment_mime'] = $mime;
         $msg['attachment_size'] = $file->getSize();
@@ -812,8 +811,8 @@ class BuyerController extends Controller
             'product_name'    => $m->variation_label ?: $m->product?->name,
             'product_price'   => $m->variation_price ?? $m->product?->price,
             'product_img'     => $m->variation_image
-                ? \Illuminate\Support\Facades\Storage::url($m->variation_image)
-                : ($m->product?->image ? \Illuminate\Support\Facades\Storage::url($m->product->image) : null),
+                ? (rtrim(config('filesystems.disks.supabase.url'), '/') . '/' . ltrim($m->variation_image, '/'))
+                : ($m->product?->image ? (rtrim(config('filesystems.disks.supabase.url'), '/') . '/' . ltrim($m->product->image, '/')) : null),
             'product_url'     => $m->product_id ? route('buyer.product', $m->product_id) : null,
             'attachment_path' => $m->attachment_path ? route('message.media', ['path' => $m->attachment_path]) : null,
             'attachment_name' => $m->attachment_name,

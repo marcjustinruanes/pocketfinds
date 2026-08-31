@@ -47,6 +47,48 @@ return [
             'report' => false,
         ],
 
+        'supabase' => [
+            'driver'                  => 's3',
+            'key'                     => env('AWS_ACCESS_KEY_ID'),
+            'secret'                  => env('AWS_SECRET_ACCESS_KEY'),
+            'region'                  => 'ap-northeast-2',
+            'bucket'                  => env('AWS_BUCKET', 'products'),
+            'url'                     => env('SUPABASE_URL') . '/storage/v1/object/public/' . env('AWS_BUCKET', 'products'),
+            'endpoint'                => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => true,
+            'throw'                   => true,
+            'options'                 => ['@http' => ['verify' => false]],
+        ],
+
+        // Chat attachments (buyer/seller/logistics/admin messaging) get their own
+        // Supabase bucket, separate from the 'products' bucket above.
+        'supabase_messages' => [
+            'driver'                  => 's3',
+            'key'                     => env('AWS_ACCESS_KEY_ID'),
+            'secret'                  => env('AWS_SECRET_ACCESS_KEY'),
+            'region'                  => 'ap-northeast-2',
+            'bucket'                  => env('AWS_BUCKET_MESSAGES', 'messages'),
+            'url'                     => env('SUPABASE_URL') . '/storage/v1/object/public/' . env('AWS_BUCKET_MESSAGES', 'messages'),
+            'endpoint'                => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => true,
+            'throw'                   => true,
+            'options'                 => ['@http' => ['verify' => false]],
+        ],
+
+        // Profile pictures get their own Supabase bucket, separate from 'products'.
+        'profile_images' => [
+            'driver'                  => 's3',
+            'key'                     => env('AWS_ACCESS_KEY_ID'),
+            'secret'                  => env('AWS_SECRET_ACCESS_KEY'),
+            'region'                  => 'ap-northeast-2',
+            'bucket'                  => env('AWS_BUCKET_PROFILES', 'profile-images'),
+            'url'                     => env('SUPABASE_URL') . '/storage/v1/object/public/' . env('AWS_BUCKET_PROFILES', 'profile-images'),
+            'endpoint'                => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => true,
+            'throw'                   => true,
+            'options'                 => ['@http' => ['verify' => false]],
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

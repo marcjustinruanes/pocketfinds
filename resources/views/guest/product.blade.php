@@ -85,14 +85,14 @@
       </button>
     </div>
     @endif
-    <div class="pd-main-img">
+    <div class="pd-main-img" onclick="openImgViewer()">  
       @if($hasRealImg)
         <img src="{{ $product['img'] }}" id="pdMainImg">
       @else
         <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity=".25"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
       @endif
       @if(!empty($product['video']))
-        <video id="pdMainVideo" src="{{ $product['video'] }}" controls playsinline style="display:{{ $hasRealImg ? 'none' : 'block' }};width:100%;height:100%;object-fit:contain"></video>
+        <video id="pdMainVideo" src="{{ $product['video'] }}" controls playsinline style="display:{{ $hasRealImg ? 'none' : 'block' }};max-width:100%;max-height:100%;object-fit:contain" onclick="event.stopPropagation()"></video>
       @endif
     </div>
   </div>
@@ -319,6 +319,12 @@
 
 @include('guest.auth-modal')
 
+{{-- Image lightbox --}}
+<div id="imgViewer" style="display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.85);align-items:center;justify-content:center;cursor:zoom-out" onclick="closeImgViewer()">
+  <img id="imgViewerImg" src="" style="max-width:92vw;max-height:92vh;border-radius:10px;object-fit:contain;box-shadow:0 18px 60px rgba(0,0,0,.5);display:block">
+  <button onclick="closeImgViewer()" style="position:absolute;top:18px;right:22px;width:38px;height:38px;border:1px solid rgba(255,255,255,.35);border-radius:50%;background:rgba(0,0,0,.4);color:#fff;font-size:22px;line-height:1;cursor:pointer">×</button>
+</div>
+
 <script>
 function selectVariant(btn) {
   if (btn.disabled) return;
@@ -383,11 +389,26 @@ function showProductImage(src, thumb) {
   const video = document.getElementById('pdMainVideo');
   if (video) video.style.display = 'none';
   if (img) { img.src = src; img.style.display = 'block'; }
+  const mainBox = img && img.closest('.pd-main-img');
+  if (mainBox) mainBox.style.cursor = 'zoom-in';
   if (thumb) {
     setActiveThumb(thumb);
     syncVariantForImage(src);
   }
 }
+function openImgViewer() {
+  const img = document.getElementById('pdMainImg');
+  if (!img || img.style.display === 'none') return;
+  document.getElementById('imgViewerImg').src = img.src;
+  const v = document.getElementById('imgViewer');
+  v.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeImgViewer() {
+  document.getElementById('imgViewer').style.display = 'none';
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeImgViewer(); });
 
 function showProductVideo(thumb) {
   const img = document.getElementById('pdMainImg');

@@ -66,7 +66,11 @@ $icons = [
   @forelse($items as $p)
   <a class="product" href="{{ route('guest.product', $p['id']) }}" style="text-decoration:none;color:inherit">
     <div class="product-img">
-      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">{!! $icons[$p['img']] ?? $icons['bag'] !!}</svg>
+      @if(!empty($p['img']))
+        <img src="{{ $p['img'] }}" alt="{{ $p['name'] }}" style="width:100%;height:100%;object-fit:cover">
+      @else
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".35"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      @endif
       @if($p['badge'])<span class="badge">{{ $p['badge'] }}</span>@endif
     </div>
     <div class="product-body">
