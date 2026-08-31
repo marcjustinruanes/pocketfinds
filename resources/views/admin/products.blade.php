@@ -6,16 +6,30 @@
 
 @section('content')
 @if(session('success'))
-  <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('success') }}</div>
+<div class="modal-overlay open" id="productActionResultModal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-body" style="text-align:center;padding:30px 26px 20px">
+      <span style="width:48px;height:48px;border-radius:50%;background:var(--success-soft);color:var(--success);display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
+        <x-admin-icon name="check-circle" />
+      </span>
+      <h3 style="font-family:var(--font-display);font-size:16px;margin:0 0 6px">Done</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0">{{ session('success') }}</p>
+    </div>
+    <div class="modal-foot" style="justify-content:center">
+      <button class="btn btn-primary" type="button" data-modal-close>OK</button>
+    </div>
+  </div>
+</div>
 @endif
 
 @php
   $pendingProducts   = $products->where('status', 'pending')->count();
   $activeProducts    = $products->where('status', 'active')->count();
   $rejectedProducts  = $products->where('status', 'rejected')->count();
+  $archivedProducts  = $products->where('status', 'archived')->count();
   $outOfStockProducts = $products->filter(fn($p) => $p->total_stock <= 0)->count();
 @endphp
-<div class="kpi-grid">
+<div class="kpi-grid" style="grid-template-columns:repeat(5,1fr)">
   <button type="button" class="kpi kpi-filter active" data-status-kpi="">
     <div class="label">Total Submissions</div>
     <div class="value">{{ $products->count() }}</div>
@@ -34,6 +48,10 @@
     <div class="label">Rejected</div>
     <div class="value">{{ $rejectedProducts }}</div>
   </button>
+  <button type="button" class="kpi kpi-filter" data-status-kpi="archived">
+    <div class="label">Archived</div>
+    <div class="value">{{ $archivedProducts }}</div>
+  </button>
 </div>
 
 <div class="card">
@@ -51,6 +69,7 @@
         <option value="pending">Pending Review</option>
         <option value="active">Approved</option>
         <option value="rejected">Rejected / Declined</option>
+        <option value="archived">Archived</option>
         <option value="outofstock">Out of Stock</option>
       </select>
     </div>
@@ -90,7 +109,14 @@
             </div>
           </td>
           <td style="font-size:12px">{{ $product->category->name ?? '—' }}</td>
-          <td class="mono">₱{{ number_format($product->price, 2) }}</td>
+          <td class="mono">
+            @if($product->discount_price !== null && (float)$product->discount_price < (float)$product->price)
+              <span style="color:var(--pink-dark);font-weight:700">₱{{ number_format($product->discount_price, 2) }}</span>
+              <span style="text-decoration:line-through;color:var(--muted);font-size:11px;display:block">₱{{ number_format($product->price, 2) }}</span>
+            @else
+              ₱{{ number_format($product->price, 2) }}
+            @endif
+          </td>
           <td class="mono" style="{{ $product->total_stock <= 0 ? 'color:var(--danger);font-weight:700' : '' }}">
             {{ $product->total_stock }}{{ $product->total_stock <= 0 ? ' · Out' : '' }}
           </td>
@@ -101,6 +127,8 @@
               <span class="stamp stamp-active">Approved</span>
             @elseif($product->status === 'rejected')
               <span class="stamp stamp-rejected">Rejected</span>
+            @elseif($product->status === 'archived')
+              <span class="stamp stamp-archived">Archived</span>
             @endif
           </td>
           <td class="mono" style="font-size:12px">{{ $product->created_at->format('M d, Y') }}</td>
@@ -127,7 +155,7 @@
   $hasDetails = !empty($product->details);
   $galleryImages = collect();
   if ($product->image) $galleryImages->push(Storage::url($product->image));
-  foreach ($product->images as $img) { $galleryImages->push(Storage::url($img->image_url)); }
+  foreach ($product->images ?? [] as $path) { $galleryImages->push(Storage::url($path)); }
   $galleryImages = $galleryImages->unique()->values();
 @endphp
 <div class="modal-overlay" id="productModal-{{ $product->id }}">
@@ -139,7 +167,8 @@
           <h3>{{ $product->name }}
             @if($product->status === 'pending')<span class="stamp stamp-pending">Pending</span>
             @elseif($product->status === 'active')<span class="stamp stamp-active">Approved</span>
-            @elseif($product->status === 'rejected')<span class="stamp stamp-rejected">Rejected</span>@endif
+            @elseif($product->status === 'rejected')<span class="stamp stamp-rejected">Rejected</span>
+            @elseif($product->status === 'archived')<span class="stamp stamp-archived">Archived</span>@endif
           </h3>
           <p>{{ $seller->business_name ?? ($seller->given_names.' '.$seller->last_name) }} · Submitted {{ $product->created_at->format('M d, Y g:i A') }}</p>
         </div>
@@ -182,7 +211,18 @@
           <div>
             <div class="detail-grid" style="grid-template-columns:1fr">
               <div><div class="field-label">Category</div><div class="field-value">{{ $product->category->name ?? '—' }}</div></div>
-              <div><div class="field-label">Price</div><div class="field-value mono" style="font-size:16px;font-weight:700;color:var(--pink-dark)">₱{{ number_format($product->price, 2) }}</div></div>
+              <div>
+                <div class="field-label">Price</div>
+                @if($product->discount_price !== null && (float)$product->discount_price < (float)$product->price)
+                  <div class="field-value mono" style="font-size:16px;font-weight:700;color:var(--pink-dark)">
+                    ₱{{ number_format($product->discount_price, 2) }}
+                    <span style="text-decoration:line-through;color:var(--muted);font-size:12px;font-weight:400;margin-left:6px">₱{{ number_format($product->price, 2) }}</span>
+                    <span class="stamp stamp-active" style="margin-left:6px;vertical-align:middle">-{{ round((1 - $product->discount_price / $product->price) * 100) }}%</span>
+                  </div>
+                @else
+                  <div class="field-value mono" style="font-size:16px;font-weight:700;color:var(--pink-dark)">₱{{ number_format($product->price, 2) }}</div>
+                @endif
+              </div>
               <div>
                 <div class="field-label">Stock</div>
                 <div class="field-value {{ $product->total_stock <= 0 ? 'mono' : 'mono' }}" style="{{ $product->total_stock <= 0 ? 'color:var(--danger);font-weight:700' : '' }}">
@@ -196,6 +236,12 @@
             </div>
           </div>
         </div>
+        @if($product->video)
+        <div style="margin-top:14px">
+          <div class="field-label" style="margin-bottom:6px">Product Video</div>
+          <video src="{{ Storage::url($product->video) }}" controls style="max-width:320px;border-radius:9px"></video>
+        </div>
+        @endif
       </div>
 
       {{-- Description --}}
@@ -221,7 +267,16 @@
           <div class="variation-options">
             @forelse(($group['options'] ?? []) as $opt)
             <div class="variation-option">
+              @if(!empty($opt['image']))
+                <button type="button" data-lightbox-trigger data-src="{{ Storage::url($opt['image']) }}"
+                  style="border:0;padding:0;background:none;cursor:zoom-in;vertical-align:middle;margin-right:6px" title="Enlarge photo">
+                  <img src="{{ Storage::url($opt['image']) }}" alt="{{ $opt['value'] ?? '' }}" style="width:28px;height:28px;object-fit:cover;border-radius:6px;display:block">
+                </button>
+              @endif
               <span class="opt-name">{{ $opt['value'] ?? '—' }}</span>
+              @if(isset($opt['price']))
+                <span class="mono" style="margin-left:6px">₱{{ number_format($opt['price'], 2) }}</span>
+              @endif
               <span class="opt-stock {{ ($opt['stock'] ?? 0) <= 0 ? 'zero' : '' }}">{{ $opt['stock'] ?? 0 }} in stock</span>
             </div>
             @empty
@@ -245,7 +300,7 @@
         <div class="detail-grid">
           <div><div class="field-label">Email</div><div class="field-value">{{ $seller->email }}</div></div>
           <div><div class="field-label">Contact No.</div><div class="field-value mono">{{ $seller->contact_no ?? '—' }}</div></div>
-          <div class="full"><div class="field-label">Shop Categories</div><div class="field-value">{{ $seller->categories->pluck('name')->push($seller->category_other)->filter()->implode(', ') ?: '—' }}</div></div>
+          <div class="full"><div class="field-label">Shop Category</div><div class="field-value">{{ collect([$seller->category?->name, $seller->category_other])->filter()->implode(', ') ?: '—' }}</div></div>
           <div><div class="field-label">Seller Since</div><div class="field-value mono">{{ $seller->created_at?->format('M d, Y') ?? '—' }}</div></div>
           <div><div class="field-label">Account Status</div><div class="field-value"><span class="stamp stamp-{{ $seller->status }}">{{ ucfirst($seller->status) }}</span></div></div>
         </div>
@@ -256,6 +311,9 @@
         <div class="kv-table">
           <div class="kv-row"><div class="kv-key">Product ID</div><div class="kv-val mono">{{ $product->id }}</div></div>
           <div class="kv-row"><div class="kv-key">Current Status</div><div class="kv-val"><span class="stamp stamp-{{ $product->status }}">{{ ucfirst($product->status === 'active' ? 'approved' : $product->status) }}</span></div></div>
+          @if($product->discount_price !== null)
+          <div class="kv-row"><div class="kv-key">Discount Price</div><div class="kv-val mono">₱{{ number_format($product->discount_price, 2) }} <span style="color:var(--muted)">(regular ₱{{ number_format($product->price, 2) }})</span></div></div>
+          @endif
           <div class="kv-row"><div class="kv-key">Date Submitted</div><div class="kv-val mono">{{ $product->created_at->format('M d, Y g:i A') }}</div></div>
           <div class="kv-row"><div class="kv-key">Last Updated</div><div class="kv-val mono">{{ $product->updated_at->format('M d, Y g:i A') }}</div></div>
           @if($product->status === 'rejected')
@@ -276,10 +334,9 @@
       @elseif($product->status === 'active')
         <button type="button" class="btn btn-danger" onclick="openReject('{{ $product->id }}', '{{ addslashes($product->name) }}')"><x-admin-icon name="close" /> Reject &amp; Take Down</button>
       @elseif($product->status === 'rejected')
-        <form method="POST" action="{{ route('admin.products.approve', $product->id) }}" style="display:inline">
-          @csrf @method('PATCH')
-          <button class="btn btn-success" type="submit"><x-admin-icon name="edit" /> Approve Product</button>
-        </form>
+        <span style="font-size:12.5px;color:var(--muted);display:inline-flex;align-items:center;gap:6px"><x-admin-icon name="clock" /> Waiting for the seller to revise and resubmit</span>
+      @elseif($product->status === 'archived')
+        <span style="font-size:12.5px;color:var(--muted);display:inline-flex;align-items:center;gap:6px"><x-admin-icon name="clock" /> Archived by the seller — hidden from buyers</span>
       @endif
     </div>
   </div>

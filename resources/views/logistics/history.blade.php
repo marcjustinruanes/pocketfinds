@@ -25,13 +25,13 @@
           <td class="mono">{{ $s->tracking_number ?? substr($s->id, 0, 8) }}</td>
           <td>
             <div class="cell-user">
-              <div class="avatar-sm">{{ strtoupper(substr(optional(optional($s->order)->buyer)->first_name ?? '?', 0, 1)) }}</div>
+              <div class="avatar-sm">{{ strtoupper(substr(optional(optional($s->order)->buyer)->given_names ?? '?', 0, 1)) }}</div>
               <div>
-                <strong>{{ optional(optional($s->order)->buyer)->first_name }} {{ optional(optional($s->order)->buyer)->last_name }}</strong>
+                <strong>{{ optional(optional($s->order)->buyer)->given_names }} {{ optional(optional($s->order)->buyer)->last_name }}</strong>
               </div>
             </div>
           </td>
-          <td>{{ optional($s->courier)->first_name ? optional($s->courier)->first_name . ' ' . optional($s->courier)->last_name : '—' }}</td>
+          <td>{{ optional($s->courier)->given_names ? optional($s->courier)->given_names . ' ' . optional($s->courier)->last_name : '—' }}</td>
           <td><span class="stamp stamp-{{ $s->shipping_status }}">{{ ucfirst(str_replace('_',' ',$s->shipping_status)) }}</span></td>
           <td class="mono">{{ $s->picked_up_at ? \Carbon\Carbon::parse($s->picked_up_at)->format('M d, Y H:i') : '—' }}</td>
           <td class="mono">{{ $s->out_for_delivery_at ? \Carbon\Carbon::parse($s->out_for_delivery_at)->format('M d, Y H:i') : '—' }}</td>

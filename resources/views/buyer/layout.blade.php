@@ -5,12 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <title>@yield('title', 'Buyer') — PocketFinds</title>
-<link rel="stylesheet" href="/css/buyer.css">
+<link rel="stylesheet" href="/css/buyer.css?v={{ filemtime(public_path('css/buyer.css')) }}">
 @stack('head')
 </head>
 <body class="buyer">
 <div class="shell" id="appShell">
-  @include('buyer.partials.sidebar')
   <div style="display:flex;flex-direction:column;min-width:0">
     @include('buyer.partials.topbar')
     <main class="content">
@@ -18,6 +17,8 @@
     </main>
   </div>
 </div>
+
+@include('buyer.partials.messages-modal')
 
 {{-- Logout confirm modal --}}
 <div class="modal-overlay" id="logoutOverlay">

@@ -29,17 +29,28 @@
         @php $courier = optional(optional($s->assignment)->courier) @endphp
         <tr>
           <td class="mono">{{ $s->tracking_number ?? substr($s->id, 0, 8) }}</td>
-          <td>{{ optional(optional($s->order)->buyer)->first_name }} {{ optional(optional($s->order)->buyer)->last_name }}</td>
+          <td>{{ optional(optional($s->order)->buyer)->given_names }} {{ optional(optional($s->order)->buyer)->last_name }}</td>
           <td><span class="stamp stamp-{{ $s->shipping_status }}">{{ ucfirst(str_replace('_',' ',$s->shipping_status)) }}</span></td>
           <td>
-            @if($courier->first_name)
+            @if($courier->given_names)
               <div class="cell-user">
-                <div class="avatar-sm">{{ strtoupper(substr($courier->first_name,0,1)) }}</div>
+                <div class="avatar-sm">{{ strtoupper(substr($courier->given_names,0,1)) }}</div>
                 <div>
-                  <strong>{{ $courier->first_name }} {{ $courier->last_name }}</strong>
+                  <strong>{{ $courier->given_names }} {{ $courier->last_name }}</strong>
                   <div style="font-size:11px;color:var(--muted)">{{ $courier->email }}</div>
                 </div>
               </div>
+            @elseif($s->shipping_status === 'available')
+              <form method="POST" action="{{ route('logistics.assignments.assign', $s->id) }}" style="display:flex;gap:6px">
+                @csrf @method('PATCH')
+                <select name="courier_id" class="select" required>
+                  <option value="" selected disabled>Select courier…</option>
+                  @foreach($couriers as $rider)
+                  <option value="{{ $rider->id }}">{{ $rider->given_names }} {{ $rider->last_name }}</option>
+                  @endforeach
+                </select>
+                <button class="btn btn-sm btn-primary">Assign</button>
+              </form>
             @else
               <span style="color:var(--muted);font-size:12.5px">Waiting for courier…</span>
             @endif
@@ -52,7 +63,7 @@
             @endif
           </td>
           <td style="font-size:12px;color:var(--muted)">
-            {{ $s->assignment?->created_at ? \Carbon\Carbon::parse($s->assignment->created_at)->format('M d, H:i') : '—' }}
+            {{ $s->assignment?->accepted_at ? \Carbon\Carbon::parse($s->assignment->accepted_at)->format('M d, H:i') : '—' }}
           </td>
         </tr>
         @empty

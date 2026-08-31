@@ -24,12 +24,25 @@ class SocialAuthController extends Controller
 
     public function handleGoogleCallback()
     {
-        $googleUser = Socialite::driver('google')
-            ->setHttpClient(new Client(['verify' => false]))
-            ->stateless()
-            ->user();
-
         $intent = session('oauth_intent', 'register');
+
+        // Google redirects here without a usable `code` if the user cancels
+        // consent, the code was already used (e.g. a duplicate/back-button
+        // hit), or the request otherwise didn't come from a fresh OAuth
+        // handshake — bail out to a friendly page instead of a raw 500.
+        if (request()->filled('error') || !request()->filled('code')) {
+            return $this->googleFailureRedirect($intent, 'Google sign-in was cancelled or could not be completed. Please try again.');
+        }
+
+        try {
+            $googleUser = Socialite::driver('google')
+                ->setHttpClient(new Client(['verify' => false]))
+                ->stateless()
+                ->user();
+        } catch (\Throwable $e) {
+            return $this->googleFailureRedirect($intent, 'Google sign-in failed. Please try again.');
+        }
+
         $existing = User::where('email', $googleUser->getEmail())
                         ->orWhere('google_id', $googleUser->getId())
                         ->first();
@@ -80,5 +93,15 @@ class SocialAuthController extends Controller
         $type = session('oauth_account_type', 'buyer');
 
         return redirect()->route('register', ['type' => $type, 'google' => 1]);
+    }
+
+    private function googleFailureRedirect(string $intent, string $message)
+    {
+        if ($intent === 'login') {
+            return redirect()->route('login')->withErrors(['email' => $message]);
+        }
+
+        $type = session('oauth_account_type', 'buyer');
+        return redirect()->route('register.method', ['type' => $type])->withErrors(['email' => $message]);
     }
 }

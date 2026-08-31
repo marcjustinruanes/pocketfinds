@@ -8,7 +8,7 @@ class Message extends Model
 {
     protected $fillable = [
         'sender_id', 'receiver_id', 'body', 'read',
-        'product_id',
+        'product_id', 'variation_label', 'variation_price', 'variation_image',
         'attachment_path', 'attachment_name', 'attachment_type',
         'attachment_mime', 'attachment_size',
     ];

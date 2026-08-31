@@ -4,12 +4,14 @@
   $pImg    = $p['img'] ?? '';
   $pName   = $p['name'];
   $pPrice  = $p['price'];
+  $pOldPrice = $p['old_price'] ?? null;
   $pBadge  = $p['badge'] ?? '';
   $pLoc    = $p['location'] ?? '—';
   $pRating = $p['rating'];
   $pSold   = $p['sold'];
+  $filterName = $filterName ?? null;
 @endphp
-<div class="product-card" onclick="window.location='{{ $pLink }}'">
+<div class="product-card"@if($filterName !== null) data-product="{{ strtolower($filterName) }}"@endif onclick="window.location='{{ $pLink }}'">
   <div class="product-img">
     @if($pImg)
       <img src="{{ $pImg }}" alt="{{ $pName }}" style="width:100%;height:100%;object-fit:cover">
@@ -28,6 +30,9 @@
     <div class="product-name">{{ $pName }}</div>
     <div class="pc-price-row">
       <span class="product-price">₱{{ number_format($pPrice) }}</span>
+      @if($pOldPrice)
+        <span style="font-size:11px;color:var(--muted);text-decoration:line-through">₱{{ number_format($pOldPrice) }}</span>
+      @endif
       @if($pRating > 0 || $pSold > 0)
       <span class="pc-meta pc-stat-capsule">
         @if($pRating > 0)

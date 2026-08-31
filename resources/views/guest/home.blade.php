@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Marketplace — PocketFinds</title>
-<link rel="stylesheet" href="{{ asset('css/marketplace.css') }}">
+<link rel="stylesheet" href="{{ asset('css/marketplace.css') }}?v={{ filemtime(public_path('css/marketplace.css')) }}">
+{{-- Reuses the buyer app's product-card component so "All Products" here matches the buyer dashboard and product page exactly. --}}
+<link rel="stylesheet" href="{{ asset('css/buyer.css') }}?v={{ filemtime(public_path('css/buyer.css')) }}">
 </head>
 <body class="marketplace">
 <div class="market-top"><div class="container"><div>Welcome to PocketFinds Marketplace</div><div class="top-links"><span>Help Centre</span><span>Sell on PocketFinds</span><span>Download App</span></div></div></div>
@@ -33,45 +35,17 @@
 
 <section class="section"><div class="section-head"><h2 class="section-title">Browse Categories</h2><a class="see-all" href="#">See All</a></div><div class="category-grid" id="browseCategories"><p class="cat-loading">Loading…</p></div></section>
 
-<section class="section" id="products">
-  <div class="section-head"><h2 class="section-title">All Products</h2></div>
-  <div class="deal-strip"><div class="deal-grid">
+<section class="home-section home-products" id="products">
+  <div class="home-section-head"><h2>All Products</h2></div>
+  <div class="product-grid product-grid-lg">
     @forelse($products as $p)
-    <article class="product" data-product="{{ strtolower($p['name']) }}" onclick="window.location='{{ route('guest.product', $p['id']) }}'">
-      <div class="product-img">
-        @if($p['img'])
-          <img src="{{ $p['img'] }}" alt="{{ $p['name'] }}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">
-        @else
-          <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".4"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-        @endif
-      </div>
-      <div class="product-body">
-        <div class="product-name">{{ $p['name'] }}</div>
-        @if(!empty($p['location']))
-        <div style="display:inline-flex;align-items:center;gap:3px;font-size:11px;color:#888;margin:3px 0">
-          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          {{ $p['location'] }}
-        </div>
-        @endif
-        <div style="display:inline-flex;align-items:center;gap:3px;font-size:11px;color:#888;margin-bottom:4px">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          {{ $p['rating'] > 0 ? number_format($p['rating'],1) : 'New' }}
-        </div>
-        <div class="price">₱{{ number_format($p['price']) }}</div>
-        <div class="product-actions">
-          <button class="btn-cart" type="button" data-protected>
-            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 5m12-5l2 5M9 21a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"/></svg> Cart
-          </button>
-          <button class="btn-buy" type="button" data-protected>Buy Now</button>
-        </div>
-      </div>
-    </article>
+      @include('buyer.partials.product-card', ['p' => $p, 'route' => 'guest.product', 'filterName' => $p['name']])
     @empty
     <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#888">
       <p style="font-size:14px">No products available yet. Check back soon!</p>
     </div>
     @endforelse
-  </div></div>
+  </div>
 </section>
 </main>
 

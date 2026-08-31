@@ -22,8 +22,8 @@
   </div>
   <div class="kpi">
     <div class="label">Avg. Rating</div>
-    <div class="value">—</div>
-    <div class="delta">No ratings yet</div>
+    <div class="value">{{ $avgRating ?: '—' }}</div>
+    <div class="delta">{{ $avgRating ? 'Out of 5' : 'No ratings yet' }}</div>
   </div>
 </div>
 
@@ -79,9 +79,9 @@
       <div class="card-pad" style="display:flex;flex-direction:column;gap:8px">
         @php $pipeline = [
           ['bell','New Orders','notifications','stamp-new',$pipelineCounts['new']],
-          ['package','To Prepare','prepare','stamp-pending',$pipelineCounts['prepare']],
-          ['truck','With Courier','shipments','stamp-transit',$pipelineCounts['shipments']],
-          ['check-circle','Delivered','deliveries','stamp-delivered',$pipelineCounts['deliveries']],
+          ['package','To Prepare','orders','stamp-pending',$pipelineCounts['prepare']],
+          ['truck','With Courier','orders','stamp-transit',$pipelineCounts['shipments']],
+          ['check-circle','Delivered','orders','stamp-delivered',$pipelineCounts['deliveries']],
         ]; @endphp
         @foreach($pipeline as [$icon,$label,$route,$stamp,$count])
         <a href="{{ route('seller.'.$route) }}" class="order-status-row" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;font-size:13px;font-weight:600;color:var(--text);background:#fff">
@@ -130,4 +130,5 @@
 </div>
 
 @include('seller.partials.add-product-modal')
+@include('seller.partials.product-result-modal')
 @endsection

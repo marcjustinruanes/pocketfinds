@@ -1,6 +1,17 @@
 // Sidebar toggle
 const sidebar = document.getElementById('sidebar');
 const shell   = document.getElementById('appShell');
+document.querySelectorAll('[data-dropdown-toggle]').forEach(button => {
+    button.addEventListener('click', event => {
+        event.stopPropagation();
+        const panel = document.getElementById(button.dataset.dropdownToggle);
+        document.querySelectorAll('.dropdown-panel.open').forEach(open => open !== panel && open.classList.remove('open'));
+        panel?.classList.toggle('open');
+    });
+});
+document.addEventListener('click', event => {
+    if (!event.target.closest('.dropdown')) document.querySelectorAll('.dropdown-panel.open').forEach(panel => panel.classList.remove('open'));
+});
 document.querySelectorAll('[data-sidebar-toggle]').forEach(btn => {
     btn.addEventListener('click', () => {
         sidebar.classList.toggle('open');

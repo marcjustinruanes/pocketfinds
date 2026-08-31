@@ -16,26 +16,21 @@
     </a>
 
     <div class="nav-label">Orders</div>
+    @php($unreadNotifCount = \Illuminate\Support\Facades\DB::table('notifications')->where('user_id', auth()->id())->where('is_read', false)->count())
     <a href="{{ route('seller.notifications') }}" class="nav-item {{ request()->routeIs('seller.notifications') ? 'active' : '' }}">
       <span class="ic">@include('seller.partials.icon', ['name' => 'bell', 'size' => 16])</span> Notifications
-      <span class="badge">3</span>
+      @if($unreadNotifCount > 0)<span class="badge">{{ $unreadNotifCount }}</span>@endif
     </a>
     <a href="{{ route('seller.orders') }}" class="nav-item {{ request()->routeIs('seller.orders') ? 'active' : '' }}">
       <span class="ic">@include('seller.partials.icon', ['name' => 'orders', 'size' => 16])</span> Order Management
-    </a>
-    <a href="{{ route('seller.prepare') }}" class="nav-item {{ request()->routeIs('seller.prepare') ? 'active' : '' }}">
-      <span class="ic">@include('seller.partials.icon', ['name' => 'package', 'size' => 16])</span> Prepare Orders
-    </a>
-    <a href="{{ route('seller.shipments') }}" class="nav-item {{ request()->routeIs('seller.shipments') ? 'active' : '' }}">
-      <span class="ic">@include('seller.partials.icon', ['name' => 'truck', 'size' => 16])</span> Shipments
-    </a>
-    <a href="{{ route('seller.deliveries') }}" class="nav-item {{ request()->routeIs('seller.deliveries') ? 'active' : '' }}">
-      <span class="ic">@include('seller.partials.icon', ['name' => 'check-circle', 'size' => 16])</span> Confirm Delivery
     </a>
 
     <div class="nav-label">Store</div>
     <a href="{{ route('seller.inventory') }}" class="nav-item {{ request()->routeIs('seller.inventory') ? 'active' : '' }}">
       <span class="ic">@include('seller.partials.icon', ['name' => 'inventory', 'size' => 16])</span> Inventory
+    </a>
+    <a href="{{ route('seller.vouchers') }}" class="nav-item {{ request()->routeIs('seller.vouchers') ? 'active' : '' }}">
+      <span class="ic">@include('seller.partials.icon', ['name' => 'tag', 'size' => 16])</span> Vouchers
     </a>
     <a href="{{ route('seller.feedback') }}" class="nav-item {{ request()->routeIs('seller.feedback') ? 'active' : '' }}">
       <span class="ic">@include('seller.partials.icon', ['name' => 'star', 'size' => 16])</span> Customer Feedback

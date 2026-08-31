@@ -203,7 +203,10 @@
                 <form id="buyerForm" method="POST" action="{{ route('register.store') }}" enctype="multipart/form-data" novalidate>
                     @csrf
                     <input type="hidden" name="account_type" value="{{ request('type', 'buyer') }}">
-                    <input type="hidden" name="auth_method" value="manual">
+                    <input type="hidden" name="auth_method" value="{{ ($isGoogleSignup ?? false) ? 'google' : 'manual' }}">
+                    @if($isGoogleSignup ?? false)
+                        <input type="hidden" name="google_id" value="{{ $googleId }}">
+                    @endif
 
                     {{-- ── STEP 1: Category (sellers only) ── --}}
                     <div class="step-panel" id="panel-1">
@@ -212,7 +215,7 @@
                             <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;background:var(--auth-primary-soft);border:1px solid rgba(217,70,143,.2);color:var(--auth-primary);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em">{!! $typeIcons[$regType] ?? $typeIcons['buyer'] !!} {{ ucfirst($regType) }}</span>
                         </div>
                         <div style="display:flex;align-items:center;justify-content:space-between">
-                            <p class="auth-subtitle" style="margin:0">Add your business details and choose at least two categories your products belong to.</p>
+                            <p class="auth-subtitle" style="margin:0">Add your business details and choose the category your products belong to.</p>
                             <a href="{{ route('register.type') }}" title="Change account type" style="flex-shrink:0;margin-left:8px;color:var(--auth-muted);text-decoration:none;line-height:1" onmouseover="this.style.color='var(--auth-primary)'" onmouseout="this.style.color='var(--auth-muted)'"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg></a>
                         </div>
                         <div id="categoryIdsContainer"></div>
@@ -430,10 +433,12 @@
                             <div class="auth-field full">
                                 <label class="auth-label" for="email">Email address <span class="auth-required">*</span></label>
                                 <div class="email-verify-row">
-                                    <input class="auth-input" id="email" name="email" type="email" placeholder="juan@gmail.com" required autocomplete="off">
-                                    <button type="button" class="btn-send-otp" id="sendOtpBtn" onclick="sendOtp()">Send Code</button>
+                                    <input class="auth-input" id="email" name="email" type="email" placeholder="juan@gmail.com" required autocomplete="off"
+                                        value="{{ ($isGoogleSignup ?? false) ? $googleEmail : old('email') }}"
+                                        @if($isGoogleSignup ?? false) readonly @endif>
+                                    <button type="button" class="btn-send-otp" id="sendOtpBtn" onclick="sendOtp()" @if($isGoogleSignup ?? false) style="display:none" @endif>Send Code</button>
                                 </div>
-                                <span class="field-hint" id="emailHint"></span>
+                                <span class="field-hint" id="emailHint">{{ ($isGoogleSignup ?? false) ? 'Prefilled from your Google account.' : '' }}</span>
                             </div>
                             <div class="auth-field full" id="otpField" style="display:none">
                                 <label class="auth-label" for="otp_code">Verification code <span class="auth-required">*</span></label>
@@ -443,10 +448,10 @@
                                 </div>
                                 <span class="field-hint" id="otpHint">Enter the code sent to your email. <button type="button" class="btn-inline-link" id="resendOtpBtn" onclick="resendOtp()" disabled>Resend</button></span>
                             </div>
-                            <div class="auth-field full" id="verifiedBadge" style="display:none">
+                            <div class="auth-field full" id="verifiedBadge" style="{{ ($isGoogleSignup ?? false) ? '' : 'display:none' }}">
                                 <div class="email-verified-badge">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                    Email verified
+                                    {{ ($isGoogleSignup ?? false) ? 'Verified via Google' : 'Email verified' }}
                                 </div>
                             </div>
                             <div class="auth-field full">
@@ -529,6 +534,11 @@
                                 </div>
                                 <div id="usernameSuggestions" style="display:none;margin-top:6px;font-size:12px;color:var(--auth-muted)"></div>
                             </div>
+                            @if($isGoogleSignup ?? false)
+                                <div class="auth-field full">
+                                    <span class="field-hint">Set a password too, so you can also sign in with your username later without going through Google.</span>
+                                </div>
+                            @endif
                             <div class="auth-field full">
                                 <label class="auth-label" for="password">Password <span class="auth-required">*</span></label>
                                 <input class="auth-input" id="password" name="password" type="password" placeholder="Min. 8 characters" required minlength="8">
@@ -857,6 +867,7 @@
     </main>
 </div>
 
+<script>const IS_GOOGLE_SIGNUP = @json($isGoogleSignup ?? false);</script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="{{ asset('js/auth.js') }}"></script>
 <script src="{{ asset('js/register.js') }}"></script>

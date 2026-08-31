@@ -106,6 +106,11 @@
               @endforeach
             </select>
           </div>
+          <div class="form-row">
+            <label>Shipping Fee (₱)</label>
+            <input type="number" name="shipping_fee" min="0" step="0.01" value="{{ old('shipping_fee', $u->shipping_fee) }}" placeholder="0.00 for free shipping">
+            <span style="font-size:11px;color:var(--muted)">Charged once per order from your shop, shown to buyers at checkout.</span>
+          </div>
           <button type="submit" class="btn btn-primary">Update Shop</button>
         </form>
       </div>

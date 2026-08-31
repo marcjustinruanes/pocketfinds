@@ -12,6 +12,9 @@
   $total   = count($reviews) ?: 1;
 @endphp
 
+<div class="pd-page-grid {{ count($related) ? '' : 'pd-page-grid-solo' }}">
+<div class="pd-page-main">
+
 <section class="pd-shop-card">
   <a href="{{ url()->previous() }}" class="pd-shop-back" aria-label="Back"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></a>
   <div class="pd-shop-more-av">{{ strtoupper(substr($product['seller'], 0, 1)) }}</div>
@@ -24,7 +27,7 @@
   </div>
   <div class="pd-shop-stats"><span><strong>{{ $avg > 0 ? number_format($avg, 1) : '—' }}</strong> Rating</span><span><strong>{{ count($shopProducts) + 1 }}</strong> Products</span><span><strong>—</strong> Followers</span></div>
   <div class="pd-shop-card-actions">
-    <a href="{{ route('buyer.messages', ['seller' => $product['seller_slug']]) }}" class="pd-shop-chat">@include('buyer.partials.icon', ['name' => 'chat', 'size' => 13]) Chat with Seller</a>
+    <a href="{{ route('buyer.messages', ['seller' => $product['seller_slug']]) }}" class="pd-shop-chat" data-messages-trigger>@include('buyer.partials.icon', ['name' => 'chat', 'size' => 13]) Chat with Seller</a>
     <a href="{{ route('buyer.shop', $product['seller_slug']) }}" class="pd-shop-more-link pd-shop-view"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg>View Shop</a>
   </div>
 </section>
@@ -32,13 +35,44 @@
 <div class="pd-main-grid">
 
   {{-- LEFT COL: thumb strip + main image --}}
-  @php $hasRealImg = !empty($product['img']); @endphp
+  @php
+    $hasRealImg  = !empty($product['img']);
+    $hasGallery  = count($product['images'] ?? []) > 1 || !empty($product['video']);
+  @endphp
   <div class="pd-img-col">
+    @if($hasGallery)
+    <div class="pd-thumb-col">
+      <button type="button" class="pd-arr" id="pdThumbUp" aria-label="Scroll thumbnails up">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+      </button>
+      <div class="pd-thumb-viewport">
+        <div class="pd-thumb-track" id="pdThumbTrack">
+          @if(!empty($product['video']))
+          <button type="button" class="pd-thumb active" data-thumb-video onclick="showProductVideo(this)" style="background:#000;position:relative">
+            <video src="{{ $product['video'] }}" style="width:100%;height:100%;object-fit:cover;opacity:.7;border-radius:6px"></video>
+            <svg style="position:absolute;inset:0;margin:auto;color:#fff" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+          </button>
+          @endif
+          @foreach($product['images'] as $idx => $imgUrl)
+          <button type="button" class="pd-thumb {{ $idx === 0 && empty($product['video']) ? 'active' : '' }}" onclick="showProductImage('{{ $imgUrl }}', this)">
+            <img src="{{ $imgUrl }}" style="width:100%;height:100%;object-fit:cover;border-radius:6px">
+          </button>
+          @endforeach
+        </div>
+      </div>
+      <button type="button" class="pd-arr" id="pdThumbDown" aria-label="Scroll thumbnails down">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+    </div>
+    @endif
     <div class="pd-main-img">
       @if($hasRealImg)
-        <img src="{{ $product['img'] }}" style="width:100%;height:100%;object-fit:contain;border-radius:12px">
+        <img src="{{ $product['img'] }}" id="pdMainImg">
       @else
         <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity=".25"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      @endif
+      @if(!empty($product['video']))
+        <video id="pdMainVideo" src="{{ $product['video'] }}" controls playsinline style="display:{{ $hasRealImg ? 'none' : 'block' }};width:100%;height:100%;object-fit:contain"></video>
       @endif
     </div>
   </div>
@@ -54,7 +88,7 @@
       </div>
       <div class="pd-title-price-row">
         <h1 class="pd-title">{{ $product['name'] }}</h1>
-        <span class="pd-price">₱{{ number_format($product['price']) }}</span>
+        <span class="pd-price" id="pdPrice" data-base-price="{{ $product['price'] }}">₱{{ number_format($product['price']) }}</span>
       </div>
       <div class="pd-meta-row">
         <span class="pd-stars-row">
@@ -67,19 +101,27 @@
         <span class="pd-meta-muted">{{ number_format($product['sold']) }} sold</span>
         <span class="pd-meta-sep">·</span>
         <a class="pd-meta-link" href="#" onclick="event.preventDefault();switchTab(document.querySelector('[data-tab=reviews]'),'reviews')">{{ count($reviews) }} reviews</a>
-        @if($product['old_price'])<span class="pd-old" style="margin-left:auto">₱{{ number_format($product['old_price']) }}</span>@endif
+        <button type="button" class="pd-report-btn" title="Report this listing" onclick="document.getElementById('productReportModal').classList.add('open')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4m0 1h10l-2 3 2 3H5"/></svg>
+        </button>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+          @if($product['old_price'])<span class="pd-old">₱{{ number_format($product['old_price']) }}</span>@endif
+        </div>
       </div>
       <div class="pd-actions">
-        <a class="pd-btn-chat" href="{{ route('buyer.messages', ['seller' => $product['seller_slug'], 'product' => $product['id']]) }}">@include('buyer.partials.icon', ['name' => 'chat', 'size' => 15]) Chat</a>
-        <button class="pd-btn-cart" onclick="openCart('{{ addslashes($product['name']) }}',{{ $product['price'] }},{{ json_encode($product['variants']['color'] ?? []) }},{{ json_encode($product['variants']['size'] ?? []) }},false,this,'{{ $product['id'] }}','{{ $product['img'] }}')">
+        <a class="pd-btn-chat" href="{{ route('buyer.messages', ['seller' => $product['seller_slug'], 'product' => $product['id']]) }}" onclick="event.preventDefault();openChatWithSelectedVariant(this)">@include('buyer.partials.icon', ['name' => 'chat', 'size' => 15]) Chat</a>
+        <button class="pd-btn-cart" id="pdAddCartBtn" type="button" onclick="directAddToCart(false, this)" data-product-id="{{ $product['id'] }}" data-product-name="{{ addslashes($product['name']) }}" data-product-img="{{ $product['img'] }}" {{ $product['stock'] <= 0 ? 'disabled' : '' }}>
           <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 5m12-5l2 5M9 21a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"/></svg>
-          Add to Cart
+          {{ $product['stock'] <= 0 ? 'Out of Stock' : 'Add to Cart' }}
         </button>
-        <button class="pd-btn-buy" onclick="openCart('{{ addslashes($product['name']) }}',{{ $product['price'] }},{{ json_encode($product['variants']['color'] ?? []) }},{{ json_encode($product['variants']['size'] ?? []) }},true,this,'{{ $product['id'] }}','{{ $product['img'] }}')">
+        <button class="pd-btn-buy" id="pdBuyNowBtn" type="button" onclick="directAddToCart(true, this)" data-product-id="{{ $product['id'] }}" data-product-name="{{ addslashes($product['name']) }}" data-product-img="{{ $product['img'] }}" {{ $product['stock'] <= 0 ? 'disabled' : '' }}>
           <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          Buy Now
+          {{ $product['stock'] <= 0 ? 'Unavailable' : 'Buy Now' }}
         </button>
       </div>
+      @if($product['stock'] <= 0 && $product['restock_date'])
+        <div class="pd-restock-note">Expected restock: {{ $product['restock_date'] }}</div>
+      @endif
     </div>
 
     {{-- Description / tabs card --}}
@@ -94,14 +136,25 @@
       {{-- Options --}}
       <div class="pd-tab-pane active" id="tab-options">
         @if(!empty($product['variations']))
+          @php $firstOptionPicked = false; @endphp
           @foreach($product['variations'] as $variation)
           <div class="pd-opt-group">
             <div class="pd-opt-label">{{ $variation['name'] }}</div>
             <div class="pd-opt-row">
               @foreach($variation['options'] as $opt)
-              <button class="pd-opt-btn {{ $loop->first?'active':'' }}"
+              @php
+                $isActive = !$firstOptionPicked && $opt['stock'] > 0;
+                if ($isActive) $firstOptionPicked = true;
+              @endphp
+              <button type="button" class="pd-opt-btn {{ $isActive ? 'active' : '' }}"
                 onclick="selectVariant(this)"
+                data-exclusive="true"
+                data-group="{{ $variation['name'] }}"
+                data-value="{{ $opt['value'] }}"
                 data-stock="{{ $opt['stock'] }}"
+                data-price="{{ $opt['price'] ?? $product['price'] }}"
+                @if(!empty($opt['image'])) data-image="{{ $opt['image'] }}" @endif
+                {{ $opt['stock'] == 0 ? 'disabled' : '' }}
                 style="{{ $opt['stock'] == 0 ? 'opacity:.4;cursor:not-allowed' : '' }}">
                 {{ $opt['value'] }}
                 @if($opt['stock'] > 0)
@@ -119,17 +172,17 @@
             <div class="pd-opt-label">Color</div>
             <div class="pd-opt-row">
               @foreach($product['variants']['color'] as $c)
-              <button class="pd-opt-btn {{ $loop->first?'active':'' }}" onclick="selectVariant(this)">{{ $c }}</button>
+              <button type="button" class="pd-opt-btn {{ $loop->first?'active':'' }}" onclick="selectVariant(this)" data-group="Color" data-value="{{ $c }}">{{ $c }}</button>
               @endforeach
             </div>
           </div>
         @endif
-        @if(!empty($product['variants']['size']))
+        @if(empty($product['variations']) && !empty($product['variants']['size']))
         <div class="pd-opt-group">
           <div class="pd-opt-label">{{ str_contains(implode(',',$product['variants']['size']),'Switch') ? 'Switch Type' : 'Size' }}</div>
           <div class="pd-opt-row">
             @foreach($product['variants']['size'] as $s)
-            <button class="pd-opt-btn {{ $loop->first?'active':'' }}" onclick="selectVariant(this)">{{ $s }}</button>
+            <button type="button" class="pd-opt-btn {{ $loop->first?'active':'' }}" onclick="selectVariant(this)" data-group="Size" data-value="{{ $s }}">{{ $s }}</button>
             @endforeach
           </div>
         </div>
@@ -143,10 +196,13 @@
         @endif
         <div class="pd-opt-group">
           <div class="pd-opt-label">Quantity</div>
-          <div class="pd-qty-row">
-            <button class="pd-qty-btn" onclick="changeQty(-1)">−</button>
-            <span class="pd-qty-num" id="pdQty">1</span>
-            <button class="pd-qty-btn" onclick="changeQty(1)">+</button>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="pd-qty-row">
+              <button type="button" class="pd-qty-btn" onclick="changeQty(-1)">−</button>
+              <span class="pd-qty-num" id="pdQty">1</span>
+              <button type="button" class="pd-qty-btn" onclick="changeQty(1)">+</button>
+            </div>
+            <span class="pd-qty-total" id="pdQtyTotal" style="display:none"></span>
           </div>
         </div>
       </div>
@@ -225,96 +281,285 @@
 
 </div>{{-- end pd-main-grid --}}
 
-{{-- BOTTOM: More from shop + related --}}
-@if(count($shopProducts))
+{{-- List of products from this shop — placed right after the main picture/title/options grid --}}
 <div class="pd-shop-more">
   <div class="pd-shop-more-head">
-    <div class="pd-shop-more-left">
-      <div class="pd-shop-more-av">{{ strtoupper(substr($product['seller'],0,1)) }}</div>
-      <div>
-        <div class="pd-shop-more-name">{{ $product['seller'] }}</div>
-        <div class="pd-shop-more-sub">More from this shop</div>
+    <div class="pd-shop-more-label">From the Same Shop</div>
+    <a href="{{ route('buyer.shop', $product['seller_slug']) }}" class="pd-shop-more-link">
+      See All
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+    </a>
+  </div>
+  <div class="product-grid product-grid-lg">
+    @forelse($shopProducts as $sp)
+      @include('buyer.partials.product-card', ['p' => $sp])
+    @empty
+    <p style="color:var(--muted);font-size:13px;grid-column:1/-1;padding:8px 0">This shop doesn't have any other products yet.</p>
+    @endforelse
+  </div>
+</div>
+
+</div>{{-- end pd-page-main --}}
+
+@if(count($related))
+<div class="pd-page-side">
+    <div class="pd-related pd-related-side">
+      <div class="product-grid product-grid-lg">
+        @foreach($related as $rp)
+          @include('buyer.partials.product-card', ['p' => $rp])
+        @endforeach
       </div>
     </div>
-    <a href="{{ route('buyer.messages', ['seller' => $product['seller_slug']]) }}" class="pd-shop-chat">@include('buyer.partials.icon', ['name' => 'chat', 'size' => 14]) Chat with Seller</a>
-    <a href="{{ route('buyer.shop', $product['seller_slug']) }}" class="pd-shop-more-link">View Shop →</a>
-  </div>
-  @if(count($shopProducts))
-  <div class="pd-shop-more-grid">
-    @foreach($shopProducts as $sp)
-    <div class="pd-mini-card" onclick="window.location='{{ route('buyer.product', $sp['id']) }}'">
-      <div class="pd-mini-img">
-        @if(is_string($sp['img']) && str_starts_with($sp['img'], '/'))
-          <img src="{{ $sp['img'] }}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">
-        @else
-          @include('buyer.partials.icon', ['name' => $sp['img'], 'size' => 28])
-        @endif
-        @if($sp['badge'])<span class="pd-mini-badge">{{ $sp['badge'] }}</span>@endif
-      </div>
-      <div class="pd-mini-info">
-        <div class="pd-mini-name">{{ $sp['name'] }}</div>
-        <div class="pd-mini-price">₱{{ number_format($sp['price']) }}</div>
-        <div class="pd-mini-rating">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="#f59e0b" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          {{ $sp['rating'] }}
-        </div>
-      </div>
-    </div>
-    @endforeach
-  </div>
-  @endif
 </div>
 @endif
 
-@if(count($related))
-<div class="pd-related">
-  <div class="pd-related-head">
-    <span>Similar Products</span>
-    <a href="{{ route('buyer.browse') }}?category={{ urlencode($product['cat']) }}" class="pd-related-more">Browse all in {{ $product['cat'] }} →</a>
-  </div>
-  <div class="product-grid product-grid-lg">
-    @foreach($related as $rp)
-    <div class="product-card" onclick="window.location='{{ route('buyer.product', $rp['id']) }}'">
-      <div class="product-img">
-        @if(is_string($rp['img']) && str_starts_with($rp['img'], '/'))
-          <img src="{{ $rp['img'] }}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">
-        @else
-          @include('buyer.partials.icon', ['name' => $rp['img'], 'size' => 36])
-        @endif
-        @if($rp['badge'])<span class="product-badge">{{ $rp['badge'] }}</span>@endif
-      </div>
-      <div class="product-info">
-        <div class="product-name">{{ $rp['name'] }}</div>
-        <a class="product-seller" href="{{ route('buyer.shop', $rp['seller_slug']) }}" onclick="event.stopPropagation()">by {{ $rp['seller'] }}</a>
-        <div class="product-price">₱{{ number_format($rp['price']) }}</div>
-        <div class="product-rating">
-          <span class="star-ic">@include('buyer.partials.icon',['name'=>'star','size'=>11])</span>
-          {{ $rp['rating'] }} · {{ number_format($rp['sold']) }} sold
-        </div>
-        <div class="pc-actions">
-          <button class="pc-act pc-act-cart" onclick="event.stopPropagation();openCart('{{ addslashes($rp['name']) }}',{{ $rp['price'] }},{{ json_encode($rp['variants']['color']) }},{{ json_encode($rp['variants']['size']) }},false,this,'{{ $rp['id'] }}','{{ $rp['img'] }}')" title="Add to Cart">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 5m12-5l2 5M9 21a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"/></svg>
-          </button>
-          <button class="pc-act pc-act-buy" onclick="event.stopPropagation();openCart('{{ addslashes($rp['name']) }}',{{ $rp['price'] }},{{ json_encode($rp['variants']['color']) }},{{ json_encode($rp['variants']['size']) }},true,this,'{{ $rp['id'] }}','{{ $rp['img'] }}')" title="Buy Now">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          </button>
-        </div>
-      </div>
+</div>{{-- end pd-page-grid --}}
+
+<div class="modal-overlay" id="productReportModal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-head">
+      <div><h3>Report Listing</h3><p>Send this report to the admin team.</p></div>
+      <button class="modal-close" type="button" data-modal-close>×</button>
     </div>
-    @endforeach
+    <form id="productReportForm" enctype="multipart/form-data">
+      <div class="modal-body">
+        <div class="chat-report-context">
+          <div class="field-label">Reported listing</div>
+          <div class="field-value">{{ $product['name'] }}</div>
+        </div>
+        <div class="form-row">
+          <label for="prReason">Why are you reporting this listing?</label>
+          <select id="prReason" name="reason" required>
+            <option value="">Choose a reason</option>
+            <option>Counterfeit or fake item</option>
+            <option>Misleading description or photos</option>
+            <option>Prohibited or restricted item</option>
+            <option>Scam or fraud</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="prDescription">More details</label>
+          <textarea id="prDescription" name="description" rows="4" maxlength="3000" placeholder="Tell admin what happened..."></textarea>
+        </div>
+        <div class="form-row">
+          <label for="prEvidence">Image or video evidence (optional)</label>
+          <input id="prEvidence" name="evidence" type="file" accept="image/*,video/*">
+        </div>
+        <div id="prError" style="display:none;color:var(--danger);font-size:12px;margin-top:8px"></div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-outline" data-modal-close>Cancel</button>
+        <button type="submit" class="btn btn-danger" id="prSubmit">Send Report</button>
+      </div>
+    </form>
   </div>
 </div>
-@endif
 
 <script>
 function selectVariant(btn) {
-  btn.closest('.pd-opt-row').querySelectorAll('.pd-opt-btn').forEach(b => b.classList.remove('active'));
+  if (btn.disabled) return;
+  // Options carrying data-exclusive represent alternative, self-contained
+  // SKUs (each with its own price/stock/photo) rather than combinable
+  // attributes like Color+Size — only one such option may be active across
+  // the whole tab at a time. Legacy Color/Size rows stay independent.
+  const scope = btn.dataset.exclusive === 'true'
+    ? document.getElementById('tab-options')
+    : btn.closest('.pd-opt-row');
+  scope.querySelectorAll('.pd-opt-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  updatePurchaseAvailability(parseInt(btn.dataset.stock || '0', 10));
+  if (btn.dataset.image) {
+    showProductImage(btn.dataset.image);
+    syncThumbForImage(btn.dataset.image);
+  }
+  updatePriceDisplay();
 }
+
+function updatePurchaseAvailability(stock) {
+  const cartButton = document.getElementById('pdAddCartBtn');
+  const buyButton = document.getElementById('pdBuyNowBtn');
+  const unavailable = stock <= 0;
+  if (cartButton) {
+    cartButton.disabled = unavailable;
+    cartButton.lastChild.textContent = unavailable ? ' Out of Stock' : ' Add to Cart';
+  }
+  if (buyButton) {
+    buyButton.disabled = unavailable;
+    buyButton.lastChild.textContent = unavailable ? ' Unavailable' : ' Buy Now';
+  }
+}
+
+// Keeps the mini-picture rail and the Options tab pointed at the same
+// photo — selecting a variation highlights its matching thumbnail, and
+// clicking a thumbnail that belongs to a variation selects that variation.
+function syncThumbForImage(src) {
+  document.querySelectorAll('#pdThumbTrack .pd-thumb').forEach(t => {
+    const img = t.querySelector('img');
+    if (img && img.getAttribute('src') === src) setActiveThumb(t);
+  });
+}
+
+function syncVariantForImage(src) {
+  const match = [...document.querySelectorAll('#tab-options .pd-opt-btn[data-image]')]
+    .find(b => b.dataset.image === src);
+  if (match && !match.disabled) {
+    document.getElementById('tab-options').querySelectorAll('.pd-opt-btn').forEach(b => b.classList.remove('active'));
+    match.classList.add('active');
+    updatePriceDisplay();
+  }
+}
+
+function currentUnitPrice() {
+  const priceEl = document.getElementById('pdPrice');
+  const active  = document.querySelector('#tab-options .pd-opt-btn.active[data-exclusive="true"]');
+  return active ? parseFloat(active.dataset.price) : parseFloat(priceEl.dataset.basePrice);
+}
+
+function updatePriceDisplay() {
+  const priceEl = document.getElementById('pdPrice');
+  if (!priceEl) return;
+  priceEl.textContent = '₱' + currentUnitPrice().toLocaleString();
+  updateQtyTotal();
+}
+
+function updateQtyTotal() {
+  const totalEl = document.getElementById('pdQtyTotal');
+  if (!totalEl) return;
+  if (qty >= 2) {
+    totalEl.textContent = 'Total: ₱' + (currentUnitPrice() * qty).toLocaleString();
+    totalEl.style.display = '';
+  } else {
+    totalEl.style.display = 'none';
+  }
+}
+
+function openChatWithSelectedVariant(link) {
+  let url = link.getAttribute('href');
+  const active = document.querySelector('#tab-options .pd-opt-btn.active[data-exclusive="true"]');
+  if (active) {
+    const params = new URLSearchParams({ variation_group: active.dataset.group, variation_value: active.dataset.value });
+    url += (url.includes('?') ? '&' : '?') + params.toString();
+  }
+  if (typeof openMessagesModal === 'function') {
+    openMessagesModal(url);
+  } else {
+    window.location = url;
+  }
+}
+
+function directAddToCart(isBuyNow, btn) {
+  const active = document.querySelector('#tab-options .pd-opt-btn.active');
+  if (active && active.disabled) {
+    showToast('This option is out of stock.', 'error');
+    return;
+  }
+
+  const payload = { product_id: btn.dataset.productId, qty };
+  if (active && active.dataset.exclusive === 'true') {
+    payload.variation_group = active.dataset.group;
+    payload.variation_value = active.dataset.value;
+  } else {
+    const colorBtn = document.querySelector('#tab-options [data-group="Color"].pd-opt-btn.active');
+    const sizeBtn  = document.querySelector('#tab-options [data-group="Size"].pd-opt-btn.active');
+    if (colorBtn) payload.color = colorBtn.dataset.value;
+    if (sizeBtn)  payload.size  = sizeBtn.dataset.value;
+  }
+
+  fetch('/buyer/cart/add', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || ''
+    },
+    body: JSON.stringify(payload)
+  })
+    .then(async r => {
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.message || 'Unable to add this item to your cart.');
+      return data;
+    })
+    .then(data => {
+      if (!isBuyNow) {
+        const badge = document.getElementById('cartBadge');
+        if (badge) { badge.textContent = data.count; badge.style.display = ''; }
+        flyToCart(btn);
+      } else {
+        showToast('Proceeding to checkout…', 'buy');
+      }
+    })
+    .catch(error => {
+      showToast(error.message || 'Unable to add this item to your cart.', 'error');
+    });
+}
+
+function showProductImage(src, thumb) {
+  const img = document.getElementById('pdMainImg');
+  const video = document.getElementById('pdMainVideo');
+  if (video) video.style.display = 'none';
+  if (img) { img.src = src; img.style.display = 'block'; }
+  if (thumb) {
+    setActiveThumb(thumb);
+    syncVariantForImage(src);
+  }
+}
+
+function showProductVideo(thumb) {
+  const img = document.getElementById('pdMainImg');
+  const video = document.getElementById('pdMainVideo');
+  if (!video) return;
+  if (img) img.style.display = 'none';
+  video.style.display = 'block';
+  if (thumb) setActiveThumb(thumb);
+}
+
+function setActiveThumb(thumb) {
+  const track = thumb.closest('.pd-thumb-track');
+  if (!track) return;
+  track.querySelectorAll('.pd-thumb').forEach(t => t.classList.remove('active'));
+  thumb.classList.add('active');
+}
+
+(function () {
+  const track = document.getElementById('pdThumbTrack');
+  const up = document.getElementById('pdThumbUp');
+  const down = document.getElementById('pdThumbDown');
+  if (!track || !up || !down) return;
+  const step = 72;
+  let offset = 0;
+  function maxOffset() {
+    const viewport = track.parentElement;
+    return Math.max(0, track.scrollHeight - viewport.clientHeight);
+  }
+  // The scroll arrows only earn their place when the thumbnails actually
+  // overflow the visible rail — otherwise every thumb already fits and the
+  // arrows would have nothing to do.
+  function updateArrowVisibility() {
+    const needsScroll = maxOffset() > 0;
+    up.style.display = needsScroll ? '' : 'none';
+    down.style.display = needsScroll ? '' : 'none';
+  }
+  updateArrowVisibility();
+  window.addEventListener('resize', updateArrowVisibility);
+  function apply() {
+    track.style.transform = `translateY(-${offset}px)`;
+    updateArrowVisibility();
+  }
+  up.addEventListener('click', () => {
+    offset = Math.max(0, offset - step);
+    apply();
+  });
+  down.addEventListener('click', () => {
+    offset = Math.min(maxOffset(), offset + step);
+    apply();
+  });
+})();
 let qty = 1;
 function changeQty(d) {
   qty = Math.max(1, qty + d);
   document.getElementById('pdQty').textContent = qty;
+  updateQtyTotal();
 }
 function switchTab(btn, id) {
   document.querySelectorAll('.pd-tab').forEach(t => t.classList.remove('active'));
@@ -347,5 +592,34 @@ function filterReviews(star) {
   document.getElementById('pdRevCountLbl').textContent = lbl;
 }
 document.querySelectorAll('.rev-hidden').forEach(el => el.style.display = 'none');
+
+document.getElementById('productReportForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  const button = document.getElementById('prSubmit');
+  button.disabled = true;
+  button.textContent = 'Sending...';
+  const fd = new FormData(event.target);
+  fd.append('product_id', '{{ $product['id'] }}');
+  try {
+    const response = await fetch('{{ route('buyer.product.report') }}', {
+      method: 'POST',
+      body: fd,
+      headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' }
+    });
+    const data = await response.json();
+    if (!response.ok || !data.ok) throw new Error(data.message || 'Report could not be sent.');
+    document.getElementById('productReportModal').classList.remove('open');
+    event.target.reset();
+    document.getElementById('prError').style.display = 'none';
+    showToast('Report sent to admin.', 'error');
+  } catch (error) {
+    const errorBox = document.getElementById('prError');
+    errorBox.textContent = error.message || 'Report could not be sent.';
+    errorBox.style.display = 'block';
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Send Report';
+  }
+});
 </script>
 @endsection

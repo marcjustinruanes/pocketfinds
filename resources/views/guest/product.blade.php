@@ -3,8 +3,11 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>{{ $product['name'] }} — PocketFinds</title>
-<link rel="stylesheet" href="{{ asset('css/marketplace.css') }}">
-<link rel="stylesheet" href="{{ asset('css/guest-product.css') }}">
+<link rel="stylesheet" href="{{ asset('css/marketplace.css') }}?v={{ filemtime(public_path('css/marketplace.css')) }}">
+{{-- Reuses the buyer app's own product-page styles/icons so a guest sees
+     exactly the same page a signed-in buyer would, right up until they try
+     to actually do something that needs an account. --}}
+<link rel="stylesheet" href="{{ asset('css/buyer.css') }}?v={{ filemtime(public_path('css/buyer.css')) }}">
 </head>
 <body class="marketplace">
 
@@ -21,242 +24,294 @@
 
 <main class="container" style="padding:20px 0 40px">
 
-<a href="{{ url()->previous() === url()->current() ? url('/') : url()->previous() }}" class="gp-back">
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Back
-</a>
-
 @php
   $avg     = $product['rating'];
   $reviews = $product['reviews'];
   $counts  = [1=>0,2=>0,3=>0,4=>0,5=>0];
   foreach($reviews as $r) $counts[$r['rating']]++;
   $total   = count($reviews) ?: 1;
-  $icons = [
-    'headphones'=>'<path d="M3 18v-6a9 9 0 0118 0v6"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z"/>',
-    'bag'       =>'<path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>',
-    'phone'     =>'<path d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>',
-    'sparkle'   =>'<path d="M5 3l1.5 4.5L11 9l-4.5 1.5L5 15l-1.5-4.5L-1 9l4.5-1.5L5 3zm12 9l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/>',
-    'shirt'     =>'<path d="M3 7l3-4h12l3 4-4 2v10H7V9L3 7z"/>',
-    'puzzle'    =>'<path d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/>',
-  ];
-  $iconPath = $icons[$product['img']] ?? $icons['bag'];
 @endphp
 
-<div class="gp-grid">
-  {{-- Image col --}}
-  <div class="gp-img-col">
-    <div class="gp-thumb-col">
-      <button class="gp-arr" id="gpArrUp" onclick="gpScrollThumbs(-1)">
-        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+<div class="pd-page-grid {{ count($related) ? '' : 'pd-page-grid-solo' }}">
+<div class="pd-page-main">
+
+<section class="pd-shop-card">
+  <a href="{{ url('/') }}" class="pd-shop-back" aria-label="Back"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></a>
+  <div class="pd-shop-more-av">{{ strtoupper(substr($product['seller'], 0, 1)) }}</div>
+  <div class="pd-shop-card-info">
+    <div class="pd-shop-more-name">{{ $product['seller'] }}</div>
+    <div class="pd-shop-card-location">
+      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      {{ $product['location'] ?: 'Location not provided' }}
+    </div>
+  </div>
+  <div class="pd-shop-stats"><span><strong>{{ $avg > 0 ? number_format($avg, 1) : '—' }}</strong> Rating</span><span><strong>{{ count($shopProducts) + 1 }}</strong> Products</span><span><strong>—</strong> Followers</span></div>
+  <div class="pd-shop-card-actions">
+    <button type="button" class="pd-shop-chat" data-protected>@include('buyer.partials.icon', ['name' => 'chat', 'size' => 13]) Chat with Seller</button>
+    <a href="{{ route('guest.shop', $product['seller_slug']) }}" class="pd-shop-more-link pd-shop-view"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg>View Shop</a>
+  </div>
+</section>
+
+<div class="pd-main-grid">
+
+  {{-- LEFT COL: thumb strip + main image --}}
+  @php
+    $hasRealImg  = !empty($product['img']);
+    $hasGallery  = count($product['images'] ?? []) > 1 || !empty($product['video']);
+  @endphp
+  <div class="pd-img-col">
+    @if($hasGallery)
+    <div class="pd-thumb-col">
+      <button type="button" class="pd-arr" id="pdThumbUp" aria-label="Scroll thumbnails up">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
       </button>
-      <div class="gp-thumb-viewport" id="gpThumbViewport">
-        <div class="gp-thumb-track" id="gpThumbTrack">
-          @foreach(range(1,6) as $t)
-          <button class="gp-thumb {{ $t===1?'active':'' }}" onclick="gpThumb(this)">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">{!! $iconPath !!}</svg>
+      <div class="pd-thumb-viewport">
+        <div class="pd-thumb-track" id="pdThumbTrack">
+          @if(!empty($product['video']))
+          <button type="button" class="pd-thumb active" data-thumb-video onclick="showProductVideo(this)" style="background:#000;position:relative">
+            <video src="{{ $product['video'] }}" style="width:100%;height:100%;object-fit:cover;opacity:.7;border-radius:6px"></video>
+            <svg style="position:absolute;inset:0;margin:auto;color:#fff" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+          </button>
+          @endif
+          @foreach($product['images'] as $idx => $imgUrl)
+          <button type="button" class="pd-thumb {{ $idx === 0 && empty($product['video']) ? 'active' : '' }}" onclick="showProductImage('{{ $imgUrl }}', this)">
+            <img src="{{ $imgUrl }}" style="width:100%;height:100%;object-fit:cover;border-radius:6px">
           </button>
           @endforeach
         </div>
       </div>
-      <button class="gp-arr" id="gpArrDown" onclick="gpScrollThumbs(1)">
-        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      <button type="button" class="pd-arr" id="pdThumbDown" aria-label="Scroll thumbnails down">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
     </div>
-    <div class="gp-main-img">
-      <svg xmlns="http://www.w3.org/2000/svg" width="110" height="110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">{!! $iconPath !!}</svg>
+    @endif
+    <div class="pd-main-img">
+      @if($hasRealImg)
+        <img src="{{ $product['img'] }}" id="pdMainImg">
+      @else
+        <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity=".25"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      @endif
+      @if(!empty($product['video']))
+        <video id="pdMainVideo" src="{{ $product['video'] }}" controls playsinline style="display:{{ $hasRealImg ? 'none' : 'block' }};width:100%;height:100%;object-fit:contain"></video>
+      @endif
     </div>
   </div>
 
-  {{-- Info col --}}
-  <div class="gp-right-col">
-    <div class="gp-info-card">
-      <div class="gp-crumb-row">
-        <span class="gp-crumb">{{ $product['cat'] }}</span>
-        @if($product['badge'])<span class="gp-pill">{{ $product['badge'] }}</span>@endif
+  {{-- RIGHT COL: title card + tabs card stacked --}}
+  <div class="pd-right-col">
+
+    {{-- Title / info / actions card --}}
+    <div class="pd-info-card">
+      <div class="pd-crumb-row">
+        <span class="pd-crumb">{{ $product['cat'] }}</span>
+        @if($product['badge'])<span class="pd-pill">{{ $product['badge'] }}</span>@endif
       </div>
-      <div class="gp-title-price-row">
-        <h1 class="gp-title">{{ $product['name'] }}</h1>
-        <div class="gp-price-block">
-          <span class="gp-price">₱{{ number_format($product['price']) }}</span>
-          @if($product['old_price'])<span class="gp-old">₱{{ number_format($product['old_price']) }}</span>@endif
-        </div>
+      <div class="pd-title-price-row">
+        <h1 class="pd-title">{{ $product['name'] }}</h1>
+        <span class="pd-price" id="pdPrice" data-base-price="{{ $product['price'] }}">₱{{ number_format($product['price']) }}</span>
       </div>
-      <div class="gp-meta-row">
-        <span class="gp-stars">
+      <div class="pd-meta-row">
+        <span class="pd-stars-row">
           @for($i=1;$i<=5;$i++)
           <svg width="12" height="12" viewBox="0 0 24 24" fill="{{ $i<=round($avg)?'#f59e0b':'none' }}" stroke="#f59e0b" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           @endfor
         </span>
-        <span class="gp-meta-val">{{ $avg }}</span>
-        <span class="gp-meta-sep">·</span>
-        <span class="gp-meta-muted">{{ number_format($product['sold']) }} sold</span>
-        <span class="gp-meta-sep">·</span>
-        <a class="gp-meta-link" href="#" onclick="event.preventDefault();gpTab('reviews')">{{ count($reviews) }} reviews</a>
+        <span class="pd-meta-val">{{ $avg }}</span>
+        <span class="pd-meta-sep">·</span>
+        <span class="pd-meta-muted">{{ number_format($product['sold']) }} sold</span>
+        <span class="pd-meta-sep">·</span>
+        <a class="pd-meta-link" href="#" onclick="event.preventDefault();switchTab(document.querySelector('[data-tab=reviews]'),'reviews')">{{ count($reviews) }} reviews</a>
+        <button type="button" class="pd-report-btn" title="Report this listing" data-protected>
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4m0 1h10l-2 3 2 3H5"/></svg>
+        </button>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+          @if($product['old_price'])<span class="pd-old">₱{{ number_format($product['old_price']) }}</span>@endif
+        </div>
       </div>
-      <div class="gp-actions">
-        <button class="gp-btn-cart" type="button" data-protected>
+      <div class="pd-actions">
+        <button class="pd-btn-chat" type="button" data-protected>@include('buyer.partials.icon', ['name' => 'chat', 'size' => 15]) Chat</button>
+        <button class="pd-btn-cart" id="pdAddCartBtn" type="button" data-protected {{ $product['stock'] <= 0 ? 'disabled' : '' }}>
           <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 5m12-5l2 5M9 21a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"/></svg>
-          Add to Cart
+          {{ $product['stock'] <= 0 ? 'Out of Stock' : 'Add to Cart' }}
         </button>
-        <button class="gp-btn-buy" type="button" data-protected>
+        <button class="pd-btn-buy" id="pdBuyNowBtn" type="button" data-protected {{ $product['stock'] <= 0 ? 'disabled' : '' }}>
           <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          Buy Now
+          {{ $product['stock'] <= 0 ? 'Unavailable' : 'Buy Now' }}
         </button>
       </div>
+      @if($product['stock'] <= 0 && $product['restock_date'])
+        <div class="pd-restock-note">Expected restock: {{ $product['restock_date'] }}</div>
+      @endif
     </div>
 
-    <div class="gp-tabs-wrap">
-      <div class="gp-tab-bar">
-        <button class="gp-tab active" onclick="gpTab('options')">Options</button>
-        <button class="gp-tab" onclick="gpTab('details')">Details</button>
-        <button class="gp-tab" onclick="gpTab('reviews')">Reviews <span class="gp-tab-count">{{ count($reviews) }}</span></button>
+    {{-- Description / tabs card --}}
+    <div class="pd-tabs-wrap">
+      <div class="pd-tab-bar">
+        <button class="pd-tab active" data-tab="options" onclick="switchTab(this,'options')">Options</button>
+        <button class="pd-tab"        data-tab="description" onclick="switchTab(this,'description')">Description</button>
+        <button class="pd-tab"        data-tab="details" onclick="switchTab(this,'details')">Details</button>
+        <button class="pd-tab"        data-tab="reviews" onclick="switchTab(this,'reviews')">Reviews</button>
       </div>
 
-      <div class="gp-pane active" id="gp-options">
-        @if(!empty($product['variants']['color']))
-        <div class="gp-opt-group">
-          <div class="gp-opt-label">Color</div>
-          <div class="gp-opt-row">
-            @foreach($product['variants']['color'] as $c)
-            <button class="gp-opt-btn {{ $loop->first?'active':'' }}" onclick="gpVariant(this)">{{ $c }}</button>
-            @endforeach
+      {{-- Options --}}
+      <div class="pd-tab-pane active" id="tab-options">
+        @if(!empty($product['variations']))
+          @php $firstOptionPicked = false; @endphp
+          @foreach($product['variations'] as $variation)
+          <div class="pd-opt-group">
+            <div class="pd-opt-label">{{ $variation['name'] }}</div>
+            <div class="pd-opt-row">
+              @foreach($variation['options'] as $opt)
+              @php
+                $isActive = !$firstOptionPicked && $opt['stock'] > 0;
+                if ($isActive) $firstOptionPicked = true;
+              @endphp
+              <button type="button" class="pd-opt-btn {{ $isActive ? 'active' : '' }}"
+                onclick="selectVariant(this)"
+                data-exclusive="true"
+                data-group="{{ $variation['name'] }}"
+                data-value="{{ $opt['value'] }}"
+                data-stock="{{ $opt['stock'] }}"
+                data-price="{{ $opt['price'] ?? $product['price'] }}"
+                @if(!empty($opt['image'])) data-image="{{ $opt['image'] }}" @endif
+                {{ $opt['stock'] == 0 ? 'disabled' : '' }}
+                style="{{ $opt['stock'] == 0 ? 'opacity:.4;cursor:not-allowed' : '' }}">
+                {{ $opt['value'] }}
+                @if($opt['stock'] > 0)
+                  <span style="font-size:10px;color:var(--muted);display:block">{{ $opt['stock'] }} left</span>
+                @else
+                  <span style="font-size:10px;color:var(--danger);display:block">Out of stock</span>
+                @endif
+              </button>
+              @endforeach
+            </div>
           </div>
-        </div>
+          @endforeach
         @endif
-        @if(!empty($product['variants']['size']))
-        <div class="gp-opt-group">
-          <div class="gp-opt-label">{{ str_contains(implode(',',$product['variants']['size']),'Switch') ? 'Switch Type' : 'Size' }}</div>
-          <div class="gp-opt-row">
-            @foreach($product['variants']['size'] as $s)
-            <button class="gp-opt-btn {{ $loop->first?'active':'' }}" onclick="gpVariant(this)">{{ $s }}</button>
-            @endforeach
+        @if(empty($product['variations']))
+          <div style="font-size:13px;color:var(--muted);padding:8px 0">
+            Stock: <strong style="color:{{ $product['stock'] > 0 ? 'var(--success)' : 'var(--danger)' }}">{{ $product['stock'] > 0 ? $product['stock'] . ' available' : 'Out of stock' }}</strong>
           </div>
-        </div>
         @endif
-        <div class="gp-opt-group">
-          <div class="gp-opt-label">Quantity</div>
-          <div class="gp-qty-row">
-            <button class="gp-qty-btn" onclick="gpQty(-1)">−</button>
-            <span class="gp-qty-num" id="gpQty">1</span>
-            <button class="gp-qty-btn" onclick="gpQty(1)">+</button>
+        <div class="pd-opt-group">
+          <div class="pd-opt-label">Quantity</div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="pd-qty-row">
+              <button type="button" class="pd-qty-btn" onclick="changeQty(-1)">−</button>
+              <span class="pd-qty-num" id="pdQty">1</span>
+              <button type="button" class="pd-qty-btn" onclick="changeQty(1)">+</button>
+            </div>
+            <span class="pd-qty-total" id="pdQtyTotal" style="display:none"></span>
           </div>
         </div>
       </div>
 
-      <div class="gp-pane" id="gp-details">
-        <p class="gp-desc">{{ $product['desc'] }}</p>
-        <div class="gp-divider"></div>
-        <div class="gp-specs">
-          @foreach($product['specs'] as [$label,$val])
-          <div class="gp-spec-row"><span class="gp-spec-key">{{ $label }}</span><span class="gp-spec-val">{{ $val }}</span></div>
+      {{-- Description --}}
+      <div class="pd-tab-pane" id="tab-description">
+        <p class="pd-desc-text">{{ $product['desc'] ?: 'No description provided.' }}</p>
+      </div>
+
+      {{-- Details --}}
+      <div class="pd-tab-pane" id="tab-details">
+        @if(!empty($product['specs']))
+        <div class="pd-section-label">Specifications</div>
+        <div class="pd-specs-grid">
+          @foreach($product['specs'] as $spec)
+          <div class="pd-spec-row">
+            <span class="pd-spec-key">{{ $spec[0] }}</span>
+            <span class="pd-spec-val">{{ $spec[1] }}</span>
+          </div>
           @endforeach
         </div>
+        @else
+        <p class="pd-desc-text">No specification provided.</p>
+        @endif
       </div>
 
-      <div class="gp-pane" id="gp-reviews">
-        <div class="gp-rev-filter">
-          <div class="gp-rev-chips">
-            <button class="gp-rev-chip active" data-star="0" onclick="gpFilterRev(0)">All</button>
+      {{-- Reviews --}}
+      <div class="pd-tab-pane" id="tab-reviews">
+        <div class="pd-rev-filter">
+          <div class="pd-rev-chips">
+            <button class="pd-rev-chip active" data-star="0" onclick="filterReviews(0)">All</button>
             @foreach([5,4,3,2,1] as $star)
-            <button class="gp-rev-chip" data-star="{{ $star }}" onclick="gpFilterRev({{ $star }})">{{ $star }}<svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="margin-left:1px"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
+            <button class="pd-rev-chip" onclick="filterReviews({{ $star }})" data-star="{{ $star }}">
+              {{ $star }}<svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="margin-left:1px"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </button>
             @endforeach
           </div>
-          <div class="gp-rev-count">
-            <span class="gp-rev-count-num" id="gpRevCountNum">{{ count($reviews) }}</span>
-            <span class="gp-rev-count-lbl" id="gpRevCountLbl">reviews</span>
+          <div class="pd-rev-count" id="pdRevCount">
+            <span class="pd-rev-count-num" id="pdRevCountNum">{{ count($reviews) }}</span>
+            <span class="pd-rev-count-lbl" id="pdRevCountLbl">reviews</span>
           </div>
         </div>
-        <div id="gpRevList">
+        <div class="pd-rev-list" id="pdRevList">
           @forelse($reviews as $idx => $r)
-          <div class="gp-rev-item {{ $idx>=3?'gp-rev-hidden':'' }}" data-rating="{{ $r['rating'] }}">
-            <div class="gp-rev-av">{{ strtoupper(substr($r['name'],0,1)) }}</div>
-            <div class="gp-rev-body">
-              <div class="gp-rev-header">
-                <span class="gp-rev-name">{{ $r['name'] }}</span>
-                <div class="gp-rev-stars">
+          <div class="pd-rev-item {{ $idx>=3?'rev-hidden':'' }}" data-rating="{{ $r['rating'] }}">
+            <div class="pd-rev-av">{{ strtoupper(substr($r['name'],0,1)) }}</div>
+            <div class="pd-rev-body">
+              <div class="pd-rev-header">
+                <span class="pd-rev-name">{{ $r['name'] }}</span>
+                <div class="pd-rev-stars-sm">
                   @for($i=1;$i<=5;$i++)
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="{{ $i<=$r['rating']?'#f59e0b':'none' }}" stroke="#f59e0b" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                   @endfor
                 </div>
-                <span class="gp-rev-date">{{ $r['date'] }}</span>
+                <span class="pd-rev-date">{{ $r['date'] }}</span>
               </div>
-              <p class="gp-rev-text">{{ $r['text'] }}</p>
+              <p class="pd-rev-text">{{ $r['text'] }}</p>
             </div>
           </div>
           @empty
-          <p style="color:var(--muted);font-size:13px">No reviews yet.</p>
+          <div class="empty"><h3>No reviews yet</h3></div>
           @endforelse
           @if(count($reviews) > 3)
-          <button class="gp-see-more" id="gpSeeMore" onclick="gpToggleRev()">
-            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          <button class="pd-see-more" id="pdSeeMore" onclick="toggleReviews()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="pdSeeIcon"><polyline points="6 9 12 15 18 9"/></svg>
             See all {{ count($reviews) }} reviews
           </button>
           @endif
         </div>
       </div>
-    </div>
-  </div>
-</div>
 
-{{-- More from shop --}}
-@if(count($shopProducts))
-<div class="gp-shop-more">
-  <div class="gp-shop-more-head">
-    <div style="display:flex;align-items:center;gap:12px">
-      <div class="gp-shop-av">{{ strtoupper(substr($product['seller'],0,1)) }}</div>
-      <div>
-        <div class="gp-shop-name">{{ $product['seller'] }}</div>
-        <div class="gp-shop-sub">More from this shop</div>
-      </div>
-    </div>
-    <a href="{{ route('guest.shop', $product['seller_slug']) }}" class="gp-shop-link">View Shop</a>
-  </div>
-  <div class="gp-mini-grid">
-    @foreach($shopProducts as $sp)
-    <a class="gp-mini-card" href="{{ route('guest.product', $sp['id']) }}">
-      <div class="gp-mini-img">
-        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">{!! $icons[$sp['img']] ?? $icons['bag'] !!}</svg>
-        @if($sp['badge'])<span class="gp-mini-badge">{{ $sp['badge'] }}</span>@endif
-      </div>
-      <div class="gp-mini-info">
-        <div class="gp-mini-name">{{ $sp['name'] }}</div>
-        <div class="gp-mini-price">₱{{ number_format($sp['price']) }}</div>
-        <div class="gp-mini-rating"><svg width="10" height="10" viewBox="0 0 24 24" fill="#f59e0b" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> {{ $sp['rating'] }}</div>
-      </div>
+    </div>{{-- end pd-tabs-wrap --}}
+
+  </div>{{-- end pd-right-col --}}
+
+</div>{{-- end pd-main-grid --}}
+
+{{-- List of products from this shop — placed right after the main picture/title/options grid --}}
+<div class="pd-shop-more">
+  <div class="pd-shop-more-head">
+    <div class="pd-shop-more-label">From the Same Shop</div>
+    <a href="{{ route('guest.shop', $product['seller_slug']) }}" class="pd-shop-more-link">
+      See All
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
     </a>
-    @endforeach
+  </div>
+  <div class="product-grid product-grid-lg">
+    @forelse($shopProducts as $sp)
+      @include('buyer.partials.product-card', ['p' => $sp, 'route' => 'guest.product'])
+    @empty
+    <p style="color:var(--muted);font-size:13px;grid-column:1/-1;padding:8px 0">This shop doesn't have any other products yet.</p>
+    @endforelse
   </div>
 </div>
-@endif
 
-{{-- Related --}}
+</div>{{-- end pd-page-main --}}
+
 @if(count($related))
-<div class="gp-related">
-  <div class="gp-related-head"><span>Similar Products</span></div>
-  <div class="deal-grid">
-    @foreach($related as $rp)
-    <a class="product" href="{{ route('guest.product', $rp['id']) }}" style="text-decoration:none;color:inherit">
-      <div class="product-img">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">{!! $icons[$rp['img']] ?? $icons['bag'] !!}</svg>
+<div class="pd-page-side">
+    <div class="pd-related pd-related-side">
+      <div class="product-grid product-grid-lg">
+        @foreach($related as $rp)
+          @include('buyer.partials.product-card', ['p' => $rp, 'route' => 'guest.product'])
+        @endforeach
       </div>
-      <div class="product-body">
-        @if($rp['badge'])<span class="badge">{{ $rp['badge'] }}</span>@endif
-        <div class="product-name">{{ $rp['name'] }}</div>
-        <div class="price">₱{{ number_format($rp['price']) }}</div>
-        <div class="meta">
-          <span class="meta-rating"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> {{ $rp['rating'] }}</span>
-          <span>{{ number_format($rp['sold']) }} sold</span>
-        </div>
-        <div class="product-actions">
-          <button class="btn-cart" type="button" data-protected onclick="event.preventDefault();event.stopPropagation()"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 5m12-5l2 5M9 21a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"/></svg> Cart</button>
-          <button class="btn-buy" type="button" data-protected onclick="event.preventDefault();event.stopPropagation()">Buy Now</button>
-        </div>
-      </div>
-    </a>
-    @endforeach
-  </div>
+    </div>
 </div>
 @endif
+
+</div>{{-- end pd-page-grid --}}
 
 </main>
 
@@ -265,71 +320,159 @@
 @include('guest.auth-modal')
 
 <script>
-// Tabs
-function gpTab(name) {
-  document.querySelectorAll('.gp-tab').forEach((t,i) => t.classList.toggle('active', ['options','details','reviews'][i]===name));
-  document.querySelectorAll('.gp-pane').forEach(p => p.classList.toggle('active', p.id==='gp-'+name));
-}
-// Thumbnails with scroll arrows (matches buyer pd-* logic)
-const THUMB_STEP = 60;
-let thumbPos = 0;
-function gpScrollThumbs(dir) {
-  const track = document.getElementById('gpThumbTrack');
-  const vp    = document.getElementById('gpThumbViewport');
-  const max   = Math.max(0, track.scrollHeight - vp.clientHeight);
-  thumbPos = Math.max(0, Math.min(max, thumbPos + dir * THUMB_STEP));
-  track.style.transform = `translateY(-${thumbPos}px)`;
-  document.getElementById('gpArrUp').style.opacity   = thumbPos <= 0   ? '.3' : '1';
-  document.getElementById('gpArrDown').style.opacity = thumbPos >= max ? '.3' : '1';
-}
-function gpThumb(btn) {
-  btn.closest('.gp-thumb-track').querySelectorAll('.gp-thumb').forEach(b => b.classList.remove('active'));
+function selectVariant(btn) {
+  if (btn.disabled) return;
+  const scope = btn.dataset.exclusive === 'true'
+    ? document.getElementById('tab-options')
+    : btn.closest('.pd-opt-row');
+  scope.querySelectorAll('.pd-opt-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  if (btn.dataset.image) {
+    showProductImage(btn.dataset.image);
+    syncThumbForImage(btn.dataset.image);
+  }
+  updatePriceDisplay();
 }
-document.getElementById('gpArrUp').style.opacity = '.3';
-// Variants
-function gpVariant(btn) {
-  btn.closest('.gp-opt-row').querySelectorAll('.gp-opt-btn').forEach(b => b.classList.remove('active'));
+
+// Keeps the mini-picture rail and the Options tab pointed at the same
+// photo — selecting a variation highlights its matching thumbnail, and
+// clicking a thumbnail that belongs to a variation selects that variation.
+function syncThumbForImage(src) {
+  document.querySelectorAll('#pdThumbTrack .pd-thumb').forEach(t => {
+    const img = t.querySelector('img');
+    if (img && img.getAttribute('src') === src) setActiveThumb(t);
+  });
+}
+
+function syncVariantForImage(src) {
+  const match = [...document.querySelectorAll('#tab-options .pd-opt-btn[data-image]')]
+    .find(b => b.dataset.image === src);
+  if (match && !match.disabled) {
+    document.getElementById('tab-options').querySelectorAll('.pd-opt-btn').forEach(b => b.classList.remove('active'));
+    match.classList.add('active');
+    updatePriceDisplay();
+  }
+}
+
+function currentUnitPrice() {
+  const priceEl = document.getElementById('pdPrice');
+  const active  = document.querySelector('#tab-options .pd-opt-btn.active[data-exclusive="true"]');
+  return active ? parseFloat(active.dataset.price) : parseFloat(priceEl.dataset.basePrice);
+}
+
+function updatePriceDisplay() {
+  const priceEl = document.getElementById('pdPrice');
+  if (!priceEl) return;
+  priceEl.textContent = '₱' + currentUnitPrice().toLocaleString();
+  updateQtyTotal();
+}
+
+function updateQtyTotal() {
+  const totalEl = document.getElementById('pdQtyTotal');
+  if (!totalEl) return;
+  if (qty >= 2) {
+    totalEl.textContent = 'Total: ₱' + (currentUnitPrice() * qty).toLocaleString();
+    totalEl.style.display = '';
+  } else {
+    totalEl.style.display = 'none';
+  }
+}
+
+function showProductImage(src, thumb) {
+  const img = document.getElementById('pdMainImg');
+  const video = document.getElementById('pdMainVideo');
+  if (video) video.style.display = 'none';
+  if (img) { img.src = src; img.style.display = 'block'; }
+  if (thumb) {
+    setActiveThumb(thumb);
+    syncVariantForImage(src);
+  }
+}
+
+function showProductVideo(thumb) {
+  const img = document.getElementById('pdMainImg');
+  const video = document.getElementById('pdMainVideo');
+  if (!video) return;
+  if (img) img.style.display = 'none';
+  video.style.display = 'block';
+  if (thumb) setActiveThumb(thumb);
+}
+
+function setActiveThumb(thumb) {
+  const track = thumb.closest('.pd-thumb-track');
+  if (!track) return;
+  track.querySelectorAll('.pd-thumb').forEach(t => t.classList.remove('active'));
+  thumb.classList.add('active');
+}
+
+(function () {
+  const track = document.getElementById('pdThumbTrack');
+  const up = document.getElementById('pdThumbUp');
+  const down = document.getElementById('pdThumbDown');
+  if (!track || !up || !down) return;
+  const step = 72;
+  let offset = 0;
+  function maxOffset() {
+    const viewport = track.parentElement;
+    return Math.max(0, track.scrollHeight - viewport.clientHeight);
+  }
+  function updateArrowVisibility() {
+    const needsScroll = maxOffset() > 0;
+    up.style.display = needsScroll ? '' : 'none';
+    down.style.display = needsScroll ? '' : 'none';
+  }
+  updateArrowVisibility();
+  window.addEventListener('resize', updateArrowVisibility);
+  function apply() {
+    track.style.transform = `translateY(-${offset}px)`;
+    updateArrowVisibility();
+  }
+  up.addEventListener('click', () => {
+    offset = Math.max(0, offset - step);
+    apply();
+  });
+  down.addEventListener('click', () => {
+    offset = Math.min(maxOffset(), offset + step);
+    apply();
+  });
+})();
+let qty = 1;
+function changeQty(d) {
+  qty = Math.max(1, qty + d);
+  document.getElementById('pdQty').textContent = qty;
+  updateQtyTotal();
+}
+function switchTab(btn, id) {
+  document.querySelectorAll('.pd-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.pd-tab-pane').forEach(p => p.classList.remove('active'));
   btn.classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
 }
-// Qty
-let gpQtyVal = 1;
-function gpQty(d) { gpQtyVal = Math.max(1, gpQtyVal+d); document.getElementById('gpQty').textContent = gpQtyVal; }
-// Reviews
-let gpRevExpanded = false;
-function gpToggleRev() {
-  gpRevExpanded = !gpRevExpanded;
-  document.querySelectorAll('.gp-rev-hidden').forEach(el => el.style.display = gpRevExpanded ? '' : 'none');
-  document.getElementById('gpSeeMore').innerHTML = gpRevExpanded
+let expanded = false;
+function toggleReviews() {
+  expanded = !expanded;
+  document.querySelectorAll('.rev-hidden').forEach(el => el.style.display = expanded ? '' : 'none');
+  document.getElementById('pdSeeMore').innerHTML = expanded
     ? '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg> Show less'
     : '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg> See all {{ count($reviews) }} reviews';
 }
-const gpRevCounts = @json($counts);
-const gpRevTotal  = {{ count($reviews) }};
-function gpFilterRev(star) {
-  document.querySelectorAll('#gpRevList .gp-rev-item').forEach(el => {
-    const match = !star || parseInt(el.dataset.rating)===star;
-    el.style.display = match ? '' : 'none';
+const revCounts = @json($counts);
+const revTotal  = {{ count($reviews) }};
+let activeFilter = 0;
+function filterReviews(star) {
+  activeFilter = star;
+  document.querySelectorAll('#pdRevList .pd-rev-item').forEach(el => {
+    const match  = !activeFilter || parseInt(el.dataset.rating) === activeFilter;
+    const hidden = el.classList.contains('rev-hidden') && !expanded;
+    el.style.display = match && !hidden ? '' : 'none';
   });
-  document.querySelectorAll('.gp-rev-chip').forEach(b => b.classList.toggle('active', parseInt(b.dataset.star)===star));
-  const num = star ? (gpRevCounts[star] || 0) : gpRevTotal;
-  const lbl = star ? 'rates' : 'reviews';
-  document.getElementById('gpRevCountNum').textContent = num;
-  document.getElementById('gpRevCountLbl').textContent = lbl;
+  document.querySelectorAll('.pd-rev-chip').forEach(b => b.classList.toggle('active', parseInt(b.dataset.star) === activeFilter));
+  const num = activeFilter ? (revCounts[activeFilter] || 0) : revTotal;
+  const lbl = activeFilter ? 'rates' : 'reviews';
+  document.getElementById('pdRevCountNum').textContent = num;
+  document.getElementById('pdRevCountLbl').textContent = lbl;
 }
-document.querySelectorAll('.gp-rev-hidden').forEach(el => el.style.display = 'none');
-// Match tabs wrap height to image col (same as buyer page)
-function gpFitTabs() {
-  const imgCol   = document.querySelector('.gp-img-col');
-  const infoCard = document.querySelector('.gp-info-card');
-  const tabsWrap = document.querySelector('.gp-tabs-wrap');
-  const rightCol = document.querySelector('.gp-right-col');
-  if (!imgCol || !infoCard || !tabsWrap || !rightCol) return;
-  const gap = parseInt(getComputedStyle(rightCol).gap) || 12;
-  tabsWrap.style.height = (imgCol.offsetHeight - infoCard.offsetHeight - gap) + 'px';
-}
-gpFitTabs();
-window.addEventListener('resize', gpFitTabs);
+document.querySelectorAll('.rev-hidden').forEach(el => el.style.display = 'none');
 </script>
 <script src="{{ asset('js/marketplace.js') }}"></script>
 </body>

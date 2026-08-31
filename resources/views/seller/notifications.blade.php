@@ -27,7 +27,7 @@
             $color = $notif->notification_type === 'doc_approved' ? 'var(--success)'
                    : ($notif->notification_type === 'doc_rejected' ? 'var(--danger)' : 'var(--pink)');
           @endphp
-          <div class="notif-row">
+          <a href="{{ route('seller.notifications.open', $notif->id) }}" class="notif-row" style="text-decoration:none;color:inherit;cursor:pointer">
             <div style="width:32px;height:32px;border-radius:50%;background:var(--paper);border:1px solid var(--border);display:grid;place-items:center;flex:none;color:{{ $color }}">
               @include('seller.partials.icon',['name'=>$icon,'size'=>15])
             </div>
@@ -41,7 +41,7 @@
                 <div style="width:7px;height:7px;border-radius:50%;background:var(--pink)"></div>
               @endif
             </div>
-          </div>
+          </a>
         @empty
           <div class="empty">
             @include('seller.partials.icon',['name'=>'bell','size'=>32,'class'=>'ic'])

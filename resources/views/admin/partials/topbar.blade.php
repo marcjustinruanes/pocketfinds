@@ -17,6 +17,8 @@
           $notifItems[] = ['text' => $pendingRegistrations . ' registration' . ($pendingRegistrations > 1 ? 's' : '') . ' pending review.', 'link' => route('admin.registrations'), 'read' => false];
       if (($openDisputes ?? 0) > 0)
           $notifItems[] = ['text' => $openDisputes . ' open dispute' . ($openDisputes > 1 ? 's' : '') . ' need attention.', 'link' => route('admin.complaints'), 'read' => false];
+      if (($pendingProducts ?? 0) > 0)
+          $notifItems[] = ['text' => $pendingProducts . ' product' . ($pendingProducts > 1 ? 's' : '') . ' pending approval.', 'link' => route('admin.products'), 'read' => false];
       if (empty($notifItems))
           $notifItems[] = ['text' => 'No new notifications.', 'link' => '#', 'read' => true];
       $unreadCount = collect($notifItems)->where('read', false)->count();

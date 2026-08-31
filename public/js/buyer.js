@@ -1,11 +1,91 @@
-// Sidebar toggle
-const sidebar = document.getElementById('sidebar');
-const shell   = document.getElementById('appShell');
-document.querySelectorAll('[data-sidebar-toggle]').forEach(btn => {
-    btn.addEventListener('click', () => {
-        sidebar.classList.toggle('open');
-        shell.classList.toggle('collapsed');
+// Generic modal open/close (covers modals like #messagesModal that aren't
+// wired to a single dedicated overlay variable)
+document.addEventListener('click', (e) => {
+    const opener = e.target.closest('[data-modal-open]');
+    if (opener) {
+        document.getElementById(opener.dataset.modalOpen)?.classList.add('open');
+    }
+    const closer = e.target.closest('[data-modal-close]');
+    if (closer) {
+        (closer.closest('.modal-overlay') || closer.closest('.chat-widget'))?.classList.remove('open');
+    }
+    if (e.target.classList.contains('modal-overlay')) {
+        e.target.classList.remove('open');
+    }
+});
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.open, .chat-widget.open').forEach(m => m.classList.remove('open'));
+    }
+});
+
+// Dropdowns (notifications, etc.)
+document.querySelectorAll('[data-dropdown-toggle]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const panel = document.getElementById(btn.dataset.dropdownToggle);
+        const isOpen = panel.classList.contains('open');
+        document.querySelectorAll('.dropdown-panel.open').forEach(p => p.classList.remove('open'));
+        if (!isOpen) panel.classList.add('open');
     });
+});
+document.addEventListener('click', () => {
+    document.querySelectorAll('.dropdown-panel.open').forEach(p => p.classList.remove('open'));
+});
+
+// ── Messages modal ────────────────────────────────────────────────────────────
+const MESSAGES_BASE_URL = '/buyer/messages';
+
+function loadMessagesPanel(url) {
+    const body = document.getElementById('messagesModalBody');
+    if (!body) return;
+    body.innerHTML = '<div style="margin:auto;color:var(--muted);font-size:13px">Loading…</div>';
+    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(res => res.text())
+        .then(html => {
+            body.innerHTML = html;
+            body.querySelectorAll('script').forEach(oldScript => {
+                const newScript = document.createElement('script');
+                if (oldScript.src) newScript.src = oldScript.src;
+                else newScript.textContent = oldScript.textContent;
+                oldScript.replaceWith(newScript);
+            });
+        })
+        .catch(() => {
+            body.innerHTML = '<div style="margin:auto;color:var(--danger);font-size:13px">Could not load messages.</div>';
+        });
+}
+
+function openMessagesModal(url) {
+    document.getElementById('messagesModal')?.classList.add('open');
+    loadMessagesPanel(url || MESSAGES_BASE_URL);
+}
+
+document.querySelectorAll('[data-messages-trigger]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const widget = document.getElementById('messagesModal');
+        const url = btn.dataset.messagesUrl || btn.getAttribute('href') || MESSAGES_BASE_URL;
+        // Clicking the toggle again while already open (and not switching
+        // to a different conversation) just closes the widget.
+        if (widget?.classList.contains('open') && widget.dataset.currentUrl === url) {
+            widget.classList.remove('open');
+            return;
+        }
+        if (widget) widget.dataset.currentUrl = url;
+        openMessagesModal(url);
+    });
+});
+
+// Conversation switches and "Chat with Seller" links rendered inside the
+// modal (or anywhere on the page pointing at buyer.messages) reload the
+// panel in place instead of navigating away.
+document.addEventListener('click', (e) => {
+    const link = e.target.closest('a.chat-list-item');
+    if (link) {
+        e.preventDefault();
+        openMessagesModal(link.getAttribute('href'));
+    }
 });
 
 // Logout modal
@@ -216,20 +296,3 @@ function pcBuy(btn) {
     openCart(d.name, parseFloat(d.price), [], [], true, btn, d.id, d.img);
 }
 
-// ── Browse filter ─────────────────────────────────────────────────────────────
-function filterBrowse() {
-    const q   = (document.getElementById('browseSearch')?.value || '').toLowerCase();
-    const cat = (document.getElementById('browseCategory')?.value || '').toLowerCase();
-    const cards = document.querySelectorAll('#browseGrid .product-card');
-    let visible = 0;
-    cards.forEach(card => {
-        const name    = card.dataset.name || '';
-        const cardCat = (card.dataset.cat || '').toLowerCase();
-        const matchQ   = !q   || name.includes(q);
-        const matchCat = !cat || cardCat.includes(cat);
-        card.style.display = matchQ && matchCat ? '' : 'none';
-        if (matchQ && matchCat) visible++;
-    });
-    const empty = document.getElementById('browseEmpty');
-    if (empty) empty.style.display = visible === 0 ? '' : 'none';
-}

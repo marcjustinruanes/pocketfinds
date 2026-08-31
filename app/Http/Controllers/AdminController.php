@@ -8,7 +8,6 @@ use App\Models\Complaint;
 use App\Models\DocumentUpdateRequest;
 use App\Models\Message;
 use App\Models\Order;
-use App\Models\Policy;
 use App\Models\Product;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -100,6 +99,7 @@ class AdminController extends Controller
             'openDisputes'         => Complaint::whereIn('status', ['open', 'escalated'])->count(),
             'unreadMessages'       => Message::where('receiver_id', auth()->id())->where('read', false)->count(),
             'pendingDocs'          => DocumentUpdateRequest::where('status', 'pending')->count(),
+            'pendingProducts'      => Product::where('status', 'pending')->count(),
         ];
     }
 
@@ -156,21 +156,21 @@ class AdminController extends Controller
     public function registrations()
     {
         $counts = $this->sidebarCounts();
-        $users  = User::with('categories')->where('is_admin', false)->latest()->get();
+        $users  = User::with('category')->where('is_admin', false)->latest()->get();
         return view('admin.registrations', array_merge($counts, compact('users')));
     }
 
     public function users()
     {
         $counts = $this->sidebarCounts();
-        $users  = User::with('categories')->where('is_admin', false)->latest()->get();
+        $users  = User::with('category')->where('is_admin', false)->latest()->get();
         return view('admin.users', array_merge($counts, compact('users')));
     }
 
     public function compliance()
     {
         $counts  = $this->sidebarCounts();
-        $sellers = User::with('categories')->where('account_type', 'seller')->where('is_admin', false)->latest()->get();
+        $sellers = User::with('category')->where('account_type', 'seller')->where('is_admin', false)->latest()->get();
         return view('admin.compliance', array_merge($counts, compact('sellers')));
     }
 
@@ -275,9 +275,8 @@ class AdminController extends Controller
 
     public function settings()
     {
-        $counts   = $this->sidebarCounts();
-        $policies = Policy::latest()->get();
-        return view('admin.settings', array_merge($counts, compact('policies')));
+        $counts = $this->sidebarCounts();
+        return view('admin.settings', $counts);
     }
 
     public function announcements()
@@ -316,42 +315,6 @@ class AdminController extends Controller
     {
         Announcement::findOrFail($id)->delete();
         return back()->with('success', 'Announcement deleted.');
-    }
-
-    public function storePolicy(Request $request)
-    {
-        $request->validate([
-            'title'   => 'required|string|max:255',
-            'content' => 'required|string',
-            'slug'    => 'required|string|unique:policies,slug',
-        ]);
-        Policy::create([
-            'title'      => $request->title,
-            'content'    => $request->content,
-            'slug'       => $request->slug,
-            'updated_by' => auth()->id(),
-        ]);
-        return back()->with('success', 'Policy saved.');
-    }
-
-    public function updatePolicy(Request $request, Policy $policy)
-    {
-        $request->validate([
-            'title'   => 'required|string|max:255',
-            'content' => 'required|string',
-        ]);
-        $policy->update([
-            'title'      => $request->title,
-            'content'    => $request->content,
-            'updated_by' => auth()->id(),
-        ]);
-        return back()->with('success', 'Policy updated.');
-    }
-
-    public function destroyPolicy(Policy $policy)
-    {
-        $policy->delete();
-        return back()->with('success', 'Policy deleted.');
     }
 
     public function messages(Request $request, ?User $user = null)
@@ -543,7 +506,7 @@ class AdminController extends Controller
     public function products()
     {
         $counts     = $this->sidebarCounts();
-        $products   = Product::with(['seller.categories', 'category', 'images'])->latest()->get();
+        $products   = Product::with(['seller.category', 'category'])->latest()->get();
         $categories = \DB::table('categories')->orderBy('name')->get()->keyBy('id');
         return view('admin.products', array_merge($counts, compact('products', 'categories')));
     }

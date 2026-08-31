@@ -117,35 +117,32 @@
                   <div class="section-head"><span class="ic"><x-admin-icon name="bag" /></span><span>Seller Details</span></div>
                   <div class="detail-grid">
                     <div><div class="field-label">Business Name</div><div class="field-value">{{ $user->business_name ?? '—' }}</div></div>
-                    <div class="full"><div class="field-label">Categories</div><div class="field-value">{{ $user->categories->pluck('name')->push($user->category_other)->filter()->implode(', ') ?: '—' }}</div></div>
+                    <div class="full"><div class="field-label">Category</div><div class="field-value">{{ collect([$user->category?->name, $user->category_other])->filter()->implode(', ') ?: '—' }}</div></div>
                   </div>
                 </div>
                 @endif
 
                 {{-- Rider-specific --}}
-                @if($user->account_type === 'rider')
-                @php $riderProfile = \App\Models\RiderProfile::where('user_id', $user->id)->first(); @endphp
-                @if($riderProfile)
+                @if($user->account_type === 'rider' && $user->vehicle_type)
                 <div class="section-card">
                   <div class="section-head"><span class="ic"><x-admin-icon name="truck" /></span><span>Vehicle Information</span></div>
                   <div class="detail-grid">
-                    <div><div class="field-label">Vehicle Type</div><div class="field-value">{{ ucfirst(str_replace('_',' ',$riderProfile->vehicle_type)) }}</div></div>
-                    <div><div class="field-label">Brand / Model</div><div class="field-value">{{ $riderProfile->vehicle_brand }} {{ $riderProfile->vehicle_model }}</div></div>
-                    @if($riderProfile->plate_number)
-                    <div><div class="field-label">Plate Number</div><div class="field-value mono">{{ $riderProfile->plate_number }}</div></div>
+                    <div><div class="field-label">Vehicle Type</div><div class="field-value">{{ ucfirst(str_replace('_',' ',$user->vehicle_type)) }}</div></div>
+                    <div><div class="field-label">Brand / Model</div><div class="field-value">{{ $user->vehicle_brand }} {{ $user->vehicle_model }}</div></div>
+                    @if($user->plate_number)
+                    <div><div class="field-label">Plate Number</div><div class="field-value mono">{{ $user->plate_number }}</div></div>
                     @endif
-                    @if($riderProfile->license_number)
-                    <div><div class="field-label">License No.</div><div class="field-value mono">{{ $riderProfile->license_number }}</div></div>
-                    <div><div class="field-label">License Expiry</div><div class="field-value mono">{{ $riderProfile->license_expiry?->format('M d, Y') }}</div></div>
+                    @if($user->license_number)
+                    <div><div class="field-label">License No.</div><div class="field-value mono">{{ $user->license_number }}</div></div>
+                    <div><div class="field-label">License Expiry</div><div class="field-value mono">{{ $user->license_expiry?->format('M d, Y') }}</div></div>
                     @endif
                   </div>
                   <div class="doc-grid" style="margin-top:10px">
-                    <x-admin-doc-thumb :path="$riderProfile->or_file" label="OR" />
-                    <x-admin-doc-thumb :path="$riderProfile->cr_file" label="CR" />
-                    <x-admin-doc-thumb :path="$riderProfile->license_file" label="Driver's License" />
+                    <x-admin-doc-thumb :path="$user->or_file" label="OR" />
+                    <x-admin-doc-thumb :path="$user->cr_file" label="CR" />
+                    <x-admin-doc-thumb :path="$user->license_file" label="Driver's License" />
                   </div>
                 </div>
-                @endif
                 @endif
 
               </div>

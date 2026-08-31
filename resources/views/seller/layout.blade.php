@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>@yield('title', 'Seller') — PocketFinds</title>
 <link rel="stylesheet" href="/css/seller.css">
+@include('seller.partials.product-form-script')
 @stack('head')
 </head>
 <body class="seller">

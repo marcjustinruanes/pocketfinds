@@ -101,7 +101,7 @@
                   <div class="section-head"><span class="ic"><x-admin-icon name="bag" /></span><span>Seller Details</span></div>
                   <div class="detail-grid">
                     <div><div class="field-label">Business Name</div><div class="field-value">{{ $seller->business_name ?? '—' }}</div></div>
-                    <div class="full"><div class="field-label">Categories</div><div class="field-value">{{ $seller->categories->pluck('name')->push($seller->category_other)->filter()->implode(', ') ?: '—' }}</div></div>
+                    <div class="full"><div class="field-label">Category</div><div class="field-value">{{ collect([$seller->category?->name, $seller->category_other])->filter()->implode(', ') ?: '—' }}</div></div>
                     <div><div class="field-label">Auth Method</div><div class="field-value">{{ ucfirst($seller->auth_method) }}</div></div>
                     <div><div class="field-label">Registered</div><div class="field-value mono">{{ $seller->created_at->format('M d, Y') }}</div></div>
                   </div>

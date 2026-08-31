@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\DeliveryAssignment;
 use App\Models\Message;
+use App\Models\Order;
 use App\Models\Shipment;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class LogisticsController extends Controller
 {
@@ -56,7 +58,7 @@ class LogisticsController extends Controller
 
     public function approveRequest(Request $request, $id)
     {
-        Shipment::where('id', $id)->update(['shipping_status' => 'for_verification']);
+        Shipment::where('id', $id)->update(['shipping_status' => 'available']);
         return back();
     }
 
@@ -72,7 +74,23 @@ class LogisticsController extends Controller
         $shipments = Shipment::with(['order.buyer', 'assignment.courier'])
             ->whereIn('shipping_status', ['available', 'accepted', 'picked_up', 'out_for_delivery'])
             ->latest('created_at')->get();
-        return view('logistics.assign', array_merge($counts, compact('shipments')));
+        $couriers  = User::where('account_type', 'rider')->where('status', 'approved')->orderBy('given_names')->get();
+        return view('logistics.assign', array_merge($counts, compact('shipments', 'couriers')));
+    }
+
+    public function assignCourier(Request $request, $id)
+    {
+        $data     = $request->validate(['courier_id' => 'required|integer|exists:users,id']);
+        $shipment = Shipment::findOrFail($id);
+        $courier  = User::where('id', $data['courier_id'])->where('account_type', 'rider')->where('status', 'approved')->firstOrFail();
+
+        $shipment->update(['courier_id' => $courier->id, 'shipping_status' => 'accepted']);
+        DeliveryAssignment::updateOrCreate(
+            ['shipment_id' => $shipment->id],
+            ['courier_id' => $courier->id, 'status' => 'accepted', 'accepted_at' => now()]
+        );
+
+        return back()->with('success', 'Courier assigned.');
     }
 
     public function monitor()
@@ -84,10 +102,70 @@ class LogisticsController extends Controller
         return view('logistics.monitor', array_merge($counts, compact('shipments')));
     }
 
+    /** Shipment stage → the buyer-facing Order.status it should roll up into. */
+    private const ORDER_STATUS_MAP = [
+        'picked_up'         => 'in_transit',
+        'in_transit'        => 'in_transit',
+        'out_for_delivery'  => 'out_for_delivery',
+        'delivered'         => 'completed',
+        'completed'         => 'completed',
+    ];
+
+    /** Shipment stage → the timestamp column on `shipments` to stamp. */
+    private const STAGE_TIMESTAMPS = [
+        'picked_up'        => 'picked_up_at',
+        'in_transit'       => 'in_transit_at',
+        'out_for_delivery' => 'out_for_delivery_at',
+        'delivered'        => 'delivered_at',
+    ];
+
     public function updateStatus(Request $request, $id)
     {
         $request->validate(['status' => 'required|in:' . implode(',', self::STATUSES)]);
-        Shipment::where('id', $id)->update(['shipping_status' => $request->status]);
+        $shipment = Shipment::with('order')->findOrFail($id);
+        $status   = $request->status;
+
+        $updates = ['shipping_status' => $status];
+        if (isset(self::STAGE_TIMESTAMPS[$status])) {
+            $updates[self::STAGE_TIMESTAMPS[$status]] = now();
+        }
+        $shipment->update($updates);
+
+        if ($shipment->order && isset(self::ORDER_STATUS_MAP[$status])) {
+            $shipment->order->update(['status' => self::ORDER_STATUS_MAP[$status]]);
+
+            $orderStatus = self::ORDER_STATUS_MAP[$status];
+            DB::table('notifications')->insert([
+                'id'                => (string) Str::uuid(),
+                'user_id'           => $shipment->order->buyer_id,
+                'title'             => 'Order Update',
+                'message'           => 'Your order #' . $shipment->order->order_number . ' is now ' . str_replace('_', ' ', $orderStatus) . '.',
+                'notification_type' => 'order_status',
+                'reference_id'      => $shipment->order_id,
+                'is_read'           => false,
+                'created_at'        => now(),
+            ]);
+
+            // The seller should know the moment the buyer actually receives the order.
+            if ($status === 'delivered') {
+                DB::table('notifications')->insert([
+                    'id'                => (string) Str::uuid(),
+                    'user_id'           => $shipment->order->seller_id,
+                    'title'             => 'Order Delivered',
+                    'message'           => 'Order #' . $shipment->order->order_number . ' has been delivered to the customer.',
+                    'notification_type' => 'order_delivered',
+                    'reference_id'      => $shipment->order_id,
+                    'is_read'           => false,
+                    'created_at'        => now(),
+                ]);
+            }
+        }
+
+        DB::table('order_status_history')->insert([
+            'id' => (string) Str::uuid(), 'order_id' => $shipment->order_id, 'status' => $status,
+            'changed_by' => auth()->id(), 'created_at' => now(),
+        ]);
+
         return back();
     }
 
@@ -120,7 +198,7 @@ class LogisticsController extends Controller
 
         $courierStats = User::where('account_type', 'rider')
             ->where('status', 'approved')
-            ->selectRaw("users.*, (SELECT COUNT(*) FROM shipments WHERE shipments.courier_id::text = users.id::text AND shipping_status IN ('delivered','completed')) AS delivered_count")
+            ->selectRaw("users.*, (SELECT COUNT(*) FROM shipments WHERE shipments.courier_id = users.id AND shipping_status IN ('delivered','completed')) AS delivered_count")
             ->orderByDesc('delivered_count')
             ->take(10)->get();
 

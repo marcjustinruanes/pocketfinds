@@ -24,14 +24,14 @@
           <td class="mono">{{ $s->tracking_number ?? substr($s->id, 0, 8) }}</td>
           <td>
             <div class="cell-user">
-              <div class="avatar-sm">{{ strtoupper(substr(optional(optional($s->order)->buyer)->first_name ?? '?', 0, 1)) }}</div>
+              <div class="avatar-sm">{{ strtoupper(substr(optional(optional($s->order)->buyer)->given_names ?? '?', 0, 1)) }}</div>
               <div>
-                <strong>{{ optional(optional($s->order)->buyer)->first_name }} {{ optional(optional($s->order)->buyer)->last_name }}</strong>
+                <strong>{{ optional(optional($s->order)->buyer)->given_names }} {{ optional(optional($s->order)->buyer)->last_name }}</strong>
                 <span>{{ optional(optional($s->order)->buyer)->email }}</span>
               </div>
             </div>
           </td>
-          <td>{{ optional($s->courier)->first_name ? optional($s->courier)->first_name . ' ' . optional($s->courier)->last_name : '—' }}</td>
+          <td>{{ optional($s->courier)->given_names ? optional($s->courier)->given_names . ' ' . optional($s->courier)->last_name : '—' }}</td>
           <td><span class="stamp stamp-{{ $s->shipping_status }}">{{ ucfirst($s->shipping_status) }}</span></td>
           <td class="mono">{{ $s->created_at?->format('M d, Y') }}</td>
           <td>

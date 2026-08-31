@@ -4,23 +4,41 @@
       <div><h3>Add Product</h3><p>Submit a product for admin review</p></div>
       <button class="modal-close" data-modal-close>@include('seller.partials.icon',['name'=>'x','size'=>14])</button>
     </div>
-    <form method="POST" action="{{ route('seller.inventory.store') }}" enctype="multipart/form-data" id="addProductForm">
+    <form method="POST" action="{{ route('seller.inventory.store') }}" enctype="multipart/form-data" data-role="product-form">
       @csrf
       <div class="modal-body" style="max-height:70vh;overflow-y:auto;display:flex;flex-direction:column;gap:14px">
 
-        {{-- Image --}}
+        {{-- Images --}}
         <div class="form-row">
-          <label>Product Image <span style="color:var(--danger)">*</span></label>
-          <div id="imgDropZone" style="border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:border-color .2s" onclick="document.getElementById('imageInput').click()">
-            <img id="imgPreview" src="" alt="" style="display:none;max-height:120px;max-width:100%;border-radius:8px;margin:0 auto">
-            <div id="imgPlaceholder" style="display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--muted)">
+          <label>Cover Photos <span style="color:var(--muted);font-weight:400">(optional if every variation option below has its own photo)</span></label>
+          <div data-role="img-dropzone" style="border:2px dashed var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:border-color .2s">
+            <div data-role="img-thumbs" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center"></div>
+            <div data-role="img-placeholder" style="display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--muted)">
               @include('seller.partials.icon',['name'=>'image','size'=>26])
-              <span style="font-size:12px">Click to upload or drag & drop</span>
-              <span style="font-size:11px">JPG, PNG, WEBP — max 4MB</span>
+              <span style="font-size:12px">Click to upload or drag & drop (up to 9 photos)</span>
+              <span style="font-size:11px">JPG, PNG, WEBP — max 4MB each. First photo is the cover. Use this for a group shot (e.g. all colors together) — each variation option can also have its own photo below.</span>
             </div>
           </div>
-          <input type="file" id="imageInput" name="image" accept="image/jpeg,image/png,image/webp" required style="display:none">
-          @error('image')<span style="font-size:11px;color:var(--danger);margin-top:3px;display:block">{{ $message }}</span>@enderror
+          <input type="file" data-role="images-input" name="images[]" accept="image/jpeg,image/png,image/webp" multiple style="display:none">
+          @error('images')<span style="font-size:11px;color:var(--danger);margin-top:3px;display:block">{{ $message }}</span>@enderror
+        </div>
+
+        {{-- Video --}}
+        <div class="form-row">
+          <label>Product Video <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+          <div data-role="video-dropzone" style="border:2px dashed var(--border);border-radius:10px;padding:14px;text-align:center;cursor:pointer">
+            <div data-role="video-placeholder" style="display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--muted)">
+              @include('seller.partials.icon',['name'=>'video','size'=>22])
+              <span style="font-size:12px">Click to upload a short product video</span>
+              <span style="font-size:11px">MP4, MOV, WEBM — max 50MB</span>
+            </div>
+            <div data-role="video-selected" style="display:none;font-size:12px;color:var(--text)">
+              <span data-role="video-filename"></span>
+              <button type="button" data-role="video-remove-btn" style="border:0;background:none;color:var(--danger);cursor:pointer;font-size:12px;margin-left:6px">Remove</button>
+            </div>
+          </div>
+          <input type="file" data-role="video-input" name="video" accept="video/mp4,video/quicktime,video/x-msvideo,video/webm" style="display:none">
+          @error('video')<span style="font-size:11px;color:var(--danger);margin-top:3px;display:block">{{ $message }}</span>@enderror
         </div>
 
         {{-- Name --}}
@@ -40,6 +58,10 @@
             <input type="text" name="sku" placeholder="e.g. SKU-001" value="{{ old('sku') }}">
           </div>
         </div>
+        <div class="form-row">
+          <label>Discount Price (₱) <span style="color:var(--muted);font-weight:400">(optional — shown as a sale price to buyers)</span></label>
+          <input type="number" name="discount_price" placeholder="Leave blank for no discount" min="0" step="0.01" value="{{ old('discount_price') }}">
+        </div>
 
         {{-- Description --}}
         <div class="form-row">
@@ -50,28 +72,66 @@
         {{-- Divider --}}
         <div style="border-top:1px solid var(--border);margin:2px 0"></div>
 
+        {{-- Shipping --}}
+        <div>
+          <div style="font-size:13px;font-weight:650;margin-bottom:2px">Shipping</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Used to calculate courier fees for buyers.</div>
+          <div class="form-grid-2">
+            <div class="form-row">
+              <label>Weight (grams) <span style="color:var(--danger)">*</span> <span style="color:var(--muted);font-weight:400">(max optional, for a range)</span></label>
+              <div style="display:flex;align-items:center;gap:6px">
+                <input type="number" name="weight_grams" placeholder="e.g. 250" min="1" step="1" required value="{{ old('weight_grams') }}">
+                <span style="color:var(--muted)">–</span>
+                <input type="number" name="weight_grams_max" placeholder="optional max" min="1" step="1" value="{{ old('weight_grams_max') }}">
+              </div>
+            </div>
+            <div class="form-row">
+              <label>Condition <span style="color:var(--danger)">*</span></label>
+              <select name="condition" required>
+                <option value="new" {{ old('condition') === 'new' || !old('condition') ? 'selected' : '' }}>New</option>
+                <option value="used" {{ old('condition') === 'used' ? 'selected' : '' }}>Used</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <label>Package Dimensions (cm) <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+            <div style="display:flex;gap:8px">
+              <input type="number" name="length_cm" placeholder="Length" min="0" step="0.1" value="{{ old('length_cm') }}">
+              <input type="number" name="width_cm" placeholder="Width" min="0" step="0.1" value="{{ old('width_cm') }}">
+              <input type="number" name="height_cm" placeholder="Height" min="0" step="0.1" value="{{ old('height_cm') }}">
+            </div>
+          </div>
+        </div>
+
+        {{-- Divider --}}
+        <div style="border-top:1px solid var(--border);margin:2px 0"></div>
+
         {{-- Variations --}}
         <div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
             <div>
               <div style="font-size:13px;font-weight:650">Variations</div>
-              <div style="font-size:11px;color:var(--muted)">e.g. Size, Color. Leave empty if product has no variation.</div>
+              <div style="font-size:11px;color:var(--muted)">e.g. Size, Color. Leave empty if product has no variation. Each option can have its own price — leave its price blank to use the base price above.</div>
             </div>
-            <button type="button" id="addVariationBtn" class="btn btn-sm btn-outline" style="display:inline-flex;align-items:center;gap:5px">
+            <button type="button" data-role="add-variation-btn" class="btn btn-sm btn-outline" style="display:inline-flex;align-items:center;gap:5px">
               @include('seller.partials.icon',['name'=>'plus','size'=>12]) Add Variation
             </button>
           </div>
 
           {{-- No variation: single stock --}}
-          <div id="noVariationStock">
+          <div data-role="no-variation-stock">
             <div class="form-row">
               <label>Stock <span style="color:var(--danger)">*</span></label>
-              <input type="number" name="stock" id="stockInput" placeholder="0" min="0" value="0" style="max-width:140px">
+              <input type="number" name="stock" data-role="stock-input" placeholder="0" min="0" value="0" style="max-width:140px">
             </div>
           </div>
 
           {{-- Variation rows --}}
-          <div id="variationsList" style="display:flex;flex-direction:column;gap:10px"></div>
+          <div data-role="variations-list" style="display:flex;flex-direction:column;gap:10px"></div>
+          <div class="form-row" style="margin-top:12px">
+            <label>Restock date <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+            <input type="date" name="restock_date" min="{{ now()->toDateString() }}" style="max-width:190px">
+          </div>
         </div>
 
         {{-- Divider --}}
@@ -84,16 +144,16 @@
               <div style="font-size:13px;font-weight:650">Product Details</div>
               <div style="font-size:11px;color:var(--muted)">Add specs like Material, Weight, Dimensions, etc.</div>
             </div>
-            <button type="button" id="addDetailBtn" class="btn btn-sm btn-outline" style="display:inline-flex;align-items:center;gap:5px">
+            <button type="button" data-role="add-detail-btn" class="btn btn-sm btn-outline" style="display:inline-flex;align-items:center;gap:5px">
               @include('seller.partials.icon',['name'=>'plus','size'=>12]) Add Detail
             </button>
           </div>
-          <div id="detailsList" style="display:flex;flex-direction:column;gap:8px"></div>
+          <div data-role="details-list" style="display:flex;flex-direction:column;gap:8px"></div>
         </div>
 
         {{-- Hidden JSON fields --}}
-        <input type="hidden" name="variations" id="variationsJson">
-        <input type="hidden" name="details" id="detailsJson">
+        <input type="hidden" name="variations" data-role="variations-json">
+        <input type="hidden" name="details" data-role="details-json">
 
         <div style="background:var(--info-soft);border:1px solid var(--info-line);border-radius:9px;padding:10px 14px;font-size:12px;color:var(--info);display:flex;align-items:flex-start;gap:8px">
           @include('seller.partials.icon',['name'=>'bell','size'=>14])
@@ -111,125 +171,4 @@
   </div>
 </div>
 
-<script>
-// ── Image upload ──────────────────────────────────────────────
-const imgInput       = document.getElementById('imageInput');
-const imgPreview     = document.getElementById('imgPreview');
-const imgPlaceholder = document.getElementById('imgPlaceholder');
-const imgDropZone    = document.getElementById('imgDropZone');
-
-imgInput.addEventListener('change', function () { if (this.files[0]) showImgPreview(this.files[0]); });
-['dragover','dragleave','drop'].forEach(evt => imgDropZone.addEventListener(evt, e => {
-  e.preventDefault();
-  imgDropZone.style.borderColor = evt === 'dragover' ? 'var(--primary)' : 'var(--border)';
-  if (evt === 'drop' && e.dataTransfer.files[0]) { imgInput.files = e.dataTransfer.files; showImgPreview(e.dataTransfer.files[0]); }
-}));
-function showImgPreview(file) {
-  const r = new FileReader();
-  r.onload = e => { imgPreview.src = e.target.result; imgPreview.style.display = 'block'; imgPlaceholder.style.display = 'none'; };
-  r.readAsDataURL(file);
-}
-
-// ── Variations ────────────────────────────────────────────────
-const variationsList   = document.getElementById('variationsList');
-const noVariationStock = document.getElementById('noVariationStock');
-let varCount = 0;
-
-document.getElementById('addVariationBtn').addEventListener('click', () => {
-  noVariationStock.style.display = 'none';
-  document.getElementById('stockInput').value = 0;
-  const idx = varCount++;
-  const div = document.createElement('div');
-  div.dataset.varIdx = idx;
-  div.style.cssText = 'background:var(--paper);border:1px solid var(--border);border-radius:10px;padding:12px 14px';
-  div.innerHTML = `
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-      <input type="text" placeholder="Variation name (e.g. Size, Color)" class="var-name-input"
-        style="flex:1;border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px"
-        oninput="syncVariations()">
-      <button type="button" onclick="removeVariation(this)" style="border:0;background:none;cursor:pointer;color:var(--danger);padding:4px">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <div class="options-list" style="display:flex;flex-direction:column;gap:6px"></div>
-    <button type="button" class="btn btn-sm btn-outline" onclick="addOption(this)" style="margin-top:8px;font-size:11px;display:inline-flex;align-items:center;gap:4px">
-      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      Add Option
-    </button>`;
-  variationsList.appendChild(div);
-  addOption(div.querySelector('[onclick="addOption(this)"]'));
-});
-
-function addOption(btn) {
-  const optList = btn.closest('[data-var-idx]').querySelector('.options-list');
-  const row = document.createElement('div');
-  row.style.cssText = 'display:flex;align-items:center;gap:8px';
-  row.innerHTML = `
-    <input type="text" placeholder="Option (e.g. Red, XL)" class="opt-value"
-      style="flex:1;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px"
-      oninput="syncVariations()">
-    <input type="number" placeholder="Stock" min="0" class="opt-stock"
-      style="width:80px;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px"
-      value="0" oninput="syncVariations()">
-    <button type="button" onclick="this.closest('div').remove();syncVariations()" style="border:0;background:none;cursor:pointer;color:var(--muted);padding:2px">
-      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>`;
-  optList.appendChild(row);
-}
-
-function removeVariation(btn) {
-  btn.closest('[data-var-idx]').remove();
-  if (variationsList.children.length === 0) noVariationStock.style.display = '';
-  syncVariations();
-}
-
-function syncVariations() {
-  const vars = [];
-  variationsList.querySelectorAll('[data-var-idx]').forEach(varDiv => {
-    const name = varDiv.querySelector('.var-name-input').value.trim();
-    const options = [];
-    varDiv.querySelectorAll('.options-list > div').forEach(row => {
-      const val   = row.querySelector('.opt-value').value.trim();
-      const stock = parseInt(row.querySelector('.opt-stock').value) || 0;
-      if (val) options.push({ value: val, stock });
-    });
-    if (name) vars.push({ name, options });
-  });
-  document.getElementById('variationsJson').value = vars.length ? JSON.stringify(vars) : '';
-}
-
-// ── Details ───────────────────────────────────────────────────
-const detailsList = document.getElementById('detailsList');
-
-document.getElementById('addDetailBtn').addEventListener('click', () => {
-  const row = document.createElement('div');
-  row.style.cssText = 'display:flex;align-items:center;gap:8px';
-  row.innerHTML = `
-    <input type="text" placeholder="Label (e.g. Material)" class="detail-label"
-      style="flex:1;border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px"
-      oninput="syncDetails()">
-    <input type="text" placeholder="Value (e.g. Cotton)" class="detail-value"
-      style="flex:1;border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:12px"
-      oninput="syncDetails()">
-    <button type="button" onclick="this.closest('div').remove();syncDetails()" style="border:0;background:none;cursor:pointer;color:var(--muted);padding:2px">
-      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>`;
-  detailsList.appendChild(row);
-});
-
-function syncDetails() {
-  const details = [];
-  detailsList.querySelectorAll('div').forEach(row => {
-    const label = row.querySelector('.detail-label').value.trim();
-    const value = row.querySelector('.detail-value').value.trim();
-    if (label && value) details.push({ label, value });
-  });
-  document.getElementById('detailsJson').value = details.length ? JSON.stringify(details) : '';
-}
-
-// Sync before submit
-document.getElementById('addProductForm').addEventListener('submit', () => {
-  syncVariations();
-  syncDetails();
-});
-</script>
+<script>initProductForm(document.getElementById('addProductModal'));</script>

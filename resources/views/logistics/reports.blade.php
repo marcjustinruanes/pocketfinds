@@ -23,8 +23,8 @@
             <td class="mono">{{ $loop->iteration }}</td>
             <td>
               <div class="cell-user">
-                <div class="avatar-sm">{{ strtoupper(substr($c->first_name,0,1)) }}</div>
-                <div><strong>{{ $c->first_name }} {{ $c->last_name }}</strong></div>
+                <div class="avatar-sm">{{ strtoupper(substr($c->given_names,0,1)) }}</div>
+                <div><strong>{{ $c->given_names }} {{ $c->last_name }}</strong></div>
               </div>
             </td>
             <td class="mono">{{ $c->delivered_count }}</td>

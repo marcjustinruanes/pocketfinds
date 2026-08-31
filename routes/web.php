@@ -37,13 +37,17 @@ Route::middleware('web')->group(function () {
     Route::get('/login', fn() => view('auth.login'))->name('login');
     Route::post('/login', [AdminController::class, 'loginPost'])->name('login.post');
     Route::get('/register/type', fn() => view('auth.account-type'))->name('register.type');
-    Route::get('/register/method', fn() => redirect()->route('register', ['type' => request('type', 'buyer')]))->name('register.method');
-    Route::get('/register/google', fn() => redirect()->route('register', ['type' => request('type', 'buyer'), 'google' => 1]))->name('register.google');
+    Route::get('/register/method', [RegisterController::class, 'method'])->name('register.method');
     Route::get('/register', function () {
-        if (!request()->boolean('google')) {
+        $isGoogleSignup = request()->boolean('google') && session()->has('google_email') && session('google_email');
+        if (!$isGoogleSignup) {
             session()->forget(['google_id', 'google_name', 'google_email', 'google_avatar']);
         }
-        return view('auth.register');
+        return view('auth.register', [
+            'isGoogleSignup' => $isGoogleSignup,
+            'googleId'       => $isGoogleSignup ? session('google_id') : null,
+            'googleEmail'    => $isGoogleSignup ? session('google_email') : null,
+        ]);
     })->name('register');
     Route::post('/register', [RegisterController::class, 'store'])->name('register.store');
     Route::get('/register/categories', [RegisterController::class, 'categories'])->name('register.categories');
@@ -62,20 +66,29 @@ Route::prefix('buyer')->name('buyer.')->middleware(['web', 'buyer'])->group(func
     Route::get('/dashboard', [BuyerController::class, 'dashboard'])->name('dashboard');
     Route::get('/browse', [BuyerController::class, 'browse'])->name('browse');
     Route::get('/product/{id}', [BuyerController::class, 'product'])->name('product');
+    Route::post('/product/report', [BuyerController::class, 'reportProduct'])->name('product.report');
     Route::get('/shop/{slug}', [BuyerController::class, 'shop'])->name('shop');
     Route::get('/cart', [BuyerController::class, 'cart'])->name('cart');
     Route::post('/checkout', [BuyerController::class, 'checkout'])->name('checkout');
+    Route::post('/cart/preview-voucher', [BuyerController::class, 'previewVoucher'])->name('cart.preview-voucher');
     Route::post('/cart/add', [BuyerController::class, 'cartAdd'])->name('cart.add');
     Route::patch('/cart/{key}/edit', [BuyerController::class, 'cartEdit'])->where('key', '.*')->name('cart.edit');
     Route::patch('/cart/{key}', [BuyerController::class, 'cartUpdate'])->where('key', '.*')->name('cart.update');
     Route::delete('/cart/{key}', [BuyerController::class, 'cartRemove'])->where('key', '.*')->name('cart.remove');
     Route::get('/orders', [BuyerController::class, 'orders'])->name('orders');
     Route::patch('/orders/{order}/cancel', [BuyerController::class, 'cancelOrder'])->name('orders.cancel');
+    Route::patch('/orders/{order}/confirm-receipt', [BuyerController::class, 'confirmReceipt'])->name('orders.confirm-receipt');
+    Route::post('/orders/{order}/buy-again', [BuyerController::class, 'buyAgain'])->name('orders.buy-again');
+    Route::post('/orders/{order}/review', [BuyerController::class, 'storeReview'])->name('orders.review');
     Route::get('/messages', [BuyerController::class, 'messages'])->name('messages');
     Route::get('/messages/poll', [BuyerController::class, 'messagesPoll'])->name('messages.poll');
     Route::post('/messages/report', [BuyerController::class, 'reportMessage'])->name('messages.report');
     Route::post('/messages/send', [BuyerController::class, 'messagesSend'])->name('messages.send');
+    Route::get('/notifications/{id}/open', [BuyerController::class, 'openNotification'])->name('notifications.open');
     Route::get('/account', [BuyerController::class, 'account'])->name('account');
+    Route::post('/payment-accounts/send-code', [BuyerController::class, 'sendPaymentAccountCode'])->name('payment-accounts.send-code');
+    Route::post('/payment-accounts/verify', [BuyerController::class, 'verifyPaymentAccountCode'])->name('payment-accounts.verify');
+    Route::delete('/payment-accounts/{account}', [BuyerController::class, 'destroyPaymentAccount'])->name('payment-accounts.destroy');
     Route::post('/logout', [BuyerController::class, 'logout'])->name('logout');
 });
 
@@ -83,24 +96,32 @@ Route::prefix('buyer')->name('buyer.')->middleware(['web', 'buyer'])->group(func
 Route::prefix('seller')->name('seller.')->middleware(['web', 'seller'])->group(function () {
     Route::get('/dashboard',     [SellerController::class, 'dashboard'])->name('dashboard');
     Route::get('/orders',        [SellerController::class, 'orders'])->name('orders');
+    Route::patch('/orders/{order}/ready', [SellerController::class, 'readyForPickup'])->name('orders.ready');
     Route::get('/inventory',     [SellerController::class, 'inventory'])->name('inventory');
     Route::post('/inventory',     [SellerController::class, 'storeProduct'])->name('inventory.store');
+    Route::patch('/inventory/{product}', [SellerController::class, 'updateProduct'])->name('inventory.update');
     Route::delete('/inventory/{product}', [SellerController::class, 'destroyProduct'])->name('inventory.destroy');
+    Route::patch('/inventory/{product}/archive', [SellerController::class, 'archiveProduct'])->name('inventory.archive');
     Route::get('/notifications', [SellerController::class, 'notifications'])->name('notifications');
-    Route::get('/prepare',       [SellerController::class, 'prepare'])->name('prepare');
-    Route::get('/shipments',     [SellerController::class, 'shipments'])->name('shipments');
-    Route::get('/deliveries',    [SellerController::class, 'deliveries'])->name('deliveries');
+    Route::get('/orders/{order}/waybill', [SellerController::class, 'waybill'])->name('orders.waybill');
+    Route::patch('/orders/{order}/schedule-pickup', [SellerController::class, 'schedulePickup'])->name('orders.schedule-pickup');
     Route::get('/feedback',      [SellerController::class, 'feedback'])->name('feedback');
+    Route::post('/feedback/{review}/reply', [SellerController::class, 'replyReview'])->name('reviews.reply');
     Route::get('/reports',       [SellerController::class, 'reports'])->name('reports');
     Route::get('/messages',      [SellerController::class, 'messages'])->name('messages');
     Route::get('/messages/poll', [SellerController::class, 'messagesPoll'])->name('messages.poll');
     Route::post('/messages/report', [SellerController::class, 'reportMessage'])->name('messages.report');
     Route::post('/messages/send', [SellerController::class, 'messagesSend'])->name('messages.send');
     Route::post('/notifications/read', [SellerController::class, 'markNotifRead'])->name('notifications.read');
+    Route::get('/notifications/{id}/open', [SellerController::class, 'openNotification'])->name('notifications.open');
     Route::get('/account',       [SellerController::class, 'account'])->name('account');
     Route::post('/account/profile',  [SellerController::class, 'updateProfile'])->name('account.profile');
     Route::post('/account/address',  [SellerController::class, 'updateAddress'])->name('account.address');
     Route::post('/account/shop',     [SellerController::class, 'updateShop'])->name('account.shop');
+    Route::get('/vouchers',      [SellerController::class, 'vouchers'])->name('vouchers');
+    Route::post('/vouchers',     [SellerController::class, 'storeVoucher'])->name('vouchers.store');
+    Route::patch('/vouchers/{voucher}', [SellerController::class, 'updateVoucher'])->name('vouchers.update');
+    Route::delete('/vouchers/{voucher}', [SellerController::class, 'destroyVoucher'])->name('vouchers.destroy');
     Route::post('/account/documents', [SellerController::class, 'updateDocuments'])->name('account.documents');
     Route::post('/account/password', [SellerController::class, 'updatePassword'])->name('account.password');
     Route::post('/logout',       [SellerController::class, 'logout'])->name('logout');
@@ -128,9 +149,6 @@ Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
     Route::get('/announcements', [AdminController::class, 'announcements'])->name('announcements');
     Route::post('/settings/announcements', [AdminController::class, 'storeAnnouncement'])->name('settings.announcements.store');
     Route::delete('/settings/announcements/{id}', [AdminController::class, 'destroyAnnouncement'])->name('settings.announcements.destroy');
-    Route::post('/settings/policies', [AdminController::class, 'storePolicy'])->name('settings.policies.store');
-    Route::patch('/settings/policies/{policy}', [AdminController::class, 'updatePolicy'])->name('settings.policies.update');
-    Route::delete('/settings/policies/{policy}', [AdminController::class, 'destroyPolicy'])->name('settings.policies.destroy');
     Route::get('/messages', [AdminController::class, 'messages'])->name('messages');
     Route::get('/messages/{user}', [AdminController::class, 'messages'])->name('messages.user');
     Route::post('/messages/{user}', [AdminController::class, 'sendMessage'])->name('messages.send');
@@ -153,6 +171,7 @@ Route::prefix('logistics')->name('logistics.')->middleware('logistics')->group(f
     Route::patch('/requests/{id}/approve', [LogisticsController::class, 'approveRequest'])->name('requests.approve');
     Route::patch('/requests/{id}/reject', [LogisticsController::class, 'rejectRequest'])->name('requests.reject');
     Route::get('/assignments', [LogisticsController::class, 'assignments'])->name('assignments');
+    Route::patch('/assignments/{id}/assign', [LogisticsController::class, 'assignCourier'])->name('assignments.assign');
     Route::get('/monitor', [LogisticsController::class, 'monitor'])->name('monitor');
     Route::patch('/status/{id}', [LogisticsController::class, 'updateStatus'])->name('status.update');
     Route::get('/issues', [LogisticsController::class, 'issues'])->name('issues');

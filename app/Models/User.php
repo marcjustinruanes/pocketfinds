@@ -17,7 +17,10 @@ class User extends Authenticatable
         'province', 'municipality', 'barangay', 'house_no', 'street',
         'password', 'id_file', 'id_type_id', 'selfie_file',
         'status', 'is_admin', 'is_logistics', 'category_id', 'category_other',
-        'profile_picture', 'business_name', 'business_permit_file',
+        'profile_picture', 'business_name', 'business_permit_file', 'shipping_fee',
+        // rider-only fields (merged in from the now-dropped rider_profiles table)
+        'vehicle_type', 'vehicle_brand', 'vehicle_model', 'plate_number',
+        'or_file', 'cr_file', 'license_number', 'license_expiry', 'license_file',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -28,13 +31,20 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password'          => 'hashed',
             'birthday'          => 'date',
+            'license_expiry'    => 'date',
             'is_admin'          => 'boolean',
             'is_logistics'      => 'boolean',
         ];
     }
 
-    public function categories()
+    /** True if this rider's vehicle type requires a driver's license (mirrors the old RiderProfile helper). */
+    public function requiresLicense(): bool
     {
-        return $this->belongsToMany(Category::class, 'category_seller');
+        return in_array($this->vehicle_type, ['motorcycle', 'car_van'], true);
+    }
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
     }
 }

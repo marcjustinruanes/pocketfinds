@@ -10,6 +10,13 @@ use Illuminate\Support\Facades\Cache;
 
 class RegisterController extends Controller
 {
+    /** Shown right after picking a role — choose Google or manual sign-up before the step-by-step form appears. */
+    public function method(Request $request)
+    {
+        $type = in_array($request->query('type'), ['buyer', 'seller', 'rider'], true) ? $request->query('type') : 'buyer';
+        return view('auth.register-method', ['type' => $type]);
+    }
+
     public function sendOtp(Request $request)
     {
         $email = $request->input('email', '');
@@ -124,14 +131,16 @@ class RegisterController extends Controller
             'house_no'       => 'nullable|string|max:50',
             'street'         => 'nullable|string|max:100',
             'username'       => 'required|string|min:8|max:30|alpha_dash|unique:users,username',
-            'password'       => 'required_if:auth_method,manual|nullable|string|min:8|confirmed',
+            // Google sign-ups still set a password, so the account can also
+            // be logged into with a username/password later without Google.
+            'password'       => 'required|string|min:8|confirmed',
             'id_file'        => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'id_type_id'     => 'required|integer|exists:id_types,id',
             'selfie_file'    => 'required|file|mimes:jpg,jpeg,png|max:5120',
             'account_type'   => 'required|in:buyer,rider,seller',
             'auth_method'    => 'required|in:manual,google',
             'google_id'      => 'nullable|string',
-            'category_ids'   => $isSeller ? 'array' : 'sometimes|nullable',
+            'category_ids'   => $isSeller ? 'array|max:1' : 'sometimes|nullable',
             'category_ids.*' => 'integer|exists:categories,id',
             'category_other' => 'nullable|string|max:100',
             'business_name'  => $isSeller ? 'required|string|max:150|unique:users,business_name' : 'sometimes|nullable',
@@ -170,9 +179,11 @@ class RegisterController extends Controller
             }
 
             if ($isSeller) {
+                // Exactly one category is stored per seller — either a pick
+                // from the list or a typed "Other" category, never both.
                 $categoryCount = count($request->input('category_ids', [])) + ($request->filled('category_other') ? 1 : 0);
-                if ($categoryCount < 2) {
-                    $validator->errors()->add('category_ids', 'Please select at least 2 categories.');
+                if ($categoryCount !== 1) {
+                    $validator->errors()->add('category_ids', 'Please select exactly one category.');
                 }
             }
         });
@@ -207,6 +218,7 @@ class RegisterController extends Controller
             'id_type_id'     => $request->id_type_id,
             'selfie_file'    => $selfiePath,
             'status'         => 'pending',
+            'category_id'    => $isSeller ? ($request->input('category_ids')[0] ?? null) : null,
             'category_other' => $isSeller ? $request->category_other : null,
             'business_name'  => $isSeller ? $request->business_name : null,
         ];
@@ -215,38 +227,26 @@ class RegisterController extends Controller
             $userData['business_permit_file'] = $request->file('business_permit_file')->store('business_permits', 'public');
         }
 
-        $user = User::create($userData);
-
-        if ($isSeller) {
-            $user->categories()->sync($request->input('category_ids', []));
-        }
-
         if ($isRider) {
-            $riderData = array_merge($userData, [
-                'user_id'      => $user->id,
-                'vehicle_type' => $request->vehicle_type,
-                'vehicle_brand'=> $request->vehicle_brand,
-                'vehicle_model'=> $request->vehicle_model,
-                'plate_number' => $request->plate_number,
-            ]);
+            $userData['vehicle_type']  = $request->vehicle_type;
+            $userData['vehicle_brand'] = $request->vehicle_brand;
+            $userData['vehicle_model'] = $request->vehicle_model;
+            $userData['plate_number']  = $request->plate_number;
 
             if ($request->hasFile('or_file')) {
-                $riderData['or_file'] = $request->file('or_file')->store('vehicle_docs', 'public');
+                $userData['or_file'] = $request->file('or_file')->store('vehicle_docs', 'public');
             }
             if ($request->hasFile('cr_file')) {
-                $riderData['cr_file'] = $request->file('cr_file')->store('vehicle_docs', 'public');
+                $userData['cr_file'] = $request->file('cr_file')->store('vehicle_docs', 'public');
             }
             if ($request->hasFile('license_file')) {
-                $riderData['license_number'] = $request->license_number;
-                $riderData['license_expiry'] = $request->license_expiry;
-                $riderData['license_file']   = $request->file('license_file')->store('license_files', 'public');
+                $userData['license_number'] = $request->license_number;
+                $userData['license_expiry'] = $request->license_expiry;
+                $userData['license_file']   = $request->file('license_file')->store('license_files', 'public');
             }
-
-            // Remove user-only keys not in rider_profiles
-            unset($riderData['category_id'], $riderData['category_other'], $riderData['is_admin']);
-
-            \App\Models\RiderProfile::create($riderData);
         }
+
+        User::create($userData);
 
         return response()->json(['success' => true]);
     }

@@ -4,42 +4,37 @@
 @section('page-sub', 'Discover items from local sellers')
 
 @section('content')
-<div class="filter-bar">
+<form class="filter-bar" method="GET" action="{{ route('buyer.browse') }}">
   <div class="search-mini">
     <span class="ic">@include('buyer.partials.icon', ['name' => 'search', 'size' => 13])</span>
-    <input type="text" id="browseSearch" placeholder="Search products…" oninput="filterBrowse()">
+    <input type="text" name="q" placeholder="Search products…" value="{{ request('q') }}">
   </div>
-  <select class="select" id="browseCategory" onchange="filterBrowse()">
+  <select class="select" name="category" onchange="this.form.submit()">
     <option value="">All Categories</option>
-    <option>Food & Drinks</option>
-    <option>Clothing</option>
-    <option>Beauty</option>
-    <option>Electronics</option>
-    <option>Home & Living</option>
-    <option>Hobbies</option>
-    <option>Sports</option>
+    @foreach($categories as $cat)
+      <option value="{{ $cat->id }}" {{ (string) request('category') === (string) $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
+    @endforeach
   </select>
-  <select class="select">
-    <option>Sort: Newest</option>
-    <option>Price: Low to High</option>
-    <option>Price: High to Low</option>
-    <option>Most Popular</option>
+  <select class="select" name="sort" onchange="this.form.submit()">
+    <option value="" {{ !request('sort') ? 'selected' : '' }}>Sort: Newest</option>
+    <option value="price_asc" {{ request('sort') === 'price_asc' ? 'selected' : '' }}>Price: Low to High</option>
+    <option value="price_desc" {{ request('sort') === 'price_desc' ? 'selected' : '' }}>Price: High to Low</option>
   </select>
-</div>
+  <button type="submit" class="btn btn-primary" style="display:none">Filter</button>
+</form>
 
 <div class="card">
   <div class="card-pad">
     <div class="product-grid product-grid-lg" id="browseGrid">
-      @foreach($products as $p)
-      <div data-name="{{ strtolower($p['name']) }}" data-cat="{{ $p['cat'] }}">
-        @include('buyer.partials.product-card', ['p' => $p])
+      @forelse($products as $p)
+      @include('buyer.partials.product-card', ['p' => $p])
+      @empty
+      <div class="empty" style="grid-column:1/-1">
+        @include('buyer.partials.icon', ['name' => 'bag', 'size' => 28])
+        <h3>No products found</h3>
+        <p>Try adjusting your search or filters.</p>
       </div>
-      @endforeach
-    </div>
-    <div class="empty" id="browseEmpty" style="display:none">
-      <div class="ic">@include('buyer.partials.icon', ['name' => 'bag', 'size' => 28])</div>
-      <h3>No products found</h3>
-      <p>Try adjusting your search or filters.</p>
+      @endforelse
     </div>
   </div>
 </div>

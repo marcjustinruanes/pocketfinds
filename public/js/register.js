@@ -104,28 +104,28 @@ if (isSeller) {
         return categoryIcons.default;
     }
 
-    // Sellers must pick at least MIN_CATEGORIES categories (an "Other" tile with
-    // custom text counts as one of them).
-    const MIN_CATEGORIES = 2;
-    const selectedCategoryIds = new Set();
+    // Sellers pick exactly one category — the account only ever stores a
+    // single category_id, so the picker is single-select (an "Other" tile
+    // with custom text counts as that one pick).
+    let selectedCategoryId = null;
 
     function categorySelectionCount() {
         const otherFilled = (document.getElementById('category_other_input')?.value.trim().length ?? 0) > 0;
-        return selectedCategoryIds.size + (otherFilled ? 1 : 0);
+        return (selectedCategoryId !== null ? 1 : 0) + (otherFilled ? 1 : 0);
     }
 
     function syncCategorySelection() {
         const container = document.getElementById('categoryIdsContainer');
         container.innerHTML = '';
-        selectedCategoryIds.forEach(id => {
+        if (selectedCategoryId !== null) {
             const input = document.createElement('input');
             input.type = 'hidden';
             input.name = 'category_ids[]';
-            input.value = id;
+            input.value = selectedCategoryId;
             container.appendChild(input);
-        });
+        }
         const nextBtn = document.getElementById('categoryNextBtn');
-        if (nextBtn) nextBtn.disabled = categorySelectionCount() < MIN_CATEGORIES;
+        if (nextBtn) nextBtn.disabled = categorySelectionCount() !== 1;
         document.getElementById('categoryError')?.remove();
     }
 
@@ -136,6 +136,19 @@ if (isSeller) {
         .then(data => {
             const grid = document.getElementById('categoryGrid');
             grid.innerHTML = '';
+            const categoryBoxes = [];
+            let otherBtn;
+
+            function selectCategory(id, btn) {
+                selectedCategoryId = id;
+                categoryBoxes.forEach(b => b.classList.toggle('selected', b === btn));
+                // Picking a real category clears any "Other" text — only one selection counts.
+                otherBtn.classList.remove('selected');
+                document.getElementById('categoryOtherWrap').style.display = 'none';
+                document.getElementById('category_other_input').value = '';
+                syncCategorySelection();
+            }
+
             data.forEach(cat => {
                 const btn = document.createElement('button');
                 btn.type = 'button';
@@ -143,24 +156,33 @@ if (isSeller) {
                 btn.dataset.categoryId = cat.id;
                 btn.innerHTML = `<span class="category-box-icon">${getCategoryIcon(cat.name)}</span><span class="category-box-name">${cat.name}</span>`;
                 btn.addEventListener('click', () => {
-                    btn.classList.toggle('selected');
-                    const id = String(cat.id);
-                    if (btn.classList.contains('selected')) selectedCategoryIds.add(id);
-                    else selectedCategoryIds.delete(id);
-                    syncCategorySelection();
+                    if (btn.classList.contains('selected')) {
+                        // Clicking the already-selected tile deselects it.
+                        selectedCategoryId = null;
+                        btn.classList.remove('selected');
+                        syncCategorySelection();
+                        return;
+                    }
+                    selectCategory(String(cat.id), btn);
                 });
+                categoryBoxes.push(btn);
                 grid.appendChild(btn);
             });
 
             // "Other" tile — lets the seller type a category that isn't listed.
-            const otherBtn = document.createElement('button');
+            otherBtn = document.createElement('button');
             otherBtn.type = 'button';
             otherBtn.className = 'category-box';
             otherBtn.id = 'categoryOtherBox';
             otherBtn.innerHTML = `<span class="category-box-icon">${categoryIcons.default}</span><span class="category-box-name">Other</span>`;
             otherBtn.addEventListener('click', () => {
-                otherBtn.classList.toggle('selected');
-                const show = otherBtn.classList.contains('selected');
+                const show = !otherBtn.classList.contains('selected');
+                otherBtn.classList.toggle('selected', show);
+                // Picking "Other" clears any selected category tile — only one selection counts.
+                if (show) {
+                    selectedCategoryId = null;
+                    categoryBoxes.forEach(b => b.classList.remove('selected'));
+                }
                 const wrap = document.getElementById('categoryOtherWrap');
                 const input = document.getElementById('category_other_input');
                 wrap.style.display = show ? '' : 'none';
@@ -177,7 +199,9 @@ if (isSeller) {
 }
 
 // ── Email OTP (manual form only) ──
-let emailVerified = false;
+// Google sign-ups arrive with an already-verified email (prefilled and
+// locked in the blade view) — skip the send/verify-code requirement.
+let emailVerified = typeof IS_GOOGLE_SIGNUP !== 'undefined' && IS_GOOGLE_SIGNUP;
 let otpCountdown  = null;
 
 function sendOtp() {
@@ -1148,12 +1172,12 @@ function validateStep(step) {
         const count = typeof categorySelectionCount === 'function' ? categorySelectionCount() : 0;
         const wrap = document.getElementById('categoryGrid').closest('.category-scroll-wrap');
         document.getElementById('categoryError')?.remove();
-        if (count < 2) {
+        if (count !== 1) {
             wrap.style.outline = '2px solid var(--auth-danger,#e74c3c)';
             const err = document.createElement('p');
             err.id = 'categoryError';
             err.style.cssText = 'color:var(--auth-danger,#e74c3c);font-size:12px;margin:6px 0 0';
-            err.textContent = 'Please select at least 2 categories to continue.';
+            err.textContent = 'Please select one category to continue.';
             wrap.after(err);
             return false;
         }

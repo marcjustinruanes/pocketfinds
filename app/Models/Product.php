@@ -12,18 +12,21 @@ class Product extends Model
 
     protected $fillable = [
         'id', 'seller_id', 'category_id', 'name', 'description',
-        'image', 'variations', 'details', 'stock', 'price', 'sku', 'status', 'rejection_note',
+        'image', 'images', 'video', 'variations', 'details', 'stock', 'price', 'discount_price', 'sku', 'status', 'rejection_note',
+        'weight_grams', 'weight_grams_max', 'length_cm', 'width_cm', 'height_cm', 'condition', 'restock_date',
     ];
 
     protected $casts = [
+        'images'     => 'array',
         'variations' => 'array',
         'details'    => 'array',
+        'restock_date' => 'date',
     ];
 
     public function getTotalStockAttribute(): int
     {
         if (!empty($this->variations)) {
-            return collect($this->variations)->sum(fn($v) => collect($v['options'] ?? [])->sum('stock'));
+            return collect($this->variations)->sum(fn ($v) => collect($v['options'] ?? [])->sum('stock'));
         }
         return (int) $this->stock;
     }
@@ -36,5 +39,4 @@ class Product extends Model
 
     public function seller()   { return $this->belongsTo(User::class, 'seller_id'); }
     public function category() { return $this->belongsTo(Category::class); }
-    public function images()   { return $this->hasMany(ProductImage::class); }
 }
