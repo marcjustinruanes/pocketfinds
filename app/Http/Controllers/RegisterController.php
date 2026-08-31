@@ -13,7 +13,7 @@ class RegisterController extends Controller
     /** Shown right after picking a role — choose Google or manual sign-up before the step-by-step form appears. */
     public function method(Request $request)
     {
-        $type = in_array($request->query('type'), ['buyer', 'seller', 'rider'], true) ? $request->query('type') : 'buyer';
+        $type = in_array($request->query('type'), ['buyer', 'seller', 'rider', 'logistics'], true) ? $request->query('type') : 'buyer';
         return view('auth.register-method', ['type' => $type]);
     }
 
@@ -113,8 +113,9 @@ class RegisterController extends Controller
 
     public function store(Request $request)
     {
-        $isSeller = $request->input('account_type') === 'seller';
-        $isRider  = $request->input('account_type') === 'rider';
+        $isSeller    = $request->input('account_type') === 'seller';
+        $isRider     = $request->input('account_type') === 'rider';
+        $isLogistics = $request->input('account_type') === 'logistics';
 
         $rules = [
             'last_name'    => 'required|string|max:100',
@@ -137,7 +138,7 @@ class RegisterController extends Controller
             'id_file'        => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'id_type_id'     => 'required|integer|exists:id_types,id',
             'selfie_file'    => 'required|file|mimes:jpg,jpeg,png|max:5120',
-            'account_type'   => 'required|in:buyer,rider,seller',
+            'account_type'   => 'required|in:buyer,rider,seller,logistics',
             'auth_method'    => 'required|in:manual,google',
             'google_id'      => 'nullable|string',
             'category_ids'   => $isSeller ? 'array|max:1' : 'sometimes|nullable',
@@ -221,6 +222,10 @@ class RegisterController extends Controller
             'category_id'    => $isSeller ? ($request->input('category_ids')[0] ?? null) : null,
             'category_other' => $isSeller ? $request->category_other : null,
             'business_name'  => $isSeller ? $request->business_name : null,
+            // Logistics staff go through the same public, admin-approved registration as
+            // everyone else — is_logistics is what LogisticsMiddleware and login actually
+            // gate on, account_type is kept in sync purely for display/UI consistency.
+            'is_logistics'   => $isLogistics,
         ];
 
         if ($isSeller) {

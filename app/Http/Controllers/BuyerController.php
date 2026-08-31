@@ -302,7 +302,7 @@ class BuyerController extends Controller
 
     public function orders(Request $request)
     {
-        $allowedTabs = ['all', 'to_ship', 'in_transit', 'out_for_delivery', 'completed', 'cancelled'];
+        $allowedTabs = ['all', 'to_ship', 'in_transit', 'out_for_delivery', 'delivered', 'completed', 'cancelled'];
         $tab = in_array($request->query('tab'), $allowedTabs, true) ? $request->query('tab') : 'all';
         $baseQuery = Order::where('buyer_id', auth()->id());
         $orderCounts = (clone $baseQuery)->selectRaw('status, count(*) as aggregate')->groupBy('status')->pluck('aggregate', 'status');
@@ -365,7 +365,10 @@ class BuyerController extends Controller
     public function confirmReceipt(Order $order)
     {
         abort_unless($order->buyer_id === auth()->id(), 403);
-        if ($order->status !== 'out_for_delivery') {
+        // Only confirmable once the courier has actually marked it delivered — not merely
+        // "out for delivery" (still en route). See RiderController/LogisticsController's
+        // ORDER_STATUS_MAP for why 'delivered' stops short of 'completed' on its own.
+        if ($order->status !== 'delivered') {
             return back()->with('error', 'This order cannot be confirmed as received yet.');
         }
 

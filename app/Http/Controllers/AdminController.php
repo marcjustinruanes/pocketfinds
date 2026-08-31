@@ -33,6 +33,9 @@ class AdminController extends Controller
         if (auth()->check()) {
             if (auth()->user()->is_admin) return redirect()->route('admin.dashboard');
             if (auth()->user()->is_logistics) return redirect()->route('logistics.dashboard');
+            if (auth()->user()->account_type === 'rider' && auth()->user()->status === 'approved') {
+                return redirect()->route('rider.dashboard');
+            }
         }
         return view('auth.login');
     }
@@ -87,6 +90,9 @@ class AdminController extends Controller
             if ($user->account_type === 'seller') {
                 return redirect()->route('seller.dashboard');
             }
+            if ($user->account_type === 'rider') {
+                return redirect()->route('rider.dashboard');
+            }
             return redirect()->intended('/');
         }
 
@@ -115,13 +121,32 @@ class AdminController extends Controller
     public function approveUser(User $user)
     {
         $user->update(['status' => 'approved']);
+        $this->notifyRegistrationDecision($user, true);
         return back();
     }
 
     public function rejectUser(User $user)
     {
         $user->update(['status' => 'rejected']);
+        $this->notifyRegistrationDecision($user, false);
         return back();
+    }
+
+    /** Registration approve/reject email — every role's registration screen promises this. */
+    private function notifyRegistrationDecision(User $user, bool $approved): void
+    {
+        if (!$user->email) return;
+        $role = ucfirst($user->account_type ?: 'account');
+        try {
+            \Illuminate\Support\Facades\Mail::raw(
+                $approved
+                    ? "Good news! Your PocketFinds {$role} account has been approved. You can now log in at " . url('/login') . "."
+                    : "Your PocketFinds {$role} account application was not approved. If you believe this is a mistake, please contact support.",
+                fn ($m) => $m->to($user->email)->subject($approved ? 'PocketFinds — Registration Approved' : 'PocketFinds — Registration Update')
+            );
+        } catch (\Exception $e) {
+            // Registration status is already saved either way — a mail hiccup shouldn't block the admin action.
+        }
     }
 
     public function activateUser(User $user)

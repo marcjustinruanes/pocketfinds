@@ -60,7 +60,10 @@ class SellerController extends Controller
             ->get();
 
         $sellerId = auth()->id();
-        $pendingConfirmation = Order::where('seller_id', $sellerId)->where('status', 'out_for_delivery')->count();
+        // "Pending confirmation" = the buyer hasn't confirmed receipt yet, whether the
+        // courier is still en route (out_for_delivery) or has already dropped it off
+        // and is waiting on the buyer to confirm (delivered).
+        $pendingConfirmation = Order::where('seller_id', $sellerId)->whereIn('status', ['out_for_delivery', 'delivered'])->count();
         $deliveredToday = Order::where('seller_id', $sellerId)->where('status', 'completed')->whereDate('updated_at', today())->count();
         $statusCounts = Order::where('seller_id', $sellerId)->selectRaw('status, count(*) as c')->groupBy('status')->pluck('c', 'status');
 
@@ -184,7 +187,7 @@ class SellerController extends Controller
         $categoryTotal = max(1, $salesByCategory->sum());
 
         $allOrders = Order::where('seller_id', $sellerId)->whereBetween('created_at', [$from, $to])->get();
-        $fulfillable = $allOrders->whereIn('status', ['completed', 'in_transit', 'out_for_delivery', 'cancelled'])->count();
+        $fulfillable = $allOrders->whereIn('status', ['completed', 'in_transit', 'out_for_delivery', 'delivered', 'cancelled'])->count();
         $fulfillmentRate = $fulfillable ? round($allOrders->where('status', 'completed')->count() / $fulfillable * 100) : null;
         $satisfaction = Review::where('seller_id', $sellerId)->avg('rating');
 

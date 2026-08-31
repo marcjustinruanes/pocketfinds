@@ -55,7 +55,7 @@
 
         <section class="auth-form-panel">
             <div class="auth-form-wrap">
-                <a href="{{ route('register.type') }}" class="back-home-link">
+                <a href="{{ in_array($type, ['rider', 'logistics'], true) ? route('register.delivery-team') : route('register.type') }}" class="back-home-link">
                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
                     Back
                 </a>
@@ -71,6 +71,16 @@
                     <div class="auth-error">{{ $errors->first() }}</div>
                 @endif
 
+                @php
+                    // Every role has its own dedicated registration page.
+                    $manualRoute = match ($type) {
+                        'seller'     => route('register.seller'),
+                        'rider'      => route('register.rider'),
+                        'logistics'  => route('register.logistics'),
+                        default      => route('register.buyer'),
+                    };
+                @endphp
+
                 <div class="role-grid">
                     <a class="role-card" href="{{ route('google.redirect', ['type' => $type]) }}">
                         <span class="role-icon role-icon-google">
@@ -83,7 +93,7 @@
                         <span class="role-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
                     </a>
 
-                    <a class="role-card" href="{{ route('register', ['type' => $type]) }}">
+                    <a class="role-card" href="{{ $manualRoute }}">
                         <span class="role-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M22 6l-10 7L2 6"/></svg>
                         </span>

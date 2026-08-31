@@ -5,6 +5,7 @@ use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\SocialAuthController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\LogisticsController;
+use App\Http\Controllers\RiderController;
 use App\Http\Controllers\BuyerController;
 use App\Http\Controllers\GuestController;
 use App\Http\Controllers\SellerController;
@@ -40,19 +41,33 @@ Route::middleware('web')->group(function () {
     Route::get('/login', fn() => view('auth.login'))->name('login');
     Route::post('/login', [AdminController::class, 'loginPost'])->name('login.post');
     Route::get('/register/type', fn() => view('auth.account-type'))->name('register.type');
+    // Rider/Logistics ("delivery team") are internal/operational roles kept off the main
+    // customer role picker above — reached only via its own explicit "join the delivery
+    // team" link, not listed alongside Buyer/Seller.
+    Route::get('/register/delivery-team', fn() => view('auth.delivery-type'))->name('register.delivery-team');
     Route::get('/register/method', [RegisterController::class, 'method'])->name('register.method');
-    Route::get('/register', function () {
+
+    // Every role (buyer, seller, rider, logistics) gets its own dedicated registration
+    // page/view — same google-signup-detection boilerplate for each, factored out here.
+    $registerView = function (string $view) {
         $isGoogleSignup = request()->boolean('google') && session()->has('google_email') && session('google_email');
         if (!$isGoogleSignup) {
             session()->forget(['google_id', 'google_name', 'google_email', 'google_avatar']);
         }
-        return view('auth.register', [
+        return view($view, [
             'isGoogleSignup' => $isGoogleSignup,
             'googleId'       => $isGoogleSignup ? session('google_id') : null,
             'googleEmail'    => $isGoogleSignup ? session('google_email') : null,
         ]);
-    })->name('register');
+    };
+    Route::get('/register/buyer', fn () => $registerView('auth.register-buyer'))->name('register.buyer');
+    Route::get('/register/seller', fn () => $registerView('auth.register-seller'))->name('register.seller');
+    Route::get('/register/rider', fn () => $registerView('auth.register-rider'))->name('register.rider');
+    Route::get('/register/logistics', fn () => $registerView('auth.register-logistics'))->name('register.logistics');
     Route::post('/register', [RegisterController::class, 'store'])->name('register.store');
+    // Legacy shared buyer/seller page — kept so any old bookmark/link still resolves,
+    // but nothing in the app links here anymore; use register.buyer/register.seller above.
+    Route::get('/register', fn () => $registerView('auth.register'))->name('register');
     Route::get('/register/categories', [RegisterController::class, 'categories'])->name('register.categories');
     Route::post('/register/send-otp', [RegisterController::class, 'sendOtp'])->name('register.send-otp');
     Route::post('/register/verify-otp', [RegisterController::class, 'verifyOtp'])->name('register.verify-otp');
@@ -192,4 +207,26 @@ Route::prefix('logistics')->name('logistics.')->middleware('logistics')->group(f
     Route::post('/account/update', [LogisticsController::class, 'accountUpdate'])->name('account.update');
     Route::post('/account/address', [LogisticsController::class, 'accountAddressUpdate'])->name('account.address');
     Route::post('/account/password', [LogisticsController::class, 'passwordUpdate'])->name('account.password');
+});
+
+// Rider (courier) routes
+Route::prefix('rider')->name('rider.')->middleware('rider')->group(function () {
+    Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
+    Route::get('/dashboard', [RiderController::class, 'dashboard'])->name('dashboard');
+    Route::get('/requests', [RiderController::class, 'requests'])->name('requests');
+    Route::patch('/requests/{id}/accept', [RiderController::class, 'acceptRequest'])->name('requests.accept');
+    Route::get('/deliveries', [RiderController::class, 'deliveries'])->name('deliveries');
+    Route::get('/deliveries/{id}', [RiderController::class, 'show'])->name('deliveries.show');
+    Route::patch('/deliveries/{id}/advance', [RiderController::class, 'advance'])->name('deliveries.advance');
+    Route::get('/history', [RiderController::class, 'history'])->name('history');
+    Route::get('/profit', [RiderController::class, 'profit'])->name('profit');
+    Route::get('/messages', [RiderController::class, 'messages'])->name('messages');
+    Route::get('/messages/poll', [RiderController::class, 'messagesPoll'])->name('messages.poll');
+    Route::post('/messages/report', [RiderController::class, 'reportMessage'])->name('messages.report');
+    Route::post('/messages/send', [RiderController::class, 'messagesSend'])->name('messages.send');
+    Route::get('/messages/{userId}', [RiderController::class, 'messagesThread'])->name('messages.thread');
+    Route::get('/account', [RiderController::class, 'account'])->name('account');
+    Route::post('/account/update', [RiderController::class, 'accountUpdate'])->name('account.update');
+    Route::post('/account/address', [RiderController::class, 'accountAddressUpdate'])->name('account.address');
+    Route::post('/account/password', [RiderController::class, 'passwordUpdate'])->name('account.password');
 });

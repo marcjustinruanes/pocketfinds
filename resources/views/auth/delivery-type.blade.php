@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Choose Account Type — PocketFinds</title>
+    <title>Join the Delivery Team — PocketFinds</title>
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
     <style>
         .role-grid {
@@ -93,35 +93,13 @@
             transition: color .15s ease;
         }
         .back-home-link:hover { color: var(--auth-primary); }
-        .delivery-team-link {
-            display: flex;
-            align-items: center;
-            gap: 12px;
+        .customer-link {
+            display: block;
             margin-top: 14px;
-            padding: 12px 14px;
-            border: 1.5px dashed var(--auth-border);
-            border-radius: 14px;
-            text-decoration: none;
-            transition: border-color .18s, background .18s;
+            font-size: 11.5px;
+            color: var(--auth-muted);
+            text-align: center;
         }
-        .delivery-team-link:hover {
-            border-color: var(--auth-primary);
-            border-style: solid;
-            background: var(--auth-primary-soft);
-        }
-        .dt-icon {
-            width: 36px;
-            height: 36px;
-            flex: 0 0 36px;
-            display: grid;
-            place-items: center;
-            border-radius: 10px;
-            background: var(--auth-primary-soft);
-            color: var(--auth-primary);
-        }
-        .dt-copy { flex: 1; min-width: 0; }
-        .dt-name { display: block; font-size: 12.5px; font-weight: 800; color: var(--auth-text); }
-        .dt-desc { display: block; font-size: 11px; color: var(--auth-muted); margin-top: 1px; }
     </style>
 </head>
 <body class="auth-page">
@@ -133,9 +111,9 @@
                     <span class="auth-logo-mark"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg></span>
                     <span>PocketFinds</span>
                 </a>
-                <h1 class="auth-brand-title">Who are you on PocketFinds?</h1>
+                <h1 class="auth-brand-title">Join our delivery team.</h1>
                 <p class="auth-brand-text">
-                    Pick the role that fits you. Each account type has its own features and registration flow.
+                    Work with PocketFinds behind the scenes — pick up and deliver orders, or coordinate the sorting center. Each role has its own registration flow.
                 </p>
                 <ul class="auth-brand-points">
                     <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Quick, guided registration</li>
@@ -148,57 +126,49 @@
 
         <section class="auth-form-panel">
             <div class="auth-form-wrap">
-                <a href="{{ url('/') }}" class="back-home-link">
+                <a href="{{ route('register.type') }}" class="back-home-link">
                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
-                    Back to homepage
+                    Back
                 </a>
 
                 <div class="page-header">
                     <div class="page-title-row">
-                        <h2>Get started</h2>
+                        <h2>Delivery team</h2>
                     </div>
-                    <p>Select the account type that matches what you want to do.</p>
+                    <p>Select the role that matches what you want to do.</p>
                 </div>
 
                 <div class="role-grid">
-                    {{-- Buyer --}}
-                    <button class="role-card" type="button" data-account-type="buyer" data-target="{{ url('/register/method') }}">
+                    {{-- Rider --}}
+                    <button class="role-card" type="button" data-account-type="rider" data-target="{{ url('/register/method') }}">
                         <span class="role-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 001.95-1.57l1.65-8.42H6"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h-5l-3 6h11l-3-6z"/><path d="M12 6V3M15 6l2-3"/></svg>
                         </span>
                         <span class="role-copy">
-                            <span class="role-name">Buyer</span>
-                            <span class="role-desc">Browse products, place orders, and track deliveries.</span>
+                            <span class="role-name">Rider / Courier</span>
+                            <span class="role-desc">Pick up and deliver orders, manage your routes and earnings.</span>
                         </span>
                         <span class="role-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
                     </button>
 
-                    {{-- Seller --}}
-                    <button class="role-card" type="button" data-account-type="seller" data-target="{{ url('/register/method') }}">
+                    {{-- Logistics --}}
+                    <button class="role-card" type="button" data-account-type="logistics" data-target="{{ url('/register/method') }}">
                         <span class="role-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><path d="M9 14l2 2 4-4"/></svg>
                         </span>
                         <span class="role-copy">
-                            <span class="role-name">Seller</span>
-                            <span class="role-desc">List your products, manage your store, and grow your business.</span>
+                            <span class="role-name">Logistics Staff</span>
+                            <span class="role-desc">Coordinate pickups, dispatch couriers, and monitor deliveries.</span>
                         </span>
                         <span class="role-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
                     </button>
-
                 </div>
-
-                <a href="{{ route('register.delivery-team') }}" class="delivery-team-link">
-                    <span class="dt-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8Z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span>
-                    <span class="dt-copy">
-                        <span class="dt-name">Want to deliver or work logistics?</span>
-                        <span class="dt-desc">Join our delivery team as a Rider or Logistics staff →</span>
-                    </span>
-                </a>
 
                 <p class="auth-bottom">
                     Already have an account?
                     <a class="auth-link" href="{{ url('/login') }}">Sign in</a>
                 </p>
+                <a href="{{ route('register.type') }}" class="customer-link">Looking to buy or sell instead? Go to customer sign-up →</a>
             </div>
         </section>
     </main>

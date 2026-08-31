@@ -13,6 +13,7 @@
     ['to_ship',          'package', 'To Ship'],
     ['in_transit',       'truck',   'In Transit'],
     ['out_for_delivery', 'bike',    'Out for Delivery'],
+    ['delivered',        'home',    'Delivered'],
     ['completed',        'check',   'Completed'],
     ['cancelled',        'x',       'Cancelled'],
   ];
@@ -69,6 +70,11 @@
   </div>
   @if($order->status === 'out_for_delivery')
   <div class="order-actions" style="border-top:1px dashed var(--border,#eee);padding-top:10px">
+    <span style="color:var(--muted,#888)">Your rider is on the way — Confirm Receipt unlocks once they mark it delivered.</span>
+  </div>
+  @endif
+  @if($order->status === 'delivered')
+  <div class="order-actions" style="border-top:1px dashed var(--border,#eee);padding-top:10px">
     <span>Already have your package?</span>
     <form method="POST" action="{{ route('buyer.orders.confirm-receipt', $order) }}" onsubmit="return confirm('Confirm that you have received this order?')">
       @csrf @method('PATCH')
@@ -122,7 +128,7 @@
         ['Delivered', 'Order completed.'],
       ];
       $currentStep = match($order->status) {
-        'in_transit' => 4, 'out_for_delivery' => 5, 'completed' => 6,
+        'in_transit' => 4, 'out_for_delivery' => 5, 'delivered' => 6, 'completed' => 7,
         'cancelled' => 1,
         default => $order->shipment ? 3 : 2,
       };

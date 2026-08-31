@@ -244,12 +244,19 @@ class LogisticsController extends Controller
         return view('logistics.monitor', array_merge($counts, compact('shipments', 'transitions')));
     }
 
-    /** Shipment stage → the buyer-facing Order.status it should roll up into. */
+    /**
+     * Shipment stage → the buyer-facing Order.status it should roll up into.
+     * 'delivered' deliberately does NOT map to 'completed' — that only means the physical
+     * handoff happened; the order isn't closed out until the buyer confirms receipt
+     * (BuyerController::confirmReceipt(), gated on status === 'delivered'). Only the
+     * shipment reaching 'completed' itself — a logistics-only closeout step — rolls the
+     * order all the way to 'completed'.
+     */
     private const ORDER_STATUS_MAP = [
         'picked_up'         => 'in_transit',
         'in_transit'        => 'in_transit',
         'out_for_delivery'  => 'out_for_delivery',
-        'delivered'         => 'completed',
+        'delivered'         => 'delivered',
         'completed'         => 'completed',
     ];
 
@@ -298,13 +305,14 @@ class LogisticsController extends Controller
                 'created_at'        => now(),
             ]);
 
-            // The seller should know the moment the buyer actually receives the order.
+            // Let the seller know the moment the parcel is marked delivered — the order
+            // itself still waits on the buyer's own confirmation to close out.
             if ($status === 'delivered') {
                 DB::table('notifications')->insert([
                     'id'                => (string) Str::uuid(),
                     'user_id'           => $shipment->order->seller_id,
-                    'title'             => 'Order Delivered',
-                    'message'           => 'Order #' . $shipment->order->order_number . ' has been delivered to the customer.',
+                    'title'             => 'Courier Marked as Delivered',
+                    'message'           => 'Order #' . $shipment->order->order_number . ' was marked delivered by the courier — awaiting the buyer\'s confirmation.',
                     'notification_type' => 'order_delivered',
                     'reference_id'      => $shipment->order_id,
                     'is_read'           => false,

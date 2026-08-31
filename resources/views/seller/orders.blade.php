@@ -38,6 +38,7 @@
     ['to_ship',           'To Ship'],
     ['in_transit',        'In Transit'],
     ['out_for_delivery',  'Out for Delivery'],
+    ['delivered',         'Delivered'],
     ['completed',         'Completed'],
     ['cancelled',         'Cancelled'],
   ];

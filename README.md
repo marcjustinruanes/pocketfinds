@@ -1,3 +1,65 @@
+# PocketFinds — Team Setup
+
+Everyone on the team shares the **same remote Supabase database and the same
+Supabase Storage buckets** — there is no local database or local file
+storage. That means once your `.env` is set up correctly, every image
+anyone uploads (product photos, chat attachments, profile pictures) is
+immediately visible to everyone else, on any machine, with no extra steps.
+
+## Getting set up
+
+1. **Clone the repo, then copy the env file:**
+   ```bash
+   cp .env.example .env
+   ```
+   `.env.example` already contains the real shared credentials (DB, Supabase
+   Storage, mail, Google OAuth) for this project — do **not** regenerate
+   `APP_KEY` or edit the DB/AWS/SUPABASE values, or your machine will be
+   using a different database/storage than everyone else's.
+
+2. **Install dependencies:**
+   ```bash
+   composer install
+   npm install   # if you touch any frontend build step
+   ```
+
+3. **Windows only — fix the "SSL certificate" / cURL error 60 upload crash.**
+   Windows PHP builds don't ship a CA certificate bundle, so any outbound
+   HTTPS call from PHP (including every image upload to Supabase Storage)
+   fails with:
+   ```
+   cURL error 60: SSL certificate ... unable to get local issuer certificate
+   ```
+   Fix it once, on your own machine (this is a PHP install setting, not a
+   project file, so it can't be fixed by pulling from git):
+   - Download https://curl.se/ca/cacert.pem and save it somewhere permanent,
+     e.g. next to your `php.exe` (find it with `where php`).
+   - Open your `php.ini` (`php --ini` shows its path) and add:
+     ```ini
+     [curl]
+     curl.cainfo = "C:\path\to\cacert.pem"
+
+     [openssl]
+     openssl.cafile = "C:\path\to\cacert.pem"
+     ```
+   - **Restart `php artisan serve`** (or your web server) — `php.ini` is only
+     read when the PHP process starts, so an already-running server won't
+     pick up the change until you stop and start it again.
+
+4. **Run the app:**
+   ```bash
+   php artisan serve
+   ```
+
+If a teammate's uploaded image ever doesn't show up for you, it's almost
+always one of: (a) they're still on step 3 above and the upload silently
+went to their own machine instead of Supabase, or (b) their `.env` has
+drifted from `.env.example` (compare `FILESYSTEM_DISK`, `AWS_*`, and
+`SUPABASE_*` — they must match exactly, since those are what point every
+machine at the same storage).
+
+---
+
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
 <p align="center">

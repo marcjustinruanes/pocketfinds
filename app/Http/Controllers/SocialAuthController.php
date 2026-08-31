@@ -71,8 +71,10 @@ class SocialAuthController extends Controller
             request()->session()->regenerate();
 
             if ($existing->is_admin) return redirect()->route('admin.dashboard');
+            if ($existing->is_logistics) return redirect()->route('logistics.dashboard');
             if ($existing->account_type === 'buyer') return redirect()->route('buyer.dashboard');
             if ($existing->account_type === 'seller') return redirect()->route('seller.dashboard');
+            if ($existing->account_type === 'rider') return redirect()->route('rider.dashboard');
             return redirect()->intended('/');
         }
 
@@ -92,7 +94,13 @@ class SocialAuthController extends Controller
 
         $type = session('oauth_account_type', 'buyer');
 
-        return redirect()->route('register', ['type' => $type, 'google' => 1]);
+        // Every role has its own dedicated registration page.
+        return match ($type) {
+            'seller'    => redirect()->route('register.seller', ['google' => 1]),
+            'rider'     => redirect()->route('register.rider', ['google' => 1]),
+            'logistics' => redirect()->route('register.logistics', ['google' => 1]),
+            default     => redirect()->route('register.buyer', ['google' => 1]),
+        };
     }
 
     private function googleFailureRedirect(string $intent, string $message)

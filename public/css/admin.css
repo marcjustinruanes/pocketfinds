@@ -63,6 +63,7 @@ img{max-width:100%;display:block}
 .stamp-seller{background:var(--pink-soft);color:var(--pink-dark);border-color:var(--pink-line)}
 .stamp-rider{background:var(--warning-soft);color:var(--warning);border-color:var(--warning-line)}
 .stamp-admin{background:var(--neutral-soft);color:var(--neutral);border-color:var(--neutral-line)}
+.stamp-logistics{background:var(--info-soft);color:var(--info);border-color:var(--info-line)}
 
 .rail-row{border-left:3px solid var(--border)}
 .rail-pending{border-left-color:var(--warning)}
