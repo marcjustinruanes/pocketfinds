@@ -43,7 +43,7 @@
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0">
         <span style="font-size:13px">Commission Rate</span>
-        <span class="mono">10%</span>
+        <span class="mono">{{ rtrim(rtrim(number_format($commissionRate, 2), '0'), '.') }}%</span>
       </div>
     </div>
   </div>

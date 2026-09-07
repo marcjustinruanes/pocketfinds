@@ -1,15 +1,16 @@
 @extends('logistics.layout')
-@section('title', 'Courier Assignments')
-@section('page-title', 'Courier Assignments')
-@section('page-sub', 'System auto-assigns deliveries to the first courier who accepts')
+@section('title', 'Delivery Assignments')
+@section('page-title', 'Delivery Assignments')
+@section('page-sub', 'Sorted parcels ready for a rider — assign directly, or let riders self-accept first come, first served')
 
 @section('content')
+@if($errors->any())<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ $errors->first() }}</div>@endif
 <div class="card">
   <div class="card-head">
     <h2>Delivery Assignments</h2>
     <div style="display:flex;gap:8px">
-      <span class="stamp stamp-pending">{{ $shipments->where('shipping_status','available')->count() }} awaiting courier</span>
-      <span class="stamp stamp-active">{{ $shipments->whereIn('shipping_status',['accepted','picked_up','out_for_delivery'])->count() }} in progress</span>
+      <span class="stamp stamp-pending">{{ $shipments->where('shipping_status','sorted')->count() }} awaiting courier</span>
+      <span class="stamp stamp-active">{{ $shipments->whereIn('shipping_status',['assigned_to_rider','out_for_delivery'])->count() }} in progress</span>
     </div>
   </div>
   <div class="table-wrap">
@@ -40,7 +41,7 @@
                   <div style="font-size:11px;color:var(--muted)">{{ $courier->email }}</div>
                 </div>
               </div>
-            @elseif($s->shipping_status === 'available')
+            @elseif($s->shipping_status === 'sorted')
               <form method="POST" action="{{ route('logistics.assignments.assign', $s->id) }}" style="display:flex;gap:6px">
                 @csrf @method('PATCH')
                 <select name="courier_id" class="select" required>
@@ -51,6 +52,11 @@
                 </select>
                 <button class="btn btn-sm btn-primary">Assign</button>
               </form>
+            @elseif($s->shipping_status === 'at_sorting_center' && $s->needsHubTransfer())
+              <span style="color:var(--muted);font-size:12.5px">At {{ $s->origin_hub }} — assign a hub-transfer rider on the Scan page</span>
+            @elseif($s->shipping_status === 'hub_transfer')
+              @php($activeLeg = $s->activeHubLeg())
+              <span style="color:var(--muted);font-size:12.5px">{{ optional($s->hubTransferRider)->given_names ?? 'A rider' }} en route {{ $activeLeg->from_hub ?? $s->origin_hub }} → {{ $activeLeg->to_hub ?? $s->destination_hub }}</span>
             @else
               <span style="color:var(--muted);font-size:12.5px">Waiting for courier…</span>
             @endif

@@ -12,9 +12,27 @@
     <a href="{{ route('rider.dashboard') }}" class="nav-item {{ request()->routeIs('rider.dashboard') ? 'active' : '' }}">
       <span class="ic"><x-admin-icon name="dashboard" /></span> Dashboard
     </a>
-    <a href="{{ route('rider.requests') }}" class="nav-item {{ request()->routeIs('rider.requests') ? 'active' : '' }}">
+
+    <div class="nav-label">Pickup (Seller → Hub)</div>
+    <a href="{{ route('rider.pickup-requests') }}" class="nav-item {{ request()->routeIs('rider.pickup-requests') ? 'active' : '' }}">
       <span class="ic"><x-admin-icon name="box" /></span> Pickup Requests
-      @if(($availableRequests ?? 0) > 0)<span class="count">{{ $availableRequests }}</span>@endif
+      @if(($pickupRequests ?? 0) > 0)<span class="count">{{ $pickupRequests }}</span>@endif
+    </a>
+    <a href="{{ route('rider.my-pickups') }}" class="nav-item {{ request()->routeIs('rider.my-pickups') ? 'active' : '' }}">
+      <span class="ic"><x-admin-icon name="pin" /></span> My Pickups
+      @if(($myPickups ?? 0) > 0)<span class="count">{{ $myPickups }}</span>@endif
+    </a>
+
+    <div class="nav-label">Hub Transfer (Hub → Hub)</div>
+    <a href="{{ route('rider.hub-transfers') }}" class="nav-item {{ request()->routeIs('rider.hub-transfers') ? 'active' : '' }}">
+      <span class="ic"><x-admin-icon name="layers" /></span> My Hub Transfers
+      @if(($myHubTransfers ?? 0) > 0)<span class="count">{{ $myHubTransfers }}</span>@endif
+    </a>
+
+    <div class="nav-label">Delivery (Hub → Buyer)</div>
+    <a href="{{ route('rider.requests') }}" class="nav-item {{ request()->routeIs('rider.requests') ? 'active' : '' }}">
+      <span class="ic"><x-admin-icon name="layers" /></span> Delivery Requests
+      @if(($deliveryRequests ?? 0) > 0)<span class="count">{{ $deliveryRequests }}</span>@endif
     </a>
     <a href="{{ route('rider.deliveries') }}" class="nav-item {{ request()->routeIs('rider.deliveries') || request()->routeIs('rider.deliveries.show') ? 'active' : '' }}">
       <span class="ic"><x-admin-icon name="truck" /></span> My Deliveries

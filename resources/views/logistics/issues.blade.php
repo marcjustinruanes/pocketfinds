@@ -32,14 +32,28 @@
             </div>
           </td>
           <td>{{ optional($s->courier)->given_names ? optional($s->courier)->given_names . ' ' . optional($s->courier)->last_name : '—' }}</td>
-          <td><span class="stamp stamp-{{ $s->shipping_status }}">{{ ucfirst($s->shipping_status) }}</span></td>
+          <td>
+            <span class="stamp stamp-{{ $s->shipping_status }}">{{ ucfirst(str_replace('_', ' ', $s->shipping_status)) }}</span>
+            @if($s->delivery_failed_reason)<div style="font-size:11px;color:var(--muted);margin-top:3px">{{ $s->delivery_failed_reason }}</div>@endif
+          </td>
           <td class="mono">{{ $s->created_at?->format('M d, Y') }}</td>
           <td>
-            <form method="POST" action="{{ route('logistics.status.update', $s->id) }}" style="display:flex;gap:8px">
-              @csrf @method('PATCH')
-              <input type="hidden" name="status" value="available">
-              <button class="btn btn-sm btn-outline">Retry</button>
-            </form>
+            @if($s->shipping_status === 'delivery_failed')
+            <div class="row-actions">
+              <form method="POST" action="{{ route('logistics.status.update', $s->id) }}">
+                @csrf @method('PATCH')
+                <input type="hidden" name="status" value="assigned_to_rider">
+                <button class="btn btn-sm btn-outline">Retry Delivery</button>
+              </form>
+              <form method="POST" action="{{ route('logistics.status.update', $s->id) }}">
+                @csrf @method('PATCH')
+                <input type="hidden" name="status" value="returned">
+                <button class="btn btn-sm btn-outline">Return to Seller</button>
+              </form>
+            </div>
+            @else
+            <span style="color:var(--muted);font-size:12px">No action needed</span>
+            @endif
           </td>
         </tr>
         @empty

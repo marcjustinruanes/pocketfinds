@@ -67,6 +67,13 @@ img{max-width:100%;display:block}
 .stamp-approved,.stamp-active{background:var(--success-soft);color:var(--success);border-color:var(--success-line)}
 .stamp-rejected,.stamp-suspended{background:var(--danger-soft);color:var(--danger);border-color:var(--danger-line)}
 .stamp-new{background:var(--pink-soft);color:var(--pink-dark);border-color:var(--pink-line)}
+/* The rest of the order pipeline (built as stamp-{{ $order->status }}) had no color at all
+   before this — "Out for Delivery" and every other in-transit status just rendered as a
+   plain, uncolored badge. */
+.stamp-confirmed,.stamp-preparing,.stamp-ready_for_pickup,.stamp-picked_up,.stamp-at_sorting_center,.stamp-hub_transfer,.stamp-sorted,.stamp-assigned_to_rider,.stamp-out_for_delivery{background:var(--info-soft);color:var(--info);border-color:var(--info-line)}
+.stamp-delivered,.stamp-completed{background:var(--success-soft);color:var(--success);border-color:var(--success-line)}
+.stamp-cancelled,.stamp-delivery_failed{background:var(--danger-soft);color:var(--danger);border-color:var(--danger-line)}
+.stamp-returned{background:var(--neutral-soft);color:var(--neutral);border-color:var(--neutral-line)}
 .order-preview{display:grid;grid-template-columns:72px minmax(0,1fr) auto;align-items:center;gap:13px;padding:16px 0}.order-product-image{width:72px;height:72px;display:grid;place-items:center;overflow:hidden;border:1px solid var(--border);border-radius:8px;background:var(--paper);color:var(--muted);font:10px var(--font-mono)}.order-product-image img{width:100%;height:100%;object-fit:cover}.order-product-copy{min-width:0}.order-product-copy strong{display:block;overflow:hidden;font-size:13px;line-height:1.4;text-overflow:ellipsis;white-space:nowrap}.order-product-copy span{display:block;margin-top:5px;color:var(--muted);font-size:11px}.order-details-button{font-size:11px;white-space:nowrap}.order-details-modal{position:fixed;inset:0;z-index:220;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(20,16,24,.45)}.order-details-modal.open{display:flex}.order-details-dialog{width:min(520px,100%);max-height:90vh;overflow:auto;border-radius:14px;background:var(--white);box-shadow:var(--shadow-lg);padding:20px}.order-details-head{display:flex;justify-content:space-between;gap:16px;padding-bottom:14px;border-bottom:1px solid var(--border)}.order-details-head h3{margin:3px 0 0;font-family:var(--font-mono);font-size:13px}.order-details-list{display:flex;flex-direction:column;gap:11px;padding:15px 0;border-bottom:1px solid var(--border)}
 .order-tracking{padding:16px 0 4px}.tracking-steps{display:flex;flex-direction:column;margin-top:12px}.tracking-step{display:grid;grid-template-columns:24px 1fr;gap:10px;position:relative;min-height:48px;color:var(--muted)}.tracking-step:not(:last-child):before{content:"";position:absolute;left:11px;top:23px;height:38px;border-left:1px solid var(--border)}.tracking-dot{z-index:1;width:23px;height:23px;border:1px solid var(--border);border-radius:50%;display:grid;place-items:center;background:var(--paper);font:10px var(--font-mono)}.tracking-step strong{display:block;font-size:12px;color:var(--muted)}.tracking-step small{display:block;margin-top:3px;font-size:11px}.tracking-step.is-done .tracking-dot{border-color:var(--success);background:var(--success-soft);color:var(--success)}.tracking-step.is-current .tracking-dot{border-color:var(--pink);background:var(--pink);color:#fff}.tracking-step.is-current strong{color:var(--pink-dark)}.order-modal-actions{display:flex;justify-content:flex-end;gap:8px;padding-top:16px}.order-modal-actions .btn{font-size:11px}
 
@@ -157,7 +164,6 @@ body.buyer{background:var(--paper)}
 .home-hero-copy h1{margin:0 0 8px;font-family:var(--font-display);font-size:30px;font-weight:600;letter-spacing:-.01em;color:var(--text)}
 .home-hero-copy p{margin:0;font-size:13.5px;color:var(--muted);max-width:440px}
 .home-section{margin-bottom:28px}
-.home-products{max-width:302px;margin-left:0}
 .home-section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .home-section-head h2{margin:0;font-family:var(--font-display);font-size:18px;font-weight:600}
 
@@ -267,7 +273,7 @@ body:has(.cart-layout){overflow:hidden}
 .voucher-modal-item{display:grid;grid-template-columns:92px minmax(0,1fr) auto;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--paper)}.voucher-modal-item.is-available{border-color:var(--pink-line);background:var(--pink-soft)}.voucher-modal-value{font-family:var(--font-mono);font-size:12px;font-weight:800;color:var(--pink-dark)}.voucher-modal-copy{display:flex;min-width:0;flex-direction:column;gap:3px}.voucher-modal-copy strong{font-size:13px}.voucher-modal-copy span{font-size:11px;color:var(--muted)}.voucher-available{color:var(--success)!important;font-weight:700}.voucher-nearest a{color:var(--pink-dark);font-weight:700}.voucher-modal-use,.voucher-modal-shop{border:1px solid var(--pink);border-radius:8px;background:#fff;color:var(--pink-dark);padding:7px 9px;font-size:11px;font-weight:800;white-space:nowrap;cursor:pointer;text-decoration:none}.voucher-modal-use:hover,.voucher-modal-shop:hover{background:var(--pink);color:#fff}
 
 /* ---- Category grid ---- */
-.category-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.category-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
 .category-chip{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 10px;border:1px solid var(--border);border-radius:var(--radius);background:#fff;font-size:12px;font-weight:600;color:var(--text);transition:border-color .15s,background .15s,transform .15s}
 .category-chip:hover{border-color:var(--pink-line);background:var(--pink-soft);transform:translateY(-2px)}
 .category-icon{display:flex;align-items:center;justify-content:center;color:var(--pink-dark)}
@@ -664,7 +670,6 @@ body:has(.cart-layout){overflow:hidden}
   .cart-layout{grid-template-columns:1fr}
   .cart-summary{position:static}
   .form-grid-2{grid-template-columns:1fr}
-  .category-grid{grid-template-columns:repeat(2,1fr)}
 }
 @media(max-width:860px){
   .shell{grid-template-columns:1fr}

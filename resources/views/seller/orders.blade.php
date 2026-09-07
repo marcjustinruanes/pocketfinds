@@ -5,12 +5,13 @@
 
 @section('content')
 @if(session('order_success'))<div class="auth-success" style="margin-bottom:16px">{{ session('order_success') }}</div>@endif
+@if(session('error'))<div style="background:var(--danger-soft,#fef2f2);border:1px solid var(--danger-line,#fecaca);color:var(--danger,#dc2626);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('error') }}</div>@endif
 
 <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px">
   <div class="kpi">
-    <div class="label">To Ship</div>
-    <div class="value">{{ $orders->where('status','to_ship')->count() }}</div>
-    <div class="delta">Needs preparing</div>
+    <div class="label">Needs Action</div>
+    <div class="value">{{ $orders->whereIn('status', ['placed', 'confirmed', 'preparing'])->count() }}</div>
+    <div class="delta">New, confirmed, or preparing</div>
   </div>
   <div class="kpi">
     <div class="label">Pending Confirmation</div>
@@ -35,20 +36,30 @@
   @php
   $statusTabs = [
     ['all',               'All Orders'],
-    ['to_ship',           'To Ship'],
+    ['placed',            'New'],
+    ['confirmed',         'Confirmed'],
+    ['preparing',         'Preparing'],
+    ['ready_for_pickup',  'Ready for Pickup'],
     ['in_transit',        'In Transit'],
     ['out_for_delivery',  'Out for Delivery'],
     ['delivered',         'Delivered'],
     ['completed',         'Completed'],
+    ['delivery_failed',   'Failed'],
+    ['returned',          'Returned'],
     ['cancelled',         'Cancelled'],
   ];
+  $tabCount = fn ($key) => match ($key) {
+    'all'         => $statusCounts->sum(),
+    'in_transit'  => collect(\App\Models\Order::IN_TRANSIT_STATUSES)->sum(fn ($s) => (int) ($statusCounts[$s] ?? 0)),
+    default       => (int) ($statusCounts[$key] ?? 0),
+  };
   @endphp
-  <div class="tabs" style="padding:0 20px;margin-bottom:0">
+  <div class="tabs" style="padding:0 20px;margin-bottom:0;overflow-x:auto;flex-wrap:nowrap">
     @foreach($statusTabs as [$key, $label])
-    <a href="{{ route('seller.orders', $key === 'all' ? [] : ['status' => $key]) }}" class="tab {{ $status === $key ? 'active' : '' }}">
+    <a href="{{ route('seller.orders', $key === 'all' ? [] : ['status' => $key]) }}" class="tab {{ $status === $key ? 'active' : '' }}" style="white-space:nowrap">
       {{ $label }}
-      @if(($key === 'all' ? $statusCounts->sum() : ($statusCounts[$key] ?? 0)) > 0)
-        <span class="tab-count {{ $status === $key ? 'active' : '' }}">{{ $key === 'all' ? $statusCounts->sum() : ($statusCounts[$key] ?? 0) }}</span>
+      @if($tabCount($key) > 0)
+        <span class="tab-count {{ $status === $key ? 'active' : '' }}">{{ $tabCount($key) }}</span>
       @endif
     </a>
     @endforeach
@@ -59,7 +70,7 @@
       @forelse($orders as $order)
       @php
         $shipment = $order->shipment;
-        $items = collect($order->items ?? []);
+        $items = collect($order->itemsWithImages());
         $visibleItems = $items->take(3);
         $extraCount = max(0, $items->count() - $visibleItems->count());
         $address = collect([
@@ -67,9 +78,14 @@
           $order->shipping_address['barangay'] ?? null, $order->shipping_address['municipality'] ?? null,
           $order->shipping_address['province'] ?? null,
         ])->filter()->join(', ') ?: 'Address not provided';
+        // Only companies with a hub in BOTH your city and the buyer's city can
+        // actually move this parcel through their own connected hub network.
+        $eligibleCompanies = ($order->status === 'preparing' && !$shipment)
+          ? \App\Models\LogisticsHub::companiesServicing(auth()->user()->municipality, $order->shipping_address['municipality'] ?? null)
+          : collect();
         $detailPayload = [
           'number' => $order->order_number,
-          'date' => $order->created_at->format('M d, Y g:i A'),
+          'date' => $order->created_at?->format('M d, Y g:i A') ?? '—',
           'status' => $order->status,
           'status_label' => str_replace('_', ' ', ucfirst($order->status)),
           'buyer_name' => trim(($order->buyer?->given_names ?: 'Customer not provided') . ' ' . $order->buyer?->last_name),
@@ -95,7 +111,7 @@
             'delivered_at' => $shipment->delivered_at?->format('M d, Y g:i A'),
           ] : null,
           'waybill_url' => $shipment ? route('seller.orders.waybill', $order) : null,
-          'message_url' => route('seller.messages', ['buyer' => $order->buyer_id]),
+          'message_url' => route('seller.messages', ['buyer' => $order->buyer_id, 'order' => $order->id]),
         ];
       @endphp
       <div class="order-card-s" data-row data-search="{{ $order->order_number }} {{ $detailPayload['buyer_name'] }}">
@@ -103,9 +119,9 @@
           <div class="order-card-s-id">
             <span class="mono">{{ $order->order_number }}</span>
             <button type="button" class="copy-btn" data-copy="{{ $order->order_number }}" title="Copy order ID">@include('seller.partials.icon', ['name' => 'copy', 'size' => 13])</button>
-            <span class="order-card-s-date">{{ $order->created_at->format('M d, Y g:i A') }}</span>
+            <span class="order-card-s-date">{{ $order->created_at?->format('M d, Y g:i A') ?? '—' }}</span>
           </div>
-          <span class="stamp stamp-{{ $order->status === 'to_ship' ? 'new' : $order->status }}">{{ str_replace('_', ' ', ucfirst($order->status)) }}</span>
+          <span class="stamp stamp-{{ $order->status === 'placed' ? 'new' : $order->status }}">{{ str_replace('_', ' ', ucfirst($order->status)) }}</span>
         </div>
 
         <div class="order-card-s-buyer">
@@ -141,7 +157,12 @@
           <div class="order-card-s-shipment">
             @if($shipment)
               Tracking: <strong>{{ $shipment->tracking_number }}</strong><br>
-              {{ $shipment->courier ? $shipment->courier->given_names . ' ' . $shipment->courier->last_name : 'Awaiting courier' }}
+              @if($shipment->pickup_rider_id)
+                Pickup: {{ $shipment->pickupRider->given_names ?? '' }} {{ $shipment->pickupRider->last_name ?? '' }}
+              @else
+                Awaiting pickup rider
+              @endif
+              @if($shipment->courier) · Delivery: {{ $shipment->courier->given_names }} {{ $shipment->courier->last_name }} @endif
               @if($shipment->scheduled_pickup_at) · Pickup {{ $shipment->scheduled_pickup_at->format('M d, g:i A') }} @endif
             @else
               Not yet handed to courier
@@ -149,11 +170,35 @@
           </div>
           <div class="order-card-s-total">₱{{ number_format($order->total, 2) }}</div>
           <div class="order-card-s-actions">
-            @if($order->status === 'to_ship' && !$shipment)
-              <form method="POST" action="{{ route('seller.orders.ready', $order) }}">
+            @if($order->status === 'placed')
+              <form method="POST" action="{{ route('seller.orders.confirm', $order) }}">
                 @csrf @method('PATCH')
-                <button type="submit" class="btn btn-sm btn-primary">@include('seller.partials.icon', ['name' => 'truck', 'size' => 13]) Ready for Pickup</button>
+                <button type="submit" class="btn btn-sm btn-primary">@include('seller.partials.icon', ['name' => 'check', 'size' => 13]) Confirm Order</button>
               </form>
+            @endif
+            @if($order->status === 'confirmed')
+              <form method="POST" action="{{ route('seller.orders.preparing', $order) }}">
+                @csrf @method('PATCH')
+                <button type="submit" class="btn btn-sm btn-primary">@include('seller.partials.icon', ['name' => 'edit', 'size' => 13]) Start Preparing</button>
+              </form>
+            @endif
+            @if($order->status === 'preparing' && !$shipment)
+              <button type="button" class="btn btn-sm btn-primary"
+                onclick="openLogisticsPickerModal('{{ route('seller.orders.ready', $order) }}', {{ Illuminate\Support\Js::from($eligibleCompanies->values()) }})">
+                @include('seller.partials.icon', ['name' => 'truck', 'size' => 13]) Ready for Pickup
+              </button>
+            @endif
+            @if($shipment && $shipment->shipping_status === 'ready_for_pickup' && is_null($shipment->pickup_approved_at))
+              <span style="color:var(--muted);font-size:11.5px">Waiting for {{ $shipment->logistics_company }}'s admin to confirm handoff</span>
+            @endif
+            @if($shipment && $shipment->shipping_status === 'ready_for_pickup' && $shipment->pickup_rider_id && $shipment->rider_confirmed_pickup_at)
+              {{-- Only unlocked once the rider has confirmed receiving the parcel first. --}}
+              <button type="button" class="btn btn-sm btn-primary"
+                onclick="openConfirmPickupModal('{{ route('seller.orders.confirm-pickup', $order) }}', '{{ $order->order_number }}', {{ Illuminate\Support\Js::from(trim(($shipment->pickupRider->given_names ?? '').' '.($shipment->pickupRider->last_name ?? ''))) }})">
+                @include('seller.partials.icon', ['name' => 'truck', 'size' => 13]) Confirm Pickup
+              </button>
+            @elseif($shipment && $shipment->shipping_status === 'ready_for_pickup' && $shipment->pickup_rider_id)
+              <span style="color:var(--muted);font-size:11.5px">Waiting for the rider to confirm they picked it up</span>
             @endif
             @if($shipment)
               <button type="button" class="btn btn-sm btn-outline" data-waybill-url="{{ route('seller.orders.waybill', ['order' => $order, 'embedded' => 1]) }}" title="Preview Waybill">@include('seller.partials.icon', ['name' => 'file', 'size' => 13]) Waybill</button>
@@ -176,6 +221,32 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="logisticsPickerModal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-head">
+      <div><h3>Choose a Logistics Company</h3><p>Only companies that cover both your area and the buyer's area can carry this order</p></div>
+      <button class="modal-close" type="button" data-modal-close>✕</button>
+    </div>
+    <form method="POST" id="logisticsPickerForm">
+      @csrf
+      @method('PATCH')
+      <div class="modal-body">
+        <div class="form-row" id="logisticsPickerSelectRow">
+          <label for="logisticsCompanySelect">Logistics Company</label>
+          <select name="logistics_company" id="logisticsCompanySelect" required></select>
+        </div>
+        <p id="logisticsPickerEmpty" style="display:none;color:var(--muted);font-size:13px;margin:0">
+          No logistics company currently covers both your location and the buyer's location yet — check back once one adds your area as a hub.
+        </p>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-outline" data-modal-close>Cancel</button>
+        <button type="submit" class="btn btn-primary" id="logisticsPickerSubmit">Hand Off for Pickup</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="modal-overlay" id="scheduleModal">
   <div class="modal" style="max-width:400px">
     <div class="modal-head">
@@ -194,6 +265,30 @@
       <div class="modal-foot">
         <button type="button" class="btn btn-outline" data-modal-close>Cancel</button>
         <button type="submit" class="btn btn-primary">Save Schedule</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="confirmPickupModal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-head">
+      <div><h3>Confirm Pickup</h3><p id="confirmPickupOrderLabel"></p></div>
+      <button class="modal-close" type="button" data-modal-close>✕</button>
+    </div>
+    <form method="POST" id="confirmPickupForm">
+      @csrf @method('PATCH')
+      <div class="modal-body">
+        <p style="margin:0;font-size:13.5px;color:var(--text)">
+          <strong id="confirmPickupRiderName"></strong> has already confirmed picking up this parcel from you. Confirm the handover on your end too to finish it.
+        </p>
+        <p style="margin:10px 0 0;font-size:12px;color:var(--muted)">
+          Only confirm once the rider actually has the parcel in hand — this can't be undone from here.
+        </p>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-outline" data-modal-close>Cancel</button>
+        <button type="submit" class="btn btn-primary">@include('seller.partials.icon', ['name' => 'truck', 'size' => 13]) Confirm Pickup</button>
       </div>
     </form>
   </div>
@@ -274,6 +369,32 @@
 
 @push('head')
 <script>
+function openLogisticsPickerModal(formAction, companies) {
+  document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+  const form = document.getElementById('logisticsPickerForm');
+  form.action = formAction;
+  const select = document.getElementById('logisticsCompanySelect');
+  const selectRow = document.getElementById('logisticsPickerSelectRow');
+  const empty = document.getElementById('logisticsPickerEmpty');
+  const submit = document.getElementById('logisticsPickerSubmit');
+  select.innerHTML = '';
+  if (companies.length) {
+    companies.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = name;
+      select.appendChild(opt);
+    });
+    selectRow.style.display = '';
+    empty.style.display = 'none';
+    submit.disabled = false;
+  } else {
+    selectRow.style.display = 'none';
+    empty.style.display = 'block';
+    submit.disabled = true;
+  }
+  document.getElementById('logisticsPickerModal').classList.add('open');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const waybillModal = document.getElementById('waybillModal');
   const waybillFrame = document.getElementById('waybillFrame');
@@ -317,7 +438,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('odNumber').textContent = o.number;
       document.getElementById('odDate').textContent = 'Placed ' + o.date;
       const statusEl = document.getElementById('odStatus');
-      statusEl.className = 'stamp stamp-' + (o.status === 'to_ship' ? 'new' : o.status);
+      statusEl.className = 'stamp stamp-' + (o.status === 'placed' ? 'new' : o.status);
       statusEl.textContent = o.status_label;
       document.getElementById('odMessageLink').href = o.message_url;
       document.getElementById('odBuyerName').textContent = o.buyer_name;
@@ -398,6 +519,14 @@ function openScheduleModal(orderId, orderNumber) {
   document.getElementById('scheduleOrderLabel').textContent = 'Order ' + orderNumber;
   document.getElementById('scheduleForm').action = '{{ url('/seller/orders') }}/' + orderId + '/schedule-pickup';
   document.getElementById('scheduleModal').classList.add('open');
+}
+
+function openConfirmPickupModal(formAction, orderNumber, riderName) {
+  document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+  document.getElementById('confirmPickupOrderLabel').textContent = 'Order ' + orderNumber;
+  document.getElementById('confirmPickupRiderName').textContent = riderName || 'the assigned rider';
+  document.getElementById('confirmPickupForm').action = formAction;
+  document.getElementById('confirmPickupModal').classList.add('open');
 }
 </script>
 @endpush

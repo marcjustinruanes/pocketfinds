@@ -6,10 +6,13 @@ use App\Http\Controllers\Concerns\HandlesMessaging;
 use App\Models\Announcement;
 use App\Models\Commission;
 use App\Models\Complaint;
-use App\Models\DocumentUpdateRequest;
+use App\Models\AccountUpdateRequest;
+use App\Models\CompanyVehicle;
 use App\Models\Message;
 use App\Models\Order;
+use App\Models\Policy;
 use App\Models\Product;
+use App\Models\Setting;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -55,6 +58,9 @@ class AdminController extends Controller
         if ($user) {
             if ($user->status === 'pending') {
                 return back()->withErrors(['email' => 'Your account is still pending admin approval. Please wait for confirmation.'])->withInput();
+            }
+            if ($user->status === 'interview') {
+                return back()->withErrors(['email' => "You've been invited to a face-to-face interview — check your email for details. Your account will be enabled after that interview is confirmed."])->withInput();
             }
             if ($user->status === 'rejected') {
                 return back()->withErrors(['email' => 'Your account application was rejected.'])
@@ -110,55 +116,92 @@ class AdminController extends Controller
     private function sidebarCounts(): array
     {
         return [
-            'pendingRegistrations' => User::where('status', 'pending')->where('is_admin', false)->count(),
+            // Riders and hub staff wait on their own logistics company's approval, not Admin's —
+            // see LogisticsController::riders()/staff().
+            'pendingRegistrations' => User::where('status', 'pending')->where('is_admin', false)->where('account_type', '!=', 'rider')
+                ->where(fn ($q) => $q->where('logistics_role', '!=', 'hub_staff')->orWhereNull('logistics_role'))
+                ->count(),
             'openDisputes'         => Complaint::whereIn('status', ['open', 'escalated'])->count(),
             'unreadMessages'       => Message::where('receiver_id', auth()->id())->where('read', false)->count(),
-            'pendingDocs'          => DocumentUpdateRequest::where('status', 'pending')->count(),
+            'pendingDocs'          => AccountUpdateRequest::where('status', 'pending')->count(),
             'pendingProducts'      => Product::where('status', 'pending')->count(),
+            'pendingCompanyPolicies' => Policy::where('type', 'logistics_company_terms')->whereNotNull('pending_content')->count(),
+            'pendingVehicles'      => \App\Models\CompanyVehicle::where('platform_status', 'pending')->count(),
         ];
     }
 
     public function approveUser(User $user)
     {
-        $user->update(['status' => 'approved']);
-        $this->notifyRegistrationDecision($user, true);
-        return back();
+        $user->update(['status' => 'approved', 'status_reason' => null]);
+        $this->sendStatusEmail($user, 'approved');
+        return back()->with('success', 'Application approved.');
     }
 
-    public function rejectUser(User $user)
+    public function rejectUser(Request $request, User $user)
     {
-        $user->update(['status' => 'rejected']);
-        $this->notifyRegistrationDecision($user, false);
-        return back();
+        $reason = $this->resolveReason($request);
+        // If a logistics company founder is rejected, remove their registered hubs so
+        // that the company name is fully free for re-use (either by them or someone else).
+        if ($user->is_logistics && $user->logistics_role === 'admin' && $user->business_name) {
+            \App\Models\LogisticsHub::where('company_name', $user->business_name)->delete();
+        }
+        $user->update(['status' => 'rejected', 'status_reason' => $reason]);
+        $this->sendStatusEmail($user, 'rejected', $reason);
+        return back()->with('success', 'Application rejected.');
     }
 
-    /** Registration approve/reject email — every role's registration screen promises this. */
-    private function notifyRegistrationDecision(User $user, bool $approved): void
+    /**
+     * The reason modal (shared by Reject and Suspend) submits a preset radio pick
+     * plus a details textarea that's always fillable, not just when "Other" is
+     * chosen — required only when the pick IS "Other", optional extra context otherwise.
+     */
+    private function resolveReason(Request $request): ?string
+    {
+        $request->validate([
+            'reason_preset'  => 'required|string|max:150',
+            'reason_details' => $request->input('reason_preset') === 'other' ? 'required|string|max:1000' : 'nullable|string|max:1000',
+        ]);
+        $preset  = $request->input('reason_preset');
+        $details = trim((string) $request->input('reason_details'));
+        if ($preset === 'other') return $details;
+        return $details !== '' ? "{$preset} — {$details}" : $preset;
+    }
+
+    /** Formal, branded email for every account-status change a registrant/user is promised. */
+    private function sendStatusEmail(User $user, string $status, ?string $reason = null): void
     {
         if (!$user->email) return;
+        $name = trim($user->given_names . ' ' . $user->last_name);
         $role = ucfirst($user->account_type ?: 'account');
+        $subject = match ($status) {
+            'approved'  => 'PocketFinds — Registration Approved',
+            'activated' => 'PocketFinds — Account Reactivated',
+            'rejected'  => 'PocketFinds — Registration Update',
+            'suspended' => 'PocketFinds — Account Suspended',
+            default     => 'PocketFinds — Account Update',
+        };
         try {
-            \Illuminate\Support\Facades\Mail::raw(
-                $approved
-                    ? "Good news! Your PocketFinds {$role} account has been approved. You can now log in at " . url('/login') . "."
-                    : "Your PocketFinds {$role} account application was not approved. If you believe this is a mistake, please contact support.",
-                fn ($m) => $m->to($user->email)->subject($approved ? 'PocketFinds — Registration Approved' : 'PocketFinds — Registration Update')
-            );
+            \Illuminate\Support\Facades\Mail::send('emails.account-status', compact('name', 'role', 'status', 'reason', 'subject'), function ($m) use ($user, $subject) {
+                $m->to($user->email)->subject($subject);
+            });
         } catch (\Exception $e) {
-            // Registration status is already saved either way — a mail hiccup shouldn't block the admin action.
+            // Status change is already saved either way — a mail hiccup shouldn't block the admin action.
         }
     }
 
     public function activateUser(User $user)
     {
-        $user->update(['status' => 'approved']);
-        return back();
+        $user->update(['status' => 'approved', 'status_reason' => null]);
+        $this->sendStatusEmail($user, 'activated');
+        return back()->with('success', 'Account activated.');
     }
 
-    public function suspendUser(User $user)
+    public function suspendUser(Request $request, User $user)
     {
-        $user->update(['status' => 'suspended']);
-        return back();
+        $reason = $this->resolveReason($request);
+        $user->update(['status' => 'suspended', 'status_reason' => $reason]);
+        $this->sendStatusEmail($user, 'suspended', $reason);
+        return back()->with('success', 'Account suspended.');
     }
 
     public function dashboard(Request $request)
@@ -190,14 +233,27 @@ class AdminController extends Controller
     public function registrations()
     {
         $counts = $this->sidebarCounts();
-        $users  = User::with('category')->where('is_admin', false)->latest()->get();
+        // Riders/couriers are Logistics/Sorting Center's to review (LogisticsController::riders()),
+        // not Admin's — the ERP spec's admin scope is buyer/seller/logistics applications only.
+        // Hub staff join an existing logistics company the same way a rider does, so their
+        // applications belong to that company's own admin too (LogisticsController::staff()),
+        // not the platform admin — otherwise a hub-staff signup would show up here looking
+        // indistinguishable from someone founding a brand new company.
+        // This is a review queue for an initial approve/reject decision, not a directory — an
+        // approved account moves on to the Users page, and a suspended one could only ever have
+        // gotten there by being approved first, so it belongs there too, not back here.
+        $users  = User::with('category')->where('is_admin', false)->where('account_type', '!=', 'rider')
+            ->where(fn ($q) => $q->where('logistics_role', '!=', 'hub_staff')->orWhereNull('logistics_role'))
+            ->whereNotIn('status', ['approved', 'suspended'])->latest()->get();
         return view('admin.registrations', array_merge($counts, compact('users')));
     }
 
     public function users()
     {
         $counts = $this->sidebarCounts();
-        $users  = User::with('category')->where('is_admin', false)->latest()->get();
+        // A rejected application never became a real account — it stays on the Registrations
+        // page for reconsideration (Approve there), not here.
+        $users  = User::with('category')->where('is_admin', false)->where('status', '!=', 'rejected')->latest()->get();
         return view('admin.users', array_merge($counts, compact('users')));
     }
 
@@ -247,10 +303,11 @@ class AdminController extends Controller
         $rejected    = User::where('status', 'rejected')->where('is_admin', false)->count();
         $totalCommission = Commission::sum('commission_amount');
         $commissionCount = Commission::count();
+        $commissionRate  = Setting::current()->commission_rate;
 
         return view('admin.reports', array_merge($counts, compact(
             'totalUsers', 'buyerCount', 'sellerCount', 'riderCount',
-            'pending', 'approved', 'rejected', 'totalCommission', 'commissionCount'
+            'pending', 'approved', 'rejected', 'totalCommission', 'commissionCount', 'commissionRate'
         )));
     }
 
@@ -309,8 +366,88 @@ class AdminController extends Controller
 
     public function settings()
     {
+        $counts   = $this->sidebarCounts();
+        $settings = Setting::current();
+        return view('admin.settings', array_merge($counts, compact('settings')));
+    }
+
+    /** Saves the General card's fields — platform name, support email, commission rate. */
+    public function updateSettings(Request $request)
+    {
+        $data = $request->validate([
+            'platform_name'   => 'required|string|max:255',
+            'support_email'   => 'required|email|max:255',
+            'commission_rate' => 'required|numeric|min:0|max:100',
+        ]);
+
+        Setting::current()->update(array_merge($data, ['updated_by' => auth()->id()]));
+
+        return back()->with('success', 'Settings saved.');
+    }
+
+    /** Flips one feature toggle immediately — used by the Settings page's switches. */
+    public function updateSettingToggle(Request $request)
+    {
+        $data = $request->validate([
+            'key'   => 'required|in:google_signin_enabled,new_registrations_enabled,maintenance_mode,email_notifications_enabled',
+            'value' => 'required|boolean',
+        ]);
+
+        Setting::current()->update([$data['key'] => $data['value'], 'updated_by' => auth()->id()]);
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * One page for every Terms & Conditions document on the platform: PocketFinds' own
+     * per-role ones (admin-authored, saved directly), and every logistics company's own
+     * (submitted by the company, only live once an admin approves it here).
+     */
+    public function policies()
+    {
         $counts = $this->sidebarCounts();
-        return view('admin.settings', $counts);
+        // One Terms & Conditions document per registration role — each independently
+        // admin-editable, keyed by account_type.
+        $terms = Policy::with('editor')->where('type', 'terms_and_conditions')
+            ->get()->keyBy('account_type');
+        $termsHistory = $terms->map(fn ($p) => $p->historyForDisplay()->take(10));
+        $companies = \App\Models\LogisticsCompany::summaries();
+        return view('admin.policies', array_merge($counts, compact('terms', 'termsHistory', 'companies')));
+    }
+
+    /**
+     * Update one role's platform-wide Terms & Conditions document. Every save appends what
+     * the content used to be onto that same row's `history` column — never a silent overwrite.
+     */
+    public function updatePolicy(Request $request, string $accountType)
+    {
+        $policy = Policy::where('type', 'terms_and_conditions')->where('account_type', $accountType)->firstOrFail();
+        $data = $request->validate(['content' => 'required|string|max:20000']);
+        $policy->updateContent($data['content'], auth()->id());
+
+        return back()->with('success', ucfirst($accountType) . ' Terms & Conditions updated.');
+    }
+
+    /** Admin approves a logistics company's submitted Terms & Conditions — it goes live for new registrants immediately. */
+    public function approveCompanyPolicy(string $companyName)
+    {
+        $policy = \App\Models\LogisticsCompany::policyFor($companyName);
+        abort_if(!$policy || !$policy->hasPending(), 404);
+        $policy->approvePending(auth()->id());
+        return back()->with('success', "{$companyName}'s Terms & Conditions approved and published.");
+    }
+
+    /**
+     * Admin sends a company's submitted Terms & Conditions back for revision — the live
+     * version (if any) is untouched, and the company sees exactly what to fix and can resubmit.
+     */
+    public function requestCompanyPolicyRevisions(Request $request, string $companyName)
+    {
+        $data = $request->validate(['rejection_reason' => 'required|string|max:1000']);
+        $policy = \App\Models\LogisticsCompany::policyFor($companyName);
+        abort_if(!$policy || !$policy->hasPending(), 404);
+        $policy->rejectPending($data['rejection_reason']);
+        return back()->with('success', "Revisions requested for {$companyName}'s Terms & Conditions.");
     }
 
     public function announcements()
@@ -460,44 +597,36 @@ class AdminController extends Controller
         return back()->with('success', 'Password updated.');
     }
 
-    public function docRequests()
+    public function updateRequests()
     {
         $counts   = $this->sidebarCounts();
-        $requests = DocumentUpdateRequest::with('user')->latest()->get();
+        $requests = AccountUpdateRequest::with('user')->latest()->get();
         $idTypes  = \DB::table('id_types')->orderBy('id')->get()->keyBy('id');
-        return view('admin.doc-requests', array_merge($counts, compact('requests', 'idTypes')));
+        return view('admin.update-requests', array_merge($counts, compact('requests', 'idTypes')));
     }
 
-    public function approveDocRequest($id)
+    public function approveUpdateRequest($id)
     {
-        $req = DocumentUpdateRequest::findOrFail($id);
+        $req = AccountUpdateRequest::findOrFail($id);
         $req->update(['status' => 'approved', 'reviewed_by' => auth()->id(), 'reviewed_at' => now()]);
+        $req->apply();
 
-        // Apply changes to user
-        $data = array_filter([
-            'id_type_id'           => $req->id_type_id,
-            'id_file'              => $req->id_file,
-            'business_permit_file' => $req->business_permit_file,
-        ], fn($v) => !is_null($v));
-        $req->user->update($data);
-
-        // Notify seller
         \DB::table('notifications')->insert([
             'id'                => (string) \Illuminate\Support\Str::uuid(),
             'user_id'           => $req->user_id,
-            'title'             => 'Document Update Approved',
-            'message'           => 'Your document update request has been approved and your account has been updated.',
+            'title'             => 'Update Request Approved',
+            'message'           => 'Your account update request has been approved and your account has been updated.',
             'notification_type' => 'doc_approved',
             'is_read'           => false,
             'created_at'        => now(),
         ]);
 
-        return back()->with('success', 'Request approved and seller notified.');
+        return back()->with('success', 'Request approved and the user notified.');
     }
 
-    public function rejectDocRequest(Request $request, $id)
+    public function rejectUpdateRequest(Request $request, $id)
     {
-        $req = DocumentUpdateRequest::findOrFail($id);
+        $req = AccountUpdateRequest::findOrFail($id);
         $req->update([
             'status'      => 'rejected',
             'reviewed_by' => auth()->id(),
@@ -505,18 +634,17 @@ class AdminController extends Controller
             'note'        => $request->input('note'),
         ]);
 
-        // Notify seller
         \DB::table('notifications')->insert([
             'id'                => (string) \Illuminate\Support\Str::uuid(),
             'user_id'           => $req->user_id,
-            'title'             => 'Document Update Rejected',
-            'message'           => 'Your document update request was rejected.' . ($request->note ? ' Reason: ' . $request->note : ''),
+            'title'             => 'Update Request Rejected',
+            'message'           => 'Your account update request was rejected.' . ($request->note ? ' Reason: ' . $request->note : ''),
             'notification_type' => 'doc_rejected',
             'is_read'           => false,
             'created_at'        => now(),
         ]);
 
-        return back()->with('success', 'Request rejected and seller notified.');
+        return back()->with('success', 'Request rejected and the user notified.');
     }
 
     public function products()
@@ -564,5 +692,43 @@ class AdminController extends Controller
         ]);
 
         return back()->with('success', 'Product rejected and seller notified.');
+    }
+
+    // ── Company Vehicle Review (platform admin gate) ─────────────────────────────────
+
+    public function vehicles()
+    {
+        $counts   = $this->sidebarCounts();
+        $vehicles = \App\Models\CompanyVehicle::with(['hub', 'submitter'])
+            ->latest()->get();
+        $platformCounts = $vehicles->countBy('platform_status');
+        return view('admin.vehicles', array_merge($counts, compact('vehicles', 'platformCounts')));
+    }
+
+    public function approveVehicle($id)
+    {
+        $vehicle = \App\Models\CompanyVehicle::findOrFail($id);
+        $vehicle->update([
+            'platform_status'        => 'approved',
+            'platform_status_reason' => null,
+            'platform_reviewed_by'   => auth()->id(),
+            'platform_reviewed_at'   => now(),
+            'is_available'           => true,
+        ]);
+        return back()->with('success', "{$vehicle->brand} {$vehicle->model} ({$vehicle->plate_number}) approved — it is now available for rider assignment at the {$vehicle->hub?->municipality} hub.");
+    }
+
+    public function rejectVehicle(Request $request, $id)
+    {
+        $vehicle = \App\Models\CompanyVehicle::findOrFail($id);
+        $reason  = $this->resolveReason($request);
+        $vehicle->update([
+            'platform_status'        => 'rejected',
+            'platform_status_reason' => $reason,
+            'platform_reviewed_by'   => auth()->id(),
+            'platform_reviewed_at'   => now(),
+            'is_available'           => false,
+        ]);
+        return back()->with('success', "{$vehicle->brand} {$vehicle->model} ({$vehicle->plate_number}) rejected.");
     }
 }

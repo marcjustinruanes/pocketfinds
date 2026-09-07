@@ -48,8 +48,10 @@
               </select>
               <button class="btn btn-sm btn-primary">Update</button>
             </form>
-            @elseif($s->shipping_status === 'available')
+            @elseif($s->shipping_status === 'sorted')
             <a href="{{ route('logistics.assignments') }}" style="color:var(--pink-dark);font-size:12px;font-weight:600">Assign a courier →</a>
+            @elseif($s->shipping_status === 'ready_for_pickup')
+            <a href="{{ route('logistics.requests') }}" style="color:var(--pink-dark);font-size:12px;font-weight:600">Review pickup request →</a>
             @else
             <span style="color:var(--muted);font-size:12px">No action needed</span>
             @endif

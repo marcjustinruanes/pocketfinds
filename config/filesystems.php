@@ -57,7 +57,10 @@ return [
             'endpoint'                => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => true,
             'throw'                   => true,
-            'options'                 => ['@http' => ['verify' => false]],
+            // connect_timeout makes a DNS/connection failure fail fast (this network's DNS
+            // resolver is occasionally flaky) rather than hang for 10+ seconds per attempt —
+            // callers that retry (see RegisterController::storeWithRetry()) stay responsive.
+            'options'                 => ['@http' => ['verify' => false, 'connect_timeout' => 5, 'timeout' => 25]],
         ],
 
         // Chat attachments (buyer/seller/logistics/admin messaging) get their own
@@ -72,7 +75,10 @@ return [
             'endpoint'                => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => true,
             'throw'                   => true,
-            'options'                 => ['@http' => ['verify' => false]],
+            // connect_timeout makes a DNS/connection failure fail fast (this network's DNS
+            // resolver is occasionally flaky) rather than hang for 10+ seconds per attempt —
+            // callers that retry (see RegisterController::storeWithRetry()) stay responsive.
+            'options'                 => ['@http' => ['verify' => false, 'connect_timeout' => 5, 'timeout' => 25]],
         ],
 
         // Profile pictures get their own Supabase bucket, separate from 'products'.
@@ -86,7 +92,10 @@ return [
             'endpoint'                => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => true,
             'throw'                   => true,
-            'options'                 => ['@http' => ['verify' => false]],
+            // connect_timeout makes a DNS/connection failure fail fast (this network's DNS
+            // resolver is occasionally flaky) rather than hang for 10+ seconds per attempt —
+            // callers that retry (see RegisterController::storeWithRetry()) stay responsive.
+            'options'                 => ['@http' => ['verify' => false, 'connect_timeout' => 5, 'timeout' => 25]],
         ],
 
         's3' => [

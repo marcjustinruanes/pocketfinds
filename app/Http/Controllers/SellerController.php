@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\DocumentUpdateRequest;
+use App\Models\AccountUpdateRequest;
+use App\Http\Controllers\Concerns\HandlesAccountUpdateRequests;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\Message;
@@ -20,23 +21,22 @@ use Illuminate\Validation\Rules\Password;
 
 class SellerController extends Controller
 {
-    /** Flat platform commission taken off completed sales, used across dashboard/reports. */
-    const COMMISSION_RATE = 0.10;
+    use HandlesAccountUpdateRequests;
 
     public function dashboard()
     {
         $sellerId = auth()->id();
         $orders = Order::where('seller_id', $sellerId);
         $totalSales = (clone $orders)->where('status', 'completed')->sum('total');
-        $newOrders = (clone $orders)->where('status', 'to_ship')->count();
+        $newOrders = (clone $orders)->where('status', 'placed')->count();
         $productsListed = Product::where('seller_id', $sellerId)->where('status', 'active')->count();
         $avgRating = round((float) Review::where('seller_id', $sellerId)->avg('rating'), 1);
         $recentOrders = Order::with('buyer')->where('seller_id', $sellerId)->latest()->limit(5)->get();
         $pipelineCounts = [
-            'new' => (clone $orders)->where('status', 'to_ship')->count(),
-            'prepare' => (clone $orders)->where('status', 'to_ship')->count(),
-            'shipments' => (clone $orders)->where('status', 'in_transit')->count(),
-            'deliveries' => (clone $orders)->whereIn('status', ['completed', 'delivered'])->count(),
+            'new'        => (clone $orders)->where('status', 'placed')->count(),
+            'prepare'    => (clone $orders)->whereIn('status', ['confirmed', 'preparing'])->count(),
+            'shipments'  => (clone $orders)->whereIn('status', ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'hub_transfer', 'sorted', 'assigned_to_rider', 'out_for_delivery'])->count(),
+            'deliveries' => (clone $orders)->whereIn('status', ['delivered', 'completed'])->count(),
         ];
         $chartStart = now()->startOfDay()->subDays(6);
         $salesByDay = (clone $orders)->where('status', 'completed')->where('created_at', '>=', $chartStart)
@@ -53,16 +53,17 @@ class SellerController extends Controller
     public function orders(Request $request)
     {
         $status = $request->query('status', 'all');
-        $orders = Order::with(['buyer', 'paymentMethod', 'shipment.courier'])
+        $orders = Order::with(['buyer', 'paymentMethod', 'shipment.courier', 'shipment.pickupRider'])
             ->where('seller_id', auth()->id())
-            ->when($status !== 'all', fn ($query) => $query->where('status', $status))
+            ->when($status === 'in_transit', fn ($query) => $query->whereIn('status', Order::IN_TRANSIT_STATUSES))
+            ->when($status !== 'all' && $status !== 'in_transit', fn ($query) => $query->where('status', $status))
             ->latest()
             ->get();
 
         $sellerId = auth()->id();
         // "Pending confirmation" = the buyer hasn't confirmed receipt yet, whether the
-        // courier is still en route (out_for_delivery) or has already dropped it off
-        // and is waiting on the buyer to confirm (delivered).
+        // delivery rider is still en route (out_for_delivery) or has already dropped it
+        // off and is waiting on the buyer to confirm (delivered).
         $pendingConfirmation = Order::where('seller_id', $sellerId)->whereIn('status', ['out_for_delivery', 'delivered'])->count();
         $deliveredToday = Order::where('seller_id', $sellerId)->where('status', 'completed')->whereDate('updated_at', today())->count();
         $statusCounts = Order::where('seller_id', $sellerId)->selectRaw('status, count(*) as c')->groupBy('status')->pluck('c', 'status');
@@ -70,25 +71,158 @@ class SellerController extends Controller
         return view('seller.orders', compact('orders', 'status', 'pendingConfirmation', 'deliveredToday', 'statusCounts'));
     }
 
-    /** Seller marks a packed order ready — opens a shipment request for Logistics to approve. */
-    public function readyForPickup(Order $order)
+    /** Order stage transitions a seller drives on their own, before any shipment exists. */
+    private function advanceOrderStage(Order $order, string $from, string $to): void
     {
         abort_unless($order->seller_id === auth()->id(), 403);
-        abort_unless($order->status === 'to_ship', 422, 'This order is not awaiting preparation.');
+        abort_unless($order->status === $from, 422, "This order is not at the \"{$from}\" stage.");
 
-        if (!$order->shipment) {
-            Shipment::create([
-                'order_id'        => $order->id,
-                'tracking_number' => 'PF-SHIP-' . now()->format('ymd') . '-' . strtoupper(Str::random(6)),
-                'shipping_status' => 'pending',
-            ]);
-            DB::table('order_status_history')->insert([
-                'id' => (string) Str::uuid(), 'order_id' => $order->id, 'status' => 'ready_for_pickup',
-                'changed_by' => auth()->id(), 'created_at' => now(),
-            ]);
+        $order->update(['status' => $to]);
+        DB::table('order_status_history')->insert([
+            'id' => (string) Str::uuid(), 'order_id' => $order->id, 'status' => $to,
+            'changed_by' => auth()->id(), 'created_at' => now(),
+        ]);
+    }
+
+    /**
+     * Seller accepts a freshly placed order. This is the moment stock actually
+     * leaves inventory — never at checkout — so several buyers can "place"
+     * against the same limited stock and it's the seller who decides, order by
+     * order, who gets confirmed while stock lasts.
+     */
+    public function confirmOrder(Order $order)
+    {
+        abort_unless($order->seller_id === auth()->id(), 403);
+        abort_unless($order->status === 'placed', 422, 'This order is not at the "placed" stage.');
+
+        try {
+            DB::transaction(function () use ($order) {
+                $products = [];
+                foreach ($order->items ?? [] as $item) {
+                    $product = $products[$item['product_id']]
+                        ?? Product::where('id', $item['product_id'])->lockForUpdate()->first();
+                    if (!$product) {
+                        throw new \RuntimeException("\"{$item['name']}\" is no longer available.");
+                    }
+                    $products[$item['product_id']] = $product;
+                    $available = $product->availableStock($item['variation_group'] ?: null, $item['variation_value'] ?: null);
+                    if ($available < (int) $item['qty']) {
+                        throw new \RuntimeException($available > 0
+                            ? "Only {$available} of \"{$item['name']}\" left in stock — cancel or adjust before confirming."
+                            : "\"{$item['name']}\" is now out of stock.");
+                    }
+                }
+
+                foreach ($order->items ?? [] as $item) {
+                    $products[$item['product_id']]->deductStock(
+                        (int) $item['qty'],
+                        $item['variation_group'] ?: null,
+                        $item['variation_value'] ?: null
+                    );
+                }
+
+                $order->update(['status' => 'confirmed']);
+                DB::table('order_status_history')->insert([
+                    'id' => (string) Str::uuid(), 'order_id' => $order->id, 'status' => 'confirmed',
+                    'changed_by' => auth()->id(), 'created_at' => now(),
+                ]);
+            });
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
         }
 
-        return back()->with('order_success', 'Order handed off to logistics for courier pickup.');
+        return back()->with('order_success', 'Order confirmed.');
+    }
+
+    /** Seller starts packing a confirmed order. */
+    public function startPreparing(Order $order)
+    {
+        $this->advanceOrderStage($order, 'confirmed', 'preparing');
+        return back()->with('order_success', 'Order marked as preparing.');
+    }
+
+    /**
+     * Seller marks a packed order ready and picks which logistics company carries it —
+     * only ones whose own hub network covers both the seller's city and the buyer's city
+     * are offered (see App\Models\LogisticsHub::companiesServicing()). That company's origin
+     * and destination hub become part of the shipment's route: same city means the existing
+     * pickup -> sort -> deliver pipeline runs unchanged; different cities add a hub-to-hub
+     * transfer leg in between (see Shipment::needsHubTransfer()).
+     */
+    public function readyForPickup(Request $request, Order $order)
+    {
+        abort_unless($order->seller_id === auth()->id(), 403);
+        abort_unless($order->status === 'preparing', 422, 'This order is not awaiting preparation.');
+
+        $seller = auth()->user();
+        $buyerMunicipality = $order->shipping_address['municipality'] ?? null;
+        $eligible = \App\Models\LogisticsHub::companiesServicing($seller->municipality, $buyerMunicipality);
+
+        $data = $request->validate([
+            'logistics_company' => ['required', 'string', function ($attribute, $value, $fail) use ($eligible) {
+                if (!$eligible->contains($value)) {
+                    $fail('Choose a logistics company that covers both your location and the buyer\'s location.');
+                }
+            }],
+        ]);
+
+        if (!$order->shipment) {
+            // pickup_approved_at stays null until the company's admin confirms the handoff
+            // (LogisticsController::approveRequest()) — until then this is invisible to
+            // every pickup rider, even though its status is already 'ready_for_pickup'.
+            Shipment::create([
+                'order_id'             => $order->id,
+                'tracking_number'      => 'PF-SHIP-' . now()->format('ymd') . '-' . strtoupper(Str::random(6)),
+                'shipping_status'      => 'ready_for_pickup',
+                'logistics_company'    => $data['logistics_company'],
+                'origin_hub'           => $seller->municipality,
+                'origin_province'      => $seller->province,
+                'destination_hub'      => $buyerMunicipality,
+                'destination_province' => $order->shipping_address['province'] ?? null,
+            ]);
+        }
+        $order->update(['status' => 'ready_for_pickup']);
+        DB::table('order_status_history')->insert([
+            'id' => (string) Str::uuid(), 'order_id' => $order->id, 'status' => 'ready_for_pickup',
+            'changed_by' => auth()->id(), 'created_at' => now(),
+        ]);
+
+        return back()->with('order_success', 'Order handed off to ' . $data['logistics_company'] . ' for courier pickup.');
+    }
+
+    /**
+     * Seller confirms handing the parcel to the pickup rider — the SECOND half of the pickup
+     * leg's mutual confirmation (see Shipment::maybeAdvancePastPickupConfirmation()). The
+     * rider must confirm receiving it FIRST (RiderController::confirmPickupReceipt()) — the
+     * seller's button stays hidden until then — so this always completes the pair and
+     * advances the shipment to 'picked_up' the moment it runs.
+     */
+    public function confirmPickup(Order $order)
+    {
+        abort_unless($order->seller_id === auth()->id(), 403);
+        $order->load('shipment');
+        abort_unless($order->shipment && $order->shipment->shipping_status === 'ready_for_pickup', 422, 'No pickup rider has accepted this order yet.');
+        abort_unless($order->shipment->pickup_rider_id, 422, 'No pickup rider has accepted this order yet.');
+        abort_unless($order->shipment->rider_confirmed_pickup_at, 422, 'Waiting for the rider to confirm they picked up the parcel first.');
+        abort_if($order->shipment->seller_confirmed_pickup_at, 422, 'You already confirmed this handover.');
+
+        $order->shipment->update(['seller_confirmed_pickup_at' => now()]);
+        // The rider confirmed first (enforced above), so this always completes the pair.
+        $order->shipment->maybeAdvancePastPickupConfirmation();
+        $order->update(['status' => 'picked_up']);
+        DB::table('order_status_history')->insert([
+            'id' => (string) Str::uuid(), 'order_id' => $order->id, 'status' => 'picked_up',
+            'changed_by' => auth()->id(), 'created_at' => now(),
+        ]);
+
+        DB::table('notifications')->insert([
+            'id' => (string) Str::uuid(), 'user_id' => $order->shipment->pickup_rider_id,
+            'title' => 'Pickup Confirmed', 'message' => 'The seller confirmed you picked up order #' . $order->order_number . '. Bring it to the sorting center.',
+            'notification_type' => 'order_status', 'reference_id' => $order->id,
+            'is_read' => false, 'created_at' => now(),
+        ]);
+
+        return back()->with('order_success', 'Pickup confirmed.');
     }
 
     /** Printable waybill/shipping label for a prepared order. */
@@ -158,7 +292,7 @@ class SellerController extends Controller
             ->whereBetween('updated_at', [$from, $to])->get();
 
         $totalRevenue   = (float) $completed->sum('total');
-        $commission     = round($totalRevenue * self::COMMISSION_RATE, 2);
+        $commission     = round($totalRevenue * \App\Models\Setting::current()->commissionFraction(), 2);
         $shippingFees   = (float) $completed->sum('shipping_amount');
         $discounts      = (float) $completed->sum('discount_amount');
         $netProfit      = $totalRevenue - $commission;
@@ -187,7 +321,7 @@ class SellerController extends Controller
         $categoryTotal = max(1, $salesByCategory->sum());
 
         $allOrders = Order::where('seller_id', $sellerId)->whereBetween('created_at', [$from, $to])->get();
-        $fulfillable = $allOrders->whereIn('status', ['completed', 'in_transit', 'out_for_delivery', 'delivered', 'cancelled'])->count();
+        $fulfillable = $allOrders->whereIn('status', array_diff(Order::STATUSES, ['placed', 'confirmed', 'preparing']))->count();
         $fulfillmentRate = $fulfillable ? round($allOrders->where('status', 'completed')->count() / $fulfillable * 100) : null;
         $satisfaction = Review::where('seller_id', $sellerId)->avg('rating');
 
@@ -215,8 +349,10 @@ class SellerController extends Controller
         $admin = User::where('is_admin', true)->first();
 
         $messages = [];
+        $buyerOrders = collect();
+        $autoAttachOrder = null;
         if ($buyer) {
-            $messages = Message::with('product')
+            $messages = Message::with(['product', 'order'])
                 ->where(function($q) use ($buyer) {
                     $q->where('sender_id', auth()->id())->where('receiver_id', $buyer->id);
                 })->orWhere(function($q) use ($buyer) {
@@ -229,6 +365,16 @@ class SellerController extends Controller
                 ->where('receiver_id', auth()->id())
                 ->where('read', false)
                 ->update(['read' => true]);
+
+            // This buyer's orders with this shop, for the Orders picker in the composer.
+            $buyerOrders = Order::where('seller_id', auth()->id())->where('buyer_id', $buyer->id)
+                ->latest()->get();
+
+            // "Message Buyer" from order management (?order=<id>) arrives here ready to
+            // attach — the seller doesn't have to open the picker and find it themselves.
+            if ($request->filled('order')) {
+                $autoAttachOrder = $buyerOrders->firstWhere('id', $request->query('order'));
+            }
         }
 
         $sellerProducts = Product::where('seller_id', auth()->id())->where('status', 'active')->orderBy('name')->get();
@@ -241,7 +387,7 @@ class SellerController extends Controller
             ->groupBy(fn($m) => $m->sender_id === auth()->id() ? $m->receiver_id : $m->sender_id)
             ->map(fn($msgs) => $msgs->first());
 
-        return view('seller.messages', compact('buyer', 'admin', 'messages', 'conversations', 'sellerProducts'));
+        return view('seller.messages', compact('buyer', 'admin', 'messages', 'conversations', 'sellerProducts', 'buyerOrders', 'autoAttachOrder'));
     }
 
     public function messagesPoll(Request $request)
@@ -256,7 +402,7 @@ class SellerController extends Controller
             ->where('read', false)
             ->update(['read' => true]);
 
-        $messages = Message::with('product')
+        $messages = Message::with(['product', 'order'])
             ->where(function ($query) use ($buyer) {
                 $query->where('sender_id', auth()->id())->where('receiver_id', $buyer->id);
             })->orWhere(function ($query) use ($buyer) {
@@ -303,6 +449,7 @@ class SellerController extends Controller
             'receiver_id' => ['required', 'integer'],
             'body'        => ['nullable', 'string', 'max:2000'],
             'product_id'  => ['nullable', 'string'],
+            'order_id'    => ['nullable', 'string'],
             'attachments'   => ['nullable', 'array', 'max:5'],
             'attachments.*' => ['file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi'],
             'attachment'    => ['nullable', 'file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi'],
@@ -313,11 +460,16 @@ class SellerController extends Controller
             ->firstOrFail();
         $files = $request->file('attachments', []);
         if ($request->hasFile('attachment')) $files[] = $request->file('attachment');
-        abort_unless(filled($data['body'] ?? null) || $files || filled($data['product_id'] ?? null), 422, 'Send a message, product, image, or video.');
+        abort_unless(filled($data['body'] ?? null) || $files || filled($data['product_id'] ?? null) || filled($data['order_id'] ?? null), 422, 'Send a message, product, order, image, or video.');
 
         $product = null;
         if (filled($data['product_id'] ?? null)) {
             $product = Product::whereKey($data['product_id'])->where('seller_id', auth()->id())->where('status', 'active')->firstOrFail();
+        }
+        $order = null;
+        if (filled($data['order_id'] ?? null)) {
+            // Only an order that's actually this seller's, with this exact buyer, can be attached.
+            $order = Order::whereKey($data['order_id'])->where('seller_id', auth()->id())->where('buyer_id', $data['receiver_id'])->firstOrFail();
         }
 
         $messages = [];
@@ -325,8 +477,9 @@ class SellerController extends Controller
             $msg = ['sender_id' => auth()->id(), 'receiver_id' => $data['receiver_id'], 'read' => false];
             if ($index === 0 && filled($data['body'] ?? null)) $msg['body'] = $data['body'];
             if ($index === 0 && $product) $msg['product_id'] = $product->id;
+            if ($index === 0 && $order) $msg['order_id'] = $order->id;
             if ($file) $this->addAttachment($msg, $file);
-            $saved = Message::create($msg); $saved->load('product');
+            $saved = Message::create($msg); $saved->load(['product', 'order']);
             $messages[] = $this->formatMessage($saved);
         }
 
@@ -357,6 +510,11 @@ class SellerController extends Controller
             'product_price'   => $m->product?->price,
             'product_img'     => $m->product?->image ? (rtrim(config('filesystems.disks.supabase.url'), '/') . '/' . ltrim($m->product->image, '/')) : null,
             'product_url'     => $m->product_id ? route('buyer.product', $m->product_id) : null,
+            'order_id'        => $m->order_id,
+            'order_number'    => $m->order?->order_number,
+            'order_status'    => $m->order ? str_replace('_', ' ', ucfirst($m->order->status)) : null,
+            'order_total'     => $m->order?->total,
+            'order_url'       => $m->order_id ? route('seller.orders') : null,
             'attachment_path' => $m->attachment_path ? route('message.media', ['path' => $m->attachment_path]) : null,
             'attachment_name' => $m->attachment_name,
             'attachment_type' => $m->attachment_type,
@@ -641,14 +799,8 @@ class SellerController extends Controller
 
     public function account()
     {
-        $pendingRequest = DocumentUpdateRequest::where('user_id', auth()->id())
-            ->where('status', 'pending')
-            ->latest()
-            ->first();
-
-        $lastRequest = DocumentUpdateRequest::where('user_id', auth()->id())
-            ->latest()
-            ->first();
+        $pendingRequest = $this->pendingAccountUpdateRequest();
+        $lastRequest    = $this->lastAccountUpdateRequest();
 
         return view('seller.account', [
             'seller'          => auth()->user(),
@@ -660,9 +812,10 @@ class SellerController extends Controller
         ]);
     }
 
+    /** Submits a profile-change request — nothing changes on the account until admin approves it. */
     public function updateProfile(Request $request)
     {
-        $data = $request->validate([
+        $request->validate([
             'given_names' => 'required|string|max:255',
             'last_name'   => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
@@ -671,13 +824,18 @@ class SellerController extends Controller
             'birthday'    => 'nullable|date',
         ]);
 
-        auth()->user()->update($data);
-        return back()->with('profile_success', 'Profile updated successfully.');
+        return $this->submitAccountUpdateRequest(
+            $request,
+            ['given_names', 'last_name', 'middle_name', 'contact_no', 'sex', 'birthday'],
+            [],
+            'profile_success'
+        );
     }
 
+    /** Submits an address-change request — nothing changes on the account until admin approves it. */
     public function updateAddress(Request $request)
     {
-        $data = $request->validate([
+        $request->validate([
             'province'     => 'required|string|max:255',
             'municipality' => 'required|string|max:255',
             'barangay'     => 'required|string|max:255',
@@ -685,21 +843,30 @@ class SellerController extends Controller
             'street'       => 'nullable|string|max:255',
         ]);
 
-        auth()->user()->update($data);
-        return back()->with('address_success', 'Address updated successfully.');
+        return $this->submitAccountUpdateRequest(
+            $request,
+            ['province', 'municipality', 'barangay', 'house_no', 'street'],
+            [],
+            'address_success'
+        );
     }
 
+    /** Submits a shop-info-change request — nothing changes on the account until admin approves it. */
     public function updateShop(Request $request)
     {
-        $data = $request->validate([
+        $request->validate([
             'business_name' => 'nullable|string|max:255',
             'username'      => 'nullable|string|max:255|unique:users,username,' . auth()->id(),
             'category_id'   => 'nullable|integer|exists:categories,id',
             'shipping_fee'  => 'nullable|numeric|min:0|max:99999.99',
         ]);
 
-        auth()->user()->update($data);
-        return back()->with('shop_success', 'Shop information updated successfully.');
+        return $this->submitAccountUpdateRequest(
+            $request,
+            ['business_name', 'username', 'category_id', 'shipping_fee'],
+            [],
+            'shop_success'
+        );
     }
 
     public function vouchers()
@@ -749,6 +916,7 @@ class SellerController extends Controller
         return back()->with('voucher_success', 'Voucher deleted.');
     }
 
+    /** Submits a document-change request (ID / business permit) — pending admin approval like every other account edit. */
     public function updateDocuments(Request $request)
     {
         $request->validate([
@@ -757,25 +925,12 @@ class SellerController extends Controller
             'business_permit_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
 
-        DocumentUpdateRequest::where('user_id', auth()->id())
-            ->where('status', 'pending')
-            ->delete();
-
-        $data = [
-            'user_id'    => auth()->id(),
-            'id_type_id' => $request->id_type_id,
-            'status'     => 'pending',
-        ];
-
-        if ($request->hasFile('id_file')) {
-            $data['id_file'] = $request->file('id_file')->store('id_files', 'supabase');
-        }
-        if ($request->hasFile('business_permit_file')) {
-            $data['business_permit_file'] = $request->file('business_permit_file')->store('permit_files', 'supabase');
-        }
-
-        DocumentUpdateRequest::create($data);
-        return back()->with('docs_success', 'Your document update request has been submitted and is pending admin approval.');
+        return $this->submitAccountUpdateRequest(
+            $request,
+            ['id_type_id'],
+            ['id_file' => 'supabase', 'business_permit_file' => 'supabase'],
+            'docs_success'
+        );
     }
 
     public function updatePassword(Request $request)

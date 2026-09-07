@@ -332,6 +332,15 @@
                                 <input class="auth-input" id="middle_name" name="middle_name" type="text" placeholder="Santos" maxlength="50">
                             </div>
                             <div class="auth-field">
+                                <label class="auth-label" for="suffix">Suffix</label>
+                                <select class="auth-input auth-select" id="suffix" name="suffix">
+                                    <option value="">None</option>
+                                    @foreach(\App\Enums\Suffix::cases() as $suffixOption)
+                                        <option value="{{ $suffixOption->value }}">{{ $suffixOption->value }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="auth-field">
                                 <label class="auth-label" for="sex">Sex <span class="auth-required">*</span></label>
                                 <select class="auth-input auth-select" id="sex" name="sex" required>
                                     <option value="" disabled selected>Select sex</option>
@@ -504,96 +513,17 @@
 
                 </form>
 
-                {{-- T&C Modal --}}
+                {{-- Terms & Conditions Modal — content is admin-authored (see admin/settings.blade.php),
+                     not hardcoded here; #tcContent below just renders whatever Policy record holds. --}}
                 <div id="tcModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(15,15,25,.7);backdrop-filter:blur(4px);align-items:center;justify-content:center">
-                    <div style="background:#fff;border-radius:18px;width:min(480px,94vw);max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.25)">
-                        {{-- Header --}}
-                        <div style="padding:20px 22px 0;flex-shrink:0">
-                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-                                <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--auth-primary)">Terms &amp; Conditions</span>
-                                <span id="tcProgress" style="font-size:11px;color:var(--auth-muted)">Question 1 of 5</span>
-                            </div>
-                            <div style="height:4px;background:#f1f5f9;border-radius:99px;overflow:hidden;margin-bottom:16px">
-                                <div id="tcBar" style="height:100%;width:20%;background:var(--auth-primary);border-radius:99px;transition:width .35s ease"></div>
-                            </div>
+                    <div style="background:#fff;border-radius:18px;width:min(520px,94vw);max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.25)">
+                        <div style="padding:20px 22px;border-bottom:1px solid #f1f5f9;flex-shrink:0">
+                            <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--auth-primary)">{{ $terms->title ?? 'Terms & Conditions' }}</span>
                         </div>
-                        {{-- Slides --}}
-                        <div id="tcSlides" style="flex:1;overflow:hidden;position:relative;min-height:260px">
-                            {{-- Slide 1 --}}
-                            <div class="tc-slide" style="position:absolute;inset:0;padding:0 22px 22px;overflow-y:auto;transition:transform .3s ease,opacity .3s ease">
-                                <div style="background:var(--auth-primary-soft);border-left:3px solid var(--auth-primary);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12px;line-height:1.7;color:#374151">
-                                    <strong style="display:block;margin-bottom:4px;display:flex;align-items:center;gap:6px"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> Account Use</strong>
-                                    Your PocketFinds account is for personal use only. You may not share, sell, or transfer your account to another person. You are responsible for all activity that occurs under your account.
-                                </div>
-                                <p style="font-size:13px;font-weight:700;color:#111;margin:0 0 12px">Quick check — who is responsible for activity on your account?</p>
-                                <div class="tc-options" style="display:flex;flex-direction:column;gap:8px">
-                                    <button type="button" class="tc-opt" data-correct="false" onclick="tcAnswer(this)">PocketFinds support team</button>
-                                    <button type="button" class="tc-opt" data-correct="true" onclick="tcAnswer(this)">You, the account holder</button>
-                                    <button type="button" class="tc-opt" data-correct="false" onclick="tcAnswer(this)">Anyone who uses your device</button>
-                                </div>
-                                <p class="tc-feedback" style="display:none;margin:10px 0 0;font-size:12px;border-radius:8px;padding:8px 12px"></p>
-                            </div>
-                            {{-- Slide 2 --}}
-                            <div class="tc-slide" style="position:absolute;inset:0;padding:0 22px 22px;overflow-y:auto;transform:translateX(100%);opacity:0;transition:transform .3s ease,opacity .3s ease">
-                                <div style="background:var(--auth-primary-soft);border-left:3px solid var(--auth-primary);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12px;line-height:1.7;color:#374151">
-                                    <strong style="display:block;margin-bottom:4px;display:flex;align-items:center;gap:6px"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Privacy &amp; Data</strong>
-                                    We collect only the information needed to verify your identity and operate your account. Your data is never sold to third parties. You may request deletion of your account and data at any time.
-                                </div>
-                                <p style="font-size:13px;font-weight:700;color:#111;margin:0 0 12px">Does PocketFinds sell your personal data to third parties?</p>
-                                <div class="tc-options" style="display:flex;flex-direction:column;gap:8px">
-                                    <button type="button" class="tc-opt" data-correct="false" onclick="tcAnswer(this)">Yes, to improve ads</button>
-                                    <button type="button" class="tc-opt" data-correct="true" onclick="tcAnswer(this)">No, never</button>
-                                    <button type="button" class="tc-opt" data-correct="false" onclick="tcAnswer(this)">Only with your password</button>
-                                </div>
-                                <p class="tc-feedback" style="display:none;margin:10px 0 0;font-size:12px;border-radius:8px;padding:8px 12px"></p>
-                            </div>
-                            {{-- Slide 3 --}}
-                            <div class="tc-slide" style="position:absolute;inset:0;padding:0 22px 22px;overflow-y:auto;transform:translateX(100%);opacity:0;transition:transform .3s ease,opacity .3s ease">
-                                <div style="background:var(--auth-primary-soft);border-left:3px solid var(--auth-primary);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12px;line-height:1.7;color:#374151">
-                                    <strong style="display:block;margin-bottom:4px;display:flex;align-items:center;gap:6px"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> Prohibited Content</strong>
-                                    You may not list counterfeit, illegal, or prohibited items on PocketFinds. Violations may result in immediate account suspension and may be reported to relevant authorities.
-                                </div>
-                                <p style="font-size:13px;font-weight:700;color:#111;margin:0 0 12px">What happens if you list prohibited items?</p>
-                                <div class="tc-options" style="display:flex;flex-direction:column;gap:8px">
-                                    <button type="button" class="tc-opt" data-correct="false" onclick="tcAnswer(this)">You get a warning email only</button>
-                                    <button type="button" class="tc-opt" data-correct="false" onclick="tcAnswer(this)">Nothing, it's allowed</button>
-                                    <button type="button" class="tc-opt" data-correct="true" onclick="tcAnswer(this)">Account suspension and possible reporting</button>
-                                </div>
-                                <p class="tc-feedback" style="display:none;margin:10px 0 0;font-size:12px;border-radius:8px;padding:8px 12px"></p>
-                            </div>
-                            {{-- Slide 4 --}}
-                            <div class="tc-slide" style="position:absolute;inset:0;padding:0 22px 22px;overflow-y:auto;transform:translateX(100%);opacity:0;transition:transform .3s ease,opacity .3s ease">
-                                <div style="background:var(--auth-primary-soft);border-left:3px solid var(--auth-primary);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12px;line-height:1.7;color:#374151">
-                                    <strong style="display:block;margin-bottom:4px;display:flex;align-items:center;gap:6px"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Reviews &amp; Ratings</strong>
-                                    Reviews must be honest and based on real transactions. Fake reviews, review manipulation, or incentivized reviews are strictly prohibited and will result in removal of the review and possible account action.
-                                </div>
-                                <p style="font-size:13px;font-weight:700;color:#111;margin:0 0 12px">Are you allowed to pay someone to leave you a good review?</p>
-                                <div class="tc-options" style="display:flex;flex-direction:column;gap:8px">
-                                    <button type="button" class="tc-opt" data-correct="true" onclick="tcAnswer(this)">No, that's strictly prohibited</button>
-                                    <button type="button" class="tc-opt" data-correct="false" onclick="tcAnswer(this)">Yes, if it's a small amount</button>
-                                    <button type="button" class="tc-opt" data-correct="false" onclick="tcAnswer(this)">Only for your first 10 reviews</button>
-                                </div>
-                                <p class="tc-feedback" style="display:none;margin:10px 0 0;font-size:12px;border-radius:8px;padding:8px 12px"></p>
-                            </div>
-                            {{-- Slide 5 --}}
-                            <div class="tc-slide" style="position:absolute;inset:0;padding:0 22px 22px;overflow-y:auto;transform:translateX(100%);opacity:0;transition:transform .3s ease,opacity .3s ease">
-                                <div style="background:var(--auth-primary-soft);border-left:3px solid var(--auth-primary);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12px;line-height:1.7;color:#374151">
-                                    <strong style="display:block;margin-bottom:4px;display:flex;align-items:center;gap:6px"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Account Changes</strong>
-                                    PocketFinds reserves the right to update these terms at any time. Continued use of the platform after changes are posted means you accept the updated terms. You will be notified of major changes via email.
-                                </div>
-                                <p style="font-size:13px;font-weight:700;color:#111;margin:0 0 12px">If PocketFinds updates the terms and you keep using the app, what does that mean?</p>
-                                <div class="tc-options" style="display:flex;flex-direction:column;gap:8px">
-                                    <button type="button" class="tc-opt" data-correct="false" onclick="tcAnswer(this)">You need to re-register</button>
-                                    <button type="button" class="tc-opt" data-correct="true" onclick="tcAnswer(this)">You accept the updated terms</button>
-                                    <button type="button" class="tc-opt" data-correct="false" onclick="tcAnswer(this)">The old terms still apply to you</button>
-                                </div>
-                                <p class="tc-feedback" style="display:none;margin:10px 0 0;font-size:12px;border-radius:8px;padding:8px 12px"></p>
-                            </div>
-                        </div>
-                        {{-- Footer --}}
-                        <div style="padding:14px 22px;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
-                            <button type="button" id="tcCloseBtn" onclick="closeTc()" style="font-size:12px;color:var(--auth-muted);background:none;border:none;cursor:pointer;padding:0">✕ Close</button>
-                            <button type="button" id="tcNextBtn" onclick="tcNext()" disabled style="padding:8px 20px;background:var(--auth-primary);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;opacity:.4;transition:opacity .2s">Next →</button>
+                        <div id="tcContent" style="flex:1;overflow-y:auto;padding:18px 22px;font-size:13px;line-height:1.7;color:#374151;white-space:pre-wrap">{{ $terms->content ?? 'Terms & Conditions are not available right now — please contact support.' }}</div>
+                        <div style="padding:14px 22px;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0">
+                            <span id="tcScrollHint" style="font-size:11px;color:var(--auth-muted)">Scroll to the bottom to continue</span>
+                            <button type="button" id="tcCloseBtn" onclick="closeTc()" style="padding:8px 20px;background:var(--auth-primary);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0">Close</button>
                         </div>
                     </div>
                 </div>
@@ -602,11 +532,8 @@
                 <div class="img-lightbox" id="imgLightbox" onclick="closeLightbox()">
                     <button class="img-lightbox-close" onclick="closeLightbox()">&times;</button>
                     <img id="lightboxImg" src="" alt="Preview" style="display:none">
-                    <div id="lightboxPdf" style="display:none;flex-direction:column;align-items:center;gap:16px">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                        <p id="lightboxPdfName" style="color:#fff;font-size:14px;margin:0"></p>
-                        <a id="lightboxPdfLink" href="" target="_blank" onclick="event.stopPropagation()" style="padding:10px 22px;background:var(--auth-primary);color:#fff;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none">Open PDF</a>
-                    </div>
+                    {{-- Rendered in-page via an <iframe>, injected by showPdfLightbox() in register.js — no external tab. --}}
+                    <div id="lightboxPdf" style="display:none" onclick="event.stopPropagation()"></div>
                 </div>
 
                 {{-- Success screen --}}

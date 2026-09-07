@@ -130,7 +130,7 @@
               </td>
               <td><span class="stamp stamp-{{ $user->account_type }}">{{ ucfirst($user->account_type) }}</span></td>
               <td class="mono" style="font-size:11px">{{ ucfirst($user->auth_method) }}</td>
-              <td class="mono">{{ $user->created_at->format('M d, Y') }}</td>
+              <td class="mono">{{ $user->created_at?->format('M d, Y') ?? '—' }}</td>
               <td><span class="stamp stamp-{{ $user->status }}">{{ ucfirst($user->status) }}</span></td>
             </tr>
             @empty
@@ -192,9 +192,9 @@
           @if($openDisputes > 0)<span class="badge-count" style="background:var(--danger)">{{ $openDisputes }}</span>@endif
           <span class="chev"><x-admin-icon name="chevron-right" /></span>
         </a>
-        <a href="{{ route('admin.doc-requests') }}" class="action-tile tone-info">
+        <a href="{{ route('admin.update-requests') }}" class="action-tile tone-info">
           <span class="ic"><x-admin-icon name="file" /></span>
-          <span class="copy"><strong>Document Requests</strong></span>
+          <span class="copy"><strong>Update Requests</strong></span>
           @if(!empty($pendingDocs))<span class="badge-count" style="background:var(--info)">{{ $pendingDocs }}</span>@endif
           <span class="chev"><x-admin-icon name="chevron-right" /></span>
         </a>
@@ -214,7 +214,7 @@
     @if($latestAnnouncement)
     <div class="card">
       <div class="card-head">
-        <div><h2>Latest Announcement</h2><p>Posted {{ $latestAnnouncement->created_at->format('M d, Y') }}</p></div>
+        <div><h2>Latest Announcement</h2><p>Posted {{ $latestAnnouncement->created_at?->format('M d, Y') ?? '—' }}</p></div>
         <a href="{{ route('admin.announcements') }}" class="btn btn-sm btn-outline">Manage</a>
       </div>
       <div class="card-pad">

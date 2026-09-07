@@ -56,9 +56,10 @@ img{max-width:100%;display:block}
 .stamp:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
 .stamp-pending{background:var(--warning-soft);color:var(--warning);border-color:var(--warning-line)}
 .stamp-approved,.stamp-active,.stamp-verified,.stamp-paid,.stamp-resolved{background:var(--success-soft);color:var(--success);border-color:var(--success-line)}
-.stamp-disapproved,.stamp-suspended,.stamp-flagged,.stamp-rejected{background:var(--danger-soft);color:var(--danger);border-color:var(--danger-line)}
-.stamp-deactivated,.stamp-closed,.stamp-archived{background:var(--neutral-soft);color:var(--neutral);border-color:var(--neutral-line)}
-.stamp-review,.stamp-escalated,.stamp-open{background:var(--info-soft);color:var(--info);border-color:var(--info-line)}
+.stamp-disapproved,.stamp-suspended,.stamp-flagged,.stamp-rejected,.stamp-delivery_failed{background:var(--danger-soft);color:var(--danger);border-color:var(--danger-line)}
+.stamp-deactivated,.stamp-closed,.stamp-archived,.stamp-returned{background:var(--neutral-soft);color:var(--neutral);border-color:var(--neutral-line)}
+.stamp-review,.stamp-escalated,.stamp-open,.stamp-at_sorting_center,.stamp-sorted,.stamp-assigned_to_rider,.stamp-interview{background:var(--info-soft);color:var(--info);border-color:var(--info-line)}
+.stamp-ready_for_pickup{background:var(--warning-soft);color:var(--warning);border-color:var(--warning-line)}
 .stamp-buyer{background:var(--info-soft);color:var(--info);border-color:var(--info-line)}
 .stamp-seller{background:var(--pink-soft);color:var(--pink-dark);border-color:var(--pink-line)}
 .stamp-rider{background:var(--warning-soft);color:var(--warning);border-color:var(--warning-line)}
@@ -363,7 +364,7 @@ table.dtable{width:100%;min-width:720px;border-collapse:collapse;font-size:13px}
 .form-row{margin-bottom:16px}
 .form-row label{display:block;font-size:12.5px;font-weight:650;margin-bottom:6px}
 .form-row .hint{font-weight:400;color:var(--muted);font-size:11.5px}
-.form-row input[type=text],.form-row input[type=email],.form-row input[type=password],.form-row input[type=number],.form-row input[type=date],.form-row select,.form-row textarea{
+.form-row input[type=text],.form-row input[type=email],.form-row input[type=password],.form-row input[type=number],.form-row input[type=date],.form-row input[type=time],.form-row select,.form-row textarea{
   width:100%;border:1px solid var(--border);border-radius:9px;padding:10px 12px;font-size:13.5px;background:var(--surface)}
 .form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:var(--pink)}
 .form-row textarea{resize:vertical;min-height:90px;font-family:var(--font-body)}

@@ -5,9 +5,8 @@
 
 @php
   $nextLabel = [
-    'accepted'         => 'Confirm Item Pickup',
-    'picked_up'        => 'Mark Out for Delivery',
-    'out_for_delivery' => 'Complete Delivery',
+    'assigned_to_rider' => 'Mark Out for Delivery',
+    'out_for_delivery'  => 'Complete Delivery',
   ];
 @endphp
 
@@ -46,7 +45,7 @@
           </td>
         </tr>
         @empty
-        <tr><td colspan="6"><div class="empty"><h3>No active deliveries</h3><p>Accept a pickup request to see it here.</p></div></td></tr>
+        <tr><td colspan="6"><div class="empty"><h3>No active deliveries</h3><p>Accept a delivery request to see it here.</p></div></td></tr>
         @endforelse
       </tbody>
     </table>

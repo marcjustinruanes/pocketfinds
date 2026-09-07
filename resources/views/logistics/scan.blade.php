@@ -84,14 +84,17 @@
 
 @push('scripts')
 @if($scannerPref !== 'usb')
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+{{-- unpkg.com is unreliable/unreachable from some networks (the actual cause behind the
+     camera scanner sometimes silently failing to start) — cdnjs is far more consistently
+     reachable for the same file. --}}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 @endif
 <script>
 (() => {
   const CSRF = document.querySelector('meta[name=csrf-token]')?.content || '';
   const LOOKUP_URL = '{{ route('logistics.scan.lookup') }}';
   const STATUS_URL_BASE   = '{{ url('/logistics/status') }}';
-  const RECEIVE_URL_BASE  = '{{ url('/logistics/requests') }}';
+  const RECEIVE_URL_BASE  = '{{ url('/logistics/scan') }}';
   const ASSIGN_URL_BASE   = '{{ url('/logistics/assignments') }}';
 
   const $ = (id) => document.getElementById(id);
@@ -103,6 +106,23 @@
 
   function showMessage(text, type) {
     msgBox.innerHTML = `<div class="scan-msg ${type}">${text}</div>`;
+  }
+
+  /**
+   * Every scan-page action (receive, assign, advance status…) is a couple of sequential
+   * round trips to a remote DB — with no visual feedback at all it just looks stuck, and
+   * an impatient second click hits the same shipment mid-transition and throws a confusing
+   * "wrong state" error. This disables the button and shows a busy label immediately on
+   * click, and only restores it on failure — success replaces it via renderShipment() anyway.
+   */
+  function runAction(btn, busyLabel, fn) {
+    if (btn.disabled) return; // already in flight — ignore a second click
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = busyLabel;
+    fn().finally(() => {
+      if (btn.isConnected) { btn.disabled = false; btn.textContent = originalLabel; }
+    });
   }
 
   function renderShipment(s, meta) {
@@ -123,13 +143,120 @@
     const actions = $('statusActions');
     actions.innerHTML = '';
 
+    if (meta.stage === 'awaiting_pickup_rider') {
+      const note = document.createElement('p');
+      note.className = 'hint';
+      note.textContent = 'This parcel is approved for pickup but no rider has claimed it yet.';
+      actions.appendChild(note);
+      return;
+    }
+
+    if (meta.stage === 'awaiting_seller_confirm') {
+      const note = document.createElement('p');
+      note.className = 'hint';
+      note.textContent = 'A pickup rider has claimed this parcel — waiting on the seller to confirm the handoff.';
+      actions.appendChild(note);
+      return;
+    }
+
     if (meta.stage === 'receive') {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'btn btn-success';
-      btn.textContent = 'Receive Parcel';
-      btn.addEventListener('click', () => receiveParcel(s.id, s.tracking_number));
+      btn.textContent = 'Receive & Sort';
+      btn.addEventListener('click', () => runAction(btn, 'Receiving…', () => receiveParcel(s.id, s.tracking_number)));
       actions.appendChild(btn);
+      return;
+    }
+
+    if (meta.stage === 'in_hub_transfer') {
+      const leg = s.current_leg;
+      const fromHub = leg ? leg.from_hub : (s.origin_hub || 'the origin hub');
+      const toHub   = leg ? leg.to_hub   : (s.destination_hub || 'the destination hub');
+      const note = document.createElement('p');
+      note.className = 'hint';
+      note.textContent = (s.hub_leg_progress ? s.hub_leg_progress + ' — ' : '') + (s.hub_transfer_rider_name || 'A rider') + ' is carrying this parcel from '
+        + fromHub + ' to ' + toHub + '.';
+      actions.appendChild(note);
+
+      // Two independent gates on "Mark Received at <destination>":
+      //  1. can_complete — only that destination hub's own staff (or the admin) even see the
+      //     button at all. The origin hub (or any other hub) looking up the same tracking
+      //     number has nothing to click here — it isn't their hub to receive it at.
+      //  2. rider_confirmed — even the right hub can't mark it received until the rider has
+      //     confirmed picking it up from the origin hub (Rider account -> My Hub Transfers).
+      if (leg && !leg.can_complete) {
+        const notForThisHub = document.createElement('p');
+        notForThisHub.className = 'hint';
+        notForThisHub.textContent = 'This parcel is headed to ' + toHub + ' — only that hub\'s own staff can mark it received.';
+        actions.appendChild(notForThisHub);
+      } else if (!leg || leg.rider_confirmed) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-success';
+        btn.textContent = 'Mark Received at ' + toHub;
+        btn.addEventListener('click', () => runAction(btn, 'Receiving…', () => completeHubTransferScan(s.id, s.tracking_number)));
+        actions.appendChild(btn);
+      } else {
+        const waiting = document.createElement('p');
+        waiting.className = 'hint';
+        waiting.style.color = '#b45309';
+        waiting.textContent = 'Waiting for the rider to confirm they picked this up from ' + fromHub + ' before it can be marked received here.';
+        actions.appendChild(waiting);
+      }
+      return;
+    }
+
+    if (meta.stage === 'awaiting_transfer_approval') {
+      const leg = s.current_leg;
+      const note = document.createElement('p');
+      note.className = 'hint';
+      note.textContent = (s.hub_leg_progress ? s.hub_leg_progress + ' — ' : '') + 'At ' + (leg ? leg.from_hub : 'this hub') + ', headed to ' + (leg ? leg.to_hub : 'the next hub') + '. '
+        + (leg && leg.requested ? 'Transfer requested — waiting on the admin to approve it.' : 'This hub\'s staff need to request the transfer from their dashboard before a rider can be assigned.');
+      actions.appendChild(note);
+      return;
+    }
+
+    if (meta.stage === 'assign_hub_transfer') {
+      const leg = s.current_leg;
+      const wrap = document.createElement('div');
+      wrap.style.width = '100%';
+      const note = document.createElement('p');
+      note.className = 'hint';
+      note.textContent = (s.hub_leg_progress ? s.hub_leg_progress + ' — ' : '') + 'Received at '
+        + (leg ? leg.from_hub : (s.origin_hub || 'this hub')) + ' — assign a rider to carry it to '
+        + (leg ? leg.to_hub : (s.destination_hub || 'the destination hub')) + ':';
+      wrap.appendChild(note);
+
+      if (!meta.hub_transfer_riders.length) {
+        const empty = document.createElement('p');
+        empty.className = 'hint';
+        empty.textContent = 'No approved riders available to assign yet.';
+        wrap.appendChild(empty);
+        actions.appendChild(wrap);
+        return;
+      }
+
+      const row = document.createElement('div');
+      row.className = 'scan-input-row';
+      const select = document.createElement('select');
+      select.className = 'select';
+      select.style.flex = '1';
+      meta.hub_transfer_riders.forEach((r) => {
+        const opt = document.createElement('option');
+        opt.value = r.id;
+        opt.textContent = r.name;
+        select.appendChild(opt);
+      });
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-primary';
+      btn.textContent = 'Assign Hub Transfer';
+      btn.addEventListener('click', () => runAction(btn, 'Assigning…', () => assignHubTransfer(s.id, select.value, s.tracking_number)));
+      row.appendChild(select);
+      row.appendChild(btn);
+      wrap.appendChild(row);
+      actions.appendChild(wrap);
       return;
     }
 
@@ -188,7 +315,7 @@
       btn.type = 'button';
       btn.className = 'btn btn-primary';
       btn.textContent = 'Assign to Rider';
-      btn.addEventListener('click', () => assignToRider(s.id, select.value, s.tracking_number));
+      btn.addEventListener('click', () => runAction(btn, 'Assigning…', () => assignToRider(s.id, select.value, s.tracking_number)));
       row.appendChild(select);
       row.appendChild(btn);
       wrap.appendChild(row);
@@ -196,12 +323,20 @@
       return;
     }
 
-    if (meta.next_status) {
+    // "Out for Delivery" is the assigned rider's own call — they mark it themselves from
+    // their own "My Deliveries" page once they actually leave with it, not something hub
+    // staff do on their behalf from here.
+    if (meta.next_status === 'out_for_delivery') {
+      const note = document.createElement('p');
+      note.className = 'hint';
+      note.textContent = 'Waiting for the assigned rider to mark this out for delivery from their own account.';
+      actions.appendChild(note);
+    } else if (meta.next_status) {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'btn btn-success';
       btn.textContent = meta.next_label;
-      btn.addEventListener('click', () => updateStatus(s.id, meta.next_status, s.tracking_number));
+      btn.addEventListener('click', () => runAction(btn, 'Updating…', () => updateStatus(s.id, meta.next_status, s.tracking_number)));
       actions.appendChild(btn);
     }
     if (meta.can_fail) {
@@ -209,7 +344,11 @@
       failBtn.type = 'button';
       failBtn.className = 'btn btn-danger';
       failBtn.textContent = 'Mark Failed';
-      failBtn.addEventListener('click', () => updateStatus(s.id, 'failed', s.tracking_number));
+      failBtn.addEventListener('click', () => {
+        const reason = prompt('Why did this delivery fail?');
+        if (reason === null) return;
+        runAction(failBtn, 'Updating…', () => updateStatus(s.id, 'delivery_failed', s.tracking_number, reason));
+      });
       actions.appendChild(failBtn);
     }
     if (!meta.next_status && !meta.can_fail) {
@@ -245,12 +384,21 @@
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
       body: JSON.stringify(body || {}),
     });
-    if (!res.ok) throw new Error('Request could not be completed.');
+    if (!res.ok) {
+      // Surface the server's actual reason (e.g. a vehicle-eligibility rejection) when there is one,
+      // rather than always falling back to a generic message.
+      let message = 'Request could not be completed.';
+      try {
+        const data = await res.json();
+        if (data?.message) message = data.message;
+      } catch (e) { /* non-JSON error body — keep the generic message */ }
+      throw new Error(message);
+    }
   }
 
-  async function updateStatus(shipmentId, status, trackingNumber) {
+  async function updateStatus(shipmentId, status, trackingNumber, reason) {
     try {
-      await patchJson(STATUS_URL_BASE + '/' + shipmentId, { status });
+      await patchJson(STATUS_URL_BASE + '/' + shipmentId, { status, reason });
       showMessage('Status updated.', 'success');
       lookup(trackingNumber);
     } catch (e) {
@@ -260,8 +408,8 @@
 
   async function receiveParcel(shipmentId, trackingNumber) {
     try {
-      await patchJson(RECEIVE_URL_BASE + '/' + shipmentId + '/approve');
-      showMessage('Parcel received. Delivery area determined.', 'success');
+      await patchJson(RECEIVE_URL_BASE + '/' + shipmentId + '/receive');
+      showMessage('Parcel received and sorted.', 'success');
       lookup(trackingNumber);
     } catch (e) {
       showMessage(e.message, 'danger');
@@ -279,6 +427,27 @@
     }
   }
 
+  async function assignHubTransfer(shipmentId, courierId, trackingNumber) {
+    if (!courierId) { showMessage('Select a rider first.', 'danger'); return; }
+    try {
+      await patchJson(ASSIGN_URL_BASE + '/' + shipmentId + '/assign-hub-transfer', { courier_id: courierId });
+      showMessage('Hub transfer rider assigned.', 'success');
+      lookup(trackingNumber);
+    } catch (e) {
+      showMessage(e.message, 'danger');
+    }
+  }
+
+  async function completeHubTransferScan(shipmentId, trackingNumber) {
+    try {
+      await patchJson(RECEIVE_URL_BASE + '/' + shipmentId + '/complete-hub-transfer');
+      showMessage('Parcel received at destination hub.', 'success');
+      lookup(trackingNumber);
+    } catch (e) {
+      showMessage(e.message, 'danger');
+    }
+  }
+
   $('trackingForm').addEventListener('submit', (e) => {
     e.preventDefault();
     lookup(input.value);
@@ -286,8 +455,18 @@
 
   $('startCamera')?.addEventListener('click', async () => {
     if (scanner) return;
-    scanner = new Html5Qrcode('reader');
+
+    // The scanner library loads from an external CDN — if that fails or is slow (a real,
+    // occasional issue, not just a camera-permission problem), `Html5Qrcode` never exists
+    // and this used to throw silently with no message at all, leaving the button looking
+    // like it just did nothing. Both failure modes now show the same clear fallback.
+    if (typeof Html5Qrcode === 'undefined') {
+      showMessage('The camera scanner failed to load. You can still use a USB scanner or type the tracking number below.', 'danger');
+      return;
+    }
+
     try {
+      scanner = new Html5Qrcode('reader');
       await scanner.start(
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 250, height: 150 } },

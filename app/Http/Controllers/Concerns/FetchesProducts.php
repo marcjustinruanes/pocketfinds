@@ -17,6 +17,7 @@ trait FetchesProducts
     {
         $q = Product::with(['seller', 'category'])
             ->where('status', 'active')
+            ->sellerApproved()
             ->when($categoryId, fn($q) => $q->where('category_id', $categoryId))
             ->when($search, fn($q) => $q->where('name', 'ilike', '%' . $search . '%'));
 

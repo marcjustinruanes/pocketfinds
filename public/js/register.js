@@ -1,8 +1,9 @@
 const PSGC = 'https://psgc.gitlab.io/api';
 const isGoogleForm = !!document.getElementById('googleRegForm');
 const accountTypeVal = document.querySelector('input[name="account_type"]')?.value;
-const isSeller = accountTypeVal === 'seller';
-const isRider  = accountTypeVal === 'rider';
+const isSeller    = accountTypeVal === 'seller';
+const isRider     = accountTypeVal === 'rider';
+const isLogistics = accountTypeVal === 'logistics';
 
 if (isSeller) {
     const businessNameField = document.getElementById('businessNameField');
@@ -33,15 +34,10 @@ if (isGoogleForm && !isSeller) {
     document.getElementById('panel-1')?.classList.add('active');
 }
 
-// Show rider-only step indicators
-if (isRider) {
-    document.querySelectorAll('.rider-only').forEach(el => el.style.display = '');
-    // Riders: account step continues to vehicle instead of submitting
-    document.getElementById('btnStep6RiderNext')?.style.setProperty('display', '');
-    document.getElementById('btnStep6Submit')?.style.setProperty('display', 'none');
-} else {
-    document.getElementById('stepIndicator')?.classList.add('account-is-last');
-}
+// Account is the final step for every account type, including riders (the
+// rider view's own inline script owns steps 2/7 and just falls through to
+// this file's generic panel-by-panel flow for the rest).
+document.getElementById('stepIndicator')?.classList.add('account-is-last');
 
 // ── Seller setup ──
 if (isSeller) {
@@ -230,28 +226,17 @@ function sendOtp() {
         } else {
             btn.disabled = false; btn.textContent = 'Send Code';
             const msg = data.message ?? 'Could not send code.';
-            const hint = document.getElementById('emailHint');
-            if (hint) { hint.style.color = 'var(--auth-danger)'; hint.textContent = msg; }
+            // One message, right under the email field — showError already writes to
+            // #emailHint and marks the input red; no need for a second copy below it.
+            // The buyer can just correct the email and click Send Code again.
             showError(emailEl, msg);
-            // show just a retry link below the email field — no code input yet
             document.getElementById('otpField').style.display = 'none';
-            let retryRow = document.getElementById('otpRetryRow');
-            if (!retryRow) {
-                retryRow = document.createElement('div');
-                retryRow.id = 'otpRetryRow';
-                retryRow.style.cssText = 'margin-top:6px;font-size:12px';
-                document.getElementById('otpField').after(retryRow);
-            }
-            retryRow.innerHTML = `<span style="color:var(--auth-danger)">${msg}</span> &nbsp;<button type="button" class="btn-inline-link" onclick="resendOtp()">Try again</button>`;
-            retryRow.style.display = 'block';
         }
     })
     .catch(() => { btn.disabled = false; btn.textContent = 'Send Code'; showError(emailEl, 'Network error. Try again.'); });
 }
 
 function resendOtp() {
-    const retryRow = document.getElementById('otpRetryRow');
-    if (retryRow) retryRow.style.display = 'none';
     document.getElementById('otpField').style.display = 'none';
     const btn = document.getElementById('sendOtpBtn');
     btn.disabled = false; btn.textContent = 'Send Code';
@@ -270,12 +255,20 @@ function startOtpCountdown() {
     }, 1000);
 }
 
+// Any verification failure (bad code, expired, network hiccup) leaves the buyer stuck
+// unless they can immediately ask for a new one — so the error message always carries
+// its own Resend button right next to it, not just plain text.
+function showOtpError(msg) {
+    const hintEl = document.getElementById('otpHint');
+    hintEl.style.color = 'var(--auth-danger)';
+    hintEl.innerHTML = `${msg} <button type="button" class="btn-inline-link" id="resendOtpBtn" onclick="resendOtp()">Resend code</button>`;
+}
+
 function verifyOtp() {
     const email = document.getElementById('email').value.trim();
     const otp   = document.getElementById('otp_code').value.trim();
-    const hintEl = document.getElementById('otpHint');
     const verifyBtn = document.getElementById('verifyOtpBtn');
-    if (otp.length !== 6) { hintEl.style.color = 'var(--auth-danger)'; hintEl.textContent = 'Please enter the full 6-digit code.'; return; }
+    if (otp.length !== 6) { showOtpError('Please enter the full 6-digit code.'); return; }
     verifyBtn.disabled = true; verifyBtn.textContent = 'Verifying…';
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || document.querySelector('input[name="_token"]').value;
     fetch('/register/verify-otp', {
@@ -294,10 +287,10 @@ function verifyOtp() {
             document.getElementById('emailHint').textContent       = '';
         } else {
             verifyBtn.disabled = false; verifyBtn.textContent = 'Verify';
-            hintEl.style.color = 'var(--auth-danger)'; hintEl.textContent = data.message ?? 'Invalid or expired code.';
+            showOtpError(data.message ?? 'Invalid or expired code.');
         }
     })
-    .catch(() => { verifyBtn.disabled = false; verifyBtn.textContent = 'Verify'; hintEl.style.color = 'var(--auth-danger)'; hintEl.textContent = 'Network error. Try again.'; });
+    .catch(() => { verifyBtn.disabled = false; verifyBtn.textContent = 'Verify'; showOtpError('Network error. Try again.'); });
 }
 
 let lastEmailValue = '';
@@ -313,9 +306,7 @@ document.getElementById('email')?.addEventListener('input', function () {
     clearInterval(otpCountdown);
     document.getElementById('otpField').style.display      = 'none';
     document.getElementById('verifiedBadge').style.display = 'none';
-    document.getElementById('emailHint').textContent       = '';
-    const retryRow = document.getElementById('otpRetryRow');
-    if (retryRow) retryRow.style.display = 'none';
+    clearError(this);
     const btn = document.getElementById('sendOtpBtn');
     if (btn) { btn.disabled = false; btn.textContent = 'Send Code'; btn.style.display = ''; }
 });
@@ -398,9 +389,18 @@ function retakeIdPhoto() {
     if (ocrBox) { ocrBox.className = 'ocr-result'; ocrBox.innerHTML = ''; }
 }
 
-document.getElementById('id_file')?.addEventListener('change', function () {
+document.getElementById('id_file')?.addEventListener('change', async function () {
     if (!this.files[0]) return;
-    const file = this.files[0];
+    let file = this.files[0];
+    if (file.size > MAX_DOC_UPLOAD_BYTES && file.type.startsWith('image/')) {
+        try { file = await compressImageFile(file, MAX_DOC_UPLOAD_BYTES); } catch (e) { /* falls through to the size check below */ }
+    }
+    if (file.size > MAX_DOC_UPLOAD_BYTES) {
+        const idErrEl = document.getElementById('idPhotoError');
+        if (idErrEl) { idErrEl.textContent = 'This file is too large (max 5MB) — please choose a smaller one.'; idErrEl.style.display = 'block'; }
+        this.value = '';
+        return;
+    }
     idPhotoBlob = file;
     if (idPhotoUrl) URL.revokeObjectURL(idPhotoUrl);
     idPhotoUrl = URL.createObjectURL(file);
@@ -421,7 +421,7 @@ document.getElementById('id_file')?.addEventListener('change', function () {
         pdfCard.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#d9468f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span style="font-size:10px;color:#555;word-break:break-all;max-width:100%">${file.name}</span><span style="font-size:10px;font-weight:700;color:var(--auth-primary);background:var(--auth-primary-soft);padding:2px 8px;border-radius:4px">PDF</span>`;
         pdfCard.style.display = 'flex';
         const enlargeBtn = prevEl.querySelector('.enlarge-btn');
-        if (enlargeBtn) enlargeBtn.onclick = (e) => { e.stopPropagation(); window.open(idPhotoUrl, '_blank'); };
+        if (enlargeBtn) enlargeBtn.onclick = (e) => { e.stopPropagation(); showPdfLightbox(idPhotoUrl); };
     } else {
         imgEl.src = idPhotoUrl;
         imgEl.style.display = '';
@@ -493,13 +493,26 @@ function resetIdentityUploads() {
 }
 
 // ── Lightbox ──
+// Everything previewed here — photos and PDFs alike — stays inside this modal.
+// PDFs used to open via window.open() into a new browser tab/native viewer;
+// they now render in an <iframe> right here instead, same as an image would.
 function openLightbox(imgId) {
     const imgEl = document.getElementById(imgId);
     const lightboxImg = document.getElementById('lightboxImg');
     const lightboxPdf = document.getElementById('lightboxPdf');
     lightboxImg.style.display = 'block';
     lightboxPdf.style.display = 'none';
+    lightboxPdf.innerHTML = '';
     lightboxImg.src = imgEl.src;
+    document.getElementById('imgLightbox').classList.add('open');
+}
+function showPdfLightbox(url) {
+    const lightboxImg = document.getElementById('lightboxImg');
+    const lightboxPdf = document.getElementById('lightboxPdf');
+    lightboxImg.style.display = 'none';
+    lightboxImg.src = '';
+    lightboxPdf.style.display = 'flex';
+    lightboxPdf.innerHTML = `<iframe src="${url}" style="width:min(800px,90vw);height:85vh;border:0;border-radius:8px;background:#fff"></iframe>`;
     document.getElementById('imgLightbox').classList.add('open');
 }
 function openDocLightbox(key) {
@@ -507,67 +520,21 @@ function openDocLightbox(key) {
     const file = docBlobs[key];
     if (!url || !file) return;
     if (file.type === 'application/pdf') {
-        window.open(url, '_blank');
+        showPdfLightbox(url);
         return;
     }
     const lightboxImg = document.getElementById('lightboxImg');
     const lightboxPdf = document.getElementById('lightboxPdf');
     lightboxImg.style.display = 'block';
     lightboxPdf.style.display = 'none';
+    lightboxPdf.innerHTML = '';
     lightboxImg.src = url;
     document.getElementById('imgLightbox').classList.add('open');
 }
 function closeLightbox() {
     document.getElementById('imgLightbox').classList.remove('open');
     document.getElementById('lightboxImg').src = '';
-}
-
-// ── Terms & Conditions quiz ──
-let tcDone = false;
-let tcCurrent = 0;
-const TC_TOTAL = 5;
-
-const SVG_CHECK = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>';
-const SVG_CROSS = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
-
-// The fourth policy is tailored to the registration type; the other terms apply to everyone.
-const accountTerms = {
-    buyer: {
-        title: 'Buyer Responsibilities',
-        policy: 'Review item details before purchasing, communicate respectfully, and use safe, agreed hand-off or delivery arrangements. Do not ask sellers to make payments or share sensitive information outside PocketFinds.',
-        question: 'What should you do before completing a purchase?',
-        answers: ['Send personal payment details by chat', 'Review the listing and arrange a safe hand-off or delivery', 'Ask the seller to change the listing after payment'],
-        correct: 1,
-    },
-    seller: {
-        title: 'Seller Listings & Fulfillment',
-        policy: 'Keep listings accurate, disclose an item\'s condition, and fulfil confirmed orders as described. You must not post misleading prices, counterfeit goods, or items you cannot provide.',
-        question: 'What is required when creating a listing?',
-        answers: ['Use accurate details and disclose the item\'s condition', 'Use any product photos, even if they are unrelated', 'List an item before you have it available'],
-        correct: 0,
-    },
-    rider: {
-        title: 'Rider Delivery & Safety',
-        policy: 'Follow traffic laws, handle orders carefully, protect customer information, and communicate delivery updates through PocketFinds. Never mark an order delivered before it is safely handed over.',
-        question: 'When may a rider mark an order as delivered?',
-        answers: ['After safely handing the order to the customer', 'As soon as the rider accepts the delivery', 'Before leaving the pickup location'],
-        correct: 0,
-    },
-};
-
-const typeTerm = accountTerms[accountTypeVal] || accountTerms.buyer;
-const accountTermSlide = document.querySelectorAll('.tc-slide')[3];
-if (accountTermSlide) {
-    accountTermSlide.innerHTML = `
-        <div style="background:var(--auth-primary-soft);border-left:3px solid var(--auth-primary);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12px;line-height:1.7;color:#374151">
-            <strong style="display:block;margin-bottom:4px">${typeTerm.title}</strong>
-            ${typeTerm.policy}
-        </div>
-        <p style="font-size:13px;font-weight:700;color:#111;margin:0 0 12px">${typeTerm.question}</p>
-        <div class="tc-options" style="display:flex;flex-direction:column;gap:8px">
-            ${typeTerm.answers.map((answer, index) => `<button type="button" class="tc-opt" data-correct="${index === typeTerm.correct}" onclick="tcAnswer(this)">${answer}</button>`).join('')}
-        </div>
-        <p class="tc-feedback" style="display:none;margin:10px 0 0;font-size:12px;border-radius:8px;padding:8px 12px"></p>`;
+    document.getElementById('lightboxPdf').innerHTML = '';
 }
 
 let businessPermitBlob = null;
@@ -579,12 +546,22 @@ document.getElementById('businessPermitBox')?.addEventListener('click', function
     document.getElementById('business_permit_file').click();
 });
 
-document.getElementById('business_permit_file')?.addEventListener('change', function () {
+document.getElementById('business_permit_file')?.addEventListener('change', async function () {
     if (!this.files[0]) return;
-    businessPermitBlob = this.files[0];
+    let file = this.files[0];
+    if (file.size > MAX_DOC_UPLOAD_BYTES && file.type.startsWith('image/')) {
+        try { file = await compressImageFile(file, MAX_DOC_UPLOAD_BYTES); } catch (e) { /* falls through to the size check below */ }
+    }
+    if (file.size > MAX_DOC_UPLOAD_BYTES) {
+        const permitErrEl = document.getElementById('businessPermitError');
+        if (permitErrEl) { permitErrEl.textContent = 'This file is too large (max 5MB) — please choose a smaller one.'; permitErrEl.style.display = 'block'; }
+        this.value = '';
+        return;
+    }
+    businessPermitBlob = file;
     if (businessPermitUrl) URL.revokeObjectURL(businessPermitUrl);
-    businessPermitUrl = URL.createObjectURL(this.files[0]);
-    const isPdf = this.files[0].type === 'application/pdf';
+    businessPermitUrl = URL.createObjectURL(file);
+    const isPdf = file.type === 'application/pdf';
     const imgEl = document.getElementById('businessPermitImg');
     const prevEl = document.getElementById('businessPermitPreview');
     if (isPdf) {
@@ -596,10 +573,10 @@ document.getElementById('business_permit_file')?.addEventListener('change', func
             pdfCard.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:14px 8px;min-height:90px;text-align:center';
             imgEl.after(pdfCard);
         }
-        pdfCard.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#d9468f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span style="font-size:10px;color:#555;word-break:break-all;max-width:100%">${this.files[0].name}</span><span style="font-size:10px;font-weight:700;color:var(--auth-primary);background:var(--auth-primary-soft);padding:2px 8px;border-radius:4px">PDF</span>`;
+        pdfCard.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#d9468f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span style="font-size:10px;color:#555;word-break:break-all;max-width:100%">${file.name}</span><span style="font-size:10px;font-weight:700;color:var(--auth-primary);background:var(--auth-primary-soft);padding:2px 8px;border-radius:4px">PDF</span>`;
         pdfCard.style.display = 'flex';
         const enlargeBtn = prevEl.querySelector('.enlarge-btn');
-        if (enlargeBtn) enlargeBtn.onclick = (e) => { e.stopPropagation(); window.open(businessPermitUrl, '_blank'); };
+        if (enlargeBtn) enlargeBtn.onclick = (e) => { e.stopPropagation(); showPdfLightbox(businessPermitUrl); };
     } else {
         imgEl.src = businessPermitUrl;
         imgEl.style.display = '';
@@ -628,7 +605,7 @@ function clearBusinessPermit() {
 let businessNameAvailable = null;
 let businessNameTimer = null;
 const businessNameInput = document.getElementById('business_name');
-if (businessNameInput) {
+if (businessNameInput && !isLogistics) {
     // Inline status icon inside the input (same pattern as usernameStatus)
     const bnWrap = document.createElement('div');
     bnWrap.style.cssText = 'position:relative';
@@ -665,91 +642,71 @@ if (businessNameInput) {
     });
 }
 
-// mini popup for answer feedback
-function showTcPopup(correct, onClose) {
-    let popup = document.getElementById('tcPopup');
-    if (!popup) {
-        popup = document.createElement('div');
-        popup.id = 'tcPopup';
-        popup.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(15,15,25,.55);backdrop-filter:blur(2px);z-index:10;border-radius:0 0 18px 18px';
-        document.getElementById('tcSlides').appendChild(popup);
-    }
-    if (correct) {
-        popup.innerHTML = `<div style="background:#fff;border-radius:14px;padding:22px 26px;text-align:center;max-width:260px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
-            <div style="width:48px;height:48px;border-radius:50%;background:#f0fdf4;display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            </div>
-            <p style="font-size:14px;font-weight:700;color:#15803d;margin:0 0 4px">Correct!</p>
-            <p style="font-size:12px;color:#64748b;margin:0 0 16px">${tcCurrent === TC_TOTAL - 1 ? 'All done — you can now agree.' : 'Great, on to the next one.'}</p>
-            <button type="button" onclick="closeTcPopup()" style="padding:8px 24px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">${tcCurrent === TC_TOTAL - 1 ? 'I Agree ✓' : 'Next →'}</button>
-        </div>`;
-    } else {
-        popup.innerHTML = `<div style="background:#fff;border-radius:14px;padding:22px 26px;text-align:center;max-width:260px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
-            <div style="width:48px;height:48px;border-radius:50%;background:#fff7ed;display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#c2410c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-            </div>
-            <p style="font-size:14px;font-weight:700;color:#c2410c;margin:0 0 4px">Not quite!</p>
-            <p style="font-size:12px;color:#64748b;margin:0 0 16px">Read the rule above carefully and try again.</p>
-            <button type="button" onclick="closeTcPopup(true)" style="padding:8px 24px;background:#c2410c;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Retry</button>
-        </div>`;
-    }
-    popup.style.display = 'flex';
-    popup._onClose = onClose;
+// ── Rider live checks: license number & plate number ──
+// A driver's license (and, for a self-owned vehicle, its plate) can only ever
+// belong to one account — same "type it, get a live yes/no" pattern as
+// username/business name above, wired into a single helper since the two
+// fields behave identically.
+function attachDuplicateFieldCheck(inputId, checkUrl, paramName, minLen, onResult) {
+    let timer = null;
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:relative';
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+    const status = document.createElement('span');
+    status.style.cssText = 'position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:12px;pointer-events:none';
+    wrap.appendChild(status);
+
+    input.addEventListener('input', function () {
+        const value = this.value.trim();
+        onResult?.(null);
+        status.innerHTML = '';
+        clearTimeout(timer);
+        if (value.length < minLen) return;
+        status.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;color:#94a3b8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+        timer = setTimeout(() => {
+            const checkedVal = value;
+            fetch(`${checkUrl}?${paramName}=${encodeURIComponent(value)}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (input.value.trim() !== checkedVal) return; // stale — value changed since this request went out
+                    onResult?.(data.available);
+                    if (data.available) {
+                        status.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>';
+                        status.style.color = '#16a34a';
+                    } else {
+                        status.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+                        status.style.color = '#dc2626';
+                    }
+                })
+                .catch(() => {
+                    if (input.value.trim() !== checkedVal) return;
+                    onResult?.(null);
+                    status.innerHTML = '';
+                });
+        }, 500);
+    });
 }
 
-function closeTcPopup(retry) {
-    const popup = document.getElementById('tcPopup');
-    if (!popup) return;
-    const cb = popup._onClose;
-    popup.style.display = 'none';
-    if (cb) cb(retry);
-}
+let licenseNumberAvailable = null;
+attachDuplicateFieldCheck('license_number', '/register/check-license', 'license_number', 3, (result) => { licenseNumberAvailable = result; });
+
+let plateNumberAvailable = null;
+attachDuplicateFieldCheck('plate_number', '/register/check-plate', 'plate_number', 2, (result) => { plateNumberAvailable = result; });
+
+// Terms & Conditions: the actual document text comes from the admin-managed Policy
+// record (rendered server-side into #tcContent — see register-*.blade.php), not from
+// anything hardcoded here. Reading it is still a real gate: the "I agree" checkbox
+// stays disabled until the buyer has scrolled the document to the bottom.
+let tcRead = false;
 
 function openTc() {
-    const slides = document.querySelectorAll('.tc-slide');
-    if (tcDone) {
-        // review mode: show all answers highlighted, Next always enabled
-        tcCurrent = 0;
-        slides.forEach((s, i) => {
-            s.style.transform = i === 0 ? 'translateX(0)' : 'translateX(100%)';
-            s.style.opacity   = i === 0 ? '1' : '0';
-            // highlight correct answers
-            s.querySelectorAll('.tc-opt').forEach(b => {
-                b.disabled = true;
-                if (b.dataset.correct === 'true') {
-                    b.style.background = '#f0fdf4'; b.style.color = '#15803d'; b.style.borderColor = '#86efac';
-                } else {
-                    b.style.background = '#f8fafc'; b.style.color = '#94a3b8'; b.style.borderColor = '#e2e8f0';
-                }
-            });
-            const fb = s.querySelector('.tc-feedback');
-            fb.style.display = 'block';
-            fb.style.background = '#f0fdf4'; fb.style.color = '#15803d'; fb.style.border = '1px solid #bbf7d0';
-            fb.innerHTML = SVG_CHECK + 'Correct answer highlighted above.';
-        });
-        document.getElementById('tcProgress').textContent = `Review — Question 1 of ${TC_TOTAL}`;
-        document.getElementById('tcBar').style.width = '100%';
-        const nextBtn = document.getElementById('tcNextBtn');
-        nextBtn.style.display = tcDone ? 'inline-flex' : 'none';
-        nextBtn.disabled = false; nextBtn.style.opacity = '1'; nextBtn.textContent = 'Next →';
-        document.getElementById('tcModal').style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-        return;
-    }
-    tcCurrent = 0;
-    slides.forEach((s, i) => {
-        s.style.transform = i === 0 ? 'translateX(0)' : 'translateX(100%)';
-        s.style.opacity   = i === 0 ? '1' : '0';
-        s.querySelectorAll('.tc-opt').forEach(b => { b.disabled = false; b.style.background = '#fff'; b.style.color = ''; b.style.borderColor = '#e5e7eb'; });
-        s.querySelector('.tc-feedback').style.display = 'none';
-    });
-    document.getElementById('tcProgress').textContent = `Question 1 of ${TC_TOTAL}`;
-    document.getElementById('tcBar').style.width = `${100 / TC_TOTAL}%`;
-    const nextBtn = document.getElementById('tcNextBtn');
-    nextBtn.style.display = tcDone ? 'inline-flex' : 'none';
-    nextBtn.disabled = true; nextBtn.style.opacity = '.4'; nextBtn.textContent = 'Next →';
     document.getElementById('tcModal').style.display = 'flex';
     document.body.style.overflow = 'hidden';
+    checkTcScrolled();
 }
 
 function closeTc() {
@@ -757,62 +714,23 @@ function closeTc() {
     document.body.style.overflow = '';
 }
 
-function tcAnswer(btn) {
-    if (tcDone) return;
-    const slide = btn.closest('.tc-slide');
-    const opts  = slide.querySelectorAll('.tc-opt');
-    const correct = btn.dataset.correct === 'true';
-    if (correct) {
-        opts.forEach(b => { b.disabled = true; });
-        btn.style.background = '#f0fdf4'; btn.style.color = '#15803d'; btn.style.borderColor = '#86efac';
-        const fb = slide.querySelector('.tc-feedback');
-        fb.style.background = '#f0fdf4'; fb.style.color = '#15803d'; fb.style.border = '1px solid #bbf7d0';
-        fb.innerHTML = SVG_CHECK + (tcCurrent === TC_TOTAL - 1 ? 'All done — you can now agree.' : 'Next question coming up.');
-        fb.style.display = 'block';
-        showTcPopup(true, () => tcNext());
-    } else {
-        showTcPopup(false, (retry) => {
-            if (retry) {
-                // re-enable options so they can try again
-                opts.forEach(b => { b.disabled = false; b.style.background = '#fff'; b.style.color = ''; b.style.borderColor = '#e5e7eb'; });
-            }
-        });
-    }
+function checkTcScrolled() {
+    const content = document.getElementById('tcContent');
+    if (!content || tcRead) return;
+    const atBottom = content.scrollTop + content.clientHeight >= content.scrollHeight - 8;
+    if (!atBottom) return;
+    tcRead = true;
+    const cb = document.getElementById('tcCheckbox');
+    if (cb) cb.disabled = false;
+    const scrollHint = document.getElementById('tcScrollHint');
+    if (scrollHint) scrollHint.textContent = 'You can now check "I agree" below.';
 }
+document.getElementById('tcContent')?.addEventListener('scroll', checkTcScrolled);
 
-function tcNext() {
-    if (tcCurrent === TC_TOTAL - 1) {
-        tcDone = true;
-        closeTc();
-        const cb = document.getElementById('tcCheckbox');
-        cb.disabled = false; cb.checked = true;
-        document.getElementById('tcBadge').style.display = 'inline';
-        document.getElementById('tcOpenBtn').innerHTML = 'Terms &amp; Conditions ' + SVG_CHECK.replace('margin-right:5px', 'margin-right:0;margin-left:3px');
-        document.getElementById('tcError').style.display = 'none';
-        return;
-    }
-    const slides = document.querySelectorAll('.tc-slide');
-    slides[tcCurrent].style.transform = 'translateX(-100%)';
-    slides[tcCurrent].style.opacity   = '0';
-    tcCurrent++;
-    slides[tcCurrent].style.transform = 'translateX(0)';
-    slides[tcCurrent].style.opacity   = '1';
-    const label = tcDone ? `Review — Question ${tcCurrent + 1} of ${TC_TOTAL}` : `Question ${tcCurrent + 1} of ${TC_TOTAL}`;
-    document.getElementById('tcProgress').textContent = label;
-    document.getElementById('tcBar').style.width = `${(tcCurrent + 1) * 100 / TC_TOTAL}%`;
-    if (!tcDone) {
-        const nextBtn = document.getElementById('tcNextBtn');
-        nextBtn.style.display = tcDone ? 'inline-flex' : 'none';
-        nextBtn.disabled = true; nextBtn.style.opacity = '.4';
-        nextBtn.textContent = tcCurrent === TC_TOTAL - 1 ? 'I Agree ✓' : 'Next →';
-    }
-}
-
-// style tc-opt buttons
-document.querySelectorAll('.tc-opt').forEach(b => {
-    b.style.cssText += 'text-align:left;padding:10px 14px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;font-size:12px;cursor:pointer;transition:background .15s,border-color .15s;width:100%';
-    b.addEventListener('mouseenter', () => { if (!b.disabled) b.style.borderColor = 'var(--auth-primary)'; });
-    b.addEventListener('mouseleave', () => { if (!b.disabled && !b.style.background.includes('f0fdf4') && !b.style.background.includes('fff7ed')) b.style.borderColor = '#e5e7eb'; });
+document.getElementById('tcCheckbox')?.addEventListener('change', function () {
+    const badge = document.getElementById('tcBadge');
+    if (badge) badge.style.display = this.checked ? 'inline' : 'none';
+    if (this.checked) document.getElementById('tcError').style.display = 'none';
 });
 
 // ── Username live check ──
@@ -834,9 +752,15 @@ if (usernameInput) {
         }
         usernameStatus.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;color:#94a3b8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'; usernameStatus.style.color = '';
         usernameTimer = setTimeout(() => {
+            // Guard against a slow/out-of-order response landing after the user has
+            // already changed the field again — without this, an earlier request's
+            // "available" could paint the green check for a username that isn't the
+            // one currently in the box, letting a genuinely-taken one slip through.
+            const checkedVal = val;
             fetch(`/register/check-username?username=${encodeURIComponent(val)}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                 .then(r => r.json())
                 .then(data => {
+                    if (usernameInput.value.trim() !== checkedVal) return;
                     usernameAvailable = data.available;
                     if (data.available) {
                         usernameStatus.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>'; usernameStatus.style.color = '#16a34a';
@@ -854,7 +778,10 @@ if (usernameInput) {
                         }
                     }
                 })
-                .catch(() => { usernameStatus.textContent = ''; usernameAvailable = null; });
+                .catch(() => {
+                    if (usernameInput.value.trim() !== checkedVal) return;
+                    usernameStatus.textContent = ''; usernameAvailable = null;
+                });
         }, 500);
     });
 }
@@ -1043,6 +970,29 @@ document.getElementById('contact_no')?.addEventListener('input', function () {
     this.value = this.value.replace(/\D/g, '').slice(0, 11);
 });
 
+// Name fields: strip digits/symbols as the user types — only letters, spaces,
+// and the punctuation real names actually use (hyphen, apostrophe, period for
+// suffixes like "Jr.") survive.
+['last_name', 'given_names', 'middle_name'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', function () {
+        this.value = this.value.replace(/[^\p{L}\s'.-]/gu, '');
+    });
+});
+
+// ── Auto-clear field errors on the next interaction ──
+// Photo/vehicle/ownership errors already hide themselves the moment their
+// own control changes (see handleDocUpload/onVehicleTypeChange/onOwnershipChange);
+// this covers every plain text input and <select> driven by showError/clearError,
+// so a red field stops looking broken the instant the user starts fixing it.
+['input', 'change'].forEach(evt => {
+    document.addEventListener(evt, function (e) {
+        const el = e.target;
+        if (el?.classList?.contains('error') && (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA')) {
+            clearError(el);
+        }
+    });
+});
+
 function showError(el, msg) {
     el.classList.add('error');
     if (el.id === 'email') { const h = document.getElementById('emailHint'); if (h) { h.style.color = 'var(--auth-danger)'; h.textContent = msg; } return; }
@@ -1059,12 +1009,50 @@ function clearError(el) {
     el.parentElement.querySelector('.field-error')?.remove();
 }
 
+// ── Registration error modal ──
+// Replaces the old plain alert() for errors caught only at final submission
+// (duplicate name/username/business name, or anything else the server rejects) —
+// built and injected once here so every registration page gets it for free.
+function showRegisterErrorModal(message) {
+    let overlay = document.getElementById('registerErrorModal');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'registerErrorModal';
+        overlay.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(27,22,32,.55);z-index:999;align-items:center;justify-content:center;padding:20px';
+        overlay.innerHTML = `
+            <div style="background:#fff;border-radius:16px;width:min(420px,100%);padding:28px 26px;box-shadow:0 24px 60px rgba(27,22,32,.3);text-align:center">
+                <div style="width:52px;height:52px;border-radius:50%;background:#fef2f2;color:#dc2626;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <h3 id="registerErrorModalTitle" style="margin:0 0 8px;font-size:17px;font-weight:800;color:#1b1620">Registration Error</h3>
+                <p id="registerErrorModalMsg" style="margin:0 0 20px;font-size:13.5px;line-height:1.5;color:#6b6470"></p>
+                <button type="button" id="registerErrorModalClose" style="width:100%;padding:11px;border:0;border-radius:10px;background:var(--auth-primary,#d9468f);color:#fff;font-weight:700;font-size:14px;cursor:pointer">Okay</button>
+            </div>`;
+        document.body.appendChild(overlay);
+        const close = () => { overlay.style.display = 'none'; };
+        overlay.querySelector('#registerErrorModalClose').addEventListener('click', close);
+        overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    }
+    const isDuplicate = /already registered|already taken/i.test(message);
+    overlay.querySelector('#registerErrorModalTitle').textContent = isDuplicate ? 'Already Registered' : 'Registration Error';
+    overlay.querySelector('#registerErrorModalMsg').textContent = message;
+    overlay.style.display = 'flex';
+}
+
 // ── Vehicle type change ──
 function onVehicleTypeChange() {
-    const vt = document.querySelector('input[name="vehicle_type"]:checked')?.value;
-    const isBike = vt === 'bicycle';
-    document.getElementById('plateField').style.display       = isBike ? 'none' : '';
-    document.getElementById('vehicleDocsSection').style.display = isBike ? 'none' : '';
+    const checked = document.querySelector('input[name="vehicle_type"]:checked');
+    // Driven by the vehicle_types table's requires_documents flag (see register-rider.blade.php),
+    // not a hardcoded vehicle-type name — a new vehicle type added in the database just works.
+    const requiresDocs = checked?.dataset.requiresDocuments === '1';
+    // #plateField doesn't exist in the current markup (register-rider.blade.php's plate
+    // number field has no such wrapper) — this used to throw here uncaught on every vehicle
+    // type selection, which skipped everything below it: the OR/CR upload section never
+    // showed, the card never highlighted, and the error message never cleared. Guarded so a
+    // future page CAN add that wrapper back without this breaking either way.
+    const plateField = document.getElementById('plateField');
+    if (plateField) plateField.style.display = requiresDocs ? '' : 'none';
+    document.getElementById('vehicleDocsSection').style.display = requiresDocs ? '' : 'none';
     // highlight selected card
     document.querySelectorAll('.vehicle-type-card').forEach(card => {
         const radio = document.getElementById(card.dataset.for);
@@ -1079,9 +1067,65 @@ function onVehicleTypeChange() {
 const docBlobs = { or: null, cr: null, license: null };
 const docUrls  = { or: null, cr: null, license: null };
 
-function handleDocUpload(key, input) {
+// Matches the server-side 'max:5120' (5MB) rule on these fields. A phone camera photo
+// routinely comes out well over this — so instead of just rejecting it, compress it
+// down first and only fall back to an error if it genuinely can't be gotten under the cap.
+const MAX_DOC_UPLOAD_BYTES = 5 * 1024 * 1024;
+
+/** Re-encodes an oversized image as JPEG, stepping quality down and then dimensions down until it fits, or gives up after a few tries. */
+function compressImageFile(file, maxBytes) {
+    return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = async () => {
+            URL.revokeObjectURL(url);
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            let w = img.naturalWidth, h = img.naturalHeight, quality = 0.85;
+
+            const encode = (width, height, q) => new Promise((res) => {
+                canvas.width = width;
+                canvas.height = height;
+                ctx.clearRect(0, 0, width, height);
+                ctx.drawImage(img, 0, 0, width, height);
+                canvas.toBlob(res, 'image/jpeg', q);
+            });
+
+            let blob = await encode(w, h, quality);
+            for (let attempt = 0; blob && blob.size > maxBytes && attempt < 8; attempt++) {
+                if (quality > 0.4) quality -= 0.15;
+                else { w = Math.round(w * 0.8); h = Math.round(h * 0.8); }
+                blob = await encode(w, h, quality);
+            }
+
+            if (!blob) { reject(new Error('Could not compress image.')); return; }
+            resolve(new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' }));
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read image.')); };
+        img.src = url;
+    });
+}
+
+async function handleDocUpload(key, input) {
     if (!input.files[0]) return;
-    const file = input.files[0];
+    let file = input.files[0];
+    const errEl = document.getElementById(`${key}Error`);
+
+    if (file.size > MAX_DOC_UPLOAD_BYTES && file.type.startsWith('image/')) {
+        try {
+            file = await compressImageFile(file, MAX_DOC_UPLOAD_BYTES);
+        } catch (e) {
+            // Compression failed outright — fall through to the size check below,
+            // which will show a clear error rather than silently keeping the oversized original.
+        }
+    }
+
+    if (file.size > MAX_DOC_UPLOAD_BYTES) {
+        if (errEl) { errEl.textContent = 'This file is too large (max 5MB) — please choose a smaller one.'; errEl.style.display = 'block'; }
+        input.value = '';
+        return;
+    }
+
     docBlobs[key] = file;
     if (docUrls[key]) URL.revokeObjectURL(docUrls[key]);
     docUrls[key] = URL.createObjectURL(file);
@@ -1089,7 +1133,6 @@ function handleDocUpload(key, input) {
     const idleEl   = document.getElementById(`${key}Idle`);
     const prevEl   = document.getElementById(`${key}Preview`);
     const imgEl    = document.getElementById(`${key}Img`);
-    const errEl    = document.getElementById(`${key}Error`);
     idleEl.style.display  = 'none';
     prevEl.style.display  = '';
     if (isPdf) {
@@ -1134,35 +1177,15 @@ function clearUpload(key) {
 // ── Validation ──
 // Manual form: category=step1, id/selfie=step2, personal=step3, contact=step4(emailVerified), address=step5, account=step6
 // Google form: category=step0, id/selfie=step1, personal=step2, contact=step3, address=step4, account=step5
-// Rider extra: vehicle=step7, license=step8
+// Rider flow is entirely different (License+Selfie=panel-2 is step 1, Vehicle=panel-7 is step 2,
+// then personal/contact/address/account follow in their normal relative order) and is fully
+// self-contained in register-rider.blade.php's own inline script, which wraps nextStep/prevStep/
+// setStep below — this file only needs to supply the correct fallback for panels 3-6.
 const idSelfieStep = isGoogleForm ? 1 : 2;
 const contactStep  = isGoogleForm ? 3 : 4;
 const accountStep  = isGoogleForm ? 5 : 6;
 
-// Rider registration ends with account creation, after vehicle and license details.
-if (isRider) {
-    const indicator = document.getElementById('stepIndicator');
-    const accountItem = indicator?.querySelector(`[data-step="${accountStep}"]`);
-    const vehicleItem = indicator?.querySelector('[data-step="7"]');
-    const licenseItem = indicator?.querySelector('[data-step="8"]');
-    if (accountItem && vehicleItem && licenseItem) {
-        accountItem.dataset.step = '8';
-        vehicleItem.dataset.step = '6';
-        licenseItem.dataset.step = '7';
-        accountItem.querySelector('.step-circle').textContent = '7';
-        vehicleItem.querySelector('.step-circle').textContent = '5';
-        licenseItem.querySelector('.step-circle').textContent = '6';
-        indicator.append(vehicleItem, licenseItem, accountItem);
-    }
-    const accountNext = document.getElementById('btnStep6RiderNext');
-    if (accountNext) accountNext.textContent = 'Submit Registration';
-}
-
 function indicatorStepFor(panelStep) {
-    if (!isRider) return panelStep;
-    if (panelStep === accountStep) return 8;
-    if (panelStep === 7) return 6;
-    if (panelStep === 8) return 7;
     return panelStep;
 }
 
@@ -1225,21 +1248,24 @@ function validateStep(step) {
         }
         const uEl = document.getElementById('username');
         if (uEl) {
+            // usernameAvailable === null (check still pending, or its fetch never resolved —
+            // this DB connection can take several seconds per round trip) is deliberately NOT
+            // blocking: a stale live check used to strand the user here indefinitely with no
+            // way forward. Uniqueness is still fully enforced server-side at final submit.
             if (!uEl.value.trim()) { showError(uEl, 'Username is required.'); valid = false; }
             else if (uEl.value.trim().length < 8) { showError(uEl, 'Username must be at least 8 characters.'); valid = false; }
             else if (!/^[a-zA-Z0-9_-]+$/.test(uEl.value.trim())) { showError(uEl, 'Only letters, numbers, underscores and dashes.'); valid = false; }
             else if (usernameAvailable === false) { showError(uEl, 'Username is already taken.'); valid = false; }
-            else if (usernameAvailable === null) { showError(uEl, 'Please wait for username check to complete.'); valid = false; }
         }
         const businessName = document.getElementById('business_name');
         if (businessName) {
             if (!businessName.value.trim()) { showError(businessName, 'Business name is required.'); valid = false; }
             else if (businessNameAvailable === false) { showError(businessName, 'Business name is already registered.'); valid = false; }
         }
-        if (isSeller && !businessPermitBlob) {
+        if ((isSeller || isLogistics) && !businessPermitBlob) {
             document.getElementById('businessPermitError').style.display = 'block';
             valid = false;
-        } else if (isSeller) {
+        } else if (isSeller || isLogistics) {
             document.getElementById('businessPermitError').style.display = 'none';
         }
         // password confirmation
@@ -1248,51 +1274,18 @@ function validateStep(step) {
         if (pw && pc && pc.value !== pw.value) { showError(pc, 'Passwords do not match.'); valid = false; }
     }
 
-    // Vehicle step
-    if (step === 7) {
-        const vt = document.querySelector('input[name="vehicle_type"]:checked')?.value;
-        if (!vt) { document.getElementById('vehicleTypeError').style.display = 'block'; valid = false; }
-        const isBike = vt === 'bicycle';
-        ['vehicle_brand','vehicle_model'].forEach(id => {
-            const el = document.getElementById(id);
-            clearError(el);
-            if (!el.value.trim()) { showError(el, 'This field is required.'); valid = false; }
-        });
-        if (!isBike) {
-            const pn = document.getElementById('plate_number');
-            clearError(pn);
-            if (!pn.value.trim()) { showError(pn, 'Plate number is required.'); valid = false; }
-            if (!docBlobs.or)  { document.getElementById('orError').style.display  = 'block'; valid = false; }
-            if (!docBlobs.cr)  { document.getElementById('crError').style.display  = 'block'; valid = false; }
-        }
-        if (!valid) { const first = document.getElementById('panel-7').querySelector('.error'); first?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-        return valid;
-    }
-
-    // License step
-    if (step === 8) {
-        const ln = document.getElementById('license_number');
-        const le = document.getElementById('license_expiry');
-        clearError(ln); clearError(le);
-        if (!ln.value.trim()) { showError(ln, 'License number is required.'); valid = false; }
-        if (!le.value)        { showError(le, 'Expiry date is required.'); valid = false; }
-        if (!docBlobs.license) { document.getElementById('licenseError').style.display = 'block'; valid = false; }
-        return valid;
-    }
-
     if (!valid) { const first = panel.querySelector('.error'); first?.scrollIntoView({ behavior: 'smooth', block: 'center' }); first?.focus(); }
     return valid;
 }
 
 // ── Step switching ──
+// Rider panels 2 (License+Selfie) and 7 (Vehicle) have their own validation/transition
+// logic in register-rider.blade.php's inline script, which intercepts those steps before
+// ever calling into getPrevStep/nextStep below — so no rider-specific branching is needed
+// here for panels 3-6, which just move forward/back in their normal relative order.
 function getPrevStep(current) {
     if (current === idSelfieStep && isSeller) return isGoogleForm ? 0 : 1;
     if (current === idSelfieStep) return idSelfieStep;
-    if (isRider && current === accountStep) {
-        return document.querySelector('input[name="vehicle_type"]:checked')?.value === 'bicycle' ? 7 : 8;
-    }
-    if (current === 7) return isRider ? accountStep - 1 : accountStep;
-    if (current === 8) return 7;
     return current - 1;
 }
 
@@ -1318,18 +1311,6 @@ function setStep(current, target) {
 
 function nextStep(current) {
     if (!validateStep(current)) return;
-    // Riders complete vehicle and license details before the final account step.
-    if (isRider && current === accountStep - 1) { setStep(current, 7); return; }
-    if (isRider && current === 7) {
-        const vt = document.querySelector('input[name="vehicle_type"]:checked')?.value;
-        if (vt === 'bicycle') { setStep(current, accountStep); return; }
-        setStep(current, 8); return;
-    }
-    if (isRider && current === 8) { setStep(current, accountStep); return; }
-    if (isRider && current === accountStep) {
-        document.getElementById(isGoogleForm ? 'googleRegForm' : 'buyerForm')?.requestSubmit();
-        return;
-    }
     setStep(current, current + 1);
 }
 
@@ -1368,10 +1349,10 @@ if (document.getElementById('buyerForm')) {
                     document.getElementById('successScreen').classList.add('active');
                 } else {
                     btn.disabled = false; btn.textContent = 'Submit Registration';
-                    const errMsg = data.errors ? Object.entries(data.errors).map(([k,v]) => `${k}: ${v}`).join('\n') : (data.message ?? 'Something went wrong.');
-                    alert(errMsg);
+                    const errMsg = data.errors ? Object.values(data.errors).map(v => Array.isArray(v) ? v[0] : v).join('\n') : (data.message ?? 'Something went wrong.');
+                    showRegisterErrorModal(errMsg);
                 }
             })
-            .catch(() => { btn.disabled = false; btn.textContent = 'Submit Registration'; alert('Network error. Please try again.'); });
+            .catch(() => { btn.disabled = false; btn.textContent = 'Submit Registration'; showRegisterErrorModal('Network error. Please try again.'); });
     });
 }

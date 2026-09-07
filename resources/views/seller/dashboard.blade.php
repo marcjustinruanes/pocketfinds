@@ -62,7 +62,7 @@
           </tr></thead>
           <tbody>
             @forelse($recentOrders as $order)
-            <tr><td class="mono">{{ $order->order_number }}</td><td>{{ $order->buyer?->given_names }} {{ $order->buyer?->last_name }}</td><td class="mono">₱{{ number_format($order->total, 2) }}</td><td><span class="stamp stamp-{{ $order->status === 'to_ship' ? 'new' : $order->status }}">{{ str_replace('_', ' ', ucfirst($order->status)) }}</span></td><td><a href="{{ route('seller.orders') }}" class="btn btn-sm btn-outline">View</a></td></tr>
+            <tr><td class="mono">{{ $order->order_number }}</td><td>{{ $order->buyer?->given_names }} {{ $order->buyer?->last_name }}</td><td class="mono">₱{{ number_format($order->total, 2) }}</td><td><span class="stamp stamp-{{ $order->status === 'placed' ? 'new' : $order->status }}">{{ str_replace('_', ' ', ucfirst($order->status)) }}</span></td><td><a href="{{ route('seller.orders') }}" class="btn btn-sm btn-outline">View</a></td></tr>
             @empty
             <tr><td colspan="5"><div class="empty" style="padding:30px 20px"><h3>No orders yet</h3><p>Incoming orders will appear here.</p></div></td></tr>
             @endforelse

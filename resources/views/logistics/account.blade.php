@@ -17,6 +17,18 @@
 @section('content')
 @php($user = auth()->user())
 
+@if($pendingRequest)
+<div style="background:var(--warning-soft);border:1px solid var(--warning-line);color:var(--warning);padding:12px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">
+  <div style="font-weight:700;margin-bottom:2px">Update Request Pending</div>
+  <div>Your requested changes are awaiting admin review — the forms below are locked until this request is resolved.</div>
+</div>
+@elseif($lastRequest && $lastRequest->status === 'rejected')
+<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:12px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">
+  <div style="font-weight:700;margin-bottom:2px">Last Request Rejected</div>
+  <div>{{ $lastRequest->note ?? 'Your previous update request was rejected. You may submit a new one.' }}</div>
+</div>
+@endif
+
 <div class="dash-grid">
   <div class="stack">
 
@@ -42,7 +54,7 @@
         @if(session('profile_success'))
         <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px">{{ session('profile_success') }}</div>
         @endif
-        <form method="POST" action="{{ route('logistics.account.update') }}" enctype="multipart/form-data">
+        <form method="POST" action="{{ route('logistics.account.update') }}" enctype="multipart/form-data" {{ $pendingRequest ? 'style=opacity:.5;pointer-events:none' : '' }}>
           @csrf
           <div class="form-row">
             <label>Profile Picture</label>
@@ -91,7 +103,7 @@
         @error('province')
         <div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px">{{ $message }}</div>
         @enderror
-        <form method="POST" action="{{ route('logistics.account.address') }}" id="addressForm">
+        <form method="POST" action="{{ route('logistics.account.address') }}" id="addressForm" {{ $pendingRequest ? 'style=opacity:.5;pointer-events:none' : '' }}>
           @csrf
           <div class="form-row">
             <label>Province</label>
@@ -167,6 +179,45 @@
         @endforeach
       </div>
     </div>
+
+    {{-- Company Terms & Conditions — separate from PocketFinds' own platform-wide
+         T&C: this is what shows to new registrants choosing {{ $company ?? 'this company' }}
+         at registration, and only goes live once an admin approves it. --}}
+    @if($company ?? null)
+    <div class="card">
+      <div class="card-head"><div><h2>{{ $company }} — Terms &amp; Conditions</h2><p>Shown to new staff and riders registering under your company. Edits need admin approval before they go live.</p></div></div>
+      <div class="card-pad">
+        @if(session('policy_success'))
+        <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px">{{ session('policy_success') }}</div>
+        @endif
+
+        @if($companyPolicy?->hasPending())
+        <div style="background:var(--warning-soft,#fff7ed);border:1px solid var(--warning-line,#fed7aa);border-radius:9px;padding:10px 14px;font-size:12.5px;margin-bottom:14px">
+          Your last edit is awaiting admin review — submitted {{ $companyPolicy->pending_submitted_at?->diffForHumans() }}. The live version below is still what registrants see until it's approved.
+        </div>
+        @elseif($companyPolicy?->rejection_reason)
+        <div style="background:var(--danger-soft,#fef2f2);border:1px solid var(--danger-line,#fecaca);border-radius:9px;padding:10px 14px;font-size:12.5px;margin-bottom:14px">
+          <strong>Revisions requested:</strong> {{ $companyPolicy->rejection_reason }} Please make these changes and resubmit below.
+        </div>
+        @endif
+
+        <form method="POST" action="{{ route('logistics.company-policy.update') }}">
+          @csrf
+          <div class="form-row">
+            <textarea name="content" rows="10" required maxlength="20000" style="font-family:var(--font-mono, monospace);font-size:12.5px;line-height:1.6;width:100%;padding:12px;border:1px solid var(--border);border-radius:9px;resize:vertical" placeholder="Write your company's Terms & Conditions for new staff registering here...">{{ old('content', $companyPolicy?->hasPending() ? $companyPolicy->pending_content : $companyPolicy?->content) }}</textarea>
+          </div>
+          <button class="btn btn-primary" type="submit">Submit for Approval</button>
+        </form>
+
+        @if($companyPolicy?->content)
+        <details style="margin-top:14px">
+          <summary style="cursor:pointer;font-size:12.5px;font-weight:700;color:var(--muted)">Currently live version</summary>
+          <pre style="white-space:pre-wrap;font-size:12px;margin-top:8px;max-height:160px;overflow-y:auto;color:var(--text);background:var(--paper);border:1px solid var(--border);border-radius:9px;padding:12px">{{ $companyPolicy->content }}</pre>
+        </details>
+        @endif
+      </div>
+    </div>
+    @endif
   </div>
 </div>
 @endsection

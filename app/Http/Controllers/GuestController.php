@@ -17,11 +17,11 @@ class GuestController extends Controller
 
     public function product($id)
     {
-        $p = Product::with(['seller', 'category'])->where('id', $id)->where('status', 'active')->firstOrFail();
+        $p = Product::with(['seller', 'category'])->where('id', $id)->where('status', 'active')->sellerApproved()->firstOrFail();
         $product = $this->mapProduct($p);
 
         $shopProducts = Product::with(['seller', 'category'])
-            ->where('seller_id', $p->seller_id)->where('status', 'active')->where('id', '!=', $id)
+            ->where('seller_id', $p->seller_id)->where('status', 'active')->sellerApproved()->where('id', '!=', $id)
             ->limit(6)->get()->map(fn($r) => $this->mapProduct($r))->all();
 
         $titleTerms = collect(preg_split('/[^\\pL\\pN]+/u', $p->name))
@@ -30,6 +30,7 @@ class GuestController extends Controller
             ->take(5);
         $related = Product::with(['seller', 'category'])
             ->where('status', 'active')
+            ->sellerApproved()
             ->where('id', '!=', $id)
             ->when($titleTerms->isNotEmpty(), function ($query) use ($titleTerms) {
                 $query->where(function ($matches) use ($titleTerms) {
@@ -51,7 +52,7 @@ class GuestController extends Controller
     {
         $seller = \App\Models\User::where('username', $slug)->where('account_type', 'seller')->firstOrFail();
         $items  = Product::with(['seller', 'category'])
-            ->where('seller_id', $seller->id)->where('status', 'active')
+            ->where('seller_id', $seller->id)->where('status', 'active')->sellerApproved()
             ->get()->map(fn($p) => $this->mapProduct($p))->all();
 
         $shop = [

@@ -93,13 +93,7 @@
             transition: color .15s ease;
         }
         .back-home-link:hover { color: var(--auth-primary); }
-        .customer-link {
-            display: block;
-            margin-top: 14px;
-            font-size: 11.5px;
-            color: var(--auth-muted);
-            text-align: center;
-        }
+
     </style>
 </head>
 <body class="auth-page">
@@ -151,14 +145,26 @@
                         <span class="role-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
                     </button>
 
-                    {{-- Logistics --}}
+                    {{-- Logistics Company --}}
                     <button class="role-card" type="button" data-account-type="logistics" data-target="{{ url('/register/method') }}">
                         <span class="role-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><path d="M9 14l2 2 4-4"/></svg>
                         </span>
                         <span class="role-copy">
-                            <span class="role-name">Logistics Staff</span>
-                            <span class="role-desc">Coordinate pickups, dispatch couriers, and monitor deliveries.</span>
+                            <span class="role-name">Logistics Company</span>
+                            <span class="role-desc">Register your logistics company to coordinate pickups, dispatch couriers, and monitor deliveries.</span>
+                        </span>
+                        <span class="role-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+                    </button>
+
+                    {{-- Hub Staff --}}
+                    <button class="role-card" type="button" data-account-type="logistics-staff" data-target="{{ url('/register/method') }}">
+                        <span class="role-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                        </span>
+                        <span class="role-copy">
+                            <span class="role-name">Hub Staff</span>
+                            <span class="role-desc">Join an existing logistics company as sorting hub staff to process and dispatch parcels.</span>
                         </span>
                         <span class="role-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
                     </button>
@@ -168,7 +174,7 @@
                     Already have an account?
                     <a class="auth-link" href="{{ url('/login') }}">Sign in</a>
                 </p>
-                <a href="{{ route('register.type') }}" class="customer-link">Looking to buy or sell instead? Go to customer sign-up →</a>
+
             </div>
         </section>
     </main>

@@ -42,7 +42,7 @@
                 </a>
                 <h1 class="auth-brand-title">Almost there.</h1>
                 <p class="auth-brand-text">
-                    Choose how you'd like to sign up as a {{ $type }}. You can always link Google to your account later.
+                    Choose how you'd like to sign up as a {{ $type === 'logistics-staff' ? 'hub staff' : $type }}. You can always link Google to your account later.
                 </p>
                 <ul class="auth-brand-points">
                     <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Quick, guided registration</li>
@@ -55,7 +55,7 @@
 
         <section class="auth-form-panel">
             <div class="auth-form-wrap">
-                <a href="{{ in_array($type, ['rider', 'logistics'], true) ? route('register.delivery-team') : route('register.type') }}" class="back-home-link">
+                <a href="{{ in_array($type, ['rider', 'logistics', 'logistics-staff'], true) ? route('register.delivery-team') : route('register.type') }}" class="back-home-link">
                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
                     Back
                 </a>
@@ -64,7 +64,7 @@
                     <div class="page-title-row">
                         <h2>How would you like to sign up?</h2>
                     </div>
-                    <p>Registering as a {{ $type }}. Choose one to continue.</p>
+                    <p>Registering as a {{ $type === 'logistics-staff' ? 'hub staff' : $type }}. Choose one to continue.</p>
                 </div>
 
                 @if (!empty($errors) && $errors->any())
@@ -74,10 +74,11 @@
                 @php
                     // Every role has its own dedicated registration page.
                     $manualRoute = match ($type) {
-                        'seller'     => route('register.seller'),
-                        'rider'      => route('register.rider'),
-                        'logistics'  => route('register.logistics'),
-                        default      => route('register.buyer'),
+                        'seller'          => route('register.seller'),
+                        'rider'           => route('register.rider'),
+                        'logistics'       => route('register.logistics'),
+                        'logistics-staff' => route('register.logistics-staff'),
+                        default           => route('register.buyer'),
                     };
                 @endphp
 

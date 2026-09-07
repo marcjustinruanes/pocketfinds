@@ -6,6 +6,24 @@
 @section('content')
 @php $u = $seller; @endphp
 
+@if($pendingRequest)
+<div style="background:var(--warning-soft);border:1px solid var(--warning-line);color:var(--warning);padding:12px 14px;border-radius:9px;font-size:13px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px">
+  <span style="flex:none;margin-top:1px">@include('seller.partials.icon',['name'=>'clock','size'=>15])</span>
+  <div>
+    <div style="font-weight:700;margin-bottom:2px">Update Request Pending</div>
+    <div>Your requested changes are awaiting admin review — the forms below are locked until this request is resolved.</div>
+  </div>
+</div>
+@elseif($lastRequest && $lastRequest->status === 'rejected')
+<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:12px 14px;border-radius:9px;font-size:13px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px">
+  <span style="flex:none;margin-top:1px">@include('seller.partials.icon',['name'=>'x','size'=>15])</span>
+  <div>
+    <div style="font-weight:700;margin-bottom:2px">Last Request Rejected</div>
+    <div>{{ $lastRequest->note ?? 'Your previous update request was rejected. You may submit a new one.' }}</div>
+  </div>
+</div>
+@endif
+
 <div class="dash-grid">
   <div class="stack">
 
@@ -26,7 +44,7 @@
         @if(session('profile_success'))
           <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px">{{ session('profile_success') }}</div>
         @endif
-        <form method="POST" action="{{ route('seller.account.profile') }}">
+        <form method="POST" action="{{ route('seller.account.profile') }}" {{ $pendingRequest ? 'style=opacity:.5;pointer-events:none' : '' }}>
           @csrf
           <div class="form-grid-2">
             <div class="form-row"><label>Given Names</label><input type="text" name="given_names" value="{{ old('given_names', $u->given_names) }}" required></div>
@@ -61,25 +79,40 @@
         @if(session('address_success'))
           <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px">{{ session('address_success') }}</div>
         @endif
-        <form method="POST" action="{{ route('seller.account.address') }}">
+        <form method="POST" action="{{ route('seller.account.address') }}" id="addressForm" {{ $pendingRequest ? 'style=opacity:.5;pointer-events:none' : '' }}>
           @csrf
           <div class="form-row">
-            <label>Province</label>
-            <input type="text" name="province" value="{{ old('province', $u->province) }}" required>
+            <label>Province <span style="color:var(--danger)">*</span></label>
+            <select name="province" id="addr-province" required style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff">
+              <option value="" disabled {{ !$u->province ? 'selected' : '' }}>Loading provinces…</option>
+              @if($u->province)
+                <option value="{{ $u->province }}" selected>{{ $u->province }}</option>
+              @endif
+            </select>
           </div>
           <div class="form-row">
-            <label>Municipality / City</label>
-            <input type="text" name="municipality" value="{{ old('municipality', $u->municipality) }}" required>
+            <label>Municipality / City <span style="color:var(--danger)">*</span></label>
+            <select name="municipality" id="addr-municipality" required disabled style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff">
+              <option value="" disabled {{ !$u->municipality ? 'selected' : '' }}>Select province first</option>
+              @if($u->municipality)
+                <option value="{{ $u->municipality }}" selected>{{ $u->municipality }}</option>
+              @endif
+            </select>
           </div>
           <div class="form-row">
-            <label>Barangay</label>
-            <input type="text" name="barangay" value="{{ old('barangay', $u->barangay) }}" required>
+            <label>Barangay <span style="color:var(--danger)">*</span></label>
+            <select name="barangay" id="addr-barangay" required disabled style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff">
+              <option value="" disabled {{ !$u->barangay ? 'selected' : '' }}>Select municipality first</option>
+              @if($u->barangay)
+                <option value="{{ $u->barangay }}" selected>{{ $u->barangay }}</option>
+              @endif
+            </select>
           </div>
           <div class="form-grid-2">
-            <div class="form-row"><label>House No. / Unit</label><input type="text" name="house_no" value="{{ old('house_no', $u->house_no) }}" placeholder="e.g. 123"></div>
-            <div class="form-row"><label>Street</label><input type="text" name="street" value="{{ old('street', $u->street) }}" placeholder="e.g. Rizal St."></div>
+            <div class="form-row"><label>House No. / Unit</label><input type="text" id="addr-house-no" name="house_no" value="{{ old('house_no', $u->house_no) }}" placeholder="e.g. 123"></div>
+            <div class="form-row"><label>Street</label><input type="text" id="addr-street" name="street" value="{{ old('street', $u->street) }}" placeholder="e.g. Rizal St."></div>
           </div>
-          <button type="submit" class="btn btn-primary">Update Address</button>
+          <button type="submit" id="addrSubmitBtn" class="btn btn-primary" disabled style="opacity:.45;cursor:not-allowed">Update Address</button>
         </form>
       </div>
     </div>
@@ -91,7 +124,7 @@
         @if(session('shop_success'))
           <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px">{{ session('shop_success') }}</div>
         @endif
-        <form method="POST" action="{{ route('seller.account.shop') }}">
+        <form method="POST" action="{{ route('seller.account.shop') }}" {{ $pendingRequest ? 'style=opacity:.5;pointer-events:none' : '' }}>
           @csrf
           <div class="form-grid-2">
             <div class="form-row"><label>Business Name</label><input type="text" name="business_name" value="{{ old('business_name', $u->business_name) }}" placeholder="Your Shop Name"></div>
@@ -121,38 +154,23 @@
       <div class="card-head"><div><h2>Documents & Verification</h2><p>Your ID and business permit on file</p></div></div>
       <div class="card-pad">
 
-        {{-- Pending request banner --}}
-        @if($pendingRequest)
-          <div style="background:var(--warning-soft);border:1px solid var(--warning-line);color:var(--warning);padding:12px 14px;border-radius:9px;font-size:13px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px">
-            <span style="flex:none;margin-top:1px">@include('seller.partials.icon',['name'=>'clock','size'=>15])</span>
-            <div>
-              <div style="font-weight:700;margin-bottom:2px">Update Request Pending</div>
-              <div>Your document update request is awaiting admin review. You cannot submit a new request until this one is resolved.</div>
-              <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px">
-                @if($pendingRequest->id_file)
-                  <button type="button" class="doc-preview-btn btn btn-sm btn-outline"
-                    data-src="{{ asset('storage/'.$pendingRequest->id_file) }}"
-                    data-type="{{ in_array(strtolower(pathinfo($pendingRequest->id_file,PATHINFO_EXTENSION)),['jpg','jpeg','png']) ? 'image' : 'pdf' }}">
-                    @include('seller.partials.icon',['name'=>'file','size'=>13]) Submitted ID
-                  </button>
-                @endif
-                @if($pendingRequest->business_permit_file)
-                  <button type="button" class="doc-preview-btn btn btn-sm btn-outline"
-                    data-src="{{ asset('storage/'.$pendingRequest->business_permit_file) }}"
-                    data-type="{{ in_array(strtolower(pathinfo($pendingRequest->business_permit_file,PATHINFO_EXTENSION)),['jpg','jpeg','png']) ? 'image' : 'pdf' }}">
-                    @include('seller.partials.icon',['name'=>'file','size'=>13]) Submitted Permit
-                  </button>
-                @endif
-              </div>
-            </div>
-          </div>
-        @elseif($lastRequest && $lastRequest->status === 'rejected')
-          <div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:12px 14px;border-radius:9px;font-size:13px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px">
-            <span style="flex:none;margin-top:1px">@include('seller.partials.icon',['name'=>'x','size'=>15])</span>
-            <div>
-              <div style="font-weight:700;margin-bottom:2px">Last Request Rejected</div>
-              <div>{{ $lastRequest->note ?? 'Your previous document update request was rejected. You may submit a new one.' }}</div>
-            </div>
+        {{-- Pending document previews (profile/address/shop banners live at the top of the page) --}}
+        @if($pendingRequest && ($pendingRequest->requested_documents['id_file'] ?? $pendingRequest->requested_documents['business_permit_file'] ?? null))
+          <div style="margin-bottom:16px;display:flex;flex-wrap:wrap;gap:8px">
+            @if($idFile = $pendingRequest->requested_documents['id_file'] ?? null)
+              <button type="button" class="doc-preview-btn btn btn-sm btn-outline"
+                data-src="{{ asset('storage/'.$idFile) }}"
+                data-type="{{ in_array(strtolower(pathinfo($idFile,PATHINFO_EXTENSION)),['jpg','jpeg','png']) ? 'image' : 'pdf' }}">
+                @include('seller.partials.icon',['name'=>'file','size'=>13]) Submitted ID (pending)
+              </button>
+            @endif
+            @if($permitFile = $pendingRequest->requested_documents['business_permit_file'] ?? null)
+              <button type="button" class="doc-preview-btn btn btn-sm btn-outline"
+                data-src="{{ asset('storage/'.$permitFile) }}"
+                data-type="{{ in_array(strtolower(pathinfo($permitFile,PATHINFO_EXTENSION)),['jpg','jpeg','png']) ? 'image' : 'pdf' }}">
+                @include('seller.partials.icon',['name'=>'file','size'=>13]) Submitted Permit (pending)
+              </button>
+            @endif
           </div>
         @endif
 
@@ -313,5 +331,129 @@ document.querySelectorAll('.doc-preview-btn').forEach(btn => {
     docModal.style.display = 'flex';
   });
 });
+</script>
+
+<script>
+// ── PSGC Address Cascading Selects ──
+// Scoped to #addr-* IDs — independent of the registration form selects.
+(function () {
+  const PSGC = 'https://psgc.gitlab.io/api';
+
+  const provSel  = document.getElementById('addr-province');
+  const muniSel  = document.getElementById('addr-municipality');
+  const brgysSel = document.getElementById('addr-barangay');
+  const houseIn  = document.getElementById('addr-house-no');
+  const streetIn = document.getElementById('addr-street');
+  const submitBtn = document.getElementById('addrSubmitBtn');
+
+  // Saved values — what's currently on the account (never changes client-side).
+  const SAVED = {
+    province:     provSel?.querySelector('option[selected]')?.value  || '',
+    municipality: muniSel?.querySelector('option[selected]')?.value  || '',
+    barangay:     brgysSel?.querySelector('option[selected]')?.value || '',
+    house_no:     houseIn?.value  || '',
+    street:       streetIn?.value || '',
+  };
+
+  // Enable/disable the submit button based on whether anything actually changed.
+  function checkDirty() {
+    if (!submitBtn) return;
+    const changed =
+      (provSel?.value  || '') !== SAVED.province     ||
+      (muniSel?.value  || '') !== SAVED.municipality ||
+      (brgysSel?.value || '') !== SAVED.barangay     ||
+      (houseIn?.value  || '').trim() !== SAVED.house_no.trim()  ||
+      (streetIn?.value || '').trim() !== SAVED.street.trim();
+
+    submitBtn.disabled = !changed;
+    submitBtn.style.opacity = changed ? '' : '.45';
+    submitBtn.style.cursor  = changed ? '' : 'not-allowed';
+  }
+
+  function populateAddr(sel, items, placeholder, preselect) {
+    sel.innerHTML = `<option value="" disabled>${placeholder}</option>`;
+    [...items].sort((a, b) => a.name.localeCompare(b.name)).forEach(item => {
+      const o = document.createElement('option');
+      o.value = item.name;
+      o.dataset.code = item.code;
+      o.textContent  = item.name;
+      if (item.name === preselect) o.selected = true;
+      sel.appendChild(o);
+    });
+    sel.disabled = false;
+    checkDirty();
+  }
+
+  function setLoading(sel, msg) {
+    sel.innerHTML = `<option value="" disabled selected>${msg}</option>`;
+    sel.disabled = true;
+  }
+
+  async function fetchJSON(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Network error');
+    return res.json();
+  }
+
+  // Load provinces on page load; pre-select the saved province.
+  fetchJSON(`${PSGC}/provinces/`)
+    .then(data => {
+      populateAddr(provSel, data, 'Select province', SAVED.province);
+      // If there's a saved province, immediately load its municipalities.
+      if (SAVED.province) {
+        const savedOpt = [...provSel.options].find(o => o.value === SAVED.province);
+        const code = savedOpt?.dataset.code;
+        if (code) {
+          setLoading(muniSel, 'Loading…');
+          return fetchJSON(`${PSGC}/provinces/${code}/cities-municipalities/`);
+        }
+      }
+    })
+    .then(munis => {
+      if (!munis) return;
+      populateAddr(muniSel, munis, 'Select city / municipality', SAVED.municipality);
+      // If there's a saved municipality, immediately load its barangays.
+      if (SAVED.municipality) {
+        const savedOpt = [...muniSel.options].find(o => o.value === SAVED.municipality);
+        const code = savedOpt?.dataset.code;
+        if (code) {
+          setLoading(brgysSel, 'Loading…');
+          return fetchJSON(`${PSGC}/cities-municipalities/${code}/barangays/`);
+        }
+      }
+    })
+    .then(brgys => {
+      if (!brgys) return;
+      populateAddr(brgysSel, brgys, 'Select barangay', SAVED.barangay);
+    })
+    .catch(() => {
+      if (provSel) { provSel.innerHTML = '<option value="" disabled selected>Failed to load — refresh to retry</option>'; provSel.disabled = false; }
+    });
+
+  // Province → load municipalities, reset barangay.
+  provSel?.addEventListener('change', function () {
+    const code = this.options[this.selectedIndex]?.dataset.code ?? this.value;
+    setLoading(muniSel, 'Loading municipalities…');
+    setLoading(brgysSel, 'Select municipality first');
+    checkDirty();
+    fetchJSON(`${PSGC}/provinces/${code}/cities-municipalities/`)
+      .then(data => populateAddr(muniSel, data, 'Select city / municipality', ''))
+      .catch(() => { muniSel.innerHTML = '<option value="" disabled selected>Failed to load</option>'; muniSel.disabled = false; });
+  });
+
+  // Municipality → load barangays, reset barangay.
+  muniSel?.addEventListener('change', function () {
+    const code = this.options[this.selectedIndex]?.dataset.code ?? this.value;
+    setLoading(brgysSel, 'Loading barangays…');
+    checkDirty();
+    fetchJSON(`${PSGC}/cities-municipalities/${code}/barangays/`)
+      .then(data => populateAddr(brgysSel, data, 'Select barangay', ''))
+      .catch(() => { brgysSel.innerHTML = '<option value="" disabled selected>Failed to load</option>'; brgysSel.disabled = false; });
+  });
+
+  brgysSel?.addEventListener('change', checkDirty);
+  houseIn?.addEventListener('input',  checkDirty);
+  streetIn?.addEventListener('input', checkDirty);
+})();
 </script>
 @endsection

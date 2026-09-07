@@ -80,6 +80,15 @@
                 </div>
               </a>
             @endif
+            @if($msg->order_id && $msg->order)
+              <a href="{{ route('seller.orders') }}" class="chat-product-card">
+                <div class="chat-product-img">@include('seller.partials.icon', ['name' => 'orders', 'size' => 18])</div>
+                <div class="chat-product-info">
+                  <div class="chat-product-name">{{ $msg->order->order_number }}</div>
+                  <div class="chat-product-price">{{ str_replace('_', ' ', ucfirst($msg->order->status)) }} · ₱{{ number_format($msg->order->total, 2) }}</div>
+                </div>
+              </a>
+            @endif
             @if($msg->attachment_path)
               @php $attachmentType = $msg->attachment_type ?: (str_starts_with((string) $msg->attachment_mime, 'image/') ? 'image' : (str_starts_with((string) $msg->attachment_mime, 'video/') ? 'video' : 'document')); @endphp
               @if($attachmentType === 'image')
@@ -131,7 +140,22 @@
           @endforelse
         </div>
       </div>
-      <div class="chat-picker" id="orderPickerPanel" style="display:none"><div class="chat-picker-empty">No orders are available yet.</div></div>
+      <div class="chat-picker" id="orderPickerPanel" style="display:none">
+        <div id="orderPicker" class="chat-picker-grid">
+          @forelse($buyerOrders as $buyerOrder)
+            <div class="chat-picker-item">
+              <div class="chat-attach-img">@include('seller.partials.icon', ['name' => 'orders', 'size' => 18])</div>
+              <div class="chat-picker-info">
+                <div class="chat-picker-name">{{ $buyerOrder->order_number }}</div>
+                <div class="chat-picker-price">{{ str_replace('_', ' ', ucfirst($buyerOrder->status)) }} · ₱{{ number_format($buyerOrder->total, 2) }}</div>
+              </div>
+              <button type="button" class="chat-picker-send" data-order-id="{{ $buyerOrder->id }}" data-order-number="{{ $buyerOrder->order_number }}" data-order-status="{{ str_replace('_', ' ', ucfirst($buyerOrder->status)) }}" data-order-total="{{ $buyerOrder->total }}">Send</button>
+            </div>
+          @empty
+            <div class="chat-picker-empty">This buyer has no orders with your shop yet.</div>
+          @endforelse
+        </div>
+      </div>
 
       <div class="chat-reply-box" id="chatReplyBox">
         <div class="chat-reply-copy"><div class="chat-reply-label">Replying to message</div><div class="chat-reply-text" id="chatReplyText"></div></div>
@@ -176,6 +200,14 @@
   </div>
 </div>
 
+@php
+$autoAttachOrderPayload = $autoAttachOrder ? [
+    'id' => $autoAttachOrder->id,
+    'number' => $autoAttachOrder->order_number,
+    'status' => str_replace('_', ' ', ucfirst($autoAttachOrder->status)),
+    'total' => (float) $autoAttachOrder->total,
+] : null;
+@endphp
 @if($buyer)
 <script>
 const SEND_URL = '{{ route('seller.messages.send') }}';
@@ -185,6 +217,8 @@ const MY_ID    = {{ $myId }};
 const RECEIVER = {{ $buyer->id }};
 const REPORT_URL = '{{ route('seller.messages.report') }}';
 let attachedProduct = null;
+let attachedOrder = null;
+const AUTO_ATTACH_ORDER = @json($autoAttachOrderPayload);
 
 function openMediaViewer(url, type) {
   let viewer = document.getElementById('mediaViewer');
@@ -202,10 +236,34 @@ function openMediaViewer(url, type) {
 }
 
 document.addEventListener('click', event => { const button = event.target.closest('.chat-media-button'); if (button) openMediaViewer(button.dataset.mediaUrl, button.dataset.mediaType); });
-document.querySelectorAll('.chat-picker-send').forEach(button => button.addEventListener('click', () => {
+document.querySelectorAll('#productPicker .chat-picker-send').forEach(button => button.addEventListener('click', () => {
   attachedProduct = { id: button.dataset.productId, name: button.dataset.productName, price: button.dataset.productPrice, img: button.dataset.productImg };
   document.getElementById('productPickerPanel').classList.remove('open'); sendMessage();
 }));
+document.querySelectorAll('#orderPicker .chat-picker-send').forEach(button => button.addEventListener('click', () => {
+  attachedOrder = { id: button.dataset.orderId, number: button.dataset.orderNumber, status: button.dataset.orderStatus, total: button.dataset.orderTotal };
+  document.getElementById('orderPickerPanel').classList.remove('open');
+  document.getElementById('orderPickerPanel').style.display = 'none';
+  sendMessage();
+}));
+
+// "Message Buyer" from order management arrives with the order already picked —
+// show it staged above the composer, same idea as the reply box, ready to send.
+function showAttachedOrderChip(order) {
+  attachedOrder = order;
+  let chip = document.getElementById('attachedOrderChip');
+  if (!chip) {
+    chip = document.createElement('div');
+    chip.id = 'attachedOrderChip';
+    chip.className = 'chat-reply-box open';
+    chip.innerHTML = '<div class="chat-reply-copy"><div class="chat-reply-label">Order attached</div><div class="chat-reply-text" id="attachedOrderChipText"></div></div><button type="button" class="chat-reply-close" title="Remove">×</button>';
+    document.getElementById('chatReplyBox').after(chip);
+    chip.querySelector('.chat-reply-close').addEventListener('click', () => { attachedOrder = null; chip.classList.remove('open'); });
+  }
+  chip.querySelector('#attachedOrderChipText').textContent = `${order.number} — ${order.status} · ₱${Number(order.total).toLocaleString()}`;
+  chip.classList.add('open');
+}
+if (AUTO_ATTACH_ORDER) showAttachedOrderChip(AUTO_ATTACH_ORDER);
 
 function togglePicker(type) {
   const productPanel = document.getElementById('productPickerPanel');
@@ -295,13 +353,14 @@ async function sendMessage(event) {
   event?.preventDefault();
   const input = document.getElementById('chatInput');
   const text  = input.value.trim();
-  if (!text && !attachedFiles.length) return;
+  if (!text && !attachedFiles.length && !attachedProduct?.id && !attachedOrder?.id) return;
 
   const fd = new FormData();
   fd.append('_token', CSRF);
   fd.append('receiver_id', RECEIVER);
   if (text)         fd.append('body', text);
   if (attachedProduct?.id) fd.append('product_id', attachedProduct.id);
+  if (attachedOrder?.id) fd.append('order_id', attachedOrder.id);
   attachedFiles.forEach(file => fd.append('attachments[]', file));
 
   const sendButton = document.querySelector('.chat-input .btn-primary');
@@ -320,6 +379,8 @@ async function sendMessage(event) {
     const sentMessages = data.messages?.length ? data.messages : [data.message];
     sentMessages.forEach((message, index) => appendMessage(message || {}, true, fileSnapshots[index]?.url, fileSnapshots[index]?.type));
     attachedProduct = null;
+    attachedOrder = null;
+    document.getElementById('attachedOrderChip')?.classList.remove('open');
   } catch (error) {
     alert(error.message || 'Message could not be sent.');
   } finally {
@@ -354,6 +415,21 @@ function appendMessage(msg, isMe = msg.sender_id === MY_ID, localMediaUrl = null
     const info = document.createElement('div'); info.className = 'chat-product-info';
     const name = document.createElement('div'); name.className = 'chat-product-name'; name.textContent = msg.product_name;
     const price = document.createElement('div'); price.className = 'chat-product-price'; price.textContent = `PHP ${Number(msg.product_price).toLocaleString()}`;
+    info.append(name, price);
+    card.append(imageWrap, info);
+    content.appendChild(card);
+  }
+
+  if (msg.order_id) {
+    const card = document.createElement('a');
+    card.href = msg.order_url;
+    card.className = 'chat-product-card';
+    const imageWrap = document.createElement('div');
+    imageWrap.className = 'chat-product-img';
+    imageWrap.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12l3 6-9 13-9-13z"/><path d="M3 8h18M9 8v6"/></svg>';
+    const info = document.createElement('div'); info.className = 'chat-product-info';
+    const name = document.createElement('div'); name.className = 'chat-product-name'; name.textContent = msg.order_number;
+    const price = document.createElement('div'); price.className = 'chat-product-price'; price.textContent = `${msg.order_status} · PHP ${Number(msg.order_total).toLocaleString()}`;
     info.append(name, price);
     card.append(imageWrap, info);
     content.appendChild(card);

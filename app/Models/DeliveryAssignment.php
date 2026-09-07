@@ -12,7 +12,7 @@ class DeliveryAssignment extends Model
     public    $timestamps   = false;
 
     protected $fillable = [
-        'id', 'shipment_id', 'courier_id', 'status',
+        'id', 'shipment_id', 'courier_id', 'status', 'leg',
         'requested_at', 'accepted_at', 'picked_up_at', 'delivered_at',
     ];
 

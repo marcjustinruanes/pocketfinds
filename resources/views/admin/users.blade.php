@@ -5,6 +5,11 @@
 @php use Illuminate\Support\Facades\Storage; @endphp
 
 @section('content')
+@if(session('success'))
+<div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px">
+  {{ session('success') }}
+</div>
+@endif
 <div class="card">
   <div class="card-head">
     <div><h2>All Users</h2><p>{{ $users->count() }} total accounts</p></div>
@@ -44,7 +49,7 @@
             <td><span class="stamp stamp-{{ $user->account_type }}">{{ ucfirst($user->account_type) }}</span></td>
             <td class="mono" style="font-size:12px">{{ $user->username ?? '—' }}</td>
             <td class="mono">{{ $user->contact_no }}</td>
-            <td class="mono">{{ $user->created_at->format('M d, Y') }}</td>
+            <td class="mono">{{ $user->created_at?->format('M d, Y') ?? '—' }}</td>
             <td><span class="stamp stamp-{{ $user->status }}">{{ ucfirst($user->status) }}</span></td>
             <td>
               <div class="row-actions">
@@ -87,7 +92,7 @@
                     <div><div class="field-label">Email</div><div class="field-value">{{ $user->email }}</div></div>
                     <div><div class="field-label">Contact No.</div><div class="field-value mono">{{ $user->contact_no }}</div></div>
                     <div><div class="field-label">Auth Method</div><div class="field-value">{{ ucfirst($user->auth_method) }}</div></div>
-                    <div><div class="field-label">Joined</div><div class="field-value mono">{{ $user->created_at->format('M d, Y') }}</div></div>
+                    <div><div class="field-label">Joined</div><div class="field-value mono">{{ $user->created_at?->format('M d, Y') ?? '—' }}</div></div>
                   </div>
                 </div>
 
@@ -103,10 +108,20 @@
                 <div class="section-card">
                   <div class="section-head"><span class="ic"><x-admin-icon name="shield" /></span><span>Verification Documents</span></div>
                   <div class="doc-grid">
+                    {{-- Riders have no separate government ID upload — their driver's license
+                         (shown below) doubles as ID, so the generic thumb would just repeat it. --}}
+                    @unless($user->account_type === 'rider')
                     <x-admin-doc-thumb :path="$user->id_file" label="Government ID" />
+                    @endunless
                     <x-admin-doc-thumb :path="$user->selfie_file" label="Selfie with ID" />
-                    @if($user->account_type === 'seller')
+                    @if($user->account_type === 'seller' || $user->account_type === 'logistics')
                     <x-admin-doc-thumb :path="$user->business_permit_file" label="Business Permit" />
+                    @endif
+                    @if($user->account_type === 'logistics' && $user->company_logo)
+                    <x-admin-doc-thumb :path="$user->company_logo" label="Company Logo" />
+                    @endif
+                    @if($user->resume_file)
+                    <x-admin-doc-thumb :path="$user->resume_file" label="Resume / CV" />
                     @endif
                   </div>
                 </div>
@@ -122,13 +137,25 @@
                 </div>
                 @endif
 
+                {{-- Logistics-specific --}}
+                @if($user->account_type === 'logistics' && $user->business_name)
+                <div class="section-card">
+                  <div class="section-head"><span class="ic"><x-admin-icon name="truck" /></span><span>Logistics Company</span></div>
+                  <div class="detail-grid">
+                    <div class="full"><div class="field-label">Company Name</div><div class="field-value">{{ $user->business_name }}</div></div>
+                  </div>
+                </div>
+                @endif
+
                 {{-- Rider-specific --}}
                 @if($user->account_type === 'rider' && $user->vehicle_type)
                 <div class="section-card">
                   <div class="section-head"><span class="ic"><x-admin-icon name="truck" /></span><span>Vehicle Information</span></div>
                   <div class="detail-grid">
-                    <div><div class="field-label">Vehicle Type</div><div class="field-value">{{ ucfirst(str_replace('_',' ',$user->vehicle_type)) }}</div></div>
-                    <div><div class="field-label">Brand / Model</div><div class="field-value">{{ $user->vehicle_brand }} {{ $user->vehicle_model }}</div></div>
+                    <div class="full"><div class="field-label">Logistics Company</div><div class="field-value">{{ $user->business_name ?: '—' }}</div></div>
+                    <div><div class="field-label">Vehicle Type</div><div class="field-value">{{ \Illuminate\Support\Str::title(str_replace('_',' ',$user->vehicle_type)) }}</div></div>
+                    <div><div class="field-label">Ownership</div><div class="field-value">{{ $user->vehicle_ownership === 'own' ? 'Own Vehicle' : ($user->vehicle_ownership === 'company' ? 'Company Vehicle' : '—') }}</div></div>
+                    @if($user->vehicle_brand)<div><div class="field-label">Brand / Model</div><div class="field-value">{{ $user->vehicle_brand }} {{ $user->vehicle_model }}</div></div>@endif
                     @if($user->plate_number)
                     <div><div class="field-label">Plate Number</div><div class="field-value mono">{{ $user->plate_number }}</div></div>
                     @endif
@@ -138,27 +165,19 @@
                     @endif
                   </div>
                   <div class="doc-grid" style="margin-top:10px">
+                    <x-admin-doc-thumb :path="$user->license_file" label="Driver's License" />
+                    @if($user->vehicle_ownership === 'own')
                     <x-admin-doc-thumb :path="$user->or_file" label="OR" />
                     <x-admin-doc-thumb :path="$user->cr_file" label="CR" />
-                    <x-admin-doc-thumb :path="$user->license_file" label="Driver's License" />
+                    @endif
                   </div>
                 </div>
                 @endif
 
               </div>
               <div class="modal-foot">
-                <button class="btn btn-outline" data-modal-close>Close</button>
                 @if($user->status !== 'suspended')
-                <form method="POST" action="{{ route('admin.users.suspend', $user->id) }}" style="display:inline">
-                  @csrf @method('PATCH')
-                  <button class="btn btn-outline" type="submit">Suspend</button>
-                </form>
-                @endif
-                @if($user->status !== 'rejected')
-                <form method="POST" action="{{ route('admin.registrations.reject', $user->id) }}" style="display:inline">
-                  @csrf @method('PATCH')
-                  <button class="btn btn-outline-danger" type="submit">Reject</button>
-                </form>
+                <button type="button" class="btn btn-outline" onclick="openReasonModal('suspend', '{{ route('admin.users.suspend', $user->id) }}')">Suspend</button>
                 @endif
                 @if($user->status !== 'approved')
                 <form method="POST" action="{{ route('admin.users.approve', $user->id) }}" style="display:inline">
@@ -178,5 +197,6 @@
   </div>
 </div>
 
+@include('admin.partials.reason-modals', ['reasonModalTypes' => ['suspend']])
 @include('admin.partials.doc-lightbox')
 @endsection

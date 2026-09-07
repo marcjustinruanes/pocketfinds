@@ -7,8 +7,8 @@
 <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr)">
   <div class="kpi"><div class="label">Total Shipments</div><div class="value">{{ $total }}</div></div>
   <div class="kpi"><div class="label">Pending</div><div class="value">{{ $pending }}</div><div class="delta {{ $pending > 0 ? 'down' : 'up' }}">Awaiting review</div></div>
-  <div class="kpi"><div class="label">For Verification</div><div class="value">{{ $forVerify }}</div><div class="delta {{ $forVerify > 0 ? 'down' : 'up' }}">Needs checking</div></div>
-  <div class="kpi"><div class="label">Available</div><div class="value">{{ $available }}</div><div class="delta up">Ready for pickup</div></div>
+  <div class="kpi"><div class="label">Awaiting Pickup Rider</div><div class="value">{{ $forVerify }}</div><div class="delta {{ $forVerify > 0 ? 'down' : 'up' }}">Approved, no rider yet</div></div>
+  <div class="kpi"><div class="label">Sorted</div><div class="value">{{ $available }}</div><div class="delta up">Ready for a delivery rider</div></div>
 </div>
 <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-top:0">
   <div class="kpi"><div class="label">Active</div><div class="value">{{ $active }}</div><div class="delta up">In transit</div></div>

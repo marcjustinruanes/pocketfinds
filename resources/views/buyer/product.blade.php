@@ -88,7 +88,7 @@
       </div>
       <div class="pd-title-price-row">
         <h1 class="pd-title">{{ $product['name'] }}</h1>
-        <span class="pd-price" id="pdPrice" data-base-price="{{ $product['price'] }}">₱{{ number_format($product['price']) }}</span>
+        <span class="pd-price" id="pdPrice" data-base-price="{{ $product['price'] }}" data-base-stock="{{ $product['stock'] }}">₱{{ number_format($product['price']) }}</span>
       </div>
       <div class="pd-meta-row">
         <span class="pd-stars-row">
@@ -394,6 +394,14 @@ function updatePurchaseAvailability(stock) {
     buyButton.disabled = unavailable;
     buyButton.lastChild.textContent = unavailable ? ' Unavailable' : ' Buy Now';
   }
+  // Switching to a variation with less stock than the currently-selected
+  // quantity — bring the quantity back down instead of leaving it invalid.
+  if (typeof qty !== 'undefined' && qty > Math.max(stock, 1)) {
+    qty = Math.max(stock, 1);
+    const qtyEl = document.getElementById('pdQty');
+    if (qtyEl) qtyEl.textContent = qty;
+    if (typeof updateQtyTotal === 'function') updateQtyTotal();
+  }
 }
 
 // Keeps the mini-picture rail and the Options tab pointed at the same
@@ -420,6 +428,14 @@ function currentUnitPrice() {
   const priceEl = document.getElementById('pdPrice');
   const active  = document.querySelector('#tab-options .pd-opt-btn.active[data-exclusive="true"]');
   return active ? parseFloat(active.dataset.price) : parseFloat(priceEl.dataset.basePrice);
+}
+
+/** Stock for whatever's currently selected — the one specific variation option, or the plain product. */
+function currentAvailableStock() {
+  const priceEl = document.getElementById('pdPrice');
+  const active  = document.querySelector('#tab-options .pd-opt-btn.active[data-exclusive="true"]');
+  const stock   = active ? active.dataset.stock : priceEl?.dataset.baseStock;
+  return Math.max(0, parseInt(stock ?? '0', 10) || 0);
 }
 
 function updatePriceDisplay() {
@@ -458,6 +474,12 @@ function directAddToCart(isBuyNow, btn) {
   const active = document.querySelector('#tab-options .pd-opt-btn.active');
   if (active && active.disabled) {
     showToast('This option is out of stock.', 'error');
+    return;
+  }
+
+  const available = currentAvailableStock();
+  if (qty > available) {
+    showToast(available > 0 ? `Only ${available} item(s) available.` : 'This item is out of stock.', 'error');
     return;
   }
 
@@ -578,7 +600,12 @@ function setActiveThumb(thumb) {
 })();
 let qty = 1;
 function changeQty(d) {
-  qty = Math.max(1, qty + d);
+  const max = currentAvailableStock();
+  if (d > 0 && qty >= max) {
+    showToast(max > 0 ? `Only ${max} item(s) available.` : 'This item is out of stock.', 'error');
+    return;
+  }
+  qty = Math.max(1, Math.min(qty + d, Math.max(max, 1)));
   document.getElementById('pdQty').textContent = qty;
   updateQtyTotal();
 }

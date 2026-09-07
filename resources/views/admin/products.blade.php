@@ -131,7 +131,7 @@
               <span class="stamp stamp-archived">Archived</span>
             @endif
           </td>
-          <td class="mono" style="font-size:12px">{{ $product->created_at->format('M d, Y') }}</td>
+          <td class="mono" style="font-size:12px">{{ $product->created_at?->format('M d, Y') ?? '—' }}</td>
           <td>
             <div class="row-actions">
               <button class="btn btn-sm btn-outline" data-modal-open="productModal-{{ $product->id }}"><x-admin-icon name="eye" /> Review</button>
@@ -170,7 +170,7 @@
             @elseif($product->status === 'rejected')<span class="stamp stamp-rejected">Rejected</span>
             @elseif($product->status === 'archived')<span class="stamp stamp-archived">Archived</span>@endif
           </h3>
-          <p>{{ $seller->business_name ?? ($seller->given_names.' '.$seller->last_name) }} · Submitted {{ $product->created_at->format('M d, Y g:i A') }}</p>
+          <p>{{ $seller->business_name ?? ($seller->given_names.' '.$seller->last_name) }} · Submitted {{ $product->created_at?->format('M d, Y g:i A') ?? '—' }}</p>
         </div>
       </div>
       <button class="modal-close" data-modal-close aria-label="Close"><x-admin-icon name="close" /></button>
@@ -314,7 +314,7 @@
           @if($product->discount_price !== null)
           <div class="kv-row"><div class="kv-key">Discount Price</div><div class="kv-val mono">₱{{ number_format($product->discount_price, 2) }} <span style="color:var(--muted)">(regular ₱{{ number_format($product->price, 2) }})</span></div></div>
           @endif
-          <div class="kv-row"><div class="kv-key">Date Submitted</div><div class="kv-val mono">{{ $product->created_at->format('M d, Y g:i A') }}</div></div>
+          <div class="kv-row"><div class="kv-key">Date Submitted</div><div class="kv-val mono">{{ $product->created_at?->format('M d, Y g:i A') ?? '—' }}</div></div>
           <div class="kv-row"><div class="kv-key">Last Updated</div><div class="kv-val mono">{{ $product->updated_at->format('M d, Y g:i A') }}</div></div>
           @if($product->status === 'rejected')
           <div class="kv-row"><div class="kv-key">Rejection Reason</div><div class="kv-val">{{ $product->rejection_note ?: 'No reason was recorded.' }}</div></div>

@@ -31,6 +31,48 @@ class Product extends Model
         return (int) $this->stock;
     }
 
+    /** Current available quantity for one specific variation option, or the whole product if it has none. */
+    public function availableStock(?string $group = null, ?string $value = null): int
+    {
+        if (empty($this->variations)) {
+            return (int) $this->stock;
+        }
+        foreach ($this->variations as $variation) {
+            if (($variation['name'] ?? null) !== $group) continue;
+            foreach ($variation['options'] ?? [] as $option) {
+                if (($option['value'] ?? null) === $value) return (int) ($option['stock'] ?? 0);
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Moves stock by $qty (positive to deduct, e.g. at checkout; negative to
+     * restore, e.g. when an order is cancelled) for one variation option, or
+     * the whole product if it has none. Call this on a row locked with
+     * lockForUpdate() inside a transaction — it's the only place stock ever
+     * changes, and it must never go below zero even under a race.
+     */
+    public function deductStock(int $qty, ?string $group = null, ?string $value = null): void
+    {
+        if (empty($this->variations)) {
+            $this->update(['stock' => max(0, (int) $this->stock - $qty)]);
+            return;
+        }
+        $variations = $this->variations;
+        foreach ($variations as &$variation) {
+            if (($variation['name'] ?? null) !== $group) continue;
+            foreach ($variation['options'] as &$option) {
+                if (($option['value'] ?? null) === $value) {
+                    $option['stock'] = max(0, (int) ($option['stock'] ?? 0) - $qty);
+                }
+            }
+            unset($option);
+        }
+        unset($variation);
+        $this->update(['variations' => $variations]);
+    }
+
     protected static function boot()
     {
         parent::boot();
@@ -39,4 +81,15 @@ class Product extends Model
 
     public function seller()   { return $this->belongsTo(User::class, 'seller_id'); }
     public function category() { return $this->belongsTo(Category::class); }
+
+    /**
+     * Buyer/guest-facing listings only — a suspended (or rejected/pending) seller's
+     * products disappear from browsing automatically, with no need to touch the
+     * products themselves. They reappear on their own the moment the seller is
+     * reactivated, since this just checks the seller's live status on every query.
+     */
+    public function scopeSellerApproved($query)
+    {
+        return $query->whereHas('seller', fn ($q) => $q->where('status', 'approved'));
+    }
 }

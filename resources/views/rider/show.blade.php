@@ -10,10 +10,9 @@
   $addr   = $order?->shipping_address ?? [];
 
   $stageInfo = [
-    'accepted'         => ['title' => 'Proceed to Seller\'s Location', 'hint' => 'Head to the seller below, verify the order, then confirm pickup.', 'button' => 'Confirm Item Pickup'],
-    'picked_up'        => ['title' => 'Item Picked Up', 'hint' => 'You have the item. Mark it out for delivery once you\'re on your way.', 'button' => 'Mark Out for Delivery'],
-    'out_for_delivery' => ['title' => 'On the Way', 'hint' => 'Deliver to the buyer\'s address below, then complete the delivery.', 'button' => 'Complete Delivery'],
-    'delivered'        => ['title' => 'Delivered', 'hint' => 'This delivery is complete.', 'button' => null],
+    'assigned_to_rider' => ['title' => 'Pick Up From Sorting Center', 'hint' => 'Collect this parcel from the sorting center, then mark it out for delivery.', 'button' => 'Mark Out for Delivery'],
+    'out_for_delivery'  => ['title' => 'On the Way', 'hint' => 'Deliver to the buyer\'s address below, then complete the delivery.', 'button' => 'Complete Delivery'],
+    'delivered'         => ['title' => 'Delivered', 'hint' => 'This delivery is complete — awaiting the buyer\'s confirmation.', 'button' => null],
   ];
   $info = $stageInfo[$shipment->shipping_status] ?? ['title' => ucfirst(str_replace('_',' ',$shipment->shipping_status)), 'hint' => '', 'button' => null];
 @endphp
@@ -29,7 +28,7 @@
 <div class="dash-grid">
   <div class="stack">
     <div class="card">
-      <div class="card-head"><h2>Seller — Pickup Location</h2></div>
+      <div class="card-head"><h2>Seller — Origin</h2></div>
       <div class="card-pad">
         <div style="display:flex;flex-direction:column;gap:6px;font-size:13px">
           <div><strong>{{ $seller?->business_name ?? trim(($seller?->given_names ?? '') . ' ' . ($seller?->last_name ?? '')) ?: 'Unknown seller' }}</strong></div>
@@ -87,6 +86,14 @@
         </form>
         @else
         <p style="font-size:13px;color:var(--muted)">No further action needed for this delivery.</p>
+        @endif
+        @if($shipment->shipping_status === 'out_for_delivery')
+        <button type="button" class="btn btn-outline" style="width:100%;margin-top:10px;color:var(--danger)" onclick="document.getElementById('failedForm').hidden = !document.getElementById('failedForm').hidden">Delivery Failed?</button>
+        <form id="failedForm" method="POST" action="{{ route('rider.deliveries.failed', $shipment->id) }}" hidden style="margin-top:10px">
+          @csrf @method('PATCH')
+          <textarea name="reason" rows="2" maxlength="500" placeholder="What went wrong? (e.g. buyer unreachable, wrong address)" required style="width:100%;border:1px solid var(--border);border-radius:9px;padding:8px 10px;font-size:12.5px;font-family:var(--font-body)"></textarea>
+          <button type="submit" class="btn btn-danger" style="width:100%;margin-top:8px">Report Failed Delivery</button>
+        </form>
         @endif
         <a href="{{ route('rider.messages.thread', $seller?->id) }}" class="btn btn-outline" style="width:100%;margin-top:10px;{{ $seller ? '' : 'pointer-events:none;opacity:.5' }}">Message Seller</a>
         <a href="{{ route('rider.messages.thread', $buyer?->id) }}" class="btn btn-outline" style="width:100%;margin-top:10px;{{ $buyer ? '' : 'pointer-events:none;opacity:.5' }}">Message Buyer</a>

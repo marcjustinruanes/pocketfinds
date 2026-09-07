@@ -482,6 +482,8 @@ a {
     background: #fff;
     font-size: 12px;
     font-weight: 800;
+    font-family: inherit;
+    cursor: pointer;
     text-decoration: none;
     transition: background .15s ease, color .15s ease;
 }

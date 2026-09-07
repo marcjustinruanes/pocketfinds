@@ -79,6 +79,7 @@
                 </div>
 
                 @if (!empty($errors) && $errors->any())
+                    <div id="loginErrorBanner">
                     @if(session('accountStatus'))
                         <div class="auth-status-banner">
                             <span class="auth-status-icon">
@@ -87,10 +88,10 @@
                             <div class="auth-status-body">
                                 <p class="auth-status-title">{{ session('accountStatus') === 'suspended' ? 'Account suspended' : 'Application rejected' }}</p>
                                 <p class="auth-status-text">{{ $errors->first() }}</p>
-                                <a href="mailto:pocketfindssupport@gmail.com" class="auth-status-action">
+                                <button type="button" class="auth-status-action" onclick="openSupportModal({{ Illuminate\Support\Js::from(session('accountStatus') === 'suspended' ? 'Account suspended' : 'Application rejected') }}, {{ Illuminate\Support\Js::from(old('email', '')) }})">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
                                     Contact Support
-                                </a>
+                                </button>
                             </div>
                         </div>
                     @else
@@ -98,6 +99,7 @@
                             {{ $errors->first() }}
                         </div>
                     @endif
+                    </div>
                 @endif
 
                 <form class="auth-form" method="POST" action="{{ route('login.post') }}">
@@ -151,6 +153,101 @@
         </section>
     </main>
 </div>
+
+{{-- Contact Support modal — sends the message through the server (see SupportController),
+     so it works the same for every visitor regardless of what mail app their browser is
+     set to hand mailto: links to. --}}
+<div id="supportModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(15,15,25,.7);backdrop-filter:blur(4px);align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:18px;width:min(440px,94vw);overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.25)">
+        <div style="padding:20px 22px;border-bottom:1px solid #f1f5f9">
+            <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--auth-primary)">Contact Support</span>
+        </div>
+        <div style="padding:20px 22px">
+            <div id="supportSuccess" style="display:none;text-align:center;padding:12px 0">
+                <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#16a34a">Message sent</p>
+                <p style="margin:0;font-size:12.5px;color:var(--auth-muted)">Our support team will get back to you at the email you provided.</p>
+            </div>
+            <form id="supportForm" onsubmit="return submitSupportForm(event)">
+                <div class="auth-field" style="margin-bottom:12px">
+                    <label class="auth-label" for="supportEmail">Your email</label>
+                    <input class="auth-input" id="supportEmail" name="email" type="email" placeholder="you@example.com" required>
+                </div>
+                <div class="auth-field" style="margin-bottom:6px">
+                    <label class="auth-label" for="supportMessage">Message</label>
+                    <textarea class="auth-input" id="supportMessage" name="message" rows="5" placeholder="Tell us what happened..." required style="resize:vertical;font-family:inherit"></textarea>
+                </div>
+                <span id="supportError" style="display:none;color:var(--auth-danger,#e74c3c);font-size:11.5px">Please fill in both fields.</span>
+                <button class="auth-btn" type="submit" id="supportSubmitBtn" style="margin-top:10px">Send Message</button>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script src="{{ asset('js/auth.js') }}"></script>
+<script>
+// Hide the "account suspended / rejected / invalid credentials" banner the moment the
+// visitor starts fixing their input, instead of leaving it stuck on screen until they resubmit.
+function hideLoginErrorBanner() {
+    document.getElementById('loginErrorBanner')?.remove();
+}
+document.getElementById('email')?.addEventListener('input', hideLoginErrorBanner);
+document.getElementById('password')?.addEventListener('input', hideLoginErrorBanner);
+
+let supportContext = '';
+
+function openSupportModal(context, email) {
+    supportContext = context || '';
+    document.getElementById('supportEmail').value = email || '';
+    document.getElementById('supportMessage').value = context ? `My account status: ${context}. I'd like to appeal this decision.\n\n` : '';
+    document.getElementById('supportForm').style.display = '';
+    document.getElementById('supportSuccess').style.display = 'none';
+    document.getElementById('supportError').style.display = 'none';
+    document.getElementById('supportModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeSupportModal() {
+    document.getElementById('supportModal').style.display = 'none';
+    document.body.style.overflow = '';
+}
+document.getElementById('supportModal').addEventListener('click', function (e) {
+    if (e.target === this) closeSupportModal();
+});
+
+function submitSupportForm(e) {
+    e.preventDefault();
+    const email = document.getElementById('supportEmail').value.trim();
+    const message = document.getElementById('supportMessage').value.trim();
+    const errEl = document.getElementById('supportError');
+    if (!email || !message) { errEl.textContent = 'Please fill in both fields.'; errEl.style.display = 'block'; return false; }
+
+    const btn = document.getElementById('supportSubmitBtn');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    const csrfToken = document.querySelector('input[name="_token"]')?.value;
+
+    fetch('{{ route('support.contact') }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ email, message, context: supportContext }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false; btn.textContent = 'Send Message';
+        if (data.success) {
+            document.getElementById('supportForm').style.display = 'none';
+            document.getElementById('supportSuccess').style.display = 'block';
+        } else {
+            errEl.textContent = data.message || 'Something went wrong. Please try again.';
+            errEl.style.display = 'block';
+        }
+    })
+    .catch(() => {
+        btn.disabled = false; btn.textContent = 'Send Message';
+        errEl.textContent = 'Network error. Please try again.';
+        errEl.style.display = 'block';
+    });
+    return false;
+}
+</script>
 </body>
 </html>

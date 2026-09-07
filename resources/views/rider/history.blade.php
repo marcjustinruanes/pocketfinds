@@ -5,7 +5,7 @@
 
 @section('content')
 <div class="card">
-  <div class="card-head"><h2>Completed Deliveries</h2><span class="stamp stamp-approved">{{ $shipments->count() }} total</span></div>
+  <div class="card-head"><h2>Finished Deliveries</h2><span class="stamp stamp-approved">{{ $shipments->count() }} total</span></div>
   <div class="table-wrap">
     <table class="dtable">
       <thead>
@@ -14,7 +14,7 @@
           <th>Seller</th>
           <th>Buyer</th>
           <th>Order Amount</th>
-          <th>Delivered On</th>
+          <th>Finished On</th>
           <th>Status</th>
         </tr>
       </thead>
@@ -25,11 +25,11 @@
           <td>{{ optional(optional($s->order)->seller)->business_name ?? optional(optional($s->order)->seller)->given_names }}</td>
           <td>{{ optional(optional($s->order)->buyer)->given_names }} {{ optional(optional($s->order)->buyer)->last_name }}</td>
           <td class="mono">₱{{ number_format(optional($s->order)->total ?? 0, 2) }}</td>
-          <td class="mono">{{ $s->delivered_at?->format('M d, Y H:i') ?? '—' }}</td>
+          <td class="mono">{{ ($s->delivered_at ?? $s->delivery_failed_at ?? $s->returned_at)?->format('M d, Y H:i') ?? '—' }}</td>
           <td><span class="stamp stamp-{{ $s->shipping_status }}">{{ ucfirst(str_replace('_', ' ', $s->shipping_status)) }}</span></td>
         </tr>
         @empty
-        <tr><td colspan="6"><div class="empty"><h3>No completed deliveries yet</h3><p>Deliveries you finish will show up here.</p></div></td></tr>
+        <tr><td colspan="6"><div class="empty"><h3>No finished deliveries yet</h3><p>Deliveries you finish will show up here.</p></div></td></tr>
         @endforelse
       </tbody>
     </table>

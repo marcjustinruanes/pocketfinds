@@ -1,7 +1,7 @@
 @extends('logistics.layout')
-@section('title', 'Delivery Requests')
-@section('page-title', 'Delivery Requests')
-@section('page-sub', 'Incoming delivery requests awaiting review')
+@section('title', 'Pickup Requests')
+@section('page-title', 'Pickup Requests')
+@section('page-sub', "Incoming seller pickup requests awaiting your approval")
 
 @section('content')
 <div class="card">
@@ -11,6 +11,7 @@
       <thead>
         <tr>
           <th>Tracking #</th>
+          <th>Seller</th>
           <th>Buyer</th>
           <th>Items</th>
           <th>Order Amount</th>
@@ -22,6 +23,7 @@
         @forelse($shipments as $s)
         <tr>
           <td class="mono">{{ $s->tracking_number ?? substr($s->id, 0, 8) }}</td>
+          <td>{{ optional(optional($s->order)->seller)->business_name ?? optional(optional($s->order)->seller)->given_names }}</td>
           <td>
             <div class="cell-user">
               <div class="avatar-sm">{{ strtoupper(substr(optional(optional($s->order)->buyer)->given_names ?? '?', 0, 1)) }}</div>
@@ -46,7 +48,7 @@
           </td>
         </tr>
         @empty
-        <tr><td colspan="6"><div class="empty"><h3>No pending requests</h3><p>All delivery requests have been processed.</p></div></td></tr>
+        <tr><td colspan="7"><div class="empty"><h3>No pending requests</h3><p>All pickup requests have been processed.</p></div></td></tr>
         @endforelse
       </tbody>
     </table>

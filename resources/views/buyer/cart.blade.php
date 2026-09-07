@@ -5,6 +5,12 @@
 
 @section('content')
 @php($subtotal = collect($items)->sum(fn ($item) => $item['price'] * $item['qty']))
+@if(session('error'))
+<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('error') }}</div>
+@endif
+@if(session('success'))
+<div class="auth-success" style="margin-bottom:16px">{{ session('success') }}</div>
+@endif
 <div class="cart-layout">
   <div class="stack">
     <div class="card cart-items-card">
@@ -52,6 +58,7 @@
                   <button type="button" class="cart-action-btn" aria-label="Edit item options" title="Edit item options"
                     data-edit-key="{{ $item['key'] }}" data-edit-qty="{{ $item['qty'] }}" data-edit-value="{{ $item['variation_value'] }}"
                     data-edit-group="{{ $item['variation_group'] }}" data-edit-variations="{{ json_encode($item['product_variations']) }}"
+                    data-edit-stock="{{ $item['product_stock'] }}"
                     data-edit-name="{{ $item['name'] }}" data-edit-image="{{ $item['img'] }}" data-edit-price="{{ number_format($item['price'], 2) }}">
                     @include('buyer.partials.icon', ['name' => 'edit', 'size' => 14])
                   </button>
@@ -98,6 +105,16 @@
         <div class="cart-summary-total">
           <span id="cartSelectedCount">{{ $items->count() }} item{{ $items->count() === 1 ? '' : 's' }}</span>
           <span class="mono" id="cartTotal">₱{{ number_format($subtotal, 2) }}</span>
+        </div>
+
+        <div class="form-row" style="margin:0">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <label style="margin:0">Delivery Address</label>
+            <button type="button" class="cart-view-vouchers" id="addAddressBtn" data-modal-open="addAddressModal">+ Add</button>
+          </div>
+          <div style="margin-top:6px">
+            @include('buyer.partials.delivery-addresses', ['addresses' => $addresses, 'selectable' => true])
+          </div>
         </div>
 
         <div class="form-row" style="margin:0">
@@ -160,6 +177,7 @@
           <input type="hidden" name="payment_method" id="checkoutPayment">
           <input type="hidden" name="voucher_code" id="checkoutVoucher">
           <input type="hidden" name="buyer_note" id="checkoutNote">
+          <input type="hidden" name="delivery_address_id" id="checkoutAddress">
           <button class="btn btn-primary btn-block" id="checkoutButton" type="submit" style="margin-top:4px" {{ $items->isEmpty() ? 'disabled' : '' }}>Proceed to Checkout</button>
         </form>
       </div>
@@ -208,7 +226,11 @@
         <input type="hidden" name="variation_value" id="editValue">
         <input type="hidden" name="variation_group" id="editVariationGroup">
         <div id="editVariationsContainer"></div>
-        <div class="form-row"><label for="editQty">Quantity</label><input id="editQty" name="qty" type="number" min="1" max="99" required></div>
+        <div class="form-row">
+          <label for="editQty">Quantity</label>
+          <input id="editQty" name="qty" type="number" min="1" max="99" required>
+          <span id="editQtyError" style="display:none;color:var(--danger);font-size:11.5px;margin-top:4px"></span>
+        </div>
         <button type="submit" class="btn btn-primary btn-block">Save item</button>
       </div>
     </form>
@@ -463,10 +485,29 @@ document.addEventListener('DOMContentLoaded', () => {
   // every option, with stock shown and out-of-stock ones disabled — so
   // editing a cart item can switch to ANY option the product offers, not
   // just the one dropdown this item happened to be added with.
-  function renderEditVariations(variations, currentGroup, currentValue) {
+  // Caps #editQty at whatever's actually in stock for the currently-selected
+  // option (or the plain product, when it has no variations) — clamps the
+  // current value down if it no longer fits, and shows why.
+  function setEditQtyMax(stock) {
+    const input = document.getElementById('editQty');
+    const errorEl = document.getElementById('editQtyError');
+    input.max = Math.max(stock, 0);
+    if (Number(input.value) > stock) {
+      input.value = Math.max(stock, 1);
+      errorEl.textContent = stock > 0 ? `Only ${stock} item(s) available — quantity adjusted.` : 'This option is out of stock.';
+      errorEl.style.display = 'block';
+    } else {
+      errorEl.style.display = 'none';
+    }
+  }
+
+  function renderEditVariations(variations, currentGroup, currentValue, plainStock) {
     const container = document.getElementById('editVariationsContainer');
     container.innerHTML = '';
-    if (!variations || !variations.length) return;
+    if (!variations || !variations.length) {
+      setEditQtyMax(plainStock ?? 99);
+      return;
+    }
 
     let matched = false;
     variations.forEach(variation => {
@@ -487,6 +528,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.className = 'pd-opt-btn' + (isActive ? ' active' : '');
         btn.dataset.group = variation.name;
         btn.dataset.value = opt.value;
+        btn.dataset.stock = opt.stock ?? 0;
         if (!inStock) { btn.disabled = true; btn.style.opacity = '.4'; btn.style.cursor = 'not-allowed'; }
         btn.innerHTML = opt.value + (inStock
           ? `<span style="font-size:10px;color:var(--muted);display:block">${opt.stock} left</span>`
@@ -496,6 +538,7 @@ document.addEventListener('DOMContentLoaded', () => {
           btn.classList.add('active');
           document.getElementById('editValue').value = opt.value;
           document.getElementById('editVariationGroup').value = variation.name;
+          setEditQtyMax(opt.stock ?? 0);
         });
         row.appendChild(btn);
       });
@@ -514,17 +557,23 @@ document.addEventListener('DOMContentLoaded', () => {
         firstEnabled.classList.add('active');
         document.getElementById('editValue').value = firstEnabled.dataset.value;
         document.getElementById('editVariationGroup').value = firstEnabled.dataset.group;
+        setEditQtyMax(parseInt(firstEnabled.dataset.stock ?? '0', 10));
+      } else {
+        setEditQtyMax(0);
       }
     } else {
       document.getElementById('editValue').value = currentValue;
       document.getElementById('editVariationGroup').value = currentGroup;
+      const activeBtn = container.querySelector('.pd-opt-btn.active');
+      setEditQtyMax(parseInt(activeBtn?.dataset.stock ?? '0', 10));
     }
   }
 
   document.querySelectorAll('[data-edit-key]').forEach(button => button.addEventListener('click', () => {
-    const variations = JSON.parse(button.dataset.editVariations || '[]');
-    renderEditVariations(variations, button.dataset.editGroup, button.dataset.editValue);
+    document.getElementById('editQtyError').style.display = 'none';
     document.getElementById('editQty').value = button.dataset.editQty;
+    const variations = JSON.parse(button.dataset.editVariations || '[]');
+    renderEditVariations(variations, button.dataset.editGroup, button.dataset.editValue, parseInt(button.dataset.editStock ?? '0', 10));
 
     // Product context, so the modal is never just a bare set of dropdowns.
     const imgWrap = document.getElementById('editItemImgWrap');
@@ -545,6 +594,29 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelector('[data-item-edit-close]').addEventListener('click', () => {
     itemEditModal.classList.remove('open');
     itemEditModal.setAttribute('aria-hidden', 'true');
+  });
+
+  document.getElementById('editQty').addEventListener('input', function () {
+    const max = Number(this.max);
+    const errorEl = document.getElementById('editQtyError');
+    if (max >= 0 && Number(this.value) > max) {
+      errorEl.textContent = max > 0 ? `Only ${max} item(s) available.` : 'This option is out of stock.';
+      errorEl.style.display = 'block';
+    } else {
+      errorEl.style.display = 'none';
+    }
+  });
+
+  itemEditForm.addEventListener('submit', function (event) {
+    const input = document.getElementById('editQty');
+    const max = Number(input.max);
+    const errorEl = document.getElementById('editQtyError');
+    if (max >= 0 && Number(input.value) > max) {
+      event.preventDefault();
+      errorEl.textContent = max > 0 ? `Only ${max} item(s) available.` : 'This option is out of stock.';
+      errorEl.style.display = 'block';
+      input.focus();
+    }
   });
 
   // ---- Confirm before removing a cart item ----
@@ -614,6 +686,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('checkoutPayment').value = paymentNameSelect?.value || '';
     document.getElementById('checkoutVoucher').value = appliedVoucherCode || '';
     document.getElementById('checkoutNote').value = orderNoteValue;
+    document.getElementById('checkoutAddress').value = document.querySelector('input[name="delivery_address_radio"]:checked')?.value || '';
     submittingOrder = true;
     closeOrderConfirm();
     checkoutForm.submit();

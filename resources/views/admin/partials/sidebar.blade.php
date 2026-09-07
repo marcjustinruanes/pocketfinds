@@ -22,10 +22,18 @@
     <a href="{{ route('admin.products') }}" class="nav-item {{ request()->routeIs('admin.products') ? 'active' : '' }}">
       <span class="ic"><x-admin-icon name="bag" /></span> Products
     </a>
+    <a href="{{ route('admin.vehicles') }}" class="nav-item {{ request()->routeIs('admin.vehicles*') ? 'active' : '' }}">
+      <span class="ic"><x-admin-icon name="shield" /></span> Company Vehicles
+      @if(!empty($pendingVehicles)) <span class="count">{{ $pendingVehicles }}</span> @endif
+    </a>
+    <a href="{{ route('admin.policies') }}" class="nav-item {{ request()->routeIs('admin.policies') ? 'active' : '' }}">
+      <span class="ic"><x-admin-icon name="file" /></span> Policies
+      @if(!empty($pendingCompanyPolicies)) <span class="count">{{ $pendingCompanyPolicies }}</span> @endif
+    </a>
 
     <div class="nav-label">Compliance</div>
-    <a href="{{ route('admin.doc-requests') }}" class="nav-item {{ request()->routeIs('admin.doc-requests') ? 'active' : '' }}">
-      <span class="ic"><x-admin-icon name="file" /></span> Doc Requests
+    <a href="{{ route('admin.update-requests') }}" class="nav-item {{ request()->routeIs('admin.update-requests') ? 'active' : '' }}">
+      <span class="ic"><x-admin-icon name="file" /></span> Update Requests
       @if(!empty($pendingDocs)) <span class="count">{{ $pendingDocs }}</span> @endif
     </a>
     <a href="{{ route('admin.complaints') }}" class="nav-item {{ request()->routeIs('admin.complaints') ? 'active' : '' }}">

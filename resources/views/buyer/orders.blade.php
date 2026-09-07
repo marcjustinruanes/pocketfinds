@@ -18,15 +18,20 @@
     ['cancelled',        'x',       'Cancelled'],
   ];
   @endphp
+  @php
+    $tabCount = fn ($key) => match ($key) {
+      'all'        => $orderCounts->sum(),
+      'to_ship'    => collect(\App\Models\Order::BUYER_TO_SHIP_STATUSES)->sum(fn ($s) => (int) ($orderCounts[$s] ?? 0)),
+      'in_transit' => collect(\App\Models\Order::BUYER_IN_TRANSIT_STATUSES)->sum(fn ($s) => (int) ($orderCounts[$s] ?? 0)),
+      default      => (int) ($orderCounts[$key] ?? 0),
+    };
+  @endphp
   @foreach($orderTabs as [$key, $icon, $label])
   <a href="{{ route('buyer.orders') }}?tab={{ $key }}" class="tab {{ $tab === $key ? 'active' : '' }}">
     <span style="display:inline-flex;align-items:center;gap:5px">
       @include('buyer.partials.icon', ['name' => $icon, 'size' => 14])
       {{ $label }}
-      @php
-        $count = $key === 'all' ? $orderCounts->sum() : (int) ($orderCounts[$key] ?? 0);
-      @endphp
-      @if($count)<span class="order-tab-count">{{ $count }}</span>@endif
+      @if($tabCount($key))<span class="order-tab-count">{{ $tabCount($key) }}</span>@endif
     </span>
   </a>
   @endforeach
@@ -43,12 +48,12 @@
 @forelse($orders as $order)
 <div class="order-card shopee-order-card" data-order-search="{{ strtolower($order->order_number . ' ' . ($order->seller?->business_name ?? '') . ' ' . collect($order->items ?? [])->pluck('name')->join(' ')) }}">
   <div class="order-card-head">
-    <div class="order-shop"><strong>{{ $order->seller?->business_name ?: ($order->seller?->given_names ?: 'Seller not provided') }}</strong><div class="seller-actions"><a href="{{ route('buyer.messages', ['seller' => $order->seller?->username]) }}" data-messages-trigger>Chat</a><a href="{{ route('buyer.shop', $order->seller?->username) }}">View Shop</a></div></div>
-    <span class="stamp stamp-{{ $order->status === 'to_ship' ? 'new' : $order->status }}">{{ str_replace('_', ' ', ucfirst($order->status)) }}</span>
+    <div class="order-shop"><strong>{{ $order->seller?->business_name ?: ($order->seller?->given_names ?: 'Seller not provided') }}</strong><div class="seller-actions"><a href="{{ route('buyer.messages', ['seller' => $order->seller?->username, 'order' => $order->id]) }}" data-messages-trigger>Chat</a><a href="{{ route('buyer.shop', $order->seller?->username) }}">View Shop</a></div></div>
+    <span class="stamp stamp-{{ $order->status === 'placed' ? 'new' : $order->status }}">{{ str_replace('_', ' ', ucfirst($order->status)) }}</span>
   </div>
-  <div class="order-meta"><span class="mono">{{ $order->order_number }}</span><span>{{ $order->created_at->format('M d, Y h:i A') }}</span></div>
+  <div class="order-meta"><span class="mono">{{ $order->order_number }}</span><span>{{ $order->created_at?->format('M d, Y h:i A') ?? '—' }}</span></div>
   <div class="order-products-list">
-    @foreach($order->items ?? [] as $item)
+    @foreach($order->itemsWithImages() as $item)
     <div class="order-product-row">
       <div class="order-product-image">@if(!empty($item['img']))<img src="{{ $item['img'] }}" alt="{{ $item['name'] ?? 'Product' }}">@else<span>IMG</span>@endif</div>
       <div class="order-product-copy">
@@ -120,7 +125,7 @@
     <div class="order-details-head"><div><span class="order-kicker">Order details</span><h3 id="orderDetailsTitle{{ $order->id }}">{{ $order->order_number }}</h3></div><button type="button" class="modal-close order-details-close" aria-label="Close order details">&times;</button></div>
     @php
       $trackingSteps = [
-        ['Order placed', $order->created_at->format('M d, Y · h:i A')],
+        ['Order placed', $order->created_at?->format('M d, Y · h:i A') ?? '—'],
         ['Order confirmed', 'The seller received your order.'],
         ['Preparing to ship', 'The seller is packing your items.'],
         ['Package in transit', $order->shipment?->tracking_number ? 'Tracking: ' . $order->shipment->tracking_number : 'Your package is on its way.'],
@@ -128,9 +133,13 @@
         ['Delivered', 'Order completed.'],
       ];
       $currentStep = match($order->status) {
-        'in_transit' => 4, 'out_for_delivery' => 5, 'delivered' => 6, 'completed' => 7,
+        'confirmed' => 2,
+        'preparing', 'ready_for_pickup' => 3,
+        'picked_up', 'at_sorting_center', 'hub_transfer', 'sorted', 'assigned_to_rider' => 4,
+        'out_for_delivery' => 5, 'delivered' => 6, 'completed' => 7,
+        'delivery_failed', 'returned' => 5, // stalled mid-delivery — shown as "current" at the delivery step
         'cancelled' => 1,
-        default => $order->shipment ? 3 : 2,
+        default => 1, // placed
       };
     @endphp
     <div class="order-tracking"><span class="order-kicker">Delivery tracking</span><div class="tracking-steps">@foreach($trackingSteps as $step => [$label, $copy])<div class="tracking-step {{ $step + 1 < $currentStep ? 'is-done' : ($step + 1 === $currentStep ? 'is-current' : '') }}"><span class="tracking-dot">{{ $step + 1 < $currentStep ? '✓' : $step + 1 }}</span><div><strong>{{ $label }}</strong><small>{{ $step + 1 === $currentStep ? $copy : $copy }}</small></div></div>@endforeach</div></div>
@@ -147,7 +156,7 @@
       @if((float)$order->discount_amount > 0)<div><span>Voucher discount</span><strong class="discount">−₱{{ number_format($order->discount_amount, 2) }}</strong></div>@endif
       <div class="total"><span>Order total</span><strong>₱{{ number_format($order->total, 2) }}</strong></div>
     </div>
-    @if($order->status === 'to_ship')
+    @if(in_array($order->status, ['placed', 'confirmed', 'preparing'], true))
       <div class="order-modal-actions"><button type="button" class="btn btn-danger order-cancel-open">Cancel Order</button></div>
       <div class="order-cancel-panel" hidden>
         <form method="POST" action="{{ route('buyer.orders.cancel', $order) }}">

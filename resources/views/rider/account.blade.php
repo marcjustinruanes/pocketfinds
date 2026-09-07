@@ -17,6 +17,18 @@
 @section('content')
 @php($user = auth()->user())
 
+@if($pendingRequest)
+<div style="background:var(--warning-soft);border:1px solid var(--warning-line);color:var(--warning);padding:12px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">
+  <div style="font-weight:700;margin-bottom:2px">Update Request Pending</div>
+  <div>Your requested changes are awaiting admin review — the forms below are locked until this request is resolved.</div>
+</div>
+@elseif($lastRequest && $lastRequest->status === 'rejected')
+<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:12px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">
+  <div style="font-weight:700;margin-bottom:2px">Last Request Rejected</div>
+  <div>{{ $lastRequest->note ?? 'Your previous update request was rejected. You may submit a new one.' }}</div>
+</div>
+@endif
+
 <div class="dash-grid">
   <div class="stack">
 
@@ -42,7 +54,7 @@
         @if(session('profile_success'))
         <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px">{{ session('profile_success') }}</div>
         @endif
-        <form method="POST" action="{{ route('rider.account.update') }}" enctype="multipart/form-data">
+        <form method="POST" action="{{ route('rider.account.update') }}" enctype="multipart/form-data" {{ $pendingRequest ? 'style=opacity:.5;pointer-events:none' : '' }}>
           @csrf
           <div class="form-row">
             <label>Profile Picture</label>
@@ -91,7 +103,7 @@
         @error('province')
         <div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px">{{ $message }}</div>
         @enderror
-        <form method="POST" action="{{ route('rider.account.address') }}" id="addressForm">
+        <form method="POST" action="{{ route('rider.account.address') }}" id="addressForm" {{ $pendingRequest ? 'style=opacity:.5;pointer-events:none' : '' }}>
           @csrf
           <div class="form-row">
             <label>Province</label>
@@ -154,6 +166,7 @@
       <div class="card-pad" style="display:flex;flex-direction:column">
         @foreach([
           ['Account Type', 'Courier'],
+          ['Logistics Company', $user->business_name ?: 'Not provided'],
           ['Status',       filled($user->status) ? ucfirst($user->status) : 'Not provided'],
           ['Member Since', $user->created_at?->format('M d, Y') ?? 'Not provided'],
           ['Email',        $user->email ?: 'Not provided'],
@@ -172,9 +185,10 @@
       <div class="card-head"><h2>Vehicle & Documents</h2><p style="font-size:11.5px;color:var(--muted)">On file from your registration</p></div>
       <div class="card-pad" style="display:flex;flex-direction:column">
         @foreach(array_filter([
-          ['Vehicle Type', $user->vehicle_type ? ucfirst(str_replace('_', '/', $user->vehicle_type)) : null],
-          ['Vehicle', collect([$user->vehicle_brand, $user->vehicle_model])->filter()->implode(' ') ?: null],
-          ['Plate Number', $user->plate_number],
+          ['Vehicle Type', $user->vehicle_type ? \Illuminate\Support\Str::title(str_replace('_', ' ', $user->vehicle_type)) : null],
+          ['Ownership', $user->vehicle_ownership === 'own' ? 'Own Vehicle' : ($user->vehicle_ownership === 'company' ? 'Company Vehicle' : null)],
+          ['Vehicle', $user->vehicle_ownership === 'own' ? (collect([$user->vehicle_brand, $user->vehicle_model])->filter()->implode(' ') ?: null) : null],
+          ['Plate Number', $user->vehicle_ownership === 'own' ? $user->plate_number : null],
           ['License Number', $user->license_number],
           ['License Expiry', $user->license_expiry?->format('M d, Y')],
         ]) as [$label, $val])

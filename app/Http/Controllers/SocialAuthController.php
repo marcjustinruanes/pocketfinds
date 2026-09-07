@@ -62,8 +62,8 @@ class SocialAuthController extends Controller
             }
 
             if ($existing->status === 'rejected') {
-                return redirect()->route('login')->withErrors([
-                    'email' => 'Your account has been rejected. Please contact support for assistance.',
+                return redirect()->route('register.type')->withErrors([
+                    'email' => 'Your previous application was not approved. You may register again with the same email.',
                 ]);
             }
 
@@ -79,7 +79,7 @@ class SocialAuthController extends Controller
         }
 
         // --- REGISTER via Google ---
-        if ($existing) {
+        if ($existing && $existing->status !== 'rejected') {
             return redirect()->route('login')->withErrors([
                 'email' => 'An account with this Google email already exists. Please sign in instead.',
             ]);
@@ -94,12 +94,15 @@ class SocialAuthController extends Controller
 
         $type = session('oauth_account_type', 'buyer');
 
-        // Every role has its own dedicated registration page.
+        // Every role has its own dedicated registration page. 'logistics-staff' (hub staff
+        // joining an existing company) was missing here — it silently fell through to the
+        // buyer page, since a bare match() has no idea that type even exists.
         return match ($type) {
-            'seller'    => redirect()->route('register.seller', ['google' => 1]),
-            'rider'     => redirect()->route('register.rider', ['google' => 1]),
-            'logistics' => redirect()->route('register.logistics', ['google' => 1]),
-            default     => redirect()->route('register.buyer', ['google' => 1]),
+            'seller'          => redirect()->route('register.seller', ['google' => 1]),
+            'rider'           => redirect()->route('register.rider', ['google' => 1]),
+            'logistics'       => redirect()->route('register.logistics', ['google' => 1]),
+            'logistics-staff' => redirect()->route('register.logistics-staff', ['google' => 1]),
+            default           => redirect()->route('register.buyer', ['google' => 1]),
         };
     }
 

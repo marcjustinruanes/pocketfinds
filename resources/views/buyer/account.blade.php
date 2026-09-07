@@ -4,24 +4,45 @@
 @section('page-sub', 'Manage your profile and settings')
 
 @section('content')
+@if(session('success'))
+<div class="auth-success" style="margin-bottom:16px">{{ session('success') }}</div>
+@endif
 <div class="dash-grid">
   <div class="stack">
+    @if($pendingRequest)
     <div class="card">
-      <div class="card-head"><h2>Profile Information</h2></div>
+      <div class="card-pad" style="background:var(--warning-soft);border:1px solid var(--warning-line);color:var(--warning);border-radius:9px;font-size:13px;display:flex;align-items:flex-start;gap:10px">
+        <div>
+          <div style="font-weight:700;margin-bottom:2px">Update Request Pending</div>
+          <div>Your requested changes are awaiting admin review and won't appear on your account until approved.</div>
+        </div>
+      </div>
+    </div>
+    @elseif($lastRequest && $lastRequest->status === 'rejected')
+    <div class="card">
+      <div class="card-pad" style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);border-radius:9px;font-size:13px">
+        <div style="font-weight:700;margin-bottom:2px">Last Request Rejected</div>
+        <div>{{ $lastRequest->note ?? 'Your previous update request was rejected. You may submit a new one.' }}</div>
+      </div>
+    </div>
+    @endif
+
+    <div class="card">
+      <div class="card-head"><div><h2>Profile Information</h2><p>Changes are reviewed by an admin before they take effect</p></div></div>
       <div class="card-pad">
-        @if(session('success'))
-        <div class="auth-success" style="margin-bottom:16px">{{ session('success') }}</div>
+        @if(session('profile_success'))
+        <div class="auth-success" style="margin-bottom:16px">{{ session('profile_success') }}</div>
         @endif
-        <form method="POST" action="#">
+        <form method="POST" action="{{ route('buyer.account.profile') }}" {{ $pendingRequest ? 'style=opacity:.5;pointer-events:none' : '' }}>
           @csrf
           <div class="form-grid-2">
             <div class="form-row">
               <label>First Name</label>
-              <input type="text" name="first_name" value="{{ auth()->user()->given_names }}">
+              <input type="text" name="given_names" value="{{ old('given_names', auth()->user()->given_names) }}" required>
             </div>
             <div class="form-row">
               <label>Last Name</label>
-              <input type="text" name="last_name" value="{{ auth()->user()->last_name }}">
+              <input type="text" name="last_name" value="{{ old('last_name', auth()->user()->last_name) }}" required>
             </div>
             <div class="form-row">
               <label>Email</label>
@@ -29,7 +50,7 @@
             </div>
             <div class="form-row">
               <label>Contact No.</label>
-              <input type="text" name="contact_no" value="{{ auth()->user()->contact_no }}">
+              <input type="text" name="contact_no" value="{{ old('contact_no', auth()->user()->contact_no) }}" placeholder="09XXXXXXXXX" maxlength="11">
             </div>
           </div>
           <button class="btn btn-primary" type="submit">Save Changes</button>
@@ -38,21 +59,56 @@
     </div>
 
     <div class="card">
+      <div class="card-head"><div><h2>Address Information</h2><p>Changes are reviewed by an admin before they take effect</p></div></div>
+      <div class="card-pad">
+        @if(session('address_success'))
+        <div class="auth-success" style="margin-bottom:16px">{{ session('address_success') }}</div>
+        @endif
+        <form method="POST" action="{{ route('buyer.account.address') }}" {{ $pendingRequest ? 'style=opacity:.5;pointer-events:none' : '' }}>
+          @csrf
+          <div class="form-row">
+            <label>Province</label>
+            <input type="text" name="province" value="{{ old('province', auth()->user()->province) }}" required>
+          </div>
+          <div class="form-row">
+            <label>Municipality / City</label>
+            <input type="text" name="municipality" value="{{ old('municipality', auth()->user()->municipality) }}" required>
+          </div>
+          <div class="form-row">
+            <label>Barangay</label>
+            <input type="text" name="barangay" value="{{ old('barangay', auth()->user()->barangay) }}" required>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-row"><label>House No. / Unit</label><input type="text" name="house_no" value="{{ old('house_no', auth()->user()->house_no) }}"></div>
+            <div class="form-row"><label>Street</label><input type="text" name="street" value="{{ old('street', auth()->user()->street) }}"></div>
+          </div>
+          <button class="btn btn-primary" type="submit">Update Address</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
       <div class="card-head"><h2>Change Password</h2></div>
       <div class="card-pad">
-        <form method="POST" action="#">
+        @if(session('password_success'))
+        <div class="auth-success" style="margin-bottom:16px">{{ session('password_success') }}</div>
+        @endif
+        @error('current_password')
+        <div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px">{{ $message }}</div>
+        @enderror
+        <form method="POST" action="{{ route('buyer.account.password') }}">
           @csrf
           <div class="form-row">
             <label>Current Password</label>
-            <input type="password" name="current_password" placeholder="••••••••">
+            <input type="password" name="current_password" placeholder="••••••••" required>
           </div>
           <div class="form-row">
             <label>New Password</label>
-            <input type="password" name="password" placeholder="••••••••">
+            <input type="password" name="password" placeholder="••••••••" required>
           </div>
           <div class="form-row">
             <label>Confirm New Password</label>
-            <input type="password" name="password_confirmation" placeholder="••••••••">
+            <input type="password" name="password_confirmation" placeholder="••••••••" required>
           </div>
           <button class="btn btn-primary" type="submit">Update Password</button>
         </form>
@@ -86,18 +142,12 @@
     </div>
 
     <div class="card">
-      <div class="card-head"><h2>Delivery Address</h2></div>
-      <div class="card-pad" style="display:flex;flex-direction:column;gap:12px">
-        <div class="address-card active-address">
-          <div style="font-size:13px;font-weight:600">{{ auth()->user()->given_names }} {{ auth()->user()->last_name }}</div>
-          <div style="font-size:12.5px;color:var(--muted);margin-top:4px">
-            {{ auth()->user()->house_no ? auth()->user()->house_no . ', ' : '' }}
-            {{ auth()->user()->street ? auth()->user()->street . ', ' : '' }}
-            {{ auth()->user()->barangay }}, {{ auth()->user()->municipality }}, {{ auth()->user()->province }}
-          </div>
-          <div style="font-size:12px;color:var(--muted);margin-top:2px">{{ auth()->user()->contact_no }}</div>
-          <span class="stamp stamp-approved" style="margin-top:8px;display:inline-flex">Default</span>
-        </div>
+      <div class="card-head">
+        <div><h2>Delivery Address</h2><p>Where your orders ship — pick one at checkout</p></div>
+        <button type="button" class="icon-btn" data-modal-open="addAddressModal" title="Add a delivery address" style="width:30px;height:30px">+</button>
+      </div>
+      <div class="card-pad">
+        @include('buyer.partials.delivery-addresses', ['addresses' => $addresses, 'selectable' => false])
       </div>
     </div>
 
