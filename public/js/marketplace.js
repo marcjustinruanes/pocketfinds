@@ -34,9 +34,11 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    // ── Protected actions ──
+    // ── Protected actions ── (preventDefault too: some of these sit inside a product-card
+    // <a>, e.g. the wishlist heart, and must not also navigate the browser to the product)
     document.querySelectorAll("[data-protected]").forEach(b =>
         b.addEventListener("click", e => {
+            e.preventDefault();
             e.stopPropagation();
             openModal();
         })
@@ -90,7 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 data.forEach(cat => {
                     const a = document.createElement("a");
                     a.className = "cat-card";
-                    a.href = "#";
+                    a.href = "/?category=" + cat.id;
                     a.innerHTML = `<span class="cat-icon">${getCategoryIcon(cat.name)}</span><span class="cat-name">${cat.name}</span>`;
                     grid.appendChild(a);
                 });

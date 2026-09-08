@@ -67,6 +67,12 @@ class User extends Authenticatable
         return $this->belongsTo(LogisticsHub::class, 'logistics_hub_id');
     }
 
+    /** Reverse of Product::seller() — a seller's own listings. */
+    public function products()
+    {
+        return $this->hasMany(Product::class, 'seller_id');
+    }
+
     public function category()
     {
         return $this->belongsTo(Category::class);

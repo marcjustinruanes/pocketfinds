@@ -32,6 +32,24 @@ trait FetchesProducts
         return $rows->map(fn($p) => $this->mapProduct($p))->values()->all();
     }
 
+    /** Real markdowns only — products whose seller actually set a discount_price below price.
+     *  No fabricated "flash sale" countdown: the schema has no sale-window field, so this is
+     *  just "currently discounted", sorted by the biggest real percentage off. */
+    private function dbDeals(int $limit = 8)
+    {
+        return Product::with(['seller', 'category'])
+            ->where('status', 'active')
+            ->sellerApproved()
+            ->whereNotNull('discount_price')
+            ->whereColumn('discount_price', '<', 'price')
+            ->get()
+            ->sortByDesc(fn ($p) => 1 - ((float) $p->discount_price / max((float) $p->price, 0.01)))
+            ->take($limit)
+            ->map(fn ($p) => $this->mapProduct($p))
+            ->values()
+            ->all();
+    }
+
     private function mapProduct(Product $p): array
     {
         $sellerName = $p->seller->business_name
@@ -72,6 +90,7 @@ trait FetchesProducts
             'seller'      => $sellerName,
             'seller_slug' => $sellerSlug,
             'seller_id'   => $p->seller_id,
+            'is_new'      => $p->created_at?->gt(now()->subDays(14)) ?? false,
             'location'    => $location,
             'price'       => $displayPrice,
             'old_price'   => $hasDiscount ? (float) $p->price : null,

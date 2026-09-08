@@ -72,24 +72,59 @@ class LogisticsController extends Controller
         return ShipmentHubLeg::forCompany(auth()->user()->business_name);
     }
 
-    private function sidebarCounts(): array
+    /**
+     * Every one of these count queries used to be its own separate `SELECT COUNT(*)`
+     * round trip. Over a remote, latency-heavy connection like this one's (~300-400ms
+     * per round trip, not per query — see eligibleRiders()) that adds up fast: the
+     * Dashboard alone used to fire ~14 of them. Postgres' `FILTER` clause computes any
+     * number of conditional counts against the same table in a single query, so this
+     * takes whatever filters a caller needs and returns them all from one round trip.
+     *
+     * @param array<string,string> $filters  output key => raw SQL boolean condition
+     * @return array<string,int>
+     */
+    private function shipmentCounts(array $filters): array
     {
-        $user = auth()->user();
-        $counts = [
-            'pendingDeliveries'   => $this->companyScope()->where('shipping_status', 'ready_for_pickup')->whereNull('pickup_approved_at')->count(),
-            'activeDeliveries'    => $this->companyScope()->whereIn('shipping_status', ['picked_up', 'at_sorting_center', 'hub_transfer', 'sorted', 'assigned_to_rider', 'out_for_delivery'])->count(),
-            'unassigned'          => $this->companyScope()->where('shipping_status', 'sorted')->whereNull('courier_id')->count(),
-            'pendingRiders'       => User::where('account_type', 'rider')->where('status', 'pending')->where('business_name', $user->business_name)->count(),
-            'unreadNotifications' => 0,
+        $select = collect($filters)
+            ->map(fn ($sql, $key) => "count(*) filter (where {$sql}) as \"{$key}\"")
+            ->implode(', ');
+
+        $row = $this->companyScope()->selectRaw($select)->first();
+
+        return collect($filters)->keys()
+            ->mapWithKeys(fn ($key) => [$key => (int) ($row->{$key} ?? 0)])
+            ->all();
+    }
+
+    /** The shipment-table filters every sidebar needs — pulled out so dashboard() can fold
+     *  these same numbers into its own bigger single query instead of asking twice. */
+    private function sidebarShipmentFilters(): array
+    {
+        return [
+            'pendingDeliveries' => "shipping_status = 'ready_for_pickup' and pickup_approved_at is null",
+            'activeDeliveries'  => "shipping_status in ('picked_up', 'at_sorting_center', 'hub_transfer', 'sorted', 'assigned_to_rider', 'out_for_delivery')",
+            'unassigned'        => "shipping_status = 'sorted' and courier_id is null",
         ];
+    }
+
+    /** Sidebar/dashboard badge counts that live outside the shipments table (riders, hub staff,
+     *  vehicles, hub-transfer legs) — also collapsed to one query per table instead of one per badge. */
+    private function nonShipmentCounts(User $user): array
+    {
+        $counts = ['unreadNotifications' => 0];
+
+        $userCounts = User::where('business_name', $user->business_name)->selectRaw("
+                count(*) filter (where account_type = 'rider' and status = 'pending') as pending_riders,
+                count(*) filter (where account_type = 'logistics' and logistics_role = 'hub_staff' and status = 'pending') as pending_staff
+            ")->first();
+        $counts['pendingRiders'] = (int) $userCounts->pending_riders;
 
         if ($user->isLogisticsAdmin()) {
             // Batches of legs a hub has requested, still waiting on this admin to approve.
+            $counts['pendingStaff'] = (int) $userCounts->pending_staff;
             $counts['pendingHubTransferRequests'] = $this->hubLegScope()->where('status', 'pending')
                 ->whereNotNull('requested_at')->whereNull('approved_at')->count();
-            $counts['pendingStaff'] = User::where('account_type', 'logistics')->where('logistics_role', 'hub_staff')
-                ->where('business_name', $user->business_name)->where('status', 'pending')->count();
-            $counts['pendingVehicles'] = \App\Models\CompanyVehicle::where('company_name', $user->business_name)
+            $counts['pendingVehicles'] = CompanyVehicle::where('company_name', $user->business_name)
                 ->where('platform_status', 'pending')->count();
         } elseif ($user->isHubStaff() && $user->logisticsHub) {
             // Legs sitting at this staff member's own hub, ready to be requested onward.
@@ -100,25 +135,37 @@ class LogisticsController extends Controller
         return $counts;
     }
 
+    private function sidebarCounts(): array
+    {
+        return array_merge(
+            $this->shipmentCounts($this->sidebarShipmentFilters()),
+            $this->nonShipmentCounts(auth()->user())
+        );
+    }
+
     public function dashboard()
     {
         if (auth()->user()->isHubStaff()) {
             return $this->hubStaffDashboard();
         }
 
-        $counts      = $this->sidebarCounts();
-        $total       = $this->companyScope()->count();
-        $pending     = $this->companyScope()->where('shipping_status', 'ready_for_pickup')->whereNull('pickup_approved_at')->count();
-        $forVerify   = $this->companyScope()->where('shipping_status', 'ready_for_pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')->count();
-        $available   = $this->companyScope()->where('shipping_status', 'sorted')->count();
-        $active      = $this->companyScope()->whereIn('shipping_status', ['picked_up', 'at_sorting_center', 'hub_transfer', 'sorted', 'assigned_to_rider', 'out_for_delivery'])->count();
-        $completed   = $this->companyScope()->whereIn('shipping_status', ['delivered', 'completed'])->count();
-        $cancelled   = $this->companyScope()->whereIn('shipping_status', ['cancelled', 'delivery_failed', 'returned'])->count();
-        $recent      = $this->companyScope()->with(['order.buyer', 'courier', 'pickupRider', 'hubTransferRider'])->latest('created_at')->take(8)->get();
+        // All shipment-table numbers this page needs — the 3 sidebar badges plus the
+        // 5 dashboard tiles — in one query instead of 8 separate ones.
+        $shipmentStats = $this->shipmentCounts(array_merge($this->sidebarShipmentFilters(), [
+            'total'     => 'true',
+            'forVerify' => "shipping_status = 'ready_for_pickup' and pickup_approved_at is not null and pickup_rider_id is null",
+            'available' => "shipping_status = 'sorted'",
+            'completed' => "shipping_status in ('delivered', 'completed')",
+            'cancelled' => "shipping_status in ('cancelled', 'delivery_failed', 'returned')",
+        ]));
 
-        return view('logistics.dashboard', array_merge($counts, compact(
-            'total', 'pending', 'forVerify', 'available', 'active', 'completed', 'cancelled', 'recent'
-        )));
+        $counts = array_merge($shipmentStats, $this->nonShipmentCounts(auth()->user()));
+        $recent = $this->companyScope()->with(['order.buyer', 'courier', 'pickupRider', 'hubTransferRider'])->latest('created_at')->take(8)->get();
+
+        return view('logistics.dashboard', array_merge($counts, compact('recent'), [
+            'pending' => $counts['pendingDeliveries'],
+            'active'  => $counts['activeDeliveries'],
+        ]));
     }
 
     /** Pickup requests fresh from a seller — "Confirm/approve/verify parcel pickup requests from seller". */

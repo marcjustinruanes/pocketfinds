@@ -3,16 +3,70 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\FetchesProducts;
+use App\Models\Announcement;
+use App\Models\Category;
 use App\Models\Product;
+use App\Models\Review;
+use App\Models\User;
+use Illuminate\Http\Request;
 
 class GuestController extends Controller
 {
     use FetchesProducts;
 
-    public function home()
+    public function home(Request $request)
     {
-        $products = $this->dbProducts(12);
-        return view('guest.home', compact('products'));
+        $categoryId = $request->integer('category') ?: null;
+        $search     = $request->string('q')->trim()->value() ?: null;
+
+        $products   = $this->dbProducts(24, $categoryId, $search);
+        $deals      = $categoryId || $search ? [] : $this->dbDeals(8);
+        $categories = Category::orderBy('name')->get(['id', 'name']);
+        $activeCategory = $categoryId ? $categories->firstWhere('id', $categoryId) : null;
+
+        $announcement = $this->guestAnnouncement();
+        $shops = $this->featuredShops(3);
+
+        $stats = [
+            'products' => Product::where('status', 'active')->sellerApproved()->count(),
+            'shops'    => User::where('account_type', 'seller')->where('status', 'approved')->whereNotNull('business_name')->count(),
+            'categories' => $categories->count(),
+        ];
+
+        return view('guest.home', compact('products', 'deals', 'categories', 'activeCategory', 'announcement', 'shops', 'stats', 'categoryId', 'search'));
+    }
+
+    /** Real, guest-visible platform note only — never invents a promo that isn't actually set. */
+    private function guestAnnouncement()
+    {
+        return Announcement::where('is_active', true)->where('audience', 'all')->latest('created_at')->first();
+    }
+
+    /** Approved sellers with the most live listings — real product counts and real average
+     *  ratings across their catalog (null, not a fabricated number, when nobody's reviewed them yet). */
+    private function featuredShops(int $limit = 3)
+    {
+        return User::where('account_type', 'seller')->where('status', 'approved')->whereNotNull('business_name')
+            ->withCount(['products' => fn ($q) => $q->where('status', 'active')])
+            ->get()
+            ->filter(fn (User $seller) => $seller->products_count > 0)
+            ->sortByDesc('products_count')
+            ->take($limit)
+            ->map(function (User $seller) {
+                $productIds = $seller->products()->where('status', 'active')->pluck('id');
+                $avgRating  = $productIds->isNotEmpty() ? Review::whereIn('product_id', $productIds)->avg('rating') : null;
+
+                return [
+                    'name'          => $seller->business_name,
+                    'slug'          => $seller->username ?: ('shop-' . $seller->id),
+                    'initial'       => strtoupper(substr($seller->business_name, 0, 1)),
+                    'rating'        => $avgRating ? round($avgRating, 1) : null,
+                    'products_count'=> $seller->products_count,
+                    'joined'        => $seller->created_at->format('M Y'),
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     public function product($id)
@@ -45,7 +99,8 @@ class GuestController extends Controller
             ->all();
 
         $shop = null;
-        return view('guest.product', compact('product', 'shop', 'related', 'shopProducts'));
+        $announcement = $this->guestAnnouncement();
+        return view('guest.product', compact('product', 'shop', 'related', 'shopProducts', 'announcement'));
     }
 
     public function shop($slug)
@@ -65,6 +120,7 @@ class GuestController extends Controller
             'desc'     => '',
         ];
 
-        return view('guest.shop', compact('shop', 'items', 'slug'));
+        $announcement = $this->guestAnnouncement();
+        return view('guest.shop', compact('shop', 'items', 'slug', 'announcement'));
     }
 }
