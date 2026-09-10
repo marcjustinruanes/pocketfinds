@@ -36,23 +36,23 @@ button{cursor:pointer}
 .login-btn:hover{background:var(--pink-dark)}
 
 /* ── Hero ── */
-.hero{padding:26px 0}
+.hero{padding:18px 0}
 .hero-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:20px;align-items:stretch}
-.hero-main{min-height:300px;border-radius:22px;padding:44px;display:flex;align-items:center;background:linear-gradient(135deg,#fff5fa 0%,var(--pink-soft) 100%);border:1px solid #f7d5e6;overflow:hidden;position:relative}
-.hero-main:after{content:"";position:absolute;width:280px;height:280px;border-radius:50%;right:-110px;top:-110px;background:rgba(217,70,143,.07)}
+.hero-main{min-height:200px;border-radius:20px;padding:28px 34px;display:flex;align-items:center;background:linear-gradient(135deg,#fff5fa 0%,var(--pink-soft) 100%);border:1px solid #f7d5e6;overflow:hidden;position:relative}
+.hero-main:after{content:"";position:absolute;width:220px;height:220px;border-radius:50%;right:-90px;top:-90px;background:rgba(217,70,143,.07)}
 .hero-copy{position:relative;z-index:1;max-width:460px}
-.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.12em;font-weight:900;color:var(--pink-dark);opacity:.85}
-.hero h1{font-size:42px;line-height:1.16;letter-spacing:-.02em;margin:10px 0 14px;color:#27272a}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.12em;font-weight:900;color:var(--pink-dark);opacity:.85}
+.hero h1{font-size:30px;line-height:1.15;letter-spacing:-.02em;margin:7px 0 9px;color:#27272a}
 .hero h1 .accent{color:var(--pink)}
-.hero p{max-width:420px;line-height:1.6;color:var(--muted);margin:0 0 24px}
-.primary{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:0 24px;border-radius:10px;background:var(--pink);color:#fff;font-weight:850;font-size:13.5px;box-shadow:0 10px 24px rgba(217,70,143,.22)}
+.hero p{max-width:420px;line-height:1.5;color:var(--muted);margin:0 0 16px;font-size:13.5px}
+.primary{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 20px;border-radius:9px;background:var(--pink);color:#fff;font-weight:850;font-size:13px;box-shadow:0 10px 24px rgba(217,70,143,.22)}
 .primary:hover{background:var(--pink-dark)}
 .hero-side{display:flex}
-.hero-visual{position:relative;width:100%;border-radius:22px;overflow:hidden;background:repeating-linear-gradient(115deg,#fdeaf3,#fdeaf3 26px,#fdf2f8 26px,#fdf2f8 52px);display:flex;align-items:center;justify-content:center;padding:26px}
-.hero-photo-frame{width:100%;max-width:230px;aspect-ratio:1/1.05;border-radius:20px;overflow:hidden;background:var(--white);box-shadow:0 18px 40px rgba(39,39,42,.14);display:grid;place-items:center}
+.hero-visual{position:relative;width:100%;border-radius:20px;overflow:hidden;background:repeating-linear-gradient(115deg,#fdeaf3,#fdeaf3 26px,#fdf2f8 26px,#fdf2f8 52px);display:flex;align-items:center;justify-content:center;padding:16px}
+.hero-photo-frame{width:100%;max-width:150px;aspect-ratio:1/1;border-radius:16px;overflow:hidden;background:var(--white);box-shadow:0 14px 30px rgba(39,39,42,.14);display:grid;place-items:center}
 .hero-photo-frame img{width:100%;height:100%;object-fit:cover}
 .hero-photo-frame .ph-icon{color:var(--pink);opacity:.35}
-.hero-script{position:absolute;top:22px;right:22px;font-family:var(--font-script);font-size:24px;line-height:1.15;color:var(--pink-dark);transform:rotate(4deg);text-align:right}
+.hero-script{position:absolute;top:12px;right:14px;font-family:var(--font-script);font-size:16px;line-height:1.1;color:var(--pink-dark);transform:rotate(4deg);text-align:right}
 
 /* ── Sections ── */
 .guest-notice{margin:4px 0 30px;padding:14px 17px;border:1px solid #f4c4dc;border-radius:12px;background:#fff4fa;display:flex;align-items:center;justify-content:space-between;gap:15px}
@@ -133,8 +133,8 @@ button{cursor:pointer}
   .nav-links{display:none}
   .header-actions .icon-action{display:none}
   .login-btn{padding:8px 14px}
-  .hero-main{padding:30px 25px;min-height:260px}
-  .hero h1{font-size:32px}
+  .hero-main{padding:22px 20px;min-height:auto}
+  .hero h1{font-size:26px}
   .deal-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
   .product-img{height:125px}
   .cat-card{width:76px}
