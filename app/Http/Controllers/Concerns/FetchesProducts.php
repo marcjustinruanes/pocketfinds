@@ -44,6 +44,9 @@ trait FetchesProducts
             'cat'         => $p->category->name ?? '—',
             'category_id' => $p->category_id,
             'img'         => $p->image ? Storage::url($p->image) : null,
+            'images'      => !empty($p->images)
+                ? collect($p->images)->filter()->map(fn ($path) => Storage::url($path))->values()->all()
+                : ($p->image ? [Storage::url($p->image)] : []),
             'desc'        => $p->description ?? '',
             'sku'         => $p->sku,
             'specs'       => !empty($p->details)

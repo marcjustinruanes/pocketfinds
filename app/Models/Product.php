@@ -18,6 +18,7 @@ class Product extends Model
     protected $casts = [
         'variations' => 'array',
         'details'    => 'array',
+        'images'     => 'array',
     ];
 
     public function getTotalStockAttribute(): int

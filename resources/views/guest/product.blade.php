@@ -31,29 +31,22 @@
   $counts  = [1=>0,2=>0,3=>0,4=>0,5=>0];
   foreach($reviews as $r) $counts[$r['rating']]++;
   $total   = count($reviews) ?: 1;
-  $icons = [
-    'headphones'=>'<path d="M3 18v-6a9 9 0 0118 0v6"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z"/>',
-    'bag'       =>'<path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>',
-    'phone'     =>'<path d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>',
-    'sparkle'   =>'<path d="M5 3l1.5 4.5L11 9l-4.5 1.5L5 15l-1.5-4.5L-1 9l4.5-1.5L5 3zm12 9l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/>',
-    'shirt'     =>'<path d="M3 7l3-4h12l3 4-4 2v10H7V9L3 7z"/>',
-    'puzzle'    =>'<path d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/>',
-  ];
-  $iconPath = $icons[$product['img']] ?? $icons['bag'];
+  $photos  = $product['images'] ?? [];
 @endphp
 
 <div class="gp-grid">
   {{-- Image col --}}
   <div class="gp-img-col">
+    @if(count($photos) > 1)
     <div class="gp-thumb-col">
       <button class="gp-arr" id="gpArrUp" onclick="gpScrollThumbs(-1)">
         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
       </button>
       <div class="gp-thumb-viewport" id="gpThumbViewport">
         <div class="gp-thumb-track" id="gpThumbTrack">
-          @foreach(range(1,6) as $t)
-          <button class="gp-thumb {{ $t===1?'active':'' }}" onclick="gpThumb(this)">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">{!! $iconPath !!}</svg>
+          @foreach($photos as $photo)
+          <button class="gp-thumb {{ $loop->first?'active':'' }}" data-img="{{ $photo }}" onclick="gpThumb(this)">
+            <img src="{{ $photo }}" alt="{{ $product['name'] }} photo {{ $loop->iteration }}">
           </button>
           @endforeach
         </div>
@@ -62,8 +55,13 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
     </div>
+    @endif
     <div class="gp-main-img">
-      <svg xmlns="http://www.w3.org/2000/svg" width="110" height="110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">{!! $iconPath !!}</svg>
+      @if(count($photos) > 0)
+        <img id="gpMainImgEl" src="{{ $photos[0] }}" alt="{{ $product['name'] }}">
+      @else
+        <svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".4"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      @endif
     </div>
   </div>
 
@@ -215,7 +213,11 @@
     @foreach($shopProducts as $sp)
     <a class="gp-mini-card" href="{{ route('guest.product', $sp['id']) }}">
       <div class="gp-mini-img">
-        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">{!! $icons[$sp['img']] ?? $icons['bag'] !!}</svg>
+        @if($sp['img'])
+          <img src="{{ $sp['img'] }}" alt="{{ $sp['name'] }}">
+        @else
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".4"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        @endif
         @if($sp['badge'])<span class="gp-mini-badge">{{ $sp['badge'] }}</span>@endif
       </div>
       <div class="gp-mini-info">
@@ -237,7 +239,11 @@
     @foreach($related as $rp)
     <a class="product" href="{{ route('guest.product', $rp['id']) }}" style="text-decoration:none;color:inherit">
       <div class="product-img">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">{!! $icons[$rp['img']] ?? $icons['bag'] !!}</svg>
+        @if($rp['img'])
+          <img src="{{ $rp['img'] }}" alt="{{ $rp['name'] }}">
+        @else
+          <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".4"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        @endif
       </div>
       <div class="product-body">
         @if($rp['badge'])<span class="badge">{{ $rp['badge'] }}</span>@endif
@@ -285,6 +291,8 @@ function gpScrollThumbs(dir) {
 function gpThumb(btn) {
   btn.closest('.gp-thumb-track').querySelectorAll('.gp-thumb').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  const mainImg = document.getElementById('gpMainImgEl');
+  if (mainImg && btn.dataset.img) mainImg.src = btn.dataset.img;
 }
 document.getElementById('gpArrUp').style.opacity = '.3';
 // Variants
