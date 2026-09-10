@@ -1,6 +1,6 @@
 <nav class="sidebar" id="sidebar">
   <div class="sidebar-brand">
-    <div class="mark">A</div>
+    <div class="mark"><img src="{{ asset('images/logo.png') }}" alt="PocketFinds" class="brand-logo-img"></div>
     <div>
       <div class="name">PocketFinds</div>
       <span class="tag">Admin Console</span>

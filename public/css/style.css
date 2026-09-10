@@ -140,9 +140,13 @@ a {
     display: grid;
     place-items: center;
     border-radius: 12px;
-    background: rgba(255, 255, 255, .14);
-    border: 1px solid rgba(255, 255, 255, .18);
-    backdrop-filter: blur(12px);
+}
+
+.brand-logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
 }
 
 .auth-brand-title {

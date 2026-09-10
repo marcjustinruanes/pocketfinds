@@ -1,7 +1,7 @@
 <nav class="sidebar" id="sidebar">
   <div class="sidebar-brand">
     <div class="mark">
-      @include('seller.partials.icon', ['name' => 'bag', 'size' => 18])
+      <img src="{{ asset('images/logo.png') }}" alt="PocketFinds" class="brand-logo-img">
     </div>
     <div>
       <div class="name">PocketFinds</div>
