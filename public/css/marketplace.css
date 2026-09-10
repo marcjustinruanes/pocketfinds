@@ -65,7 +65,7 @@ button{cursor:pointer}
 .see-all{color:var(--pink-dark);font-size:12px;font-weight:800}
 
 /* ── Categories ── */
-.category-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:24px 16px}
+.category-grid{display:flex;flex-wrap:wrap;justify-content:flex-start;gap:24px 16px}
 .cat-card{display:flex;flex-direction:column;align-items:center;gap:10px;width:84px;flex:none;text-align:center;transition:transform .18s ease}
 .cat-card:hover{transform:translateY(-3px)}
 .cat-icon{width:64px;height:64px;display:grid;place-items:center;border-radius:50%;background:var(--pink-soft);border:1px solid #f7d5e6;color:var(--pink);transition:background .18s ease,color .18s ease,box-shadow .18s ease,border-color .18s ease}
