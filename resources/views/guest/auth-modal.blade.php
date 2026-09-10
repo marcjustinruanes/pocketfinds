@@ -3,7 +3,7 @@
     <div class="am-brand">
       <div class="am-brand-content">
         <a class="am-logo" href="{{ url('/') }}">
-          <span class="am-logo-mark"><img src="{{ asset('images/logo.png') }}" alt="PocketFinds" class="brand-logo-img"></span>
+          <span class="am-logo-mark"><img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="PocketFinds" class="brand-logo-img"></span>
           <span>PocketFinds</span>
         </a>
         <h2 class="am-brand-title">Everything you need, in one place.</h2>

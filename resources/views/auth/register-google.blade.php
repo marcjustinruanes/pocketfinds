@@ -89,7 +89,7 @@
         <section class="auth-brand-panel">
             <div class="auth-brand-content">
                 <a class="auth-logo" href="{{ url('/') }}">
-                    <span class="auth-logo-mark"><img src="{{ asset('images/logo.png') }}" alt="PocketFinds" class="brand-logo-img"></span>
+                    <span class="auth-logo-mark"><img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="PocketFinds" class="brand-logo-img"></span>
                     <span>PocketFinds</span>
                 </a>
                 <h1 class="auth-brand-title">Almost there.</h1>

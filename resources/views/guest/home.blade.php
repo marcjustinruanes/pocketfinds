@@ -8,11 +8,11 @@
 <body class="marketplace">
 <div class="market-top"></div>
 <header class="market-header"><div class="container header-main">
-<a class="logo" href="{{ url('/') }}"><span class="logo-mark"><img src="{{ asset('images/logo.png') }}" alt="PocketFinds" class="brand-logo-img"></span><span><span class="logo-pocket">Pocket</span><span class="logo-finds">Finds</span></span></a>
+<a class="logo" href="{{ url('/') }}"><span class="logo-mark"><img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="PocketFinds" class="brand-logo-img"></span><span><span class="logo-pocket">Pocket</span><span class="logo-finds">Finds</span></span></a>
 <div class="search"><input data-search type="search" placeholder="Search for products, brands, or categories..."><button type="button"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button></div>
 <nav class="nav-links">
+  <a class="nav-link" href="{{ url('/') }}">Home</a>
   <a class="nav-link" href="#products">Shop</a>
-  <a class="nav-link" href="#categories">Categories</a>
   <a class="nav-link" href="#deals">Deals</a>
   <a class="nav-link" href="#about">About</a>
 </nav>
