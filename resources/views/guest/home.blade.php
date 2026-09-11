@@ -5,6 +5,7 @@
 <title>PocketFinds — Little finds. Big delight.</title>
 <meta name="description" content="PocketFinds — discover real products from real local sellers.">
 <link rel="icon" type="image/svg+xml" href="{{ asset('images/logo.svg') }}">
+<link rel="stylesheet" href="{{ asset('css/landing.css') }}?v={{ filemtime(public_path('css/landing.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/marketplace.css') }}?v={{ filemtime(public_path('css/marketplace.css')) }}">
 </head>
 <body class="marketplace">
@@ -31,7 +32,21 @@
 @php
   $heroProducts = collect($products)->filter(fn ($p) => !empty($p['img']))->take(6)->values();
 @endphp
-<section class="hero"><div class="hero-grid"><div class="hero-main"><div class="hero-copy"><div class="eyebrow">Guest shopping</div><h1>Discover products <span class="accent">you'll love.</span></h1><p>Browse products, explore categories, compare deals, and find something worth adding to your cart.</p><a class="primary" href="#products">Explore products</a></div></div><div class="hero-side">
+<section class="hero"><div class="hero-grid"><div class="hero-main"><div class="hero-copy">
+  <div class="eyebrow">Guest shopping</div>
+  <h1>Discover products <span class="accent">you'll love.</span></h1>
+  <p>Browse products, explore categories, compare deals, and find something worth adding to your cart.</p>
+  <div class="lp-hero-buttons" style="margin-top:16px">
+    <a class="primary" href="#products">Explore products</a>
+    <a class="lp-btn lp-btn-ghost" href="{{ url('/register/type') }}">Sell on PocketFinds</a>
+  </div>
+  {{-- Real, computed stats — never a placeholder "12k+ shoppers" figure --}}
+  <div class="lp-stats" style="margin-top:22px">
+    <div class="lp-stat"><strong>{{ $stats['products'] }}</strong><span>Products listed</span></div>
+    <div class="lp-stat"><strong>{{ $stats['shops'] }}</strong><span>Local shops</span></div>
+    <div class="lp-stat"><strong>{{ $stats['categories'] }}</strong><span>Categories</span></div>
+  </div>
+</div></div><div class="hero-side">
   <div class="hero-visual">
     <div class="hero-photo-frame" id="heroPhotoFrame">
       @forelse($heroProducts as $hp)
@@ -46,10 +61,60 @@
 
 <div class="guest-notice"><div><strong>You're browsing as a guest.</strong><span>Sign in to save items, checkout, and track orders.</span></div><a class="notice-link" href="{{ url('/login') }}">Sign in now</a></div>
 
+<section class="lp-trust">
+  <div class="lp-trust-item"><span class="lp-trust-icon">🚚</span><div><strong>Fast delivery</strong><span>Track every order</span></div></div>
+  <div class="lp-trust-item"><span class="lp-trust-icon">🛡</span><div><strong>Buyer protected</strong><span>Shop with confidence</span></div></div>
+  <div class="lp-trust-item"><span class="lp-trust-icon">💗</span><div><strong>Real sellers</strong><span>No fake listings</span></div></div>
+  <div class="lp-trust-item"><span class="lp-trust-icon">↩</span><div><strong>Easy returns</strong><span>Simple & stress-free</span></div></div>
+</section>
+
 <section class="section" id="categories"><div class="section-head"><h2 class="section-title">Shop by Category</h2></div><div class="category-grid" id="browseCategories"><p class="cat-loading">Loading…</p></div></section>
 
+{{-- ── Deals — only real markdowns; hidden entirely when nothing is actually discounted ── --}}
+@if(count($deals))
+<section class="lp-section" id="deals">
+  <div class="lp-section-head"><div><span class="lp-kicker">Don't blink</span><h2>Today's Deals</h2></div></div>
+  <div class="lp-product-grid">
+    @foreach($deals as $p)
+      @include('guest.partials.product-card', ['p' => $p])
+    @endforeach
+  </div>
+</section>
+@endif
+
+{{-- ── Featured shops — real sellers, real product counts, real ratings (or none yet) ── --}}
+@if(count($shops))
+<section class="lp-section" id="shops">
+  <div class="lp-section-head"><div><span class="lp-kicker">Meet the pocket makers</span><h2>Featured shops</h2></div></div>
+  <div class="lp-shop-grid">
+    @foreach($shops as $shop)
+    <a href="{{ route('guest.shop', $shop['slug']) }}" class="lp-shop-card">
+      <div class="lp-shop-avatar">{{ $shop['initial'] }}</div>
+      <strong>{{ $shop['name'] }}</strong>
+      @if($shop['rating'])
+      <span class="lp-shop-rating">★ {{ $shop['rating'] }}</span>
+      @endif
+      <span class="lp-shop-meta">{{ $shop['products_count'] }} product{{ $shop['products_count'] === 1 ? '' : 's' }} · Since {{ $shop['joined'] }}</span>
+    </a>
+    @endforeach
+  </div>
+</section>
+@endif
+
 <section class="section" id="products">
-  <div class="section-head"><h2 class="section-title">Featured Products</h2><a class="see-all" href="#products">See all</a></div>
+  <div class="section-head"><h2 class="section-title">
+      @if($search) Results for "{{ $search }}"
+      @elseif($activeCategory) {{ $activeCategory->name }}
+      @else Featured Products
+      @endif
+    </h2><a class="see-all" href="#products">See all</a></div>
+  {{-- Real category filter pills — reloads with ?category= (currently unused server-side data, now wired up) --}}
+  <div class="lp-pills" style="margin:-6px 0 16px">
+    <a href="{{ url('/') }}" class="lp-pill {{ !$categoryId ? 'active' : '' }}">All</a>
+    @foreach($categories as $cat)
+    <a href="{{ url('/') }}?category={{ $cat->id }}" class="lp-pill {{ $categoryId === $cat->id ? 'active' : '' }}">{{ $cat->name }}</a>
+    @endforeach
+  </div>
   <div class="deal-strip"><div class="deal-grid">
     @forelse($products as $p)
     <article class="product" data-product="{{ strtolower($p['name']) }}" onclick="window.location='{{ route('guest.product', $p['id']) }}'">
@@ -85,13 +150,17 @@
     </article>
     @empty
     <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#888">
-      <p style="font-size:14px">No products available yet. Check back soon!</p>
+      @if($search || $categoryId)
+        <p style="font-size:14px">No products match this filter yet. <a href="{{ url('/') }}" style="color:var(--pink-dark);font-weight:700">Clear it</a> to see everything.</p>
+      @else
+        <p style="font-size:14px">No products available yet. Check back soon!</p>
+      @endif
     </div>
     @endforelse
   </div></div>
 </section>
 
-<section class="section" id="deals">
+<section class="section" id="promo">
   <div class="deals-grid">
     <div class="deal-card tint-a">
       <span class="deal-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 12 22l-9-9 8.59-8.59A2 2 0 0113 4h7v7a2 2 0 01-.41.59z"/><circle cx="16.5" cy="7.5" r="1.5"/></svg></span>
@@ -104,9 +173,24 @@
     </div>
   </div>
 </section>
+
+{{-- ── Join CTA — a real link into registration, not a fake newsletter capture ── --}}
+<section class="lp-section">
+  <div class="lp-join">
+    <div><h2>Small shops. Big personality.</h2><p>Bring your own products to PocketFinds and reach real local buyers.</p></div>
+    <a href="{{ url('/register/type') }}">Sell on PocketFinds →</a>
+  </div>
+</section>
 </main>
 
-<footer class="footer" id="about"><div class="container"><div class="footer-grid"><div><h3>PocketFinds Marketplace</h3><p>A simple marketplace experience for discovering products from local sellers.</p></div><div><h3>Customer Service</h3><a href="#">Help Centre</a><a href="#">Contact Us</a><a href="#">Returns</a></div><div><h3>About</h3><a href="#">About Us</a><a href="#">Careers</a><a href="#">Privacy</a></div><div><h3>Account</h3><a href="{{ url('/login') }}">Sign In</a><a href="{{ url('/register/type') }}">Register</a><a href="#">Seller Centre</a></div></div><div class="footer-bottom">© {{ date('Y') }} PocketFinds. All rights reserved.</div></div></footer>
+<footer class="footer" id="about"><div class="container"><div class="footer-grid"><div><h3>PocketFinds Marketplace</h3><p>A simple marketplace experience for discovering products from local sellers.</p></div><div><h3>Customer Service</h3><a href="#">Help Centre</a><a href="#">Contact Us</a><a href="#">Returns</a></div><div><h3>About</h3><a href="#">About Us</a><a href="#">Careers</a><a href="#">Privacy</a></div><div><h3>Account</h3><a href="{{ url('/login') }}">Sign In</a><a href="{{ url('/register/type') }}">Register</a><a href="{{ url('/register/type') }}">Seller Centre</a></div></div><div class="footer-bottom">© {{ date('Y') }} PocketFinds. All rights reserved.</div></div></footer>
+
+<nav class="mobile-nav">
+  <a href="{{ url('/') }}"><span>⌂</span>Home</a>
+  <a href="#categories"><span>◫</span>Categories</a>
+  <button type="button" data-protected style="all:unset;display:flex;flex-direction:column;align-items:center;gap:2px"><span>♡</span>Wishlist</button>
+  <a href="{{ url('/login') }}"><span>◯</span>Account</a>
+</nav>
 
 @include('guest.auth-modal')
 <script src="{{ asset('js/marketplace.js') }}"></script>
