@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\FetchesProducts;
-use App\Models\Announcement;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Review;
@@ -36,10 +35,11 @@ class GuestController extends Controller
         return view('guest.home', compact('products', 'deals', 'categories', 'activeCategory', 'announcement', 'shops', 'stats', 'categoryId', 'search'));
     }
 
-    /** Real, guest-visible platform note only — never invents a promo that isn't actually set. */
+    /** Admin announcements are for logged-in users only — guests always see the generic
+     *  welcome line, regardless of what's active in the admin Announcements panel. */
     private function guestAnnouncement()
     {
-        return Announcement::where('is_active', true)->where('audience', 'all')->latest('created_at')->first();
+        return null;
     }
 
     /** Approved sellers with the most live listings — real product counts and real average
