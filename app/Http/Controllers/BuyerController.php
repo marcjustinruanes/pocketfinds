@@ -23,8 +23,35 @@ class BuyerController extends Controller
 
     public function dashboard()
     {
+        $buyerId  = auth()->id();
         $featured = $this->dbProducts(8);
-        return view('buyer.dashboard', compact('featured'));
+
+        $orderCounts = Order::where('app_buyer_id', $buyerId)
+            ->selectRaw('status, count(*) as c')
+            ->groupBy('status')
+            ->pluck('c', 'status');
+
+        $statusCounts = [
+            'to_ship'          => $orderCounts->get('to_ship', 0),
+            'in_transit'       => $orderCounts->get('in_transit', 0),
+            'out_for_delivery' => $orderCounts->get('out_for_delivery', 0),
+            'completed'        => $orderCounts->get('completed', 0),
+        ];
+        $activeOrders    = $statusCounts['to_ship'] + $statusCounts['in_transit'] + $statusCounts['out_for_delivery'];
+        $completedOrders = $statusCounts['completed'];
+        $cartCount       = collect(session('cart', []))->count();
+        $unreadMessages  = Message::where('receiver_id', $buyerId)->where('read', false)->count();
+
+        $recentOrders = Order::with('seller')
+            ->where('app_buyer_id', $buyerId)
+            ->latest()
+            ->limit(3)
+            ->get();
+
+        return view('buyer.dashboard', compact(
+            'featured', 'statusCounts', 'activeOrders', 'completedOrders',
+            'cartCount', 'unreadMessages', 'recentOrders'
+        ));
     }
 
     public function browse()
