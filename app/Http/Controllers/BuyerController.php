@@ -15,6 +15,7 @@ use App\Models\Voucher;
 use App\Models\BuyerPaymentAccount;
 use App\Models\BuyerAddress;
 use App\Models\CartItem;
+use App\Models\ShopFollow;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
@@ -111,15 +112,37 @@ class BuyerController extends Controller
         $seller = User::where('username', $slug)->where('account_type', 'seller')->firstOrFail();
         $items  = Product::with(['seller','category'])->where('seller_id', $seller->id)->where('status','active')->sellerApproved()->get()->map(fn($p) => $this->mapProduct($p))->all();
         $shop   = [
-            'name'     => $seller->business_name ?? ($seller->given_names . ' ' . $seller->last_name),
-            'initial'  => strtoupper(substr($seller->given_names, 0, 1)),
-            'rating'   => 0,
-            'products' => count($items),
-            'sales'    => '0',
-            'joined'   => $seller->created_at->format('M Y'),
-            'desc'     => '',
+            'name'         => $seller->business_name ?? ($seller->given_names . ' ' . $seller->last_name),
+            'initial'      => strtoupper(substr($seller->given_names, 0, 1)),
+            'rating'       => 0,
+            'products'     => count($items),
+            'sales'        => '0',
+            'joined'       => $seller->created_at->format('M Y'),
+            'desc'         => '',
+            'followers'    => $seller->followers()->count(),
+            'is_following' => ShopFollow::where('buyer_id', auth()->id())->where('seller_id', $seller->id)->exists(),
         ];
         return view('buyer.shop', compact('shop', 'items', 'slug'));
+    }
+
+    /** Toggle the current buyer's follow of a seller's shop. */
+    public function followShop($slug)
+    {
+        $seller = User::where('username', $slug)->where('account_type', 'seller')->firstOrFail();
+
+        $follow = ShopFollow::where('buyer_id', auth()->id())->where('seller_id', $seller->id)->first();
+        if ($follow) {
+            $follow->delete();
+            $following = false;
+        } else {
+            ShopFollow::create(['buyer_id' => auth()->id(), 'seller_id' => $seller->id]);
+            $following = true;
+        }
+
+        return response()->json([
+            'following' => $following,
+            'followers' => $seller->followers()->count(),
+        ]);
     }
 
     public function cart()

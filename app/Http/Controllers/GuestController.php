@@ -111,13 +111,14 @@ class GuestController extends Controller
             ->get()->map(fn($p) => $this->mapProduct($p))->all();
 
         $shop = [
-            'name'     => $seller->business_name ?? ($seller->given_names . ' ' . $seller->last_name),
-            'initial'  => strtoupper(substr($seller->given_names, 0, 1)),
-            'rating'   => 0,
-            'products' => count($items),
-            'sales'    => '0',
-            'joined'   => $seller->created_at->format('M Y'),
-            'desc'     => '',
+            'name'      => $seller->business_name ?? ($seller->given_names . ' ' . $seller->last_name),
+            'initial'   => strtoupper(substr($seller->given_names, 0, 1)),
+            'rating'    => 0,
+            'products'  => count($items),
+            'sales'     => '0',
+            'joined'    => $seller->created_at->format('M Y'),
+            'desc'      => '',
+            'followers' => $seller->followers()->count(),
         ];
 
         $announcement = $this->guestAnnouncement();

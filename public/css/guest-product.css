@@ -361,7 +361,18 @@
 }
 .gs-rating-row { display:flex;align-items:center;gap:4px;margin-bottom:10px; }
 .gs-rating-val { font-size:13px;font-weight:700;margin-left:4px; }
+.gs-followers-count { font-size:12px;color:#79737f;margin-left:2px; }
 .gs-desc { margin:0;font-size:13.5px;line-height:1.65;color:#79737f; }
+
+.gs-name-row { display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px; }
+.gs-name-row .gs-name { margin:0; }
+.gs-follow-btn {
+  height:32px;padding:0 16px;border-radius:8px;font-size:12.5px;font-weight:700;
+  background:var(--white);border:1.5px solid #d9468f;color:#be3a7d;cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px;transition:background .15s,color .15s;
+}
+.gs-follow-btn:hover { background:#fdf2f8; }
+.gs-follow-btn.is-following { background:#d9468f;color:#fff;border-color:#d9468f; }
 
 /* Stats — matches .sp-stats / .sp-stat */
 .gs-stats {

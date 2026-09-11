@@ -74,6 +74,18 @@ class User extends Authenticatable
         return $this->hasMany(Product::class, 'seller_id');
     }
 
+    /** Buyers following this seller's shop. */
+    public function followers()
+    {
+        return $this->hasMany(ShopFollow::class, 'seller_id');
+    }
+
+    /** Shops this buyer follows. */
+    public function followedShops()
+    {
+        return $this->hasMany(ShopFollow::class, 'buyer_id');
+    }
+
     public function category()
     {
         return $this->belongsTo(Category::class);

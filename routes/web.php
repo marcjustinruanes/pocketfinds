@@ -128,6 +128,7 @@ Route::prefix('buyer')->name('buyer.')->middleware(['web', 'buyer'])->group(func
     Route::get('/product/{id}', [BuyerController::class, 'product'])->name('product');
     Route::post('/product/report', [BuyerController::class, 'reportProduct'])->name('product.report');
     Route::get('/shop/{slug}', [BuyerController::class, 'shop'])->name('shop');
+    Route::post('/shop/{slug}/follow', [BuyerController::class, 'followShop'])->name('shop.follow');
     Route::get('/cart', [BuyerController::class, 'cart'])->name('cart');
     Route::post('/checkout', [BuyerController::class, 'checkout'])->name('checkout');
     Route::post('/addresses', [BuyerController::class, 'storeAddress'])->name('addresses.store');

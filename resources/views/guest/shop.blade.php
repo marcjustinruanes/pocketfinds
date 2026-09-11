@@ -33,19 +33,26 @@
 <div class="gs-hero">
   <div class="gs-avatar">{{ $shop['initial'] }}</div>
   <div class="gs-info">
-    <h1 class="gs-name">{{ $shop['name'] }}</h1>
+    <div class="gs-name-row">
+      <h1 class="gs-name">{{ $shop['name'] }}</h1>
+      <button type="button" class="gs-follow-btn" data-protected>
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Follow
+      </button>
+    </div>
     <div class="gs-rating-row">
       @for($i=1;$i<=5;$i++)
       <svg width="13" height="13" viewBox="0 0 24 24" fill="{{ $i<=round($shop['rating'])?'#f59e0b':'none' }}" stroke="#f59e0b" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       @endfor
       <span class="gs-rating-val">{{ $shop['rating'] }}</span>
+      <span class="gs-followers-count">· {{ number_format($shop['followers']) }} follower{{ $shop['followers'] === 1 ? '' : 's' }}</span>
     </div>
     <p class="gs-desc">{{ $shop['desc'] }}</p>
   </div>
   <div class="gs-stats">
     <div class="gs-stat"><div class="gs-stat-val">{{ $shop['products'] }}</div><div class="gs-stat-label">Products</div></div>
     <div class="gs-stat"><div class="gs-stat-val">{{ $shop['sales'] }}</div><div class="gs-stat-label">Sales</div></div>
-    <div class="gs-stat"><div class="gs-stat-val">{{ $shop['rating'] }}</div><div class="gs-stat-label">Rating</div></div>
+    <div class="gs-stat"><div class="gs-stat-val">{{ $shop['followers'] }}</div><div class="gs-stat-label">Followers</div></div>
     <div class="gs-stat"><div class="gs-stat-val">{{ $shop['joined'] }}</div><div class="gs-stat-label">Joined</div></div>
   </div>
 </div>
