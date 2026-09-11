@@ -1,5 +1,19 @@
 document.addEventListener("DOMContentLoaded", () => {
 
+    // ── Hero photo rotation ──
+    const heroFrame = document.getElementById("heroPhotoFrame");
+    if (heroFrame) {
+        const slides = [...heroFrame.querySelectorAll(".hero-slide")];
+        if (slides.length > 1) {
+            let heroIdx = 0;
+            setInterval(() => {
+                slides[heroIdx].classList.remove("active");
+                heroIdx = (heroIdx + 1) % slides.length;
+                slides[heroIdx].classList.add("active");
+            }, 5000);
+        }
+    }
+
     // ── Search ──
     const s = document.querySelector("[data-search]");
     const p = [...document.querySelectorAll("[data-product]")];

@@ -24,16 +24,16 @@
 
 <main class="container">
 @php
-  $heroProduct = collect($products)->first(fn ($p) => !empty($p['img']));
+  $heroProducts = collect($products)->filter(fn ($p) => !empty($p['img']))->take(6)->values();
 @endphp
 <section class="hero"><div class="hero-grid"><div class="hero-main"><div class="hero-copy"><div class="eyebrow">Guest shopping</div><h1>Discover products <span class="accent">you'll love.</span></h1><p>Browse products, explore categories, compare deals, and find something worth adding to your cart.</p><a class="primary" href="#products">Explore products</a></div></div><div class="hero-side">
   <div class="hero-visual">
-    <div class="hero-photo-frame">
-      @if($heroProduct)
-        <img src="{{ $heroProduct['img'] }}" alt="{{ $heroProduct['name'] }}">
-      @else
+    <div class="hero-photo-frame" id="heroPhotoFrame">
+      @forelse($heroProducts as $hp)
+        <img class="hero-slide {{ $loop->first ? 'active' : '' }}" src="{{ $hp['img'] }}" alt="{{ $hp['name'] }}">
+      @empty
         <svg class="ph-icon" xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-      @endif
+      @endforelse
     </div>
     <span class="hero-script">Good Finds<br>Brighter Days</span>
   </div>
