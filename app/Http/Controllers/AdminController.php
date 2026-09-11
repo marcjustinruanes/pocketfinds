@@ -560,7 +560,7 @@ class AdminController extends Controller
                 ->where('read', false)
                 ->update(['read' => true]);
 
-            $messages = Message::with(['sender', 'receiver', 'replyTo.sender'])
+            $messages = Message::with(['sender', 'receiver', 'replyTo.sender', 'product'])
                 ->where(function ($query) use ($selectedUser) {
                     $query->where('sender_id', auth()->id())
                         ->where('receiver_id', $selectedUser->id);
@@ -577,46 +577,40 @@ class AdminController extends Controller
             }
         }
 
-        return view('admin.messages', array_merge($counts, compact('users', 'selectedUser', 'messages')));
+        // Lets the composer's "share a product" picker work without a
+        // separate lookup endpoint — same idea as the buyer/seller composer's
+        // own product picker, just admin-scoped to every live listing.
+        $pickerProducts = Product::where('status', 'active')->latest()->limit(60)->get(['id', 'name', 'price', 'image']);
+
+        return view('admin.messages', array_merge($counts, compact('users', 'selectedUser', 'messages', 'pickerProducts')));
     }
 
-    public function sendMessage(Request $request, User $user)
+    /**
+     * Admin's own render of a poll tick: reuses HandlesMessaging's read-receipt
+     * and thread-fetch logic, but returns the same server-rendered bubble
+     * partial the full page uses (admin.partials.messages-body) instead of
+     * the trait's raw JSON array — the bubble markup here (reply quotes,
+     * reaction picker, profile-linked header) is admin-specific and this
+     * keeps that markup defined in exactly one place. Sending itself still
+     * goes through the shared HandlesMessaging::messagesSend.
+     */
+    public function messagesPoll(Request $request)
     {
-        abort_if($user->is_admin, 404);
+        $data     = $request->validate(['receiver_id' => ['required', 'integer']]);
+        $receiver = User::findOrFail($data['receiver_id']);
+        abort_unless(!$receiver->is_admin, 403);
 
-        $request->validate([
-            'body'        => 'nullable|string|max:2000',
-            'attachment'  => 'nullable|file|max:20480|mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi,pdf',
-            'reply_to_id' => 'nullable|integer|exists:messages,id',
-        ]);
+        Message::where('sender_id', $receiver->id)->where('receiver_id', auth()->id())
+            ->where('read', false)->update(['read' => true]);
 
-        abort_unless(filled($request->body) || $request->hasFile('attachment'), 422, 'Send a message or a photo.');
+        $messages = Message::with(['sender', 'replyTo.sender', 'product'])
+            ->where(function ($q) use ($receiver) {
+                $q->where('sender_id', auth()->id())->where('receiver_id', $receiver->id);
+            })->orWhere(function ($q) use ($receiver) {
+                $q->where('sender_id', $receiver->id)->where('receiver_id', auth()->id());
+            })->oldest()->get();
 
-        $data = [
-            'sender_id'   => auth()->id(),
-            'receiver_id' => $user->id,
-            'body'        => $request->body,
-            'read'        => false,
-            'reply_to_id' => $request->reply_to_id,
-        ];
-
-        if ($request->hasFile('attachment')) {
-            $file      = $request->file('attachment');
-            $mime      = $file->getMimeType();
-            $extension = strtolower($file->getClientOriginalExtension());
-
-            $data['attachment_path'] = $file->store('message_attachments', 'public');
-            $data['attachment_name'] = $file->getClientOriginalName();
-            $data['attachment_mime'] = $mime;
-            $data['attachment_size'] = $file->getSize();
-            $data['attachment_type'] = str_starts_with($mime, 'image/') || in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)
-                ? 'image'
-                : (str_starts_with($mime, 'video/') || in_array($extension, ['mp4', 'mov', 'avi'], true) ? 'video' : 'document');
-        }
-
-        Message::create($data);
-
-        return redirect()->route('admin.messages.user', $user)->with('success', 'Message sent.');
+        return response()->json(['ok' => true, 'html' => view('admin.partials.messages-body', compact('messages'))->render()]);
     }
 
     public function reactMessage(Request $request, Message $message)
@@ -642,6 +636,18 @@ class AdminController extends Controller
         }
 
         $message->update(['reactions' => $reactions]);
+
+        if ($request->wantsJson()) {
+            $otherId  = $message->sender_id === $adminId ? $message->receiver_id : $message->sender_id;
+            $messages = Message::with(['sender', 'replyTo.sender', 'product'])
+                ->where(function ($q) use ($otherId, $adminId) {
+                    $q->where('sender_id', $adminId)->where('receiver_id', $otherId);
+                })->orWhere(function ($q) use ($otherId, $adminId) {
+                    $q->where('sender_id', $otherId)->where('receiver_id', $adminId);
+                })->oldest()->get();
+
+            return response()->json(['ok' => true, 'html' => view('admin.partials.messages-body', compact('messages'))->render()]);
+        }
 
         return back();
     }

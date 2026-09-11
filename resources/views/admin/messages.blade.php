@@ -125,74 +125,7 @@
       </div>
     </div>
     <div class="chat-body" id="chatBody">
-      @forelse($messages as $msg)
-      <div class="bubble {{ $msg->sender_id == auth()->id() ? 'out' : 'in' }}" data-msg-id="{{ $msg->id }}">
-        <div class="bubble-actions">
-          <button type="button" class="bubble-action-btn" data-reply-btn
-                  data-reply-name="{{ $msg->sender->given_names ?? 'them' }}"
-                  data-reply-text="{{ \Illuminate\Support\Str::limit($msg->body ?: '📎 Attachment', 50) }}"
-                  data-reply-id="{{ $msg->id }}" title="Reply">
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
-          </button>
-          <button type="button" class="bubble-action-btn" data-react-btn data-msg-id="{{ $msg->id }}" title="React">
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-          </button>
-        </div>
-
-        <div class="reaction-picker" id="reactPicker-{{ $msg->id }}">
-          @foreach(['👍','❤️','😂','😮','😢'] as $emoji)
-          <form method="POST" action="{{ route('admin.messages.react', $msg->id) }}">
-            @csrf
-            <input type="hidden" name="emoji" value="{{ $emoji }}">
-            <button type="submit">{{ $emoji }}</button>
-          </form>
-          @endforeach
-        </div>
-
-        @if($msg->replyTo)
-        <div class="bubble-quote">
-          <strong>{{ $msg->replyTo->sender->given_names ?? 'Someone' }}</strong>
-          {{ \Illuminate\Support\Str::limit($msg->replyTo->body ?: '📎 Attachment', 60) }}
-        </div>
-        @endif
-
-        @if($msg->attachment_path)
-          @if($msg->attachment_type === 'image')
-          <img src="{{ Storage::url($msg->attachment_path) }}" alt="{{ $msg->attachment_name }}" class="bubble-img" onclick="window.open(this.src,'_blank')">
-          @else
-          <a href="{{ Storage::url($msg->attachment_path) }}" target="_blank" class="bubble-file">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            {{ $msg->attachment_name }}
-          </a>
-          @endif
-        @endif
-
-        @if($msg->body)
-        <div class="bubble-text">{{ $msg->body }}</div>
-        @endif
-
-        <time>
-          {{ \Carbon\Carbon::parse($msg->created_at)->format('M d, H:i') }}
-          @if($msg->sender_id == auth()->id())
-            · {{ $msg->read ? '✓✓ Seen' : '✓ Delivered' }}
-          @endif
-        </time>
-
-        @if(!empty($msg->reactions))
-        <div class="bubble-reactions">
-          @foreach($msg->reactions as $emoji => $userIds)
-          <span class="reaction-badge {{ in_array(auth()->id(), $userIds) ? 'mine' : '' }}">{{ $emoji }} {{ count($userIds) }}</span>
-          @endforeach
-        </div>
-        @endif
-      </div>
-      @empty
-      <div class="empty" style="margin:auto">
-        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" width="28" height="28"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
-        <h3>No messages yet</h3>
-        <p>Start the conversation below.</p>
-      </div>
-      @endforelse
+      @include('admin.partials.messages-body', ['messages' => $messages])
     </div>
 
     <div class="reply-bar" id="replyBar">
@@ -200,19 +133,50 @@
       <button type="button" class="reply-bar-close" id="replyBarClose" aria-label="Cancel reply">&times;</button>
     </div>
     <div class="chat-input">
-      <form method="POST" action="{{ route('admin.messages.send', $selectedUser->id) }}" enctype="multipart/form-data" style="display:flex;gap:10px;flex:1" id="sendForm">
-        @csrf
+      <form enctype="multipart/form-data" style="display:flex;gap:10px;flex:1" id="sendForm">
+        <input type="hidden" name="receiver_id" value="{{ $selectedUser->id }}">
         <input type="hidden" name="reply_to_id" id="replyToInput" value="">
-        <label class="attach-btn" id="attachBtn" title="Attach a photo">
-          <input type="file" name="attachment" accept="image/*,video/*,.pdf" style="display:none" id="attachInput">
+        <input type="hidden" name="product_id" id="productIdInput" value="">
+        <label class="attach-btn" id="attachBtn" title="Attach a photo or file">
+          <input type="file" name="attachments[]" accept="image/*,video/*,.pdf" style="display:none" id="attachInput">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
         </label>
-        <input type="text" name="body" placeholder="Type a message…" style="font-family:var(--font-body);font-size:13px" autocomplete="off">
+        <button type="button" class="attach-btn" id="productPickerBtn" title="Share a product">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 5m12-5l2 5M9 21a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"/></svg>
+        </button>
+        <input type="text" name="body" id="bodyInput" placeholder="Type a message…" style="font-family:var(--font-body);font-size:13px" autocomplete="off">
         <button class="btn btn-primary" type="submit">
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M18 2L2 9l6 3 3 6 7-16z"/></svg>
           Send
         </button>
       </form>
+    </div>
+
+    {{-- Share-a-product picker --}}
+    <div class="modal-overlay" id="productPickerModal">
+      <div class="modal" style="max-width:420px">
+        <div class="modal-head">
+          <div><h3>Share a Product</h3><p>Sends it into this conversation</p></div>
+          <button class="modal-close" data-modal-close><x-admin-icon name="close" /></button>
+        </div>
+        <div class="modal-body" style="padding:12px 16px">
+          <input type="text" id="productPickerSearch" placeholder="Search products…" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:13px;margin-bottom:10px">
+          <div style="max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:6px" id="productPickerList">
+            @foreach($pickerProducts as $p)
+            <button type="button" class="product-picker-item" data-product-id="{{ $p->id }}" data-product-name="{{ strtolower($p->name) }}"
+                    style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:9px;background:#fff;text-align:left;cursor:pointer">
+              <span style="width:36px;height:36px;border-radius:8px;background:var(--pink-soft);display:grid;place-items:center;overflow:hidden;flex:none">
+                @if($p->image)<img src="{{ rtrim(config('filesystems.disks.supabase.url'), '/') . '/' . ltrim($p->image, '/') }}" style="width:100%;height:100%;object-fit:cover">@else 🛍️ @endif
+              </span>
+              <span style="min-width:0">
+                <span style="display:block;font-size:12.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ $p->name }}</span>
+                <span style="display:block;font-size:11.5px;color:var(--pink-dark);font-weight:700">₱{{ number_format($p->price, 2) }}</span>
+              </span>
+            </button>
+            @endforeach
+          </div>
+        </div>
+      </div>
     </div>
 
     {{-- Profile modal --}}
@@ -263,49 +227,143 @@
   </div>
 </div>
 
+@if(isset($selectedUser) && $selectedUser)
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  const chatBody   = document.getElementById('chatBody');
-  const replyBar   = document.getElementById('replyBar');
-  const replyInput = document.getElementById('replyToInput');
-  const attachBtn  = document.getElementById('attachBtn');
+  const RECEIVER_ID = {{ $selectedUser->id }};
+  const POLL_URL    = '{{ route('admin.messages.poll') }}';
+  const SEND_URL    = '{{ route('admin.messages.send') }}';
+  const CSRF        = '{{ csrf_token() }}';
+
+  const chatBody    = document.getElementById('chatBody');
+  const replyBar    = document.getElementById('replyBar');
+  const replyInput  = document.getElementById('replyToInput');
+  const productInput = document.getElementById('productIdInput');
+  const attachBtn   = document.getElementById('attachBtn');
   const attachInput = document.getElementById('attachInput');
+  const bodyInput   = document.getElementById('bodyInput');
+  const sendForm    = document.getElementById('sendForm');
 
-  if (chatBody) chatBody.scrollTop = chatBody.scrollHeight;
+  function scrollToBottom() { if (chatBody) chatBody.scrollTop = chatBody.scrollHeight; }
 
-  // Reply
-  document.querySelectorAll('[data-reply-btn]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      replyInput.value = btn.dataset.replyId;
-      document.getElementById('replyBarName').textContent = btn.dataset.replyName;
-      document.getElementById('replyBarText').textContent = btn.dataset.replyText;
-      replyBar?.classList.add('show');
-      document.querySelector('.chat-input input[name="body"]')?.focus();
+  // (Re)wires every per-message control — called on load and after every
+  // AJAX swap of #chatBody's innerHTML, since those controls are recreated.
+  function wireChatBody() {
+    document.querySelectorAll('[data-reply-btn]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        replyInput.value = btn.dataset.replyId;
+        document.getElementById('replyBarName').textContent = btn.dataset.replyName;
+        document.getElementById('replyBarText').textContent = btn.dataset.replyText;
+        replyBar?.classList.add('show');
+        bodyInput?.focus();
+      });
     });
-  });
+    document.querySelectorAll('[data-react-btn]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const picker = document.getElementById('reactPicker-' + btn.dataset.msgId);
+        const wasOpen = picker?.classList.contains('show');
+        document.querySelectorAll('.reaction-picker.show').forEach(p => p.classList.remove('show'));
+        if (picker && !wasOpen) picker.classList.add('show');
+      });
+    });
+    document.querySelectorAll('[data-react-emoji]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        fetch('{{ url('/admin/messages/react') }}/' + btn.dataset.msgId, {
+          method: 'POST',
+          headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ emoji: btn.dataset.reactEmoji }),
+        })
+          .then(r => r.json())
+          .then(data => { if (data.ok && chatBody) { chatBody.innerHTML = data.html; wireChatBody(); scrollToBottom(); } });
+      });
+    });
+    document.querySelectorAll('.chat-media-button').forEach(btn => {
+      btn.addEventListener('click', () => openMediaViewer(btn.dataset.mediaUrl, btn.dataset.mediaType));
+    });
+  }
+
+  function openMediaViewer(url, type) {
+    let viewer = document.getElementById('mediaViewer');
+    if (!viewer) {
+      viewer = document.createElement('div'); viewer.id = 'mediaViewer'; viewer.className = 'media-viewer';
+      viewer.innerHTML = '<button type="button" class="media-viewer-close" aria-label="Close">&times;</button><div class="media-viewer-content"></div>';
+      document.body.appendChild(viewer);
+      viewer.addEventListener('click', e => { if (e.target === viewer || e.target.classList.contains('media-viewer-close')) viewer.classList.remove('open'); });
+    }
+    const content = viewer.querySelector('.media-viewer-content');
+    content.replaceChildren();
+    const media = document.createElement(type === 'video' ? 'video' : 'img'); media.src = url;
+    if (type === 'video') { media.controls = true; media.autoplay = true; }
+    content.appendChild(media); viewer.classList.add('open');
+  }
+
   document.getElementById('replyBarClose')?.addEventListener('click', () => {
     replyInput.value = '';
     replyBar?.classList.remove('show');
   });
-
-  // Reactions — toggle the picker, close others when one opens
-  document.querySelectorAll('[data-react-btn]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const picker = document.getElementById('reactPicker-' + btn.dataset.msgId);
-      const wasOpen = picker?.classList.contains('show');
-      document.querySelectorAll('.reaction-picker.show').forEach(p => p.classList.remove('show'));
-      if (picker && !wasOpen) picker.classList.add('show');
-    });
-  });
   document.addEventListener('click', () => {
     document.querySelectorAll('.reaction-picker.show').forEach(p => p.classList.remove('show'));
   });
-
-  // Attach button visual feedback + auto-submit isn't needed, just show a selected state
   attachInput?.addEventListener('change', () => {
     attachBtn?.classList.toggle('has-file', attachInput.files.length > 0);
   });
+
+  // Share-a-product picker
+  const productModal = document.getElementById('productPickerModal');
+  document.getElementById('productPickerBtn')?.addEventListener('click', () => productModal?.classList.add('open'));
+  document.getElementById('productPickerSearch')?.addEventListener('input', (e) => {
+    const term = e.target.value.toLowerCase();
+    document.querySelectorAll('.product-picker-item').forEach(item => {
+      item.style.display = item.dataset.productName.includes(term) ? 'flex' : 'none';
+    });
+  });
+  document.querySelectorAll('.product-picker-item').forEach(item => {
+    item.addEventListener('click', () => {
+      productInput.value = item.dataset.productId;
+      productModal?.classList.remove('open');
+      sendCurrentMessage();
+    });
+  });
+
+  // Send — AJAX, reusing the same messagesSend endpoint Logistics/Rider use
+  // (App\Http\Controllers\Concerns\HandlesMessaging), so admin follows the
+  // identical backend path instead of a separate full-page-reload flow.
+  function sendCurrentMessage() {
+    const formData = new FormData(sendForm);
+    if (attachInput.files.length) {
+      formData.delete('attachments[]');
+      Array.from(attachInput.files).forEach(f => formData.append('attachments[]', f));
+    }
+    if (!formData.get('body') && !attachInput.files.length && !productInput.value) return;
+
+    fetch(SEND_URL, { method: 'POST', headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }, body: formData })
+      .then(r => r.json())
+      .then(data => {
+        if (!data.ok) return;
+        bodyInput.value = '';
+        attachInput.value = '';
+        attachBtn?.classList.remove('has-file');
+        productInput.value = '';
+        replyInput.value = '';
+        replyBar?.classList.remove('show');
+        refreshThread();
+      });
+  }
+  sendForm?.addEventListener('submit', (e) => { e.preventDefault(); sendCurrentMessage(); });
+
+  // Poll — same 3s cadence as the buyer/seller composer's own live updates.
+  function refreshThread() {
+    fetch(POLL_URL + '?receiver_id=' + RECEIVER_ID, { headers: { 'Accept': 'application/json' } })
+      .then(r => r.json())
+      .then(data => { if (data.ok && chatBody) { chatBody.innerHTML = data.html; wireChatBody(); scrollToBottom(); } });
+  }
+
+  wireChatBody();
+  scrollToBottom();
+  setInterval(refreshThread, 3000);
 });
 </script>
+@endif
 @endsection

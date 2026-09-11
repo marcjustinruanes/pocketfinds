@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Concerns;
 
 use App\Models\Complaint;
 use App\Models\Message;
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -24,6 +25,19 @@ trait HandlesMessaging
             'id'              => $m->id,
             'sender_id'       => $m->sender_id,
             'body'            => $m->body,
+            'product_id'      => $m->product_id,
+            'product_name'    => $m->product?->name,
+            'product_price'   => $m->product?->price,
+            'product_img'     => $m->product?->image
+                ? (rtrim(config('filesystems.disks.supabase.url'), '/') . '/' . ltrim($m->product->image, '/'))
+                : null,
+            'reply_to_id'     => $m->reply_to_id,
+            'reply_to'        => $m->replyTo ? [
+                'id'   => $m->replyTo->id,
+                'name' => $m->replyTo->sender?->given_names ?? 'them',
+                'text' => Str::limit($m->replyTo->body ?: ($m->replyTo->product_id ? '🛍️ Product' : '📎 Attachment'), 60),
+            ] : null,
+            'reactions'       => $m->reactions ?: (object) [],
             'attachment_path' => $m->attachment_path ? route('message.media', ['path' => $m->attachment_path]) : null,
             'attachment_name' => $m->attachment_name,
             'attachment_type' => $m->attachment_type,
@@ -51,6 +65,8 @@ trait HandlesMessaging
         $data = $request->validate([
             'receiver_id'   => ['required', 'integer', 'exists:users,id'],
             'body'          => ['nullable', 'string', 'max:2000'],
+            'product_id'    => ['nullable', 'string', 'exists:products,id'],
+            'reply_to_id'   => ['nullable', 'integer', 'exists:messages,id'],
             'attachments'   => ['nullable', 'array', 'max:5'],
             'attachments.*' => ['file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi,pdf,doc,docx,xls,xlsx'],
         ]);
@@ -59,14 +75,19 @@ trait HandlesMessaging
         abort_unless($this->isAllowedContact($receiver), 403);
 
         $files = $request->file('attachments', []);
-        abort_unless(filled($data['body'] ?? null) || $files, 422, 'Send a message, image, or file.');
+        abort_unless(filled($data['body'] ?? null) || $files || filled($data['product_id'] ?? null), 422, 'Send a message, product, image, or file.');
+
+        $product = filled($data['product_id'] ?? null) ? Product::findOrFail($data['product_id']) : null;
 
         $messages = [];
         foreach ($files ?: [null] as $index => $file) {
             $msg = ['sender_id' => auth()->id(), 'receiver_id' => $receiver->id, 'read' => false];
             if ($index === 0 && filled($data['body'] ?? null)) $msg['body'] = $data['body'];
+            if ($index === 0 && $product) $msg['product_id'] = $product->id;
+            if ($index === 0 && filled($data['reply_to_id'] ?? null)) $msg['reply_to_id'] = $data['reply_to_id'];
             if ($file) $this->addStaffAttachment($msg, $file);
-            $saved      = Message::create($msg);
+            $saved = Message::create($msg);
+            $saved->load(['product', 'replyTo.sender']);
             $messages[] = $this->formatStaffMessage($saved);
         }
 
@@ -82,11 +103,12 @@ trait HandlesMessaging
         Message::where('sender_id', $receiver->id)->where('receiver_id', auth()->id())
             ->where('read', false)->update(['read' => true]);
 
-        $messages = Message::where(function ($q) use ($receiver) {
-            $q->where('sender_id', auth()->id())->where('receiver_id', $receiver->id);
-        })->orWhere(function ($q) use ($receiver) {
-            $q->where('sender_id', $receiver->id)->where('receiver_id', auth()->id());
-        })->orderBy('created_at')->get()
+        $messages = Message::with(['product', 'replyTo.sender'])
+            ->where(function ($q) use ($receiver) {
+                $q->where('sender_id', auth()->id())->where('receiver_id', $receiver->id);
+            })->orWhere(function ($q) use ($receiver) {
+                $q->where('sender_id', $receiver->id)->where('receiver_id', auth()->id());
+            })->orderBy('created_at')->get()
             ->map(fn ($m) => $this->formatStaffMessage($m));
 
         return response()->json(['ok' => true, 'messages' => $messages]);
