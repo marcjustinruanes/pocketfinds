@@ -451,15 +451,15 @@ table.dtable{width:100%;min-width:720px;border-collapse:collapse;font-size:13px}
 .bubble-img{display:block;max-width:220px;max-height:220px;border-radius:9px;margin-bottom:6px;cursor:pointer;object-fit:cover}
 .bubble-file{display:inline-flex;align-items:center;gap:6px;margin-bottom:6px;padding:6px 10px;border-radius:8px;background:rgba(0,0,0,.06);font-size:12px;text-decoration:none;color:inherit}
 .bubble.out .bubble-file{background:rgba(255,255,255,.16)}
-.bubble-actions{position:absolute;top:-14px;display:none;gap:3px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:2px;box-shadow:var(--shadow-sm)}
-.bubble.in .bubble-actions{left:0}
-.bubble.out .bubble-actions{right:0}
+.bubble-actions{position:absolute;top:50%;transform:translateY(-50%);display:none;gap:3px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:2px;box-shadow:var(--shadow-sm);z-index:1}
+.bubble.in .bubble-actions{left:100%;margin-left:6px}
+.bubble.out .bubble-actions{right:100%;margin-right:6px}
 .bubble:hover .bubble-actions{display:flex}
 .bubble-action-btn{display:grid;place-items:center;width:22px;height:22px;border:0;background:none;color:var(--muted);border-radius:5px;cursor:pointer;font-size:12px}
 .bubble-action-btn:hover{background:var(--pink-soft);color:var(--pink-dark)}
-.reaction-picker{position:absolute;top:-46px;display:none;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:4px 6px;box-shadow:var(--shadow-sm);z-index:2}
-.bubble.in .reaction-picker{left:0}
-.bubble.out .reaction-picker{right:0}
+.reaction-picker{position:absolute;bottom:calc(100% + 6px);display:none;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:4px 6px;box-shadow:var(--shadow-sm);z-index:2}
+.bubble.in .reaction-picker{left:100%;margin-left:6px}
+.bubble.out .reaction-picker{right:100%;margin-right:6px}
 .reaction-picker.show{display:flex}
 .reaction-picker button{border:0;background:none;font-size:16px;line-height:1;cursor:pointer;padding:3px;border-radius:50%;transition:background .15s ease}
 .reaction-picker button:hover{background:var(--pink-soft)}
@@ -510,6 +510,12 @@ table.dtable{width:100%;min-width:720px;border-collapse:collapse;font-size:13px}
   .chat-main{min-height:460px}
   .chat-body{padding:16px}
   .bubble{max-width:88%}
+  .bubble-actions{top:-14px;transform:none}
+  .bubble.in .bubble-actions{left:0;margin-left:0}
+  .bubble.out .bubble-actions{right:0;margin-right:0}
+  .reaction-picker{bottom:auto;top:-46px}
+  .bubble.in .reaction-picker{left:0;margin-left:0}
+  .bubble.out .reaction-picker{right:0;margin-right:0}
   .chat-input{flex-wrap:wrap}
   .chat-input input,.chat-input .btn{width:100%;flex-basis:100%}
   .ledger-num{font-size:30px}

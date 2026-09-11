@@ -101,7 +101,12 @@
         <div class="bubble-text">{{ $msg->body }}</div>
         @endif
 
-        <time>{{ \Carbon\Carbon::parse($msg->created_at)->format('M d, H:i') }}</time>
+        <time>
+          {{ \Carbon\Carbon::parse($msg->created_at)->format('M d, H:i') }}
+          @if($msg->sender_id == auth()->id())
+            · {{ $msg->read ? '✓✓ Seen' : '✓ Delivered' }}
+          @endif
+        </time>
 
         @if(!empty($msg->reactions))
         <div class="bubble-reactions">
