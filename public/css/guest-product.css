@@ -365,10 +365,10 @@
 
 /* Stats — matches .sp-stats / .sp-stat */
 .gs-stats {
-  display:flex;flex-direction:column;gap:10px;min-width:130px;
+  display:flex;flex-direction:row;flex-wrap:wrap;gap:10px;align-content:flex-start;
 }
 .gs-stat {
-  padding:10px 14px;border:1px solid #e9e4ea;border-radius:10px;text-align:center;
+  padding:10px 14px;border:1px solid #e9e4ea;border-radius:10px;text-align:center;min-width:76px;flex:none;
 }
 .gs-stat-val {
   font-family:'IBM Plex Mono',ui-monospace,monospace;
