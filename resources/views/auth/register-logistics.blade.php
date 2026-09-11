@@ -221,7 +221,7 @@
             <div class="auth-brand-content">
                 <a class="auth-logo" href="{{ url('/') }}">
                     <span class="auth-logo-mark"><img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="PocketFinds" class="brand-logo-img"></span>
-                    <span>PocketFinds</span>
+                    <span><span class="auth-logo-pocket">Pocket</span><span class="auth-logo-finds">Finds</span></span>
                 </a>
                 <h1 class="auth-brand-title">Join the logistics team.</h1>
                 <p class="auth-brand-text">

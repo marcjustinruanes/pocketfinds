@@ -133,6 +133,14 @@ a {
     letter-spacing: -.03em;
 }
 
+.auth-logo-pocket {
+    color: #fff;
+}
+
+.auth-logo-finds {
+    color: var(--auth-primary);
+}
+
 .auth-logo-mark {
     width: 38px;
     height: 38px;

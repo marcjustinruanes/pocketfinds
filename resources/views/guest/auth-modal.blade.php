@@ -3,8 +3,8 @@
     <div class="am-brand">
       <div class="am-brand-content">
         <a class="am-logo" href="{{ url('/') }}">
-          <span class="am-logo-mark"><x-brand-logo :size="18" /></span>
-          <span>PocketFinds</span>
+          <span class="am-logo-mark"><img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="PocketFinds" class="brand-logo-img"></span>
+          <span><span class="am-logo-pocket">Pocket</span><span class="am-logo-finds">Finds</span></span>
         </a>
         <h2 class="am-brand-title">Everything you need, in one place.</h2>
         <p class="am-brand-text">Sign in to save items, checkout, and track your orders.</p>
