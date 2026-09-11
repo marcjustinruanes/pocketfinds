@@ -35,16 +35,17 @@ class BuyerController extends Controller
         $categories = \App\Models\Category::orderBy('name')->get(['id', 'name']);
         $featured   = $this->dbProducts(8);
 
-        $orderCounts = Order::where('app_buyer_id', $buyerId)
-            ->selectRaw('status, count(*) as c')
-            ->groupBy('status')
-            ->pluck('c', 'status');
-
+        // 'to_ship'/'in_transit' are never literal status values — they're the
+        // same multi-status buckets orders() filters by (Order::BUYER_TO_SHIP_STATUSES/
+        // BUYER_IN_TRANSIT_STATUSES), so grouping by the raw status column would
+        // always read 0 for those two. Match the same buckets orders() itself
+        // uses, so a tile's count always matches what clicking it shows.
+        $ordersBase = Order::where('buyer_id', $buyerId);
         $statusCounts = [
-            'to_ship'          => $orderCounts->get('to_ship', 0),
-            'in_transit'       => $orderCounts->get('in_transit', 0),
-            'out_for_delivery' => $orderCounts->get('out_for_delivery', 0),
-            'completed'        => $orderCounts->get('completed', 0),
+            'to_ship'          => (clone $ordersBase)->whereIn('status', Order::BUYER_TO_SHIP_STATUSES)->count(),
+            'in_transit'       => (clone $ordersBase)->whereIn('status', Order::BUYER_IN_TRANSIT_STATUSES)->count(),
+            'out_for_delivery' => (clone $ordersBase)->where('status', 'out_for_delivery')->count(),
+            'completed'        => (clone $ordersBase)->where('status', 'completed')->count(),
         ];
         $activeOrders    = $statusCounts['to_ship'] + $statusCounts['in_transit'] + $statusCounts['out_for_delivery'];
         $completedOrders = $statusCounts['completed'];
@@ -52,7 +53,7 @@ class BuyerController extends Controller
         $unreadMessages  = Message::where('receiver_id', $buyerId)->where('read', false)->count();
 
         $recentOrders = Order::with('seller')
-            ->where('app_buyer_id', $buyerId)
+            ->where('buyer_id', $buyerId)
             ->latest()
             ->limit(3)
             ->get();
