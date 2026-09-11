@@ -543,7 +543,7 @@ class AdminController extends Controller
     public function products()
     {
         $counts     = $this->sidebarCounts();
-        $products   = Product::with(['seller.categories', 'category', 'images'])->latest()->get();
+        $products   = Product::with(['seller.categories', 'category'])->latest()->get();
         $categories = \DB::table('categories')->orderBy('name')->get()->keyBy('id');
         return view('admin.products', array_merge($counts, compact('products', 'categories')));
     }

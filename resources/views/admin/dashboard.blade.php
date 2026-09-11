@@ -130,7 +130,7 @@
               </td>
               <td><span class="stamp stamp-{{ $user->account_type }}">{{ ucfirst($user->account_type) }}</span></td>
               <td class="mono" style="font-size:11px">{{ ucfirst($user->auth_method) }}</td>
-              <td class="mono">{{ $user->created_at->format('M d, Y') }}</td>
+              <td class="mono">{{ $user->created_at?->format('M d, Y') ?? '—' }}</td>
               <td><span class="stamp stamp-{{ $user->status }}">{{ ucfirst($user->status) }}</span></td>
             </tr>
             @empty

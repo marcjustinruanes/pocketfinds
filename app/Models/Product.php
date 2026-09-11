@@ -37,5 +37,9 @@ class Product extends Model
 
     public function seller()   { return $this->belongsTo(User::class, 'seller_id'); }
     public function category() { return $this->belongsTo(Category::class); }
-    public function images()   { return $this->hasMany(ProductImage::class); }
+    // Named imageRecords (not images) to avoid colliding with the
+    // products.images JSONB column, which is the real, actively-used
+    // gallery data source (see FetchesProducts). This relation targets
+    // the separate product_images table, currently unused/empty.
+    public function imageRecords() { return $this->hasMany(ProductImage::class); }
 }

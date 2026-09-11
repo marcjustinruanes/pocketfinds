@@ -103,7 +103,7 @@
               <span class="stamp stamp-rejected">Rejected</span>
             @endif
           </td>
-          <td class="mono" style="font-size:12px">{{ $product->created_at->format('M d, Y') }}</td>
+          <td class="mono" style="font-size:12px">{{ $product->created_at?->format('M d, Y') ?? '—' }}</td>
           <td>
             <div class="row-actions">
               <button class="btn btn-sm btn-outline" data-modal-open="productModal-{{ $product->id }}"><x-admin-icon name="eye" /> Review</button>
@@ -127,7 +127,7 @@
   $hasDetails = !empty($product->details);
   $galleryImages = collect();
   if ($product->image) $galleryImages->push(Storage::url($product->image));
-  foreach ($product->images as $img) { $galleryImages->push(Storage::url($img->image_url)); }
+  foreach ((array) $product->images as $imgPath) { $galleryImages->push(Storage::url($imgPath)); }
   $galleryImages = $galleryImages->unique()->values();
 @endphp
 <div class="modal-overlay" id="productModal-{{ $product->id }}">
@@ -141,7 +141,7 @@
             @elseif($product->status === 'active')<span class="stamp stamp-active">Approved</span>
             @elseif($product->status === 'rejected')<span class="stamp stamp-rejected">Rejected</span>@endif
           </h3>
-          <p>{{ $seller->business_name ?? ($seller->given_names.' '.$seller->last_name) }} · Submitted {{ $product->created_at->format('M d, Y g:i A') }}</p>
+          <p>{{ $seller->business_name ?? ($seller->given_names.' '.$seller->last_name) }} · Submitted {{ $product->created_at?->format('M d, Y g:i A') ?? '—' }}</p>
         </div>
       </div>
       <button class="modal-close" data-modal-close aria-label="Close"><x-admin-icon name="close" /></button>
@@ -256,7 +256,7 @@
         <div class="kv-table">
           <div class="kv-row"><div class="kv-key">Product ID</div><div class="kv-val mono">{{ $product->id }}</div></div>
           <div class="kv-row"><div class="kv-key">Current Status</div><div class="kv-val"><span class="stamp stamp-{{ $product->status }}">{{ ucfirst($product->status === 'active' ? 'approved' : $product->status) }}</span></div></div>
-          <div class="kv-row"><div class="kv-key">Date Submitted</div><div class="kv-val mono">{{ $product->created_at->format('M d, Y g:i A') }}</div></div>
+          <div class="kv-row"><div class="kv-key">Date Submitted</div><div class="kv-val mono">{{ $product->created_at?->format('M d, Y g:i A') ?? '—' }}</div></div>
           <div class="kv-row"><div class="kv-key">Last Updated</div><div class="kv-val mono">{{ $product->updated_at->format('M d, Y g:i A') }}</div></div>
           @if($product->status === 'rejected')
           <div class="kv-row"><div class="kv-key">Rejection Reason</div><div class="kv-val">{{ $product->rejection_note ?: 'No reason was recorded.' }}</div></div>

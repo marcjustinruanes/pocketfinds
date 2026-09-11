@@ -41,7 +41,7 @@
             </td>
             <td style="font-size:12.5px">{{ $seller->business_name ?? '—' }}</td>
             <td class="mono">{{ $seller->contact_no }}</td>
-            <td class="mono">{{ $seller->created_at->format('M d, Y') }}</td>
+            <td class="mono">{{ $seller->created_at?->format('M d, Y') ?? '—' }}</td>
             <td>
               <div style="display:flex;gap:5px;flex-wrap:wrap">
                 @if($seller->id_file)
@@ -103,7 +103,7 @@
                     <div><div class="field-label">Business Name</div><div class="field-value">{{ $seller->business_name ?? '—' }}</div></div>
                     <div class="full"><div class="field-label">Categories</div><div class="field-value">{{ $seller->categories->pluck('name')->push($seller->category_other)->filter()->implode(', ') ?: '—' }}</div></div>
                     <div><div class="field-label">Auth Method</div><div class="field-value">{{ ucfirst($seller->auth_method) }}</div></div>
-                    <div><div class="field-label">Registered</div><div class="field-value mono">{{ $seller->created_at->format('M d, Y') }}</div></div>
+                    <div><div class="field-label">Registered</div><div class="field-value mono">{{ $seller->created_at?->format('M d, Y') ?? '—' }}</div></div>
                   </div>
                 </div>
 

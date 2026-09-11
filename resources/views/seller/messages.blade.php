@@ -29,7 +29,7 @@
         <div class="cli-av">{{ strtoupper(substr($otherName,0,1)) }}</div>
         <div class="cli-body">
           <div class="cli-name">{{ $otherName }}</div>
-          <div class="cli-preview">{{ $last->body ?: ($last->product_id ? '📦 Product' : '📎 Attachment') }} · {{ $last->created_at->format('g:i A') }} {{ $last->sender_id === $myId ? ($last->read ? '✓✓ Seen' : '✓ Delivered') : '' }}</div>
+          <div class="cli-preview">{{ $last->body ?: ($last->product_id ? '📦 Product' : '📎 Attachment') }} · {{ $last->created_at?->format('g:i A') ?? '—' }} {{ $last->sender_id === $myId ? ($last->read ? '✓✓ Seen' : '✓ Delivered') : '' }}</div>
         </div>
       </a>
     @empty
@@ -97,7 +97,7 @@
               <div class="chat-bubble {{ $isMe ? 'chat-bubble-out' : 'chat-bubble-in' }}">{{ $msg->body }}</div>
             @endif
             <div class="chat-time">
-              <span>{{ $msg->created_at->format('g:i A') }}</span>
+              <span>{{ $msg->created_at?->format('g:i A') ?? '' }}</span>
               @if($isMe)
                 <span class="chat-status">{{ $msg->read ? '✓✓ Seen' : '✓ Delivered' }}</span>
               @endif

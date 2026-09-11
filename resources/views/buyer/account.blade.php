@@ -74,7 +74,7 @@
         </div>
         <div>
           <div class="field-label">Member Since</div>
-          <div class="field-value mono">{{ auth()->user()->created_at->format('M d, Y') }}</div>
+          <div class="field-value mono">{{ auth()->user()->created_at?->format('M d, Y') ?? '—' }}</div>
         </div>
         <div>
           <div class="field-label">Address</div>

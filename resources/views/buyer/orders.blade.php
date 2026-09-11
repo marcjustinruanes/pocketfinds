@@ -30,7 +30,7 @@
 @forelse($orders as $order)
 <div class="order-card">
   <div class="order-card-head"><strong>{{ $order->seller?->business_name ?: ($order->seller?->given_names ?: 'Seller not provided') }}</strong><span class="stamp stamp-{{ $order->status === 'to_ship' ? 'new' : $order->status }}">{{ str_replace('_', ' ', ucfirst($order->status)) }}</span></div>
-  <div class="order-meta"><span class="mono">{{ $order->order_number }}</span><span>{{ $order->created_at->format('M d, Y h:i A') }}</span></div>
+  <div class="order-meta"><span class="mono">{{ $order->order_number }}</span><span>{{ $order->created_at?->format('M d, Y h:i A') ?? '—' }}</span></div>
   <div class="order-items">@foreach($order->items as $item)<div>{{ $item['name'] ?: 'Product not provided' }} × {{ $item['qty'] }} @if($item['color'] || $item['size'])<span style="color:var(--muted)">({{ collect([$item['color'], $item['size']])->filter()->join(', ') }})</span>@endif</div>@endforeach</div>
   <div class="order-meta"><span>Deliver to: {{ collect([$order->shipping_address['barangay'] ?? null, $order->shipping_address['municipality'] ?? null, $order->shipping_address['province'] ?? null])->filter()->join(', ') ?: 'Address not provided' }}</span><span>Payment: {{ $order->paymentMethod?->name ?: 'Payment not provided' }}</span></div>
   <div class="order-meta"><span>Shipping: PHP {{ number_format($order->shipping_amount, 2) }}</span><strong>Total: PHP {{ number_format($order->total, 2) }}</strong></div>

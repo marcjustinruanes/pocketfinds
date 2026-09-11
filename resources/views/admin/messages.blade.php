@@ -29,7 +29,7 @@
       </div>
       <div class="chat-conv-side">
         @if($u->last_message)
-        <span class="chat-conv-time">{{ $u->last_message->created_at->diffForHumans(null, true) }}</span>
+        <span class="chat-conv-time">{{ $u->last_message->created_at?->diffForHumans(null, true) ?? '' }}</span>
         @endif
         @if($u->unread_count > 0)
         <span class="unread">{{ $u->unread_count }}</span>

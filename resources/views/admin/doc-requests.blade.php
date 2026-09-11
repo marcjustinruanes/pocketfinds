@@ -56,7 +56,7 @@
                 </div>
               </div>
             </td>
-            <td class="mono" style="font-size:12px">{{ $req->created_at->format('M d, Y h:i A') }}</td>
+            <td class="mono" style="font-size:12px">{{ $req->created_at?->format('M d, Y h:i A') ?? '—' }}</td>
             <td>{{ $req->id_type_id ? ($idTypes[$req->id_type_id]->name ?? '—') : '—' }}</td>
             <td>
               <div style="display:flex;gap:6px;flex-wrap:wrap">

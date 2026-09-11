@@ -37,7 +37,7 @@
         @forelse($orders as $order)
         <tr>
           <td class="mono">{{ $order->order_number }}</td>
-          <td style="color:var(--muted);font-size:12px">{{ $order->created_at->format('M d, Y') }}</td>
+          <td style="color:var(--muted);font-size:12px">{{ $order->created_at?->format('M d, Y') ?? '—' }}</td>
           <td>{{ $order->buyer?->given_names ?: 'Customer not provided' }} {{ $order->buyer?->last_name }}</td>
           <td>{{ count($order->items) }} item{{ count($order->items) === 1 ? '' : 's' }}</td>
           <td class="mono">PHP {{ number_format($order->total, 2) }}</td>

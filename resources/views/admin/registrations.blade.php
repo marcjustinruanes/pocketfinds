@@ -51,7 +51,7 @@
             <td><span class="stamp stamp-{{ $user->account_type }}">{{ ucfirst($user->account_type) }}</span></td>
             <td class="mono" style="font-size:12px">{{ $user->username ?? '—' }}</td>
             <td>{{ ucfirst($user->auth_method) }}</td>
-            <td class="mono">{{ $user->created_at->format('M d, Y') }}</td>
+            <td class="mono">{{ $user->created_at?->format('M d, Y') ?? '—' }}</td>
             <td><span class="stamp stamp-{{ $user->status }}">{{ ucfirst($user->status) }}</span></td>
             <td>
               <div class="row-actions">
@@ -95,7 +95,7 @@
                     <div><div class="field-label">Email</div><div class="field-value">{{ $user->email }}</div></div>
                     <div><div class="field-label">Contact No.</div><div class="field-value mono">{{ $user->contact_no }}</div></div>
                     <div><div class="field-label">Auth Method</div><div class="field-value">{{ ucfirst($user->auth_method) }}</div></div>
-                    <div><div class="field-label">Submitted</div><div class="field-value mono">{{ $user->created_at->format('M d, Y') }}</div></div>
+                    <div><div class="field-label">Submitted</div><div class="field-value mono">{{ $user->created_at?->format('M d, Y') ?? '—' }}</div></div>
                   </div>
                 </div>
 
