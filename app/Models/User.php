@@ -24,6 +24,7 @@ class User extends Authenticatable
         'or_file', 'cr_file', 'license_number', 'license_expiry', 'license_file',
         // logistics-only settings
         'notify_new_requests', 'notify_unassigned_shipments', 'preferred_scanner',
+        'theme', 'preferred_language',
     ];
 
     protected $hidden = ['password', 'remember_token'];

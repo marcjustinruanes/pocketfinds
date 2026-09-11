@@ -83,23 +83,27 @@
       </div>
     </div>
     @forelse($users as $u)
-    <a href="{{ route('admin.messages.user', $u->id) }}" class="chat-list-item {{ isset($selectedUser) && $selectedUser?->id == $u->id ? 'active' : '' }} {{ $u->unread_count > 0 ? 'chat-unread' : '' }}">
-      <div class="cli-av">{{ strtoupper(substr($u->given_names,0,1).substr($u->last_name,0,1)) }}</div>
-      <div class="cli-body">
-        <div class="cli-name">{{ $u->given_names }} {{ $u->last_name }}</div>
-        <div class="cli-role">{{ ucfirst($u->account_type) }}</div>
-        <div class="cli-preview">
+    <a href="{{ route('admin.messages.user', $u->id) }}" class="chat-conv {{ isset($selectedUser) && $selectedUser?->id == $u->id ? 'active' : '' }} {{ $u->unread_count > 0 ? 'has-unread' : '' }}" style="text-decoration:none;color:inherit">
+      <x-user-avatar :user="$u" size="36" class="avatar-sm" />
+      <div class="meta">
+        <strong>{{ $u->given_names }} {{ $u->last_name }}</strong>
+        <div class="role-tag">{{ ucfirst($u->account_type) }}</div>
+        <p>
           @if($u->last_message)
             @if($u->last_message->sender_id === $myId)<span style="color:var(--muted)">You: </span>@endif
             {{ $u->last_message->body ?: '📎 Attachment' }}
           @else
             {{ $u->email }}
           @endif
-        </div>
+        </p>
       </div>
-      <div class="cli-side">
-        @if($u->last_message)<span class="cli-time">{{ $u->last_message->created_at->diffForHumans(null, true) }}</span>@endif
-        @if($u->unread_count > 0)<span class="cli-unread">{{ $u->unread_count }}</span>@endif
+      <div class="chat-conv-side">
+        @if($u->last_message)
+        <span class="chat-conv-time">{{ $u->last_message->created_at?->diffForHumans(null, true) ?? '' }}</span>
+        @endif
+        @if($u->unread_count > 0)
+        <span class="unread">{{ $u->unread_count }}</span>
+        @endif
       </div>
     </a>
     @empty
@@ -113,16 +117,75 @@
 
   <div class="chat-main">
     @if(isset($selectedUser) && $selectedUser)
-    <div class="chat-head">
-      <div class="chat-head-av">{{ strtoupper(substr($selectedUser->given_names,0,1).substr($selectedUser->last_name,0,1)) }}</div>
-      <div class="chat-head-info">
-        <div class="chat-head-name">{{ $selectedUser->given_names }} {{ $selectedUser->last_name }}</div>
-        <div class="chat-head-sub">{{ ucfirst($selectedUser->account_type) }} · {{ $selectedUser->email }}</div>
+    <div class="chat-head chat-head-clickable" data-modal-open="profileModal-{{ $selectedUser->id }}" title="View profile">
+      <x-user-avatar :user="$selectedUser" size="36" class="avatar-sm" />
+      <div>
+        <strong style="font-size:13.5px;font-family:var(--font-body)">{{ $selectedUser->given_names }} {{ $selectedUser->last_name }}</strong>
+        <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">{{ ucfirst($selectedUser->account_type) }} · {{ $selectedUser->email }}</div>
       </div>
     </div>
     <div class="chat-body" id="chatBody">
       @forelse($messages as $msg)
-        @include('admin.partials.message-bubble', ['msg' => $msg, 'myId' => $myId])
+      <div class="bubble {{ $msg->sender_id == auth()->id() ? 'out' : 'in' }}" data-msg-id="{{ $msg->id }}">
+        <div class="bubble-actions">
+          <button type="button" class="bubble-action-btn" data-reply-btn
+                  data-reply-name="{{ $msg->sender->given_names ?? 'them' }}"
+                  data-reply-text="{{ \Illuminate\Support\Str::limit($msg->body ?: '📎 Attachment', 50) }}"
+                  data-reply-id="{{ $msg->id }}" title="Reply">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+          </button>
+          <button type="button" class="bubble-action-btn" data-react-btn data-msg-id="{{ $msg->id }}" title="React">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+          </button>
+        </div>
+
+        <div class="reaction-picker" id="reactPicker-{{ $msg->id }}">
+          @foreach(['👍','❤️','😂','😮','😢'] as $emoji)
+          <form method="POST" action="{{ route('admin.messages.react', $msg->id) }}">
+            @csrf
+            <input type="hidden" name="emoji" value="{{ $emoji }}">
+            <button type="submit">{{ $emoji }}</button>
+          </form>
+          @endforeach
+        </div>
+
+        @if($msg->replyTo)
+        <div class="bubble-quote">
+          <strong>{{ $msg->replyTo->sender->given_names ?? 'Someone' }}</strong>
+          {{ \Illuminate\Support\Str::limit($msg->replyTo->body ?: '📎 Attachment', 60) }}
+        </div>
+        @endif
+
+        @if($msg->attachment_path)
+          @if($msg->attachment_type === 'image')
+          <img src="{{ Storage::url($msg->attachment_path) }}" alt="{{ $msg->attachment_name }}" class="bubble-img" onclick="window.open(this.src,'_blank')">
+          @else
+          <a href="{{ Storage::url($msg->attachment_path) }}" target="_blank" class="bubble-file">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            {{ $msg->attachment_name }}
+          </a>
+          @endif
+        @endif
+
+        @if($msg->body)
+        <div class="bubble-text">{{ $msg->body }}</div>
+        @endif
+
+        <time>
+          {{ \Carbon\Carbon::parse($msg->created_at)->format('M d, H:i') }}
+          @if($msg->sender_id == auth()->id())
+            · {{ $msg->read ? '✓✓ Seen' : '✓ Delivered' }}
+          @endif
+        </time>
+
+        @if(!empty($msg->reactions))
+        <div class="bubble-reactions">
+          @foreach($msg->reactions as $emoji => $userIds)
+          <span class="reaction-badge {{ in_array(auth()->id(), $userIds) ? 'mine' : '' }}">{{ $emoji }} {{ count($userIds) }}</span>
+          @endforeach
+        </div>
+        @endif
+      </div>
       @empty
       <div class="empty" style="margin:auto">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" width="28" height="28"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
@@ -132,23 +195,48 @@
       @endforelse
     </div>
 
-    <div class="reply-box" id="replyBox">
-      <div class="reply-copy"><div class="reply-label">Replying to</div><div class="reply-text" id="replyText"></div></div>
-      <button type="button" class="reply-close" onclick="clearReply()">×</button>
+    <div class="reply-bar" id="replyBar">
+      <span class="reply-bar-text">Replying to <strong id="replyBarName"></strong>: <span id="replyBarText"></span></span>
+      <button type="button" class="reply-bar-close" id="replyBarClose" aria-label="Cancel reply">&times;</button>
     </div>
-    <div id="fileChips"></div>
+    <div class="chat-input">
+      <form method="POST" action="{{ route('admin.messages.send', $selectedUser->id) }}" enctype="multipart/form-data" style="display:flex;gap:10px;flex:1" id="sendForm">
+        @csrf
+        <input type="hidden" name="reply_to_id" id="replyToInput" value="">
+        <label class="attach-btn" id="attachBtn" title="Attach a photo">
+          <input type="file" name="attachment" accept="image/*,video/*,.pdf" style="display:none" id="attachInput">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+        </label>
+        <input type="text" name="body" placeholder="Type a message…" style="font-family:var(--font-body);font-size:13px" autocomplete="off">
+        <button class="btn btn-primary" type="submit">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M18 2L2 9l6 3 3 6 7-16z"/></svg>
+          Send
+        </button>
+      </form>
+    </div>
 
-    <form class="chat-input" id="chatForm">
-      <input type="file" id="fileInput" style="display:none" multiple onchange="onFilesChosen(this)">
-      <button type="button" class="icon-btn btn btn-outline" onclick="document.getElementById('fileInput').click()" title="Attach file">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
-      </button>
-      <input type="text" id="chatInput" name="body" placeholder="Type a message…" style="font-family:var(--font-body);font-size:13px" autocomplete="off">
-      <button class="btn btn-primary" type="submit">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14"><path d="M18 2L2 9l6 3 3 6 7-16z"/></svg>
-        Send
-      </button>
-    </form>
+    {{-- Profile modal --}}
+    <div class="modal-overlay" id="profileModal-{{ $selectedUser->id }}">
+      <div class="modal modal-lg">
+        <div class="modal-head">
+          <div class="modal-head-main">
+            <span class="modal-icon"><x-admin-icon name="users" /></span>
+            <div class="modal-head-copy">
+              <h3>{{ $selectedUser->given_names }} {{ $selectedUser->last_name }}</h3>
+              <p>{{ ucfirst($selectedUser->account_type) }} — {{ $selectedUser->email }}</p>
+            </div>
+          </div>
+          <button class="modal-close" data-modal-close aria-label="Close"><x-admin-icon name="close" /></button>
+        </div>
+        <div class="modal-body">
+          @include('admin.partials.user-profile-body', ['user' => $selectedUser])
+        </div>
+        <div class="modal-foot">
+          <button class="btn btn-outline" data-modal-close>Close</button>
+        </div>
+      </div>
+    </div>
+
     @else
     <div class="chat-head">
       <div class="avatar-sm"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16"><circle cx="10" cy="7" r="3.5"/><path d="M3 17c0-3.3 3.1-6 7-6s7 2.7 7 6"/></svg></div>
@@ -175,177 +263,49 @@
   </div>
 </div>
 
-<div class="media-viewer" id="mediaViewer">
-  <button type="button" class="media-viewer-close" aria-label="Close">×</button>
-  <div class="media-viewer-content"></div>
-</div>
-
-@if(isset($selectedUser) && $selectedUser)
 <script>
-const CSRF     = document.querySelector('meta[name=csrf-token]')?.content || '';
-const MY_ID    = {{ $myId }};
-const RECEIVER = {{ $selectedUser->id }};
-const SEND_URL = '{{ route('admin.messages.send') }}';
-const POLL_URL = '{{ route('admin.messages.poll') }}';
+document.addEventListener('DOMContentLoaded', () => {
+  const chatBody   = document.getElementById('chatBody');
+  const replyBar   = document.getElementById('replyBar');
+  const replyInput = document.getElementById('replyToInput');
+  const attachBtn  = document.getElementById('attachBtn');
+  const attachInput = document.getElementById('attachInput');
 
-let attachedFiles = [];
-let replyTarget   = null;
+  if (chatBody) chatBody.scrollTop = chatBody.scrollHeight;
 
-function onFilesChosen(input) {
-  attachedFiles.push(...Array.from(input.files));
-  input.value = '';
-  renderFileChips();
-}
-function removeFile(i) { attachedFiles.splice(i, 1); renderFileChips(); }
-function renderFileChips() {
-  const box = document.getElementById('fileChips');
-  box.innerHTML = '';
-  attachedFiles.forEach((f, i) => {
-    const chip = document.createElement('div');
-    chip.className = 'file-chip';
-    chip.innerHTML = `<span>${f.name}</span>`;
-    const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = '×';
-    btn.onclick = () => removeFile(i);
-    chip.appendChild(btn);
-    box.appendChild(chip);
-  });
-}
-
-function openMediaViewer(url, type) {
-  const viewer = document.getElementById('mediaViewer');
-  const content = viewer.querySelector('.media-viewer-content');
-  content.replaceChildren();
-  const media = document.createElement(type === 'video' ? 'video' : 'img');
-  media.src = url;
-  if (type === 'video') { media.controls = true; media.autoplay = true; media.playsInline = true; }
-  content.appendChild(media);
-  viewer.classList.add('open');
-}
-document.getElementById('mediaViewer').addEventListener('click', (e) => {
-  if (e.target.id === 'mediaViewer' || e.target.classList.contains('media-viewer-close')) e.currentTarget.classList.remove('open');
-});
-
-function toggleReaction(btn) {
-  const wrap = btn.closest('.chat-msg-content');
-  const existing = wrap.querySelector('.chat-reaction-badge');
-  if (existing) { existing.remove(); return; }
-  const span = document.createElement('span');
-  span.className = 'chat-reaction-badge';
-  span.textContent = '❤️';
-  wrap.appendChild(span);
-}
-function replyToMessage(btn) {
-  const wrap = btn.closest('.chat-msg-wrap');
-  const text = wrap.querySelector('.chat-bubble')?.textContent?.trim() || 'Attachment';
-  replyTarget = text;
-  document.getElementById('replyText').textContent = text;
-  document.getElementById('replyBox').classList.add('open');
-  document.getElementById('chatInput').focus();
-}
-function clearReply() {
-  replyTarget = null;
-  document.getElementById('replyBox').classList.remove('open');
-}
-
-function actionButtonsHtml() {
-  return `<div class="chat-msg-actions">
-    <button type="button" class="chat-msg-action" title="React" onclick="toggleReaction(this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 8.7c0 5.2-8.8 10.3-8.8 10.3S3.2 13.9 3.2 8.7A4.7 4.7 0 0112 6.1a4.7 4.7 0 018.8 2.6z"/></svg></button>
-    <button type="button" class="chat-msg-action" title="Reply" onclick="replyToMessage(this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 17l-5-5 5-5M4 12h10a6 6 0 016 6v1"/></svg></button>
-  </div>`;
-}
-
-function appendMessage(msg) {
-  const isMe = msg.sender_id === MY_ID;
-  const body = document.getElementById('chatBody');
-  body.querySelector('.empty')?.remove();
-
-  const wrap = document.createElement('div');
-  wrap.className = 'chat-msg-wrap' + (isMe ? '' : ' chat-msg-wrap-in');
-  wrap.dataset.messageId = msg.id;
-
-  const content = document.createElement('div');
-  content.className = 'chat-msg-content';
-
-  if (msg.attachment_path) {
-    if (msg.attachment_type === 'image') {
-      const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'chat-media-button';
-      btn.onclick = () => openMediaViewer(msg.attachment_path, 'image');
-      btn.innerHTML = `<img src="${msg.attachment_path}" class="chat-attach-preview-img" alt="${msg.attachment_name || 'Image attachment'}">`;
-      content.appendChild(btn);
-    } else if (msg.attachment_type === 'video') {
-      const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'chat-media-button';
-      btn.onclick = () => openMediaViewer(msg.attachment_path, 'video');
-      btn.innerHTML = `<video src="${msg.attachment_path}" class="chat-attach-preview-img" controls preload="metadata" playsinline></video>`;
-      content.appendChild(btn);
-    } else {
-      const a = document.createElement('a'); a.href = msg.attachment_path; a.target = '_blank'; a.className = 'chat-doc-bubble';
-      a.textContent = '📎 ' + (msg.attachment_name || 'File');
-      content.appendChild(a);
-    }
-  }
-  if (msg.body) {
-    const bubble = document.createElement('div');
-    bubble.className = 'chat-bubble ' + (isMe ? 'chat-bubble-out' : 'chat-bubble-in');
-    bubble.textContent = msg.body;
-    content.appendChild(bubble);
-  }
-  const time = document.createElement('div');
-  time.className = 'chat-time';
-  time.innerHTML = `<span>${msg.created_at}</span>` + (isMe ? `<span class="chat-status">${msg.read ? '✓✓ Seen' : '✓ Sent'}</span>` : '');
-  content.appendChild(time);
-
-  wrap.appendChild(content);
-  const actions = document.createElement('div');
-  actions.innerHTML = actionButtonsHtml();
-  wrap.appendChild(actions.firstElementChild);
-
-  body.appendChild(wrap);
-  body.scrollTop = body.scrollHeight;
-}
-
-async function sendMessage(e) {
-  e?.preventDefault();
-  const input = document.getElementById('chatInput');
-  const text  = input.value.trim();
-  if (!text && !attachedFiles.length) return;
-
-  const fd = new FormData();
-  fd.append('receiver_id', RECEIVER);
-  if (text) fd.append('body', text);
-  attachedFiles.forEach(f => fd.append('attachments[]', f));
-
-  const sendBtn = document.querySelector('#chatForm .btn-primary');
-  sendBtn.disabled = true;
-  try {
-    const res = await fetch(SEND_URL, { method: 'POST', body: fd, headers: { Accept: 'application/json', 'X-CSRF-TOKEN': CSRF } });
-    const data = await res.json();
-    if (!res.ok || !data.ok) throw new Error(data.message || 'Message was not sent.');
-    input.value = '';
-    attachedFiles = []; renderFileChips(); clearReply();
-    (data.messages || [data.message]).forEach(appendMessage);
-  } catch (err) {
-    alert(err.message || 'Message could not be sent.');
-  } finally { sendBtn.disabled = false; }
-}
-document.getElementById('chatForm').addEventListener('submit', sendMessage);
-
-async function pollMessages() {
-  try {
-    const res = await fetch(`${POLL_URL}?receiver_id=${RECEIVER}`, { headers: { Accept: 'application/json' } });
-    if (!res.ok) return;
-    const data = await res.json();
-    data.messages?.forEach(msg => {
-      const existing = document.querySelector(`[data-message-id="${msg.id}"]`);
-      if (existing) {
-        const status = existing.querySelector('.chat-status');
-        if (status) status.textContent = msg.read ? '✓✓ Seen' : '✓ Sent';
-      } else {
-        appendMessage(msg);
-      }
+  // Reply
+  document.querySelectorAll('[data-reply-btn]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      replyInput.value = btn.dataset.replyId;
+      document.getElementById('replyBarName').textContent = btn.dataset.replyName;
+      document.getElementById('replyBarText').textContent = btn.dataset.replyText;
+      replyBar?.classList.add('show');
+      document.querySelector('.chat-input input[name="body"]')?.focus();
     });
-  } catch (e) {}
-}
-setInterval(pollMessages, 3000);
+  });
+  document.getElementById('replyBarClose')?.addEventListener('click', () => {
+    replyInput.value = '';
+    replyBar?.classList.remove('show');
+  });
+
+  // Reactions — toggle the picker, close others when one opens
+  document.querySelectorAll('[data-react-btn]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const picker = document.getElementById('reactPicker-' + btn.dataset.msgId);
+      const wasOpen = picker?.classList.contains('show');
+      document.querySelectorAll('.reaction-picker.show').forEach(p => p.classList.remove('show'));
+      if (picker && !wasOpen) picker.classList.add('show');
+    });
+  });
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.reaction-picker.show').forEach(p => p.classList.remove('show'));
+  });
+
+  // Attach button visual feedback + auto-submit isn't needed, just show a selected state
+  attachInput?.addEventListener('change', () => {
+    attachBtn?.classList.toggle('has-file', attachInput.files.length > 0);
+  });
+});
 </script>
-@endif
 @endsection

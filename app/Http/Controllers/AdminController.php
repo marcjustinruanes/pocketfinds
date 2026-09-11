@@ -366,36 +366,9 @@ class AdminController extends Controller
 
     public function settings()
     {
-        $counts   = $this->sidebarCounts();
-        $settings = Setting::current();
-        return view('admin.settings', array_merge($counts, compact('settings')));
-    }
-
-    /** Saves the General card's fields — platform name, support email, commission rate. */
-    public function updateSettings(Request $request)
-    {
-        $data = $request->validate([
-            'platform_name'   => 'required|string|max:255',
-            'support_email'   => 'required|email|max:255',
-            'commission_rate' => 'required|numeric|min:0|max:100',
-        ]);
-
-        Setting::current()->update(array_merge($data, ['updated_by' => auth()->id()]));
-
-        return back()->with('success', 'Settings saved.');
-    }
-
-    /** Flips one feature toggle immediately — used by the Settings page's switches. */
-    public function updateSettingToggle(Request $request)
-    {
-        $data = $request->validate([
-            'key'   => 'required|in:google_signin_enabled,new_registrations_enabled,maintenance_mode,email_notifications_enabled',
-            'value' => 'required|boolean',
-        ]);
-
-        Setting::current()->update([$data['key'] => $data['value'], 'updated_by' => auth()->id()]);
-
-        return response()->json(['success' => true]);
+        $counts  = $this->sidebarCounts();
+        $setting = Setting::current();
+        return view('admin.settings', array_merge($counts, compact('setting')));
     }
 
     /**
@@ -448,6 +421,74 @@ class AdminController extends Controller
         abort_if(!$policy || !$policy->hasPending(), 404);
         $policy->rejectPending($data['rejection_reason']);
         return back()->with('success', "Revisions requested for {$companyName}'s Terms & Conditions.");
+    }
+
+    public function updateGeneralSettings(Request $request)
+    {
+        $data = $request->validate([
+            'platform_name'    => 'required|string|max:100',
+            'support_email'    => 'required|email|max:255',
+            'commission_rate'  => 'required|numeric|min:0|max:100',
+        ]);
+        $data['updated_by'] = auth()->id();
+
+        \App\Models\Setting::current()->update($data);
+
+        return back()->with('success', 'General settings saved.');
+    }
+
+    public function updateFeatureToggles(Request $request)
+    {
+        $data = [
+            'google_signin_enabled'       => $request->boolean('google_signin_enabled'),
+            'new_registrations_enabled'   => $request->boolean('new_registrations_enabled'),
+            'maintenance_mode'            => $request->boolean('maintenance_mode'),
+            'email_notifications_enabled' => $request->boolean('email_notifications_enabled'),
+            'updated_by'                  => auth()->id(),
+        ];
+
+        \App\Models\Setting::current()->update($data);
+
+        return back()->with('success', 'Feature toggles updated.');
+    }
+
+    public function clearCache()
+    {
+        \Illuminate\Support\Facades\Artisan::call('view:clear');
+        \Illuminate\Support\Facades\Artisan::call('cache:clear');
+
+        return back()->with('success', 'Application cache cleared.');
+    }
+
+    public function clearSessions()
+    {
+        $currentSessionId = session()->getId();
+        $sessionPath = storage_path('framework/sessions');
+
+        if (is_dir($sessionPath)) {
+            foreach (glob($sessionPath.'/*') as $file) {
+                $filename = basename($file);
+                // Keep the session making this very request so the admin isn't
+                // immediately logged out by the action they just took.
+                if (is_file($file) && $filename !== $currentSessionId) {
+                    @unlink($file);
+                }
+            }
+        }
+
+        return back()->with('success', 'All other sessions were cleared. You stayed signed in.');
+    }
+
+    public function updatePreferences(Request $request)
+    {
+        $data = $request->validate([
+            'theme'               => 'required|in:light,dark,system',
+            'preferred_language'  => 'required|string|max:10',
+        ]);
+
+        auth()->user()->update($data);
+
+        return back()->with('success', 'Preferences saved.');
     }
 
     public function announcements()
@@ -519,7 +560,7 @@ class AdminController extends Controller
                 ->where('read', false)
                 ->update(['read' => true]);
 
-            $messages = Message::with(['sender', 'receiver'])
+            $messages = Message::with(['sender', 'receiver', 'replyTo.sender'])
                 ->where(function ($query) use ($selectedUser) {
                     $query->where('sender_id', auth()->id())
                         ->where('receiver_id', $selectedUser->id);
@@ -530,9 +571,79 @@ class AdminController extends Controller
                 })
                 ->oldest()
                 ->get();
+
+            if ($selectedUser->account_type === 'rider') {
+                $selectedUser->riderProfile = \App\Models\RiderProfile::where('user_id', $selectedUser->id)->first();
+            }
         }
 
         return view('admin.messages', array_merge($counts, compact('users', 'selectedUser', 'messages')));
+    }
+
+    public function sendMessage(Request $request, User $user)
+    {
+        abort_if($user->is_admin, 404);
+
+        $request->validate([
+            'body'        => 'nullable|string|max:2000',
+            'attachment'  => 'nullable|file|max:20480|mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi,pdf',
+            'reply_to_id' => 'nullable|integer|exists:messages,id',
+        ]);
+
+        abort_unless(filled($request->body) || $request->hasFile('attachment'), 422, 'Send a message or a photo.');
+
+        $data = [
+            'sender_id'   => auth()->id(),
+            'receiver_id' => $user->id,
+            'body'        => $request->body,
+            'read'        => false,
+            'reply_to_id' => $request->reply_to_id,
+        ];
+
+        if ($request->hasFile('attachment')) {
+            $file      = $request->file('attachment');
+            $mime      = $file->getMimeType();
+            $extension = strtolower($file->getClientOriginalExtension());
+
+            $data['attachment_path'] = $file->store('message_attachments', 'public');
+            $data['attachment_name'] = $file->getClientOriginalName();
+            $data['attachment_mime'] = $mime;
+            $data['attachment_size'] = $file->getSize();
+            $data['attachment_type'] = str_starts_with($mime, 'image/') || in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)
+                ? 'image'
+                : (str_starts_with($mime, 'video/') || in_array($extension, ['mp4', 'mov', 'avi'], true) ? 'video' : 'document');
+        }
+
+        Message::create($data);
+
+        return redirect()->route('admin.messages.user', $user)->with('success', 'Message sent.');
+    }
+
+    public function reactMessage(Request $request, Message $message)
+    {
+        $request->validate(['emoji' => 'required|string|max:8']);
+
+        $adminId = auth()->id();
+        abort_unless($message->sender_id === $adminId || $message->receiver_id === $adminId, 403);
+
+        $emoji     = $request->emoji;
+        $reactions = $message->reactions ?? [];
+
+        // Toggle: remove the admin's own id from every emoji's list first,
+        // then re-add it to the tapped emoji unless it was already there
+        // (that's what makes tapping the same reaction twice remove it).
+        $alreadyHadThisOne = in_array($adminId, $reactions[$emoji] ?? [], true);
+        foreach ($reactions as $key => $ids) {
+            $reactions[$key] = array_values(array_diff($ids, [$adminId]));
+            if (empty($reactions[$key])) unset($reactions[$key]);
+        }
+        if (!$alreadyHadThisOne) {
+            $reactions[$emoji] = array_merge($reactions[$emoji] ?? [], [$adminId]);
+        }
+
+        $message->update(['reactions' => $reactions]);
+
+        return back();
     }
 
     public function account()

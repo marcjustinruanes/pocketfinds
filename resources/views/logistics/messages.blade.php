@@ -91,37 +91,38 @@
       @if(${$group}->isNotEmpty())
       <div style="padding:10px 16px 4px;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">{{ $label }}</div>
       @foreach(${$group} as $u)
-      <a href="{{ route('logistics.messages.thread', $u->id) }}" class="chat-list-item {{ isset($activeUser) && $activeUser?->id == $u->id ? 'active' : '' }} {{ $u->unread_count > 0 ? 'chat-unread' : '' }}">
-        <div class="cli-av">{{ strtoupper(substr($u->given_names,0,1).substr($u->last_name,0,1)) }}</div>
-        <div class="cli-body">
-          <div class="cli-name">{{ $u->given_names }} {{ $u->last_name }}</div>
-          <div class="cli-role">{{ $group === 'admins' ? 'Administrator' : ($group === 'couriers' ? 'Courier' : 'Seller') }}</div>
-          <div class="cli-preview">
+      <a href="{{ route('logistics.messages.thread', $u->id) }}" class="chat-conv {{ isset($activeUser) && $activeUser?->id == $u->id ? 'active' : '' }} {{ $u->unread_count > 0 ? 'has-unread' : '' }}" style="text-decoration:none;color:inherit">
+        <x-user-avatar :user="$u" size="36" class="avatar-sm" />
+        <div class="meta">
+          <strong>{{ $u->given_names }} {{ $u->last_name }}</strong>
+          <div class="role-tag">{{ $group === 'admins' ? 'Administrator' : ($group === 'couriers' ? 'Courier' : 'Seller') }}</div>
+          <p>
             @if($u->last_message)
               @if($u->last_message->sender_id === $myId)<span style="color:var(--muted)">You: </span>@endif
               {{ $u->last_message->body ?: '📎 Attachment' }}
             @else
               {{ $u->email }}
             @endif
-          </div>
+          </p>
         </div>
-        <div class="cli-side">
-          @if($u->last_message)<span class="cli-time">{{ $u->last_message->created_at->diffForHumans(null, true) }}</span>@endif
-          @if($u->unread_count > 0)<span class="cli-unread">{{ $u->unread_count }}</span>@endif
+        <div class="chat-conv-side">
+          @if($u->last_message)<span class="chat-conv-time">{{ $u->last_message->created_at->diffForHumans(null, true) }}</span>@endif
+          @if($u->unread_count > 0)<span class="unread">{{ $u->unread_count }}</span>@endif
         </div>
       </a>
       @endforeach
       @endif
     @endforeach
+
   </div>
 
   <div class="chat-main">
     @if($activeUser)
     <div class="chat-head">
-      <div class="chat-head-av">{{ strtoupper(substr($activeUser->given_names,0,1).substr($activeUser->last_name,0,1)) }}</div>
-      <div class="chat-head-info">
-        <div class="chat-head-name">{{ $activeUser->given_names }} {{ $activeUser->last_name }}</div>
-        <div class="chat-head-sub">{{ ucfirst($activeUser->account_type) }} · {{ $activeUser->email }}</div>
+      <x-user-avatar :user="$activeUser" size="36" class="avatar-sm" />
+      <div>
+        <strong style="font-size:13.5px;font-family:var(--font-body)">{{ $activeUser->given_names }} {{ $activeUser->last_name }}</strong>
+        <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">{{ ucfirst($activeUser->account_type) }} · {{ $activeUser->email }}</div>
       </div>
     </div>
     <div class="chat-body" id="chatBody">

@@ -51,12 +51,8 @@
       </div>
     </div>
 
-    <a href="{{ route('logistics.account') }}" class="topbar-avatar" aria-label="My Account">
-      @if(auth()->user()->profile_picture)
-      <img src="{{ \Illuminate\Support\Facades\Storage::disk('profile_images')->url(auth()->user()->profile_picture) }}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">
-      @else
-      {{ strtoupper(substr(auth()->user()->given_names, 0, 1)) }}
-      @endif
+    <a href="{{ route('logistics.account') }}" aria-label="My Account">
+      <x-user-avatar :user="auth()->user()" size="38" class="topbar-avatar" />
     </a>
   </div>
 </header>

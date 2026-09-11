@@ -1,6 +1,6 @@
 <nav class="sidebar" id="sidebar">
   <div class="sidebar-brand">
-    <div class="mark">L</div>
+    <div class="mark"><img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="PocketFinds" class="brand-logo-img"></div>
     <div>
       <div class="name">PocketFinds</div>
       <span class="tag">Logistics</span>
@@ -80,11 +80,7 @@
 
   <div class="sidebar-foot">
     <div class="sidebar-user">
-      @if(auth()->user()->profile_picture)
-      <img class="avatar" src="{{ \Illuminate\Support\Facades\Storage::disk('profile_images')->url(auth()->user()->profile_picture) }}" alt="" style="object-fit:cover">
-      @else
-      <div class="avatar">{{ strtoupper(substr(auth()->user()->given_names, 0, 1)) }}</div>
-      @endif
+      <x-user-avatar :user="auth()->user()" size="36" class="avatar" />
       <div class="who">
         <strong>{{ auth()->user()->given_names }} {{ auth()->user()->last_name }}</strong>
         <span>{{ auth()->user()->isHubStaff() ? (auth()->user()->logisticsHub->municipality ?? 'Hub Staff') . ' Hub' : 'Logistics Admin' }}</span>

@@ -9,14 +9,16 @@ class Message extends Model
     protected $fillable = [
         'sender_id', 'receiver_id', 'body', 'read',
         'product_id', 'order_id', 'variation_label', 'variation_price', 'variation_image',
+        'reply_to_id', 'reactions',
         'attachment_path', 'attachment_name', 'attachment_type',
         'attachment_mime', 'attachment_size',
     ];
 
-    protected $casts = ['read' => 'boolean'];
+    protected $casts = ['read' => 'boolean', 'reactions' => 'array'];
 
     public function sender()  { return $this->belongsTo(User::class, 'sender_id'); }
     public function receiver(){ return $this->belongsTo(User::class, 'receiver_id'); }
     public function product() { return $this->belongsTo(Product::class); }
     public function order()   { return $this->belongsTo(Order::class); }
+    public function replyTo() { return $this->belongsTo(Message::class, 'reply_to_id'); }
 }
