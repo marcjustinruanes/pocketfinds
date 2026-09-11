@@ -98,9 +98,24 @@
 <body class="auth-page">
 <div class="auth-shell">
     <main class="auth-card">
-        <x-auth-brand-panel
-            title="Who are you on PocketFinds?"
-            subtitle="Pick the role that fits you. Each account type has its own features and registration flow." />
+        <section class="auth-brand-panel">
+            <div class="auth-brand-content">
+                <a class="auth-logo" href="{{ url('/') }}">
+                    <span class="auth-logo-mark"><img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="PocketFinds" class="brand-logo-img"></span>
+                    <span>PocketFinds</span>
+                </a>
+                <h1 class="auth-brand-title">Who are you on PocketFinds?</h1>
+                <p class="auth-brand-text">
+                    Pick the role that fits you. Each account type has its own features and registration flow.
+                </p>
+                <ul class="auth-brand-points">
+                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Quick, guided registration</li>
+                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Admin-reviewed accounts</li>
+                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Secure &amp; verified sign-up</li>
+                </ul>
+            </div>
+            <div class="auth-brand-footer">© {{ date('Y') }} PocketFinds. All rights reserved.</div>
+        </section>
 
         <section class="auth-form-panel">
             <div class="auth-form-wrap">
