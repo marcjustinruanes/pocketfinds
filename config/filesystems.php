@@ -38,6 +38,9 @@ return [
             'report' => false,
         ],
 
+        // 'public' resolves to the same Supabase-backed bucket as 'supabase' below —
+        // every ->store($dir, 'public') upload across the app (admin message
+        // attachments, etc.) already targets this disk by that name.
         'public' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),
@@ -47,33 +50,6 @@ return [
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', true),
-            'visibility' => 'public',
-            'throw' => false,
-            'report' => false,
-        ],
-
-        // Alias of 'public' under the name referenced by FILESYSTEM_DISK, so
-        // bare Storage:: facade calls (default disk) resolve to the same
-        // Supabase-backed bucket that every ->store($dir, 'public') upload
-        // already targets explicitly.
-        'supabase' => [
-            'driver' => 's3',
-            'key' => env('AWS_ACCESS_KEY_ID'),
-            'secret' => env('AWS_SECRET_ACCESS_KEY'),
-            'region' => env('AWS_DEFAULT_REGION'),
-            'bucket' => env('AWS_BUCKET'),
-            'url' => env('AWS_URL'),
-            'endpoint' => env('AWS_ENDPOINT'),
-            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', true),
-            'visibility' => 'public',
-            'throw' => false,
-            'report' => false,
-        ],
-
-        'public_local' => [
-            'driver' => 'local',
-            'root' => storage_path('app/public'),
-            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
             'throw' => false,
             'report' => false,
