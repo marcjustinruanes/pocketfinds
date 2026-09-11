@@ -1,7 +1,6 @@
 @extends('buyer.layout')
 @section('title', 'Dashboard')
-@section('page-title', 'Dashboard')
-@section('page-sub', 'Welcome back, ' . auth()->user()->given_names . '!')
+@section('hide-page-heading', true)
 
 @section('content')
 {{-- Welcome hero --}}
@@ -18,33 +17,6 @@
   </div>
 </div>
 
-{{-- Quick stats --}}
-<div class="kpi-grid">
-  <div class="kpi tone-info">
-    <div class="kpi-icon">@include('buyer.partials.icon', ['name' => 'package', 'size' => 16])</div>
-    <div class="label">Active Orders</div>
-    <div class="value">{{ $activeOrders }}</div>
-    <div class="delta">In progress</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-icon">@include('buyer.partials.icon', ['name' => 'cart', 'size' => 16])</div>
-    <div class="label">Cart Items</div>
-    <div class="value">{{ $cartCount }}</div>
-    <div class="delta">Ready to checkout</div>
-  </div>
-  <div class="kpi tone-success">
-    <div class="kpi-icon">@include('buyer.partials.icon', ['name' => 'check', 'size' => 16])</div>
-    <div class="label">Completed Orders</div>
-    <div class="value">{{ $completedOrders }}</div>
-    <div class="delta up">All time</div>
-  </div>
-  <div class="kpi tone-warning">
-    <div class="kpi-icon">@include('buyer.partials.icon', ['name' => 'mail', 'size' => 16])</div>
-    <div class="label">Unread Messages</div>
-    <div class="value">{{ $unreadMessages }}</div>
-    <div class="delta">From sellers</div>
-  </div>
-</div>
 
 <div class="dash-grid">
   <div class="stack">

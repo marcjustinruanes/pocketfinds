@@ -6,10 +6,12 @@
     </span>
     <span class="topbar-brand-name"><span class="tb-pocket">Pocket</span><span class="tb-finds">Finds</span></span>
   </a>
+  @sectionMissing('hide-page-heading')
   <div class="page-heading" title="@yield('page-title', 'Dashboard') — @yield('page-sub', '')">
     <h1>@yield('page-title', 'Dashboard')</h1>
     <p>@yield('page-sub', '')</p>
   </div>
+  @endif
   <form class="topbar-search" action="{{ route('buyer.browse') }}" method="GET" data-topbar-search>
     <input type="text" name="q" placeholder="Search for products, brands and categories" value="{{ request('q') }}">
     <button type="submit" aria-label="Search">
@@ -18,7 +20,6 @@
   </form>
   <nav class="nav-links">
     <a class="nav-link" href="{{ route('buyer.dashboard') }}">Home</a>
-    <a class="nav-link" href="{{ route('buyer.browse') }}">Shop</a>
     <a class="nav-link" href="{{ route('buyer.announcements') }}">Announcements</a>
     <a class="nav-link" href="{{ route('buyer.browse') }}">Deals</a>
     <a class="nav-link" href="{{ url('/') }}#about">About</a>

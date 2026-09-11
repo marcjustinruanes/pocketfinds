@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Concerns;
 
 use App\Models\Product;
 use App\Models\Review;
+use Illuminate\Support\Facades\DB;
 
 trait FetchesProducts
 {
@@ -11,6 +12,19 @@ trait FetchesProducts
     {
         if (!$path) return null;
         return rtrim(config('filesystems.disks.supabase.url'), '/') . '/' . ltrim($path, '/');
+    }
+
+    /** Real units sold — summed straight from completed orders' line items
+     *  (there's no order_items table; orders store their items as a json
+     *  column), never a placeholder. */
+    private function soldCount(string $productId): int
+    {
+        $row = DB::selectOne("
+            SELECT COALESCE(SUM((item->>'qty')::int), 0) AS total
+            FROM orders, jsonb_array_elements(items::jsonb) AS item
+            WHERE status = 'completed' AND item->>'product_id' = ?
+        ", [$productId]);
+        return (int) ($row->total ?? 0);
     }
 
     private function dbProducts(int $limit = 0, ?int $categoryId = null, ?string $search = null, ?string $sort = null)
@@ -96,7 +110,7 @@ trait FetchesProducts
             'old_price'   => $hasDiscount ? (float) $p->price : null,
             'badge'       => $hasDiscount ? '-' . $percentOff . '%' : null,
             'rating'      => $reviews->isNotEmpty() ? round($reviews->avg('rating'), 1) : 0,
-            'sold'        => 0,
+            'sold'        => $this->soldCount($p->id),
             'cat'         => $p->category->name ?? '—',
             'category_id' => $p->category_id,
             'img'         => $imageUrls[0] ?? null,
