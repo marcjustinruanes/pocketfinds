@@ -94,26 +94,9 @@
 <body class="auth-page">
 <div class="auth-shell">
     <main class="auth-card">
-        <section class="auth-brand-panel">
-            <div class="auth-brand-content">
-                <a class="auth-logo" href="{{ url('/') }}">
-                    <span class="auth-logo-mark">
-                        <img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="PocketFinds" class="brand-logo-img">
-                    </span>
-                    <span>PocketFinds</span>
-                </a>
-                <h1 class="auth-brand-title">How would you like to sign up?</h1>
-                <p class="auth-brand-text">
-                    Choose how you want to create your account. Either way, your account will need admin approval before you can start.
-                </p>
-                <ul class="auth-brand-points">
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Google sign-up is quick and easy</li>
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Manual sign-up gives full control</li>
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Both require admin approval</li>
-                </ul>
-            </div>
-            <div class="auth-brand-footer">© {{ date('Y') }} PocketFinds. All rights reserved.</div>
-        </section>
+        <x-auth-brand-panel
+            title="How would you like to sign up?"
+            subtitle="Choose how you want to create your account. Either way, it will need admin approval before you can start." />
 
         <section class="auth-form-panel">
             <div class="auth-form-wrap">
