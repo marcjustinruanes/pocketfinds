@@ -31,6 +31,7 @@
 
 <div class="card">
   <div class="card-pad" style="padding:0">
+    <div class="table-wrap">
     <table class="tbl" style="table-layout:fixed">
       <thead>
         <tr style="text-align:center">
@@ -99,6 +100,7 @@
         @endforelse
       </tbody>
     </table>
+    </div>
   </div>
 </div>
 

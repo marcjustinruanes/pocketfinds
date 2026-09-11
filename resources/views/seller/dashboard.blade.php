@@ -56,6 +56,7 @@
         <a href="{{ route('seller.orders') }}" class="btn btn-sm btn-outline">View all</a>
       </div>
       <div class="card-pad" style="padding:0">
+        <div class="table-wrap">
         <table class="tbl">
           <thead><tr>
             <th>Order ID</th><th>Customer</th><th>Amount</th><th>Status</th><th></th>
@@ -68,6 +69,7 @@
             @endforelse
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   </div>

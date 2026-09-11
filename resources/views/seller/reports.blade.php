@@ -61,6 +61,7 @@
     <div class="card">
       <div class="card-head"><div><h2>Top Products</h2><p>Best performing items this period</p></div></div>
       <div class="card-pad" style="padding:0">
+        <div class="table-wrap">
         <table class="tbl">
           <thead><tr><th>#</th><th>Product</th><th>Units Sold</th><th>Revenue</th></tr></thead>
           <tbody>
@@ -81,6 +82,7 @@
             @endforelse
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   </div>
