@@ -3,21 +3,6 @@
 @section('hide-page-heading', true)
 
 @section('content')
-{{-- Welcome hero --}}
-<div class="dash-hero">
-  <div class="dash-hero-inner">
-    <div>
-      <div class="dash-hero-eyebrow">Good to see you</div>
-      <h1>Hi {{ auth()->user()->given_names }}, ready to find something great?</h1>
-      <p>Browse today's picks, track what's on the way, and keep in touch with your sellers — all from here.</p>
-    </div>
-    <a href="{{ route('buyer.browse') }}" class="btn btn-primary">
-      @include('buyer.partials.icon', ['name' => 'bag', 'size' => 15]) Browse Products
-    </a>
-  </div>
-</div>
-
-
 <div class="dash-grid">
   <div class="stack">
     {{-- Categories --}}
