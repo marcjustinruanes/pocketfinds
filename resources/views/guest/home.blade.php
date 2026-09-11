@@ -173,13 +173,6 @@
   </div>
 </section>
 
-{{-- ── Join CTA — a real link into registration, not a fake newsletter capture ── --}}
-<section class="lp-section">
-  <div class="lp-join">
-    <div><h2>Small shops. Big personality.</h2><p>Bring your own products to PocketFinds and reach real local buyers.</p></div>
-    <a href="{{ url('/register/type') }}">Sell on PocketFinds →</a>
-  </div>
-</section>
 </main>
 
 <footer class="footer" id="about"><div class="container"><div class="footer-grid"><div><h3>PocketFinds Marketplace</h3><p>A simple marketplace experience for discovering products from local sellers.</p></div><div><h3>Customer Service</h3><a href="#">Help Centre</a><a href="#">Contact Us</a><a href="#">Returns</a></div><div><h3>About</h3><a href="#">About Us</a><a href="#">Careers</a><a href="#">Privacy</a></div><div><h3>Account</h3><a href="{{ url('/login') }}">Sign In</a><a href="{{ url('/register/type') }}">Register</a><a href="{{ url('/register/type') }}">Seller Centre</a></div></div><div class="footer-bottom">© {{ date('Y') }} PocketFinds. All rights reserved.</div></div></footer>

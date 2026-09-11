@@ -44,7 +44,7 @@
             <div class="auth-brand-content">
                 <a class="auth-logo" href="{{ url('/') }}">
                     <span class="auth-logo-mark">
-                        <x-brand-logo :size="18" />
+                        <img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="PocketFinds" class="brand-logo-img">
                     </span>
                     <span>PocketFinds</span>
                 </a>
