@@ -47,12 +47,6 @@
     <a class="primary" href="#products">Explore products</a>
     <a class="lp-btn lp-btn-ghost" href="{{ url('/register/type') }}">Sell on PocketFinds</a>
   </div>
-  {{-- Real, computed stats — never a placeholder "12k+ shoppers" figure --}}
-  <div class="lp-stats" style="margin-top:22px">
-    <div class="lp-stat"><strong>{{ $stats['products'] }}</strong><span>Products listed</span></div>
-    <div class="lp-stat"><strong>{{ $stats['shops'] }}</strong><span>Local shops</span></div>
-    <div class="lp-stat"><strong>{{ $stats['categories'] }}</strong><span>Categories</span></div>
-  </div>
 </div></div><div class="hero-side">
   <div class="hero-visual">
     <div class="hero-photo-frame" id="heroPhotoFrame">
