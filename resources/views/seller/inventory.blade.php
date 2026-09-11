@@ -114,6 +114,11 @@
               <button type="button" class="btn btn-sm btn-outline icon-only" data-modal="viewProductModal-{{ $product->id }}" title="View" aria-label="View">
                 @include('seller.partials.icon',['name'=>'eye','size'=>13])
               </button>
+              @if(in_array($product->status, ['active', 'archived']))
+                <button type="button" class="btn btn-sm btn-outline icon-only" data-modal="addStockModal-{{ $product->id }}" title="Add Stock" aria-label="Add Stock">
+                  @include('seller.partials.icon',['name'=>'plus','size'=>13])
+                </button>
+              @endif
               @if($product->status === 'active')
                 <form method="POST" action="{{ route('seller.inventory.archive', $product->id) }}" id="archiveForm-{{ $product->id }}">
                   @csrf @method('PATCH')
@@ -166,6 +171,9 @@
 @foreach($products as $product)
 @include('seller.partials.view-product-modal', ['product' => $product])
 @include('seller.partials.edit-product-modal', ['product' => $product])
+@if(in_array($product->status, ['active', 'archived']))
+@include('seller.partials.add-stock-modal', ['product' => $product])
+@endif
 @endforeach
 
 {{-- Remove confirmation modal --}}

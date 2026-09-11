@@ -171,6 +171,7 @@ Route::prefix('seller')->name('seller.')->middleware(['web', 'seller'])->group(f
     Route::patch('/inventory/{product}', [SellerController::class, 'updateProduct'])->name('inventory.update');
     Route::delete('/inventory/{product}', [SellerController::class, 'destroyProduct'])->name('inventory.destroy');
     Route::patch('/inventory/{product}/archive', [SellerController::class, 'archiveProduct'])->name('inventory.archive');
+    Route::post('/inventory/{product}/add-stock', [SellerController::class, 'addStock'])->name('inventory.add-stock');
     Route::get('/notifications', [SellerController::class, 'notifications'])->name('notifications');
     Route::get('/orders/{order}/waybill', [SellerController::class, 'waybill'])->name('orders.waybill');
     Route::patch('/orders/{order}/schedule-pickup', [SellerController::class, 'schedulePickup'])->name('orders.schedule-pickup');

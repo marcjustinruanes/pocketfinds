@@ -764,6 +764,45 @@ class SellerController extends Controller
         return back()->with('product_success', $archiving ? 'Product archived.' : 'Product restored to active.');
     }
 
+    /**
+     * Top up stock on an already-approved product. This is inventory
+     * management, not a listing change — it never touches `status` and never
+     * notifies admins, unlike storeProduct()/updateProduct() which submit the
+     * listing itself for review. Reuses Product::deductStock() with a
+     * negative quantity (its own doc comment already covers "negative to
+     * restore") so there's one single place stock ever changes.
+     */
+    public function addStock(Request $request, Product $product)
+    {
+        abort_if($product->seller_id !== auth()->id(), 403);
+        abort_unless(in_array($product->status, ['active', 'archived']), 422, 'Only approved products can have stock added directly.');
+
+        DB::transaction(function () use ($request, $product) {
+            $locked = Product::whereKey($product->id)->lockForUpdate()->firstOrFail();
+
+            if (empty($locked->variations)) {
+                $data = $request->validate(['qty' => 'required|integer|min:1']);
+                $locked->deductStock(-$data['qty']);
+                return;
+            }
+
+            $data = $request->validate([
+                'additions'         => 'required|array|min:1',
+                'additions.*.group' => 'required|string',
+                'additions.*.value' => 'required|string',
+                'additions.*.qty'   => 'nullable|integer|min:0',
+            ]);
+            foreach ($data['additions'] as $addition) {
+                $qty = (int) ($addition['qty'] ?? 0);
+                if ($qty > 0) {
+                    $locked->deductStock(-$qty, $addition['group'], $addition['value']);
+                }
+            }
+        });
+
+        return back()->with('product_success', 'Stock added — no admin approval needed.');
+    }
+
     public function notifications()
     {
         $notifications = DB::table('notifications')
