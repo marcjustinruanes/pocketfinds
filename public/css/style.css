@@ -90,7 +90,7 @@ a {
     color: #fff;
     overflow: hidden;
     background:
-        linear-gradient(195deg, #1f0f1a 0%, #170a14 60%, #12070f 100%);
+        linear-gradient(145deg, #831843 0%, #be3a7d 55%, #d9468f 100%);
 }
 
 .auth-brand-panel::before,
@@ -106,7 +106,7 @@ a {
     height: 360px;
     right: -170px;
     top: -120px;
-    background: rgba(217, 70, 143, .16);
+    background: rgba(255, 255, 255, .10);
 }
 
 .auth-brand-panel::after {
@@ -114,7 +114,7 @@ a {
     height: 300px;
     left: -170px;
     bottom: -140px;
-    background: rgba(217, 70, 143, .10);
+    background: rgba(255, 255, 255, .06);
 }
 
 .auth-brand-content,
