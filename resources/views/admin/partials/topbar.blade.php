@@ -1,3 +1,4 @@
+<div class="market-top-strip"></div>
 <header class="topbar">
   <button class="menu-toggle" data-sidebar-toggle aria-label="Toggle navigation">
     <x-admin-icon name="menu" />

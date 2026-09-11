@@ -296,3 +296,17 @@ function pcBuy(btn) {
     openCart(d.name, parseFloat(d.price), [], [], true, btn, d.id, d.img);
 }
 
+// ── Dashboard hero photo rotation — same behavior as the guest homepage hero ──
+(() => {
+    const heroFrame = document.getElementById('dashHeroPhotoFrame');
+    if (!heroFrame) return;
+    const slides = [...heroFrame.querySelectorAll('.dash-hero-slide')];
+    if (slides.length <= 1) return;
+    let heroIdx = 0;
+    setInterval(() => {
+        slides[heroIdx].classList.remove('active');
+        heroIdx = (heroIdx + 1) % slides.length;
+        slides[heroIdx].classList.add('active');
+    }, 5000);
+})();
+

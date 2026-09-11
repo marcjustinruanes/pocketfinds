@@ -1,3 +1,4 @@
+<div class="market-top-strip"></div>
 <header class="topbar">
   <div class="topbar-inner">
   <a href="{{ route('buyer.dashboard') }}" class="topbar-brand" title="PocketFinds Home">

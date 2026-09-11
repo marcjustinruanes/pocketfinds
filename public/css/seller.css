@@ -73,6 +73,7 @@ body.seller{background:var(--paper)}
 .logout-btn:hover{border-color:#e8659a;color:#fff;background:rgba(232,101,163,.22)}
 
 /* ---- Topbar ---- */
+.market-top-strip{height:6px;background:linear-gradient(90deg,var(--pink),var(--pink-dark))}
 .topbar{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid var(--border);height:66px;display:flex;align-items:center;gap:16px;padding:0 26px}
 .menu-toggle{border:0;background:none;padding:4px;display:flex;align-items:center;color:var(--text)}
 .page-heading{min-width:0}

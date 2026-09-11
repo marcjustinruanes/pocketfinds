@@ -3,6 +3,31 @@
 @section('hide-page-heading', true)
 
 @section('content')
+
+{{-- Welcome hero — same design as the guest homepage hero --}}
+@php
+  $heroProducts = collect($featured)->filter(fn ($p) => !empty($p['img']))->take(6)->values();
+@endphp
+<div class="dash-hero"><div class="dash-hero-grid"><div class="dash-hero-main"><div class="dash-hero-copy">
+  <div class="dash-hero-eyebrow">Hi, {{ auth()->user()->given_names }}!</div>
+  <h1>Discover products <span class="accent">you'll love.</span></h1>
+  <p>Browse today's picks, track what's on the way, and keep in touch with your sellers — all from here.</p>
+  <a href="{{ route('buyer.browse') }}" class="btn btn-primary">
+    @include('buyer.partials.icon', ['name' => 'bag', 'size' => 15]) Explore Products
+  </a>
+</div></div><div class="dash-hero-side">
+  <div class="dash-hero-visual">
+    <div class="dash-hero-photo-frame" id="dashHeroPhotoFrame">
+      @forelse($heroProducts as $hp)
+        <img class="dash-hero-slide {{ $loop->first ? 'active' : '' }}" src="{{ $hp['img'] }}" alt="{{ $hp['name'] }}">
+      @empty
+        <svg class="ph-icon" xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      @endforelse
+    </div>
+    <span class="dash-hero-script">Good Finds<br>Brighter Days</span>
+  </div>
+</div></div></div>
+
 <div class="dash-grid">
   <div class="stack">
     {{-- Categories --}}
