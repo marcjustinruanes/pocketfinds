@@ -22,6 +22,13 @@
   <button type="submit"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
 </form>
 
+<nav class="nav-links">
+  <a class="nav-link" href="#products">Shop</a>
+  <a class="nav-link" href="#categories">Categories</a>
+  <a class="nav-link" href="#deals">Deals</a>
+  <a class="nav-link" href="#about">About</a>
+</nav>
+
 <div class="header-actions">
 <button class="icon-action" type="button" data-protected><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 5m12-5l2 5M9 21a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"/></svg><span>Cart</span></button>
 <a class="login-btn" href="{{ url('/login') }}">Login</a>
