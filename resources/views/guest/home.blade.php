@@ -10,9 +10,7 @@
 </head>
 <body class="marketplace">
 
-{{-- Real platform announcement when one is live for guests; otherwise the same generic
-     welcome line this bar has always shown — never a fabricated promo. --}}
-<div class="market-top"><div class="container"><div>{{ $announcement->title ?? 'Welcome to PocketFinds Marketplace' }}</div><div class="top-links"><span>Help Centre</span><span>Sell on PocketFinds</span></div></div></div>
+<div class="market-top"></div>
 
 <header class="market-header"><div class="container header-main">
 <a class="logo" href="{{ url('/') }}"><span class="logo-mark"><img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="PocketFinds" class="brand-logo-img"></span><span><span class="logo-pocket">Pocket</span><span class="logo-finds">Finds</span></span></a>
