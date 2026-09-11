@@ -12,7 +12,7 @@
 </head>
 <body class="marketplace">
 
-<div class="market-top"><div class="container"><div>{{ $announcement->title ?? 'Welcome to PocketFinds Marketplace' }}</div><div class="top-links"><span>Help Centre</span><span>Sell on PocketFinds</span></div></div></div>
+<div class="market-top"></div>
 <header class="market-header"><div class="container header-main">
 <a class="logo" href="{{ url('/') }}"><span class="logo-mark"><x-brand-logo :size="16" /></span><span>PocketFinds</span></a>
 <form class="search" action="{{ url('/') }}" method="GET">
