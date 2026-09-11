@@ -133,6 +133,7 @@ Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
     Route::get('/messages', [AdminController::class, 'messages'])->name('messages');
     Route::get('/messages/{user}', [AdminController::class, 'messages'])->name('messages.user');
     Route::post('/messages/{user}', [AdminController::class, 'sendMessage'])->name('messages.send');
+    Route::post('/messages/react/{message}', [AdminController::class, 'reactMessage'])->name('messages.react');
     Route::get('/account', [AdminController::class, 'account'])->name('account');
     Route::post('/account/update', [AdminController::class, 'accountUpdate'])->name('account.update');
     Route::post('/account/password', [AdminController::class, 'passwordUpdate'])->name('account.password');

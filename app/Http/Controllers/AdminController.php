@@ -385,7 +385,7 @@ class AdminController extends Controller
                 ->where('read', false)
                 ->update(['read' => true]);
 
-            $messages = Message::with(['sender', 'receiver'])
+            $messages = Message::with(['sender', 'receiver', 'replyTo.sender'])
                 ->where(function ($query) use ($selectedUser) {
                     $query->where('sender_id', auth()->id())
                         ->where('receiver_id', $selectedUser->id);
@@ -396,6 +396,10 @@ class AdminController extends Controller
                 })
                 ->oldest()
                 ->get();
+
+            if ($selectedUser->account_type === 'rider') {
+                $selectedUser->riderProfile = \App\Models\RiderProfile::where('user_id', $selectedUser->id)->first();
+            }
         }
 
         return view('admin.messages', array_merge($counts, compact('users', 'selectedUser', 'messages')));
@@ -406,17 +410,65 @@ class AdminController extends Controller
         abort_if($user->is_admin, 404);
 
         $request->validate([
-            'body' => 'required|string|max:2000',
+            'body'        => 'nullable|string|max:2000',
+            'attachment'  => 'nullable|file|max:20480|mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi,pdf',
+            'reply_to_id' => 'nullable|integer|exists:messages,id',
         ]);
 
-        Message::create([
+        abort_unless(filled($request->body) || $request->hasFile('attachment'), 422, 'Send a message or a photo.');
+
+        $data = [
             'sender_id'   => auth()->id(),
             'receiver_id' => $user->id,
             'body'        => $request->body,
             'read'        => false,
-        ]);
+            'reply_to_id' => $request->reply_to_id,
+        ];
+
+        if ($request->hasFile('attachment')) {
+            $file      = $request->file('attachment');
+            $mime      = $file->getMimeType();
+            $extension = strtolower($file->getClientOriginalExtension());
+
+            $data['attachment_path'] = $file->store('message_attachments', 'public');
+            $data['attachment_name'] = $file->getClientOriginalName();
+            $data['attachment_mime'] = $mime;
+            $data['attachment_size'] = $file->getSize();
+            $data['attachment_type'] = str_starts_with($mime, 'image/') || in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)
+                ? 'image'
+                : (str_starts_with($mime, 'video/') || in_array($extension, ['mp4', 'mov', 'avi'], true) ? 'video' : 'document');
+        }
+
+        Message::create($data);
 
         return redirect()->route('admin.messages.user', $user)->with('success', 'Message sent.');
+    }
+
+    public function reactMessage(Request $request, Message $message)
+    {
+        $request->validate(['emoji' => 'required|string|max:8']);
+
+        $adminId = auth()->id();
+        abort_unless($message->sender_id === $adminId || $message->receiver_id === $adminId, 403);
+
+        $emoji     = $request->emoji;
+        $reactions = $message->reactions ?? [];
+
+        // Toggle: remove the admin's own id from every emoji's list first,
+        // then re-add it to the tapped emoji unless it was already there
+        // (that's what makes tapping the same reaction twice remove it).
+        $alreadyHadThisOne = in_array($adminId, $reactions[$emoji] ?? [], true);
+        foreach ($reactions as $key => $ids) {
+            $reactions[$key] = array_values(array_diff($ids, [$adminId]));
+            if (empty($reactions[$key])) unset($reactions[$key]);
+        }
+        if (!$alreadyHadThisOne) {
+            $reactions[$emoji] = array_merge($reactions[$emoji] ?? [], [$adminId]);
+        }
+
+        $message->update(['reactions' => $reactions]);
+
+        return back();
     }
 
     public function account()

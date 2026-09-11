@@ -433,6 +433,39 @@ table.dtable{width:100%;min-width:720px;border-collapse:collapse;font-size:13px}
 .bubble time{display:block;margin-top:4px;font-size:10px;opacity:.65;font-family:var(--font-mono)}
 .chat-input{display:flex;gap:10px;padding:14px 16px;border-top:1px solid var(--border)}
 .chat-input input{flex:1;min-width:0;border:1px solid var(--border);border-radius:9px;padding:0 14px;height:42px;font-size:13px}
+.chat-head-clickable{cursor:pointer;transition:background .15s ease}
+.chat-head-clickable:hover{background:var(--pink-soft)}
+.attach-btn{display:grid;place-items:center;width:42px;height:42px;flex:none;border:1px solid var(--border);border-radius:9px;color:var(--muted);cursor:pointer;transition:border-color .15s ease,color .15s ease}
+.attach-btn:hover{border-color:var(--pink);color:var(--pink-dark)}
+.attach-btn.has-file{border-color:var(--pink);color:var(--pink-dark);background:var(--pink-soft)}
+.reply-bar{display:none;align-items:center;justify-content:space-between;gap:10px;padding:8px 16px;background:var(--pink-soft);border-top:1px solid var(--border);font-size:12px}
+.reply-bar.show{display:flex}
+.reply-bar-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+.reply-bar-text strong{color:var(--pink-dark)}
+.reply-bar-close{flex:none;border:0;background:none;color:var(--muted);font-size:16px;line-height:1;cursor:pointer;padding:2px 4px}
+.reply-bar-close:hover{color:var(--text)}
+.bubble{position:relative}
+.bubble-quote{margin-bottom:6px;padding:6px 9px;border-radius:8px;background:rgba(0,0,0,.06);border-left:2px solid currentColor;font-size:11.5px;line-height:1.4;opacity:.85}
+.bubble.out .bubble-quote{background:rgba(255,255,255,.16)}
+.bubble-quote strong{display:block;font-size:10.5px}
+.bubble-img{display:block;max-width:220px;max-height:220px;border-radius:9px;margin-bottom:6px;cursor:pointer;object-fit:cover}
+.bubble-file{display:inline-flex;align-items:center;gap:6px;margin-bottom:6px;padding:6px 10px;border-radius:8px;background:rgba(0,0,0,.06);font-size:12px;text-decoration:none;color:inherit}
+.bubble.out .bubble-file{background:rgba(255,255,255,.16)}
+.bubble-actions{position:absolute;top:-14px;display:none;gap:3px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:2px;box-shadow:var(--shadow-sm)}
+.bubble.in .bubble-actions{left:0}
+.bubble.out .bubble-actions{right:0}
+.bubble:hover .bubble-actions{display:flex}
+.bubble-action-btn{display:grid;place-items:center;width:22px;height:22px;border:0;background:none;color:var(--muted);border-radius:5px;cursor:pointer;font-size:12px}
+.bubble-action-btn:hover{background:var(--pink-soft);color:var(--pink-dark)}
+.reaction-picker{position:absolute;top:-46px;display:none;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:4px 6px;box-shadow:var(--shadow-sm);z-index:2}
+.bubble.in .reaction-picker{left:0}
+.bubble.out .reaction-picker{right:0}
+.reaction-picker.show{display:flex}
+.reaction-picker button{border:0;background:none;font-size:16px;line-height:1;cursor:pointer;padding:3px;border-radius:50%;transition:background .15s ease}
+.reaction-picker button:hover{background:var(--pink-soft)}
+.bubble-reactions{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.reaction-badge{display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:20px;background:var(--surface);border:1px solid var(--border);font-size:11px;color:var(--text)}
+.reaction-badge.mine{border-color:var(--pink);background:var(--pink-soft);color:var(--pink-dark)}
 
 /* Ledger / commission */
 .ledger-hero{display:flex;align-items:center;gap:26px;flex-wrap:wrap}
