@@ -3,6 +3,7 @@
 @section('hide-page-heading', true)
 
 @section('content')
+<div class="stack">
 
 {{-- Welcome hero — same design as the guest homepage hero --}}
 @php
@@ -28,48 +29,49 @@
   </div>
 </div></div></div>
 
-{{-- My Orders — one compact horizontal row, not a tall 2x2 grid --}}
-<div class="card">
-  <div class="card-head"><h2>My Orders</h2></div>
-  <div class="card-pad">
-    <div class="order-status-grid order-status-row">
-      @php
-      $orderStatuses = [
-        ['package', 'To Ship',         'to_ship',          $statusCounts['to_ship']],
-        ['truck',   'In Transit',      'in_transit',       $statusCounts['in_transit']],
-        ['bike',    'Out for Delivery','out_for_delivery', $statusCounts['out_for_delivery']],
-        ['check',   'Completed',       'completed',        $statusCounts['completed']],
-      ];
-      @endphp
-      @foreach($orderStatuses as [$icon, $label, $tab, $count])
-      <a href="{{ route('buyer.orders') }}?tab={{ $tab }}" class="order-status-tile">
-        <span class="ic">@include('buyer.partials.icon', ['name' => $icon, 'size' => 15])</span>
-        <span class="order-status-copy">
-          <span class="count mono">{{ $count }}</span>
-          <span class="label">{{ $label }}</span>
-        </span>
-      </a>
-      @endforeach
+{{-- Categories (wider) + My Orders (narrower), side by side --}}
+<div class="dash-grid">
+  <div class="card">
+    <div class="card-head">
+      <div><h2>Browse by Category</h2><p>Find what you're looking for</p></div>
+      <a href="{{ route('buyer.browse') }}" class="btn btn-sm btn-outline">View all</a>
+    </div>
+    <div class="card-pad">
+      <div class="category-grid category-row">
+        @forelse($categories as $cat)
+        <a href="{{ route('buyer.browse', ['category' => $cat->id]) }}" class="category-chip">
+          <span class="category-icon">@include('buyer.partials.category-icon', ['name' => $cat->name])</span>
+          <span>{{ $cat->name }}</span>
+        </a>
+        @empty
+        <p style="color:var(--muted);font-size:13px">No categories yet.</p>
+        @endforelse
+      </div>
     </div>
   </div>
-</div>
 
-{{-- Categories — one horizontal line, scrolling if it ever overflows --}}
-<div class="card">
-  <div class="card-head">
-    <div><h2>Browse by Category</h2><p>Find what you're looking for</p></div>
-    <a href="{{ route('buyer.browse') }}" class="btn btn-sm btn-outline">View all</a>
-  </div>
-  <div class="card-pad">
-    <div class="category-grid category-row">
-      @forelse($categories as $cat)
-      <a href="{{ route('buyer.browse', ['category' => $cat->id]) }}" class="category-chip">
-        <span class="category-icon">@include('buyer.partials.category-icon', ['name' => $cat->name])</span>
-        <span>{{ $cat->name }}</span>
-      </a>
-      @empty
-      <p style="color:var(--muted);font-size:13px">No categories yet.</p>
-      @endforelse
+  <div class="card">
+    <div class="card-head"><h2>My Orders</h2></div>
+    <div class="card-pad">
+      <div class="order-status-grid">
+        @php
+        $orderStatuses = [
+          ['package', 'To Ship',         'to_ship',          $statusCounts['to_ship']],
+          ['truck',   'In Transit',      'in_transit',       $statusCounts['in_transit']],
+          ['bike',    'Out for Delivery','out_for_delivery', $statusCounts['out_for_delivery']],
+          ['check',   'Completed',       'completed',        $statusCounts['completed']],
+        ];
+        @endphp
+        @foreach($orderStatuses as [$icon, $label, $tab, $count])
+        <a href="{{ route('buyer.orders') }}?tab={{ $tab }}" class="order-status-tile">
+          <span class="ic">@include('buyer.partials.icon', ['name' => $icon, 'size' => 15])</span>
+          <span class="order-status-copy">
+            <span class="count mono">{{ $count }}</span>
+            <span class="label">{{ $label }}</span>
+          </span>
+        </a>
+        @endforeach
+      </div>
     </div>
   </div>
 </div>

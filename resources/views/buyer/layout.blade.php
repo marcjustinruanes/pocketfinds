@@ -15,6 +15,12 @@
     <main class="content">
       @yield('content')
     </main>
+    <footer class="footer" id="about"><div class="footer-inner"><div class="footer-grid">
+      <div><h3>PocketFinds Marketplace</h3><p>A simple marketplace experience for discovering products from local sellers.</p></div>
+      <div><h3>Customer Service</h3><a href="#">Help Centre</a><a href="#">Contact Us</a><a href="#">Returns</a></div>
+      <div><h3>About</h3><a href="#">About Us</a><a href="#">Careers</a><a href="#">Privacy</a></div>
+      <div><h3>Account</h3><a href="{{ route('buyer.account') }}">My Account</a><a href="{{ route('buyer.orders') }}">My Orders</a><a href="{{ url('/register/type') }}">Sell on PocketFinds</a></div>
+    </div><div class="footer-bottom">© {{ date('Y') }} PocketFinds. All rights reserved.</div></div></footer>
   </div>
 </div>
 
