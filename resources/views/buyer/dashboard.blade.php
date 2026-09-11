@@ -33,7 +33,7 @@
 <div class="dash-grid">
   <div class="card">
     <div class="card-head">
-      <div><h2>Browse by Category</h2><p>Find what you're looking for</p></div>
+      <h2>Browse Categories</h2>
       <a href="{{ route('buyer.browse') }}" class="btn btn-sm btn-outline">View all</a>
     </div>
     <div class="card-pad">
@@ -79,7 +79,7 @@
 {{-- Featured products — full page width so it has room to grow --}}
 <div class="card">
   <div class="card-head">
-    <div><h2>Featured Products</h2><p>Handpicked for you</p></div>
+    <h2>All Products</h2>
     <a href="{{ route('buyer.browse') }}" class="btn btn-sm btn-outline">See more</a>
   </div>
   <div class="card-pad">
