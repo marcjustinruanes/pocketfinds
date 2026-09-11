@@ -277,7 +277,76 @@ class AdminController extends Controller
     {
         $counts   = $this->sidebarCounts();
         $policies = Policy::latest()->get();
-        return view('admin.settings', array_merge($counts, compact('policies')));
+        $setting  = \App\Models\Setting::current();
+        return view('admin.settings', array_merge($counts, compact('policies', 'setting')));
+    }
+
+    public function updateGeneralSettings(Request $request)
+    {
+        $data = $request->validate([
+            'platform_name'    => 'required|string|max:100',
+            'support_email'    => 'required|email|max:255',
+            'commission_rate'  => 'required|numeric|min:0|max:100',
+        ]);
+        $data['updated_by'] = auth()->id();
+
+        \App\Models\Setting::current()->update($data);
+
+        return back()->with('success', 'General settings saved.');
+    }
+
+    public function updateFeatureToggles(Request $request)
+    {
+        $data = [
+            'google_signin_enabled'       => $request->boolean('google_signin_enabled'),
+            'new_registrations_enabled'   => $request->boolean('new_registrations_enabled'),
+            'maintenance_mode'            => $request->boolean('maintenance_mode'),
+            'email_notifications_enabled' => $request->boolean('email_notifications_enabled'),
+            'updated_by'                  => auth()->id(),
+        ];
+
+        \App\Models\Setting::current()->update($data);
+
+        return back()->with('success', 'Feature toggles updated.');
+    }
+
+    public function clearCache()
+    {
+        \Illuminate\Support\Facades\Artisan::call('view:clear');
+        \Illuminate\Support\Facades\Artisan::call('cache:clear');
+
+        return back()->with('success', 'Application cache cleared.');
+    }
+
+    public function clearSessions()
+    {
+        $currentSessionId = session()->getId();
+        $sessionPath = storage_path('framework/sessions');
+
+        if (is_dir($sessionPath)) {
+            foreach (glob($sessionPath.'/*') as $file) {
+                $filename = basename($file);
+                // Keep the session making this very request so the admin isn't
+                // immediately logged out by the action they just took.
+                if (is_file($file) && $filename !== $currentSessionId) {
+                    @unlink($file);
+                }
+            }
+        }
+
+        return back()->with('success', 'All other sessions were cleared. You stayed signed in.');
+    }
+
+    public function updatePreferences(Request $request)
+    {
+        $data = $request->validate([
+            'theme'               => 'required|in:light,dark,system',
+            'preferred_language'  => 'required|string|max:10',
+        ]);
+
+        auth()->user()->update($data);
+
+        return back()->with('success', 'Preferences saved.');
     }
 
     public function announcements()

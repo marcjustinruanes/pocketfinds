@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" @if(auth()->check() && in_array(auth()->user()->theme, ['light','dark'])) data-theme="{{ auth()->user()->theme }}" @endif>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">

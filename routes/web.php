@@ -130,6 +130,11 @@ Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
     Route::post('/settings/policies', [AdminController::class, 'storePolicy'])->name('settings.policies.store');
     Route::patch('/settings/policies/{policy}', [AdminController::class, 'updatePolicy'])->name('settings.policies.update');
     Route::delete('/settings/policies/{policy}', [AdminController::class, 'destroyPolicy'])->name('settings.policies.destroy');
+    Route::post('/settings/general', [AdminController::class, 'updateGeneralSettings'])->name('settings.general.update');
+    Route::post('/settings/toggles', [AdminController::class, 'updateFeatureToggles'])->name('settings.toggles.update');
+    Route::post('/settings/cache/clear', [AdminController::class, 'clearCache'])->name('settings.cache.clear');
+    Route::post('/settings/sessions/clear', [AdminController::class, 'clearSessions'])->name('settings.sessions.clear');
+    Route::post('/settings/preferences', [AdminController::class, 'updatePreferences'])->name('settings.preferences.update');
     Route::get('/messages', [AdminController::class, 'messages'])->name('messages');
     Route::get('/messages/{user}', [AdminController::class, 'messages'])->name('messages.user');
     Route::post('/messages/{user}', [AdminController::class, 'sendMessage'])->name('messages.send');
