@@ -657,8 +657,8 @@ body:has(.cart-layout){overflow:hidden}
 .sp-rating-row{display:flex;align-items:center;gap:4px;margin-bottom:10px}
 .sp-rating-val{font-size:13px;font-weight:700;margin-left:4px}
 .sp-desc{margin:0;font-size:13.5px;line-height:1.65;color:var(--muted)}
-.sp-stats{display:flex;flex-direction:column;gap:10px;min-width:130px}
-.sp-stat{padding:10px 14px;border:1px solid var(--border);border-radius:10px;text-align:center}
+.sp-stats{display:flex;flex-direction:row;flex-wrap:wrap;gap:10px;align-content:flex-start}
+.sp-stat{padding:10px 14px;border:1px solid var(--border);border-radius:10px;text-align:center;min-width:76px;flex:none}
 .sp-stat-val{font-family:var(--font-mono);font-size:15px;font-weight:700;color:var(--pink-dark)}
 .sp-stat-label{font-size:10.5px;color:var(--muted);margin-top:2px}
 .sp-products-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;font-family:var(--font-display);font-size:17px;font-weight:600}
