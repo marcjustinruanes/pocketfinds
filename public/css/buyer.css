@@ -210,7 +210,7 @@ body:has(.chat-shell){overflow:hidden}
 
 /* ---- Dashboard hero banner ---- */
 /* ---- Dashboard hero — same design as the guest homepage hero ---- */
-.dash-hero{padding:18px 0 22px}
+.dash-hero{padding:0}
 .dash-hero-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:20px;align-items:stretch}
 .dash-hero-main{min-height:200px;border-radius:20px;padding:28px 34px;display:flex;align-items:center;background:linear-gradient(135deg,#fff5fa 0%,var(--pink-soft) 100%);border:1px solid var(--pink-line);overflow:hidden;position:relative}
 .dash-hero-main:after{content:"";position:absolute;width:220px;height:220px;border-radius:50%;right:-90px;top:-90px;background:rgba(217,70,143,.07)}
