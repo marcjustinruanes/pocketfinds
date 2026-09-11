@@ -17,8 +17,9 @@
     </button>
   </form>
   <nav class="nav-links">
+    <a class="nav-link" href="{{ route('buyer.dashboard') }}">Home</a>
     <a class="nav-link" href="{{ route('buyer.browse') }}">Shop</a>
-    <a class="nav-link" href="{{ route('buyer.browse') }}">Categories</a>
+    <a class="nav-link" href="{{ route('buyer.announcements') }}">Announcements</a>
     <a class="nav-link" href="{{ route('buyer.browse') }}">Deals</a>
     <a class="nav-link" href="{{ url('/') }}#about">About</a>
   </nav>

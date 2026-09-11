@@ -513,18 +513,20 @@ class AdminController extends Controller
             'body'     => 'required|string',
             'audience' => 'required|in:all,buyer,seller,rider',
         ]);
-        Announcement::create([
+        $announcement = Announcement::create([
             'title'      => $request->title,
             'body'       => $request->body,
             'audience'   => $request->audience,
             'is_active'  => true,
             'created_by' => auth()->id(),
         ]);
+        $announcement->notifyAudience();
         return back()->with('success', 'Announcement posted.');
     }
 
     public function destroyAnnouncement($id)
     {
+        \DB::table('notifications')->where('notification_type', 'announcement')->where('reference_id', $id)->delete();
         Announcement::findOrFail($id)->delete();
         return back()->with('success', 'Announcement deleted.');
     }

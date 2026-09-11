@@ -38,6 +38,9 @@
     <a href="{{ route('seller.reports') }}" class="nav-item {{ request()->routeIs('seller.reports') ? 'active' : '' }}">
       <span class="ic">@include('seller.partials.icon', ['name' => 'chart', 'size' => 16])</span> Reports
     </a>
+    <a href="{{ route('seller.announcements') }}" class="nav-item {{ request()->routeIs('seller.announcements') ? 'active' : '' }}">
+      <span class="ic">@include('seller.partials.icon', ['name' => 'megaphone', 'size' => 16])</span> Announcements
+    </a>
 
     <div class="nav-label">Account</div>
     <a href="{{ route('seller.messages') }}" class="nav-item {{ request()->routeIs('seller.messages') ? 'active' : '' }}">

@@ -38,6 +38,7 @@ $icons = [
   'video'       => '<path stroke-linecap="round" stroke-linejoin="round" d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round"/>',
   'copy'        => '<rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round"/><path stroke-linecap="round" stroke-linejoin="round" d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>',
   'map-pin'     => '<path stroke-linecap="round" stroke-linejoin="round" d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3" stroke-linecap="round" stroke-linejoin="round"/>',
+  'megaphone'   => '<path stroke-linecap="round" stroke-linejoin="round" d="m3 11 18-5v12L3 13Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M11.6 16.8A3 3 0 0 1 6 15v-2"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 12h-3"/>',
 ];
 $path = $icons[$name] ?? $icons['tag'];
 @endphp

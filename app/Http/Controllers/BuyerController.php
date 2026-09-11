@@ -16,6 +16,7 @@ use App\Models\BuyerPaymentAccount;
 use App\Models\BuyerAddress;
 use App\Models\CartItem;
 use App\Models\ShopFollow;
+use App\Models\Announcement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
@@ -1057,8 +1058,53 @@ class BuyerController extends Controller
         return match ($notification->notification_type) {
             'order_status'  => redirect()->route('buyer.orders'),
             'review_reply'  => redirect()->route('buyer.orders'),
+            'announcement'  => redirect()->route('buyer.announcements.show', $notification->reference_id),
             default         => redirect()->route('buyer.dashboard'),
         };
+    }
+
+    /** Real, read-only list of announcements aimed at buyers (admin "all"/"buyer",
+     *  or any seller's — sellers can only ever target buyers). */
+    public function announcements()
+    {
+        $announcements = Announcement::with('author')
+            ->where('is_active', true)
+            ->whereIn('audience', ['all', 'buyer'])
+            ->latest('created_at')
+            ->get();
+
+        $unreadIds = DB::table('notifications')
+            ->where('user_id', auth()->id())
+            ->where('notification_type', 'announcement')
+            ->where('is_read', false)
+            ->pluck('reference_id');
+
+        // Visiting the list is enough to consider them seen — the same
+        // convention openNotification() already uses when a single one is
+        // opened from the bell, just applied to the whole visible page.
+        DB::table('notifications')
+            ->where('user_id', auth()->id())
+            ->where('notification_type', 'announcement')
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
+        return view('buyer.announcements', compact('announcements', 'unreadIds'));
+    }
+
+    public function showAnnouncement(string $id)
+    {
+        $announcement = Announcement::with('author')
+            ->where('is_active', true)
+            ->whereIn('audience', ['all', 'buyer'])
+            ->findOrFail($id);
+
+        DB::table('notifications')
+            ->where('user_id', auth()->id())
+            ->where('notification_type', 'announcement')
+            ->where('reference_id', $id)
+            ->update(['is_read' => true]);
+
+        return view('buyer.announcement-show', compact('announcement'));
     }
 
     public function account()

@@ -148,6 +148,8 @@ Route::prefix('buyer')->name('buyer.')->middleware(['web', 'buyer'])->group(func
     Route::post('/messages/report', [BuyerController::class, 'reportMessage'])->name('messages.report');
     Route::post('/messages/send', [BuyerController::class, 'messagesSend'])->name('messages.send');
     Route::get('/notifications/{id}/open', [BuyerController::class, 'openNotification'])->name('notifications.open');
+    Route::get('/announcements', [BuyerController::class, 'announcements'])->name('announcements');
+    Route::get('/announcements/{id}', [BuyerController::class, 'showAnnouncement'])->name('announcements.show');
     Route::get('/account', [BuyerController::class, 'account'])->name('account');
     Route::post('/account/profile', [BuyerController::class, 'updateProfile'])->name('account.profile');
     Route::post('/account/address', [BuyerController::class, 'updateAddress'])->name('account.address');
@@ -184,6 +186,9 @@ Route::prefix('seller')->name('seller.')->middleware(['web', 'seller'])->group(f
     Route::post('/messages/send', [SellerController::class, 'messagesSend'])->name('messages.send');
     Route::post('/notifications/read', [SellerController::class, 'markNotifRead'])->name('notifications.read');
     Route::get('/notifications/{id}/open', [SellerController::class, 'openNotification'])->name('notifications.open');
+    Route::get('/announcements', [SellerController::class, 'announcements'])->name('announcements');
+    Route::post('/announcements', [SellerController::class, 'storeAnnouncement'])->name('announcements.store');
+    Route::delete('/announcements/{announcement}', [SellerController::class, 'destroyAnnouncement'])->name('announcements.destroy');
     Route::get('/account',       [SellerController::class, 'account'])->name('account');
     Route::post('/account/profile',  [SellerController::class, 'updateProfile'])->name('account.profile');
     Route::post('/account/address',  [SellerController::class, 'updateAddress'])->name('account.address');

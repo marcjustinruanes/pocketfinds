@@ -12,6 +12,7 @@ use App\Models\Order;
 use App\Models\Review;
 use App\Models\Shipment;
 use App\Models\Voucher;
+use App\Models\Announcement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -832,8 +833,61 @@ class SellerController extends Controller
             'product_pending', 'product_approved', 'product_rejected' => redirect()->route('seller.inventory'),
             'doc_approved', 'doc_rejected' => redirect()->route('seller.account'),
             'order_delivered', 'new_order' => redirect()->route('seller.orders'),
+            'announcement' => redirect()->route('seller.announcements'),
             default => redirect()->route('seller.notifications'),
         };
+    }
+
+    /**
+     * Announcements page: this seller's own posted announcements (create/
+     * edit/delete) plus a read-only feed of platform announcements aimed at
+     * sellers (admin "all"/"seller") — sellers can only ever publish to
+     * buyers, never see other sellers' announcements here.
+     */
+    public function announcements()
+    {
+        $myAnnouncements = Announcement::where('created_by', auth()->id())->latest('created_at')->get();
+        $platformAnnouncements = Announcement::with('author')
+            ->where('is_active', true)
+            ->whereIn('audience', ['all', 'seller'])
+            ->latest('created_at')
+            ->get();
+
+        DB::table('notifications')
+            ->where('user_id', auth()->id())
+            ->where('notification_type', 'announcement')
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
+        return view('seller.announcements', compact('myAnnouncements', 'platformAnnouncements'));
+    }
+
+    /** Sellers can only ever announce to buyers — audience is never accepted from the request. */
+    public function storeAnnouncement(Request $request)
+    {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'body'  => 'required|string|max:5000',
+        ]);
+
+        $announcement = Announcement::create([
+            'title'      => $request->title,
+            'body'       => $request->body,
+            'audience'   => 'buyer',
+            'is_active'  => true,
+            'created_by' => auth()->id(),
+        ]);
+        $announcement->notifyAudience();
+
+        return back()->with('success', 'Announcement posted to your buyers.');
+    }
+
+    public function destroyAnnouncement(Announcement $announcement)
+    {
+        abort_if($announcement->created_by !== auth()->id(), 403);
+        DB::table('notifications')->where('notification_type', 'announcement')->where('reference_id', $announcement->id)->delete();
+        $announcement->delete();
+        return back()->with('success', 'Announcement deleted.');
     }
 
     public function account()
