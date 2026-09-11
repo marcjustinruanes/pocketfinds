@@ -47,9 +47,9 @@
 
   <div class="sidebar-foot">
     <div class="sidebar-user">
-      <div class="avatar">{{ strtoupper(substr(auth()->user()->first_name, 0, 1)) }}</div>
+      <x-user-avatar :user="auth()->user()" size="36" class="avatar" />
       <div class="who">
-        <strong>{{ auth()->user()->first_name }} {{ auth()->user()->last_name }}</strong>
+        <strong>{{ auth()->user()->given_names }} {{ auth()->user()->last_name }}</strong>
         <span>Logistics</span>
       </div>
     </div>

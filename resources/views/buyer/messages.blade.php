@@ -21,7 +21,7 @@
       @endphp
       @php $isUnread = $last->receiver_id === $myId && !$last->read; @endphp
       <a href="{{ route('buyer.messages', ['seller' => $other->username]) }}" class="chat-list-item {{ $isActive ? 'active' : '' }} {{ $isUnread ? 'chat-unread' : '' }}">
-        <div class="cli-av">{{ strtoupper(substr($otherName,0,1)) }}</div>
+        <x-user-avatar :user="$other" size="36" class="cli-av" />
         <div class="cli-body">
           <div class="cli-name">{{ $otherName }}</div>
           <div class="cli-preview">{{ $last->body ?: ($last->product_id ? '📦 Product' : '📎 Attachment') }} · {{ $last->created_at?->format('g:i A') ?? '—' }} {{ $last->sender_id === $myId ? ($last->read ? '✓✓ Seen' : '✓ Delivered') : '' }}</div>
@@ -37,7 +37,7 @@
     @endforelse
     @if($seller && !$conversations->has($seller->id))
       <a href="{{ route('buyer.messages', ['seller' => $seller->username]) }}" class="chat-list-item active">
-        <div class="cli-av">{{ strtoupper(substr($sellerName,0,1)) }}</div>
+        <x-user-avatar :user="$seller" size="36" class="cli-av" />
         <div class="cli-body">
           <div class="cli-name">{{ $sellerName }}</div>
           <div class="cli-preview">New conversation</div>
@@ -50,7 +50,7 @@
   <div class="chat-main">
     <div class="chat-head">
       @if($seller)
-        <div class="chat-head-av">{{ strtoupper(substr($sellerName,0,1)) }}</div>
+        <x-user-avatar :user="$seller" size="34" class="chat-head-av" />
         <div class="chat-head-info">
           <div class="chat-head-name">{{ $sellerName }}</div>
           <div class="pd-shop-status {{ $sellerOnline ? 'online' : 'offline' }}"><i></i>{{ $sellerOnline ? 'Online' : 'Offline' }}</div>

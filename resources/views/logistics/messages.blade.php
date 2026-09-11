@@ -28,9 +28,9 @@
     <div style="padding:10px 16px 4px;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Admin</div>
     @foreach($admins as $u)
     <a href="{{ route('logistics.messages.thread', $u->id) }}" class="chat-conv {{ isset($activeUser) && $activeUser?->id == $u->id ? 'active' : '' }}" style="text-decoration:none;color:inherit">
-      <div class="avatar-sm">{{ strtoupper(substr($u->first_name,0,1).substr($u->last_name,0,1)) }}</div>
+      <x-user-avatar :user="$u" size="36" class="avatar-sm" />
       <div class="meta">
-        <strong>{{ $u->first_name }} {{ $u->last_name }}</strong>
+        <strong>{{ $u->given_names }} {{ $u->last_name }}</strong>
         <div class="role-tag">Administrator</div>
         <p>{{ $u->email }}</p>
       </div>
@@ -42,9 +42,9 @@
     <div style="padding:10px 16px 4px;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Couriers</div>
     @foreach($couriers as $u)
     <a href="{{ route('logistics.messages.thread', $u->id) }}" class="chat-conv {{ isset($activeUser) && $activeUser?->id == $u->id ? 'active' : '' }}" style="text-decoration:none;color:inherit">
-      <div class="avatar-sm">{{ strtoupper(substr($u->first_name,0,1).substr($u->last_name,0,1)) }}</div>
+      <x-user-avatar :user="$u" size="36" class="avatar-sm" />
       <div class="meta">
-        <strong>{{ $u->first_name }} {{ $u->last_name }}</strong>
+        <strong>{{ $u->given_names }} {{ $u->last_name }}</strong>
         <div class="role-tag">Courier</div>
         <p>{{ $u->email }}</p>
       </div>
@@ -56,9 +56,9 @@
     <div style="padding:10px 16px 4px;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">Sellers</div>
     @foreach($sellers as $u)
     <a href="{{ route('logistics.messages.thread', $u->id) }}" class="chat-conv {{ isset($activeUser) && $activeUser?->id == $u->id ? 'active' : '' }}" style="text-decoration:none;color:inherit">
-      <div class="avatar-sm">{{ strtoupper(substr($u->first_name,0,1).substr($u->last_name,0,1)) }}</div>
+      <x-user-avatar :user="$u" size="36" class="avatar-sm" />
       <div class="meta">
-        <strong>{{ $u->first_name }} {{ $u->last_name }}</strong>
+        <strong>{{ $u->given_names }} {{ $u->last_name }}</strong>
         <div class="role-tag">Seller</div>
         <p>{{ $u->email }}</p>
       </div>
@@ -71,9 +71,9 @@
   <div class="chat-main">
     @if($activeUser)
     <div class="chat-head">
-      <div class="avatar-sm">{{ strtoupper(substr($activeUser->first_name,0,1).substr($activeUser->last_name,0,1)) }}</div>
+      <x-user-avatar :user="$activeUser" size="36" class="avatar-sm" />
       <div>
-        <strong style="font-size:13.5px;font-family:var(--font-body)">{{ $activeUser->first_name }} {{ $activeUser->last_name }}</strong>
+        <strong style="font-size:13.5px;font-family:var(--font-body)">{{ $activeUser->given_names }} {{ $activeUser->last_name }}</strong>
         <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">{{ ucfirst($activeUser->account_type) }} · {{ $activeUser->email }}</div>
       </div>
     </div>

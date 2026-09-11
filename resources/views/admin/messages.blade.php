@@ -14,7 +14,7 @@
     </div>
     @forelse($users as $u)
     <a href="{{ route('admin.messages.user', $u->id) }}" class="chat-conv {{ isset($selectedUser) && $selectedUser?->id == $u->id ? 'active' : '' }} {{ $u->unread_count > 0 ? 'has-unread' : '' }}" style="text-decoration:none;color:inherit">
-      <div class="avatar-sm">{{ strtoupper(substr($u->given_names,0,1).substr($u->last_name,0,1)) }}</div>
+      <x-user-avatar :user="$u" size="36" class="avatar-sm" />
       <div class="meta">
         <strong>{{ $u->given_names }} {{ $u->last_name }}</strong>
         <div class="role-tag">{{ ucfirst($u->account_type) }}</div>
@@ -48,7 +48,7 @@
   <div class="chat-main">
     @if(isset($selectedUser) && $selectedUser)
     <div class="chat-head chat-head-clickable" data-modal-open="profileModal-{{ $selectedUser->id }}" title="View profile">
-      <div class="avatar-sm">{{ strtoupper(substr($selectedUser->given_names,0,1).substr($selectedUser->last_name,0,1)) }}</div>
+      <x-user-avatar :user="$selectedUser" size="36" class="avatar-sm" />
       <div>
         <strong style="font-size:13.5px;font-family:var(--font-body)">{{ $selectedUser->given_names }} {{ $selectedUser->last_name }}</strong>
         <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">{{ ucfirst($selectedUser->account_type) }} · {{ $selectedUser->email }}</div>

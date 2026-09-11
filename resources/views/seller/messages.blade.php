@@ -11,7 +11,7 @@
     <div class="chat-list-head"><strong style="font-size:13.5px">Conversations</strong></div>
     @if($admin && !$conversations->has($admin->id))
       <a href="{{ route('seller.messages', ['buyer' => $admin->id]) }}" class="chat-list-item {{ $buyer && $buyer->id === $admin->id ? 'active' : '' }}">
-        <div class="cli-av">🛟</div>
+        <x-user-avatar :user="$admin" size="36" class="cli-av" />
         <div class="cli-body">
           <div class="cli-name">PocketFinds Support</div>
           <div class="cli-preview">Message the admin team</div>
@@ -26,7 +26,7 @@
       @endphp
       @php $isUnread = $last->receiver_id === $myId && !$last->read; @endphp
       <a href="{{ route('seller.messages', ['buyer' => $other->id]) }}" class="chat-list-item {{ $isActive ? 'active' : '' }} {{ $isUnread ? 'chat-unread' : '' }}">
-        <div class="cli-av">{{ strtoupper(substr($otherName,0,1)) }}</div>
+        <x-user-avatar :user="$other" size="36" class="cli-av" />
         <div class="cli-body">
           <div class="cli-name">{{ $otherName }}</div>
           <div class="cli-preview">{{ $last->body ?: ($last->product_id ? '📦 Product' : '📎 Attachment') }} · {{ $last->created_at?->format('g:i A') ?? '—' }} {{ $last->sender_id === $myId ? ($last->read ? '✓✓ Seen' : '✓ Delivered') : '' }}</div>
@@ -44,7 +44,7 @@
     <div class="chat-head">
       @if($buyer)
         @php $buyerName = $buyer->given_names . ' ' . $buyer->last_name; @endphp
-        <div class="chat-head-av">{{ strtoupper(substr($buyerName,0,1)) }}</div>
+        <x-user-avatar :user="$buyer" size="34" class="chat-head-av" />
         <div class="chat-head-info">
           <div class="chat-head-name">{{ $buyer->is_admin ? 'PocketFinds Support' : $buyerName }}</div>
           <div style="font-size:11px;color:var(--muted)">{{ $buyer->is_admin ? 'Admin' : 'Customer' }}</div>

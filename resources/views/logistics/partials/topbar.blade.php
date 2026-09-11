@@ -45,8 +45,8 @@
       </div>
     </div>
 
-    <a href="{{ route('logistics.account') }}" class="topbar-avatar" aria-label="My Account">
-      {{ strtoupper(substr(auth()->user()->first_name, 0, 1)) }}
+    <a href="{{ route('logistics.account') }}" aria-label="My Account">
+      <x-user-avatar :user="auth()->user()" size="38" class="topbar-avatar" />
     </a>
   </div>
 </header>
