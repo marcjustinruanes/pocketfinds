@@ -7,6 +7,20 @@
 @if(session('success'))
 <div class="auth-success" style="margin-bottom:16px">{{ session('success') }}</div>
 @endif
+
+{{-- Profile summary --}}
+<div class="profile-summary">
+  <x-user-avatar :user="auth()->user()" size="64" class="profile-summary-avatar" />
+  <div class="profile-summary-info">
+    <h1>{{ auth()->user()->given_names }} {{ auth()->user()->last_name }}</h1>
+    <p>{{ auth()->user()->email }}</p>
+    <div class="profile-summary-badges">
+      <span class="stamp stamp-active">Buyer</span>
+      <span class="profile-summary-since">Member since {{ auth()->user()->created_at->format('M Y') }}</span>
+    </div>
+  </div>
+</div>
+
 <div class="dash-grid">
   <div class="stack">
     @if($pendingRequest)
