@@ -226,6 +226,7 @@ Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
     Route::delete('/settings/announcements/{id}', [AdminController::class, 'destroyAnnouncement'])->name('settings.announcements.destroy');
     Route::post('/policies/{accountType}', [AdminController::class, 'updatePolicy'])->name('policies.update');
     Route::post('/settings/general', [AdminController::class, 'updateGeneralSettings'])->name('settings.general.update');
+    Route::post('/settings/hero', [AdminController::class, 'updateHeroSettings'])->name('settings.hero.update');
     Route::post('/settings/toggles', [AdminController::class, 'updateFeatureToggles'])->name('settings.toggles.update');
     Route::post('/settings/cache/clear', [AdminController::class, 'clearCache'])->name('settings.cache.clear');
     Route::post('/settings/sessions/clear', [AdminController::class, 'clearSessions'])->name('settings.sessions.clear');

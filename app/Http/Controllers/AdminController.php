@@ -437,8 +437,43 @@ class AdminController extends Controller
         return back()->with('success', 'General settings saved.');
     }
 
-    public function updateFeatureToggles(Request $request)
+    /** Admin uploads/sets the landing page hero banner image, tagline, and seasonal theme label. */
+    public function updateHeroSettings(Request $request)
     {
+        $data = $request->validate([
+            'hero_label'    => 'nullable|string|max:100',
+            'hero_tagline'  => 'nullable|string|max:200',
+            'hero_subtitle' => 'nullable|string|max:500',
+            'hero_cta_text' => 'nullable|string|max:80',
+            'hero_overlay'  => 'nullable|in:dark,light,none',
+            'hero_image'    => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
+        ]);
+
+        $setting = \App\Models\Setting::current();
+
+        if ($request->hasFile('hero_image')) {
+            // Remove old image if it exists
+            if ($setting->hero_image) {
+                \Illuminate\Support\Facades\Storage::disk('supabase')->delete($setting->hero_image);
+            }
+            $data['hero_image'] = $request->file('hero_image')->store('hero_banners', 'supabase');
+        }
+
+        // Allow clearing the image via a hidden checkbox
+        if ($request->boolean('hero_image_clear')) {
+            if ($setting->hero_image) {
+                \Illuminate\Support\Facades\Storage::disk('supabase')->delete($setting->hero_image);
+            }
+            $data['hero_image'] = null;
+        }
+
+        $data['updated_by'] = auth()->id();
+        $setting->update($data);
+
+        return back()->with('success', 'Hero banner settings saved.');
+    }
+
+    public function updateFeatureToggles(Request $request) {
         $data = [
             'google_signin_enabled'       => $request->boolean('google_signin_enabled'),
             'new_registrations_enabled'   => $request->boolean('new_registrations_enabled'),

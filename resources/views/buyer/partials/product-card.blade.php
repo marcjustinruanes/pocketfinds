@@ -29,8 +29,11 @@
     <div class="product-price-row">
       <span class="product-price">₱{{ number_format($pPrice) }}</span>
       <span class="rating-pill">
+        @if($pRating > 0)
         <svg width="10" height="10" viewBox="0 0 24 24" fill="#f59e0b" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        {{ $pRating > 0 ? number_format($pRating, 1) : 'New' }}
+        {{ number_format($pRating, 1) }} ·
+        @endif
+        {{ ($p['sold'] ?? 0) >= 1000 ? round(($p['sold'] ?? 0)/1000, 1).'k' : ($p['sold'] ?? 0) }} sold
       </span>
     </div>
     @if($pLoc)

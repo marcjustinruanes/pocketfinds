@@ -18,21 +18,46 @@ class GuestController extends Controller
         $categoryId = $request->integer('category') ?: null;
         $search     = $request->string('q')->trim()->value() ?: null;
 
-        $products   = $this->dbProducts(24, $categoryId, $search);
-        $deals      = $categoryId || $search ? [] : $this->dbDeals(8);
-        $categories = Category::orderBy('name')->get(['id', 'name']);
-        $activeCategory = $categoryId ? $categories->firstWhere('id', $categoryId) : null;
+        // Fallback object so the hero banner always has safe defaults even when DB is down
+        $heroSettings = new \App\Models\Setting([
+            'hero_image'    => null,
+            'hero_label'    => 'Local Marketplace · Philippines',
+            'hero_tagline'  => 'Find It. Love It. Pocket It.',
+            'hero_subtitle' => 'Browse products from verified local sellers — pet supplies, electronics, fashion, home essentials, and more.',
+            'hero_cta_text' => 'Browse Products',
+            'hero_overlay'  => 'dark',
+        ]);
 
-        $announcement = $this->guestAnnouncement();
-        $shops = $this->featuredShops(3);
+        try {
+            $heroSettings   = \App\Models\Setting::current();
+            $products       = $this->dbProducts(24, $categoryId, $search);
+            $deals          = $categoryId || $search ? [] : $this->dbDeals(8);
+            $categories     = Category::orderBy('name')->get(['id', 'name']);
+            $activeCategory = $categoryId ? $categories->firstWhere('id', $categoryId) : null;
+            $announcement   = $this->guestAnnouncement();
+            $shops          = $this->featuredShops(3);
+            $stats          = [
+                'products'   => Product::where('status', 'active')->sellerApproved()->count(),
+                'shops'      => User::where('account_type', 'seller')->where('status', 'approved')->whereNotNull('business_name')->count(),
+                'categories' => $categories->count(),
+            ];
+            $dbError = false;
+        } catch (\Exception $e) {
+            $products       = [];
+            $deals          = [];
+            $categories     = collect();
+            $activeCategory = null;
+            $announcement   = null;
+            $shops          = [];
+            $stats          = ['products' => 0, 'shops' => 0, 'categories' => 0];
+            $dbError        = true;
+        }
 
-        $stats = [
-            'products' => Product::where('status', 'active')->sellerApproved()->count(),
-            'shops'    => User::where('account_type', 'seller')->where('status', 'approved')->whereNotNull('business_name')->count(),
-            'categories' => $categories->count(),
-        ];
-
-        return view('guest.home', compact('products', 'deals', 'categories', 'activeCategory', 'announcement', 'shops', 'stats', 'categoryId', 'search'));
+        return view('guest.home', compact(
+            'products', 'deals', 'categories', 'activeCategory',
+            'announcement', 'shops', 'stats', 'categoryId', 'search',
+            'heroSettings', 'dbError'
+        ));
     }
 
     /** Admin announcements are for logged-in users only — guests always see the generic
@@ -55,12 +80,14 @@ class GuestController extends Controller
             ->map(function (User $seller) {
                 $productIds = $seller->products()->where('status', 'active')->pluck('id');
                 $avgRating  = $productIds->isNotEmpty() ? Review::whereIn('product_id', $productIds)->avg('rating') : null;
+                $soldTotal  = $productIds->reduce(fn ($carry, $id) => $carry + $this->soldCount($id), 0);
 
                 return [
                     'name'          => $seller->business_name,
                     'slug'          => $seller->username ?: ('shop-' . $seller->id),
                     'initial'       => strtoupper(substr($seller->business_name, 0, 1)),
                     'rating'        => $avgRating ? round($avgRating, 1) : null,
+                    'sold'          => $soldTotal,
                     'products_count'=> $seller->products_count,
                     'joined'        => $seller->created_at->format('M Y'),
                 ];
@@ -77,6 +104,8 @@ class GuestController extends Controller
         $shopProducts = Product::with(['seller', 'category'])
             ->where('seller_id', $p->seller_id)->where('status', 'active')->sellerApproved()->where('id', '!=', $id)
             ->limit(6)->get()->map(fn($r) => $this->mapProduct($r))->all();
+
+        $sellerSold = $product['sold'] + collect($shopProducts)->sum('sold');
 
         $titleTerms = collect(preg_split('/[^\\pL\\pN]+/u', $p->name))
             ->filter(fn ($term) => mb_strlen($term) > 2)
@@ -100,7 +129,7 @@ class GuestController extends Controller
 
         $shop = null;
         $announcement = $this->guestAnnouncement();
-        return view('guest.product', compact('product', 'shop', 'related', 'shopProducts', 'announcement'));
+        return view('guest.product', compact('product', 'shop', 'related', 'shopProducts', 'announcement', 'sellerSold'));
     }
 
     public function shop($slug)

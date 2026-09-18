@@ -785,7 +785,7 @@
 const COMPANY_HUBS = @json($companyHubs ?? (object) []);
 </script>
 <script src="{{ asset('js/auth.js') }}"></script>
-<script src="{{ asset('js/register.js') }}"></script>
+<script src="{{ asset('js/register.js') }}?v={{ @filemtime(public_path('js/register.js')) ?: 1 }}"></script>
 <script>
 // Resume upload (optional) — mirrors register-logistics-staff.blade.php's handling exactly.
 function handleResumeSelect(input) {

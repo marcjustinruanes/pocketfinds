@@ -15,6 +15,9 @@ class Setting extends Model
         'platform_name', 'support_email', 'commission_rate',
         'google_signin_enabled', 'new_registrations_enabled',
         'maintenance_mode', 'email_notifications_enabled', 'updated_by',
+        // Hero banner — admin-controlled from Settings → Hero Banner
+        'hero_image', 'hero_label', 'hero_tagline', 'hero_subtitle',
+        'hero_cta_text', 'hero_overlay',
     ];
 
     protected $casts = [
@@ -45,6 +48,12 @@ class Setting extends Model
             'new_registrations_enabled'    => true,
             'maintenance_mode'             => false,
             'email_notifications_enabled'  => true,
+            'hero_image'                   => null,
+            'hero_label'                   => 'Local Marketplace · Philippines',
+            'hero_tagline'                 => 'Find It. Love It. Pocket It.',
+            'hero_subtitle'                => 'Browse products from verified local sellers — pet supplies, electronics, fashion, home essentials, and more.',
+            'hero_cta_text'                => 'Browse Products',
+            'hero_overlay'                 => 'dark',
         ]);
     }
 

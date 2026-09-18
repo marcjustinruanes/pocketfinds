@@ -18,6 +18,7 @@
 <div class="settings-shell">
   <nav class="settings-nav" id="settingsNav">
     <a class="settings-nav-item active" data-settings-tab="general"><span class="ic"><x-admin-icon name="settings" /></span> General</a>
+    <a class="settings-nav-item" data-settings-tab="hero"><span class="ic"><x-admin-icon name="bag" /></span> Hero Banner</a>
     <a class="settings-nav-item" data-settings-tab="policies"><span class="ic"><x-admin-icon name="file" /></span> Platform Policies</a>
     <a class="settings-nav-item" data-settings-tab="appearance"><span class="ic"><x-admin-icon name="chart" /></span> Appearance</a>
     <a class="settings-nav-item" data-settings-tab="danger"><span class="ic"><x-admin-icon name="flag" /></span> Danger Zone</a>
@@ -66,6 +67,91 @@
               <label class="switch"><input type="checkbox" name="email_notifications_enabled" value="1" {{ $setting->email_notifications_enabled ? 'checked' : '' }}><span class="track"></span></label>
             </div>
             <div style="margin-top:14px"><button class="btn btn-primary" type="submit">Save Toggles</button></div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    {{-- ── Hero Banner ── --}}
+    <div data-settings-panel="hero" style="display:none">
+      <h2 class="settings-section-title"><span class="ic"><x-admin-icon name="bag" /></span> Hero Banner</h2>
+      <p class="settings-section-sub">Control the landing page hero image, tagline, and seasonal theme. Changes go live immediately.</p>
+
+      <div class="card">
+        <div class="card-pad">
+          <form method="POST" action="{{ route('admin.settings.hero.update') }}" enctype="multipart/form-data">
+            @csrf
+
+            {{-- Current image preview --}}
+            @if($setting->hero_image)
+            <div style="margin-bottom:18px">
+              <div class="field-label" style="margin-bottom:8px">Current Banner Image</div>
+              <div style="position:relative;display:inline-block;border-radius:12px;overflow:hidden;max-width:100%">
+                <img src="{{ \Illuminate\Support\Facades\Storage::url($setting->hero_image) }}" alt="Hero banner" style="display:block;width:100%;max-height:240px;object-fit:cover;border-radius:12px;border:1px solid var(--border)">
+              </div>
+              <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+                <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--danger);cursor:pointer">
+                  <input type="checkbox" name="hero_image_clear" value="1" style="accent-color:var(--danger)">
+                  Remove current image
+                </label>
+              </div>
+            </div>
+            @endif
+
+            {{-- Upload new image --}}
+            <div class="form-row">
+              <label>{{ $setting->hero_image ? 'Replace' : 'Upload' }} Banner Image</label>
+              <input type="file" name="hero_image" accept="image/jpeg,image/png,image/webp" style="padding:6px">
+              <span style="font-size:11.5px;color:var(--muted)">Recommended: 1920×800px or wider. JPG, PNG, or WEBP · max 4 MB. Use a high-quality editorial photo that represents the current season or campaign theme.</span>
+            </div>
+
+            <div style="height:1px;background:var(--border);margin:20px 0"></div>
+
+            {{-- Season / Theme label --}}
+            <div class="form-row">
+              <label>Season / Theme Label</label>
+              <input type="text" name="hero_label" value="{{ old('hero_label', $setting->hero_label) }}" placeholder="e.g. Summer Sale · Philippines" maxlength="100">
+              <span style="font-size:11.5px;color:var(--muted)">Shown as a small pill above the headline. Keep it short — 30 chars or less works best.</span>
+            </div>
+
+            {{-- Tagline (main headline) --}}
+            <div class="form-row">
+              <label>Tagline <span style="color:var(--danger)">*</span></label>
+              <input type="text" name="hero_tagline" value="{{ old('hero_tagline', $setting->hero_tagline) }}" placeholder="e.g. Fresh Finds. Summer Feels." maxlength="200" required>
+              <span style="font-size:11.5px;color:var(--muted)">The big headline on the hero. Short, punchy, on-brand.</span>
+            </div>
+
+            {{-- Subtitle --}}
+            <div class="form-row">
+              <label>Subtitle</label>
+              <textarea name="hero_subtitle" rows="2" maxlength="500" placeholder="e.g. Discover summer essentials from verified local sellers." style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;resize:vertical;font-family:inherit">{{ old('hero_subtitle', $setting->hero_subtitle) }}</textarea>
+              <span style="font-size:11.5px;color:var(--muted)">Supporting text shown below the tagline. One or two sentences max.</span>
+            </div>
+
+            {{-- CTA button text --}}
+            <div class="form-row">
+              <label>CTA Button Text</label>
+              <input type="text" name="hero_cta_text" value="{{ old('hero_cta_text', $setting->hero_cta_text) }}" placeholder="Browse Products" maxlength="80">
+              <span style="font-size:11.5px;color:var(--muted)">Text on the "Browse Products" button. Defaults to "Browse Products" if left blank.</span>
+            </div>
+
+            {{-- Overlay darkness --}}
+            <div class="form-row">
+              <label>Text Overlay</label>
+              <select name="hero_overlay" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+                <option value="dark"  {{ ($setting->hero_overlay ?? 'dark') === 'dark'  ? 'selected' : '' }}>Dark overlay (white text — for bright/light images)</option>
+                <option value="light" {{ ($setting->hero_overlay ?? 'dark') === 'light' ? 'selected' : '' }}>Light overlay (dark text — for dark/moody images)</option>
+                <option value="none"  {{ ($setting->hero_overlay ?? 'dark') === 'none'  ? 'selected' : '' }}>No overlay (image only, text floats above)</option>
+              </select>
+              <span style="font-size:11.5px;color:var(--muted)">Controls the gradient overlay that makes the text readable against the banner image.</span>
+            </div>
+
+            <div style="margin-top:18px;display:flex;align-items:center;gap:10px">
+              <button class="btn btn-primary" type="submit">Save Hero Banner</button>
+              @if($setting->hero_image)
+              <span style="font-size:12px;color:var(--muted)">Live immediately — no cache clear needed.</span>
+              @endif
+            </div>
           </form>
         </div>
       </div>

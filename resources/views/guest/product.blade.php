@@ -3,28 +3,74 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>{{ $product['name'] }} — PocketFinds</title>
-<link rel="icon" type="image/svg+xml" href="{{ asset('images/logo.svg') }}">
+<link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
 <link rel="stylesheet" href="{{ asset('css/marketplace.css') }}?v={{ filemtime(public_path('css/marketplace.css')) }}">
 {{-- Reuses the buyer app's own product-page styles/icons so a guest sees
      exactly the same page a signed-in buyer would, right up until they try
      to actually do something that needs an account. --}}
 <link rel="stylesheet" href="{{ asset('css/buyer.css') }}?v={{ filemtime(public_path('css/buyer.css')) }}">
+{{-- Loaded last so its header/search styles win over marketplace.css's, matching the guest homepage. --}}
+<link rel="stylesheet" href="{{ asset('css/landing.css') }}?v={{ filemtime(public_path('css/landing.css')) }}">
 </head>
 <body class="marketplace">
 
 <div class="market-top"></div>
-<header class="market-header"><div class="container header-main">
-<a class="logo" href="{{ url('/') }}"><span class="logo-mark"><x-brand-logo :size="16" /></span><span>PocketFinds</span></a>
-<form class="search" action="{{ url('/') }}" method="GET">
-  <input name="q" type="search" placeholder="Search for products, brands and categories">
-  <button type="submit"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
-</form>
-<div class="header-actions">
-<button class="icon-action" type="button" data-protected><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg><span>Wishlist</span></button>
-<button class="icon-action" type="button" data-protected><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 5m12-5l2 5M9 21a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"/></svg><span>Cart</span></button>
-<a class="signin" href="{{ url('/login') }}">Sign In</a><a class="register" href="{{ url('/register/type') }}">Register</a>
-</div>
-</div></header>
+
+<header class="market-header">
+  <div class="container header-main">
+
+    <a class="logo" href="{{ url('/') }}">
+      <span class="logo-mark">
+        <img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="PocketFinds" class="brand-logo-img">
+      </span>
+      <span><span class="logo-pocket">Pocket</span><span class="logo-finds">Finds</span></span>
+    </a>
+
+    <div class="pf-search-wrap">
+      <form class="search" action="{{ url('/') }}" method="GET">
+        <span class="pf-search-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </span>
+        <input name="q" type="search" placeholder="Search products, brands, categories…">
+        <button type="submit">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
+      </form>
+    </div>
+
+    <nav class="nav-links">
+      <a class="nav-link" href="{{ url('/') }}#categories">Categories</a>
+      <a class="nav-link" href="{{ url('/') }}#shops">Shops</a>
+      <a class="nav-link" href="{{ url('/') }}#deals">Deals</a>
+      <a class="nav-link" href="{{ url('/') }}#about">About</a>
+    </nav>
+
+    <div class="header-actions">
+      <button class="pf-acct-icon" type="button" data-protected title="Cart">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 5m12-5l2 5M9 21a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"/></svg>
+      </button>
+
+      {{-- Account icon → dropdown with Sign In + Register --}}
+      <div class="pf-account-btn" id="pf-acct-btn">
+        <button class="pf-acct-icon" type="button" id="pf-acct-toggle" aria-label="Account">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </button>
+        <div class="pf-acct-dropdown" id="pf-acct-dropdown">
+          <a href="{{ url('/login') }}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+            Sign In
+          </a>
+          <div class="pf-acct-sep"></div>
+          <a class="register-link" href="{{ url('/register/type') }}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+            Create Account
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</header>
 
 <main class="container" style="padding:20px 0 40px">
 
@@ -49,7 +95,12 @@
       {{ $product['location'] ?: 'Location not provided' }}
     </div>
   </div>
-  <div class="pd-shop-stats"><span><strong>{{ $avg > 0 ? number_format($avg, 1) : '—' }}</strong> Rating</span><span><strong>{{ count($shopProducts) + 1 }}</strong> Products</span><span><strong>—</strong> Followers</span></div>
+  <div class="pd-shop-stats">
+    <span><strong>{{ $avg > 0 ? number_format($avg, 1) : '—' }}</strong> Rating</span>
+    <span><strong>{{ $sellerSold >= 1000 ? round($sellerSold/1000,1).'k' : $sellerSold }}</strong> Sold</span>
+    <span><strong>{{ count($shopProducts) + 1 }}</strong> Products</span>
+    <span><strong>—</strong> Followers</span>
+  </div>
   <div class="pd-shop-card-actions">
     <button type="button" class="pd-shop-chat" data-protected>@include('buyer.partials.icon', ['name' => 'chat', 'size' => 13]) Chat with Seller</button>
     <a href="{{ route('guest.shop', $product['seller_slug']) }}" class="pd-shop-more-link pd-shop-view"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg>View Shop</a>
@@ -294,7 +345,7 @@
   </div>
   <div class="product-grid product-grid-lg">
     @forelse($shopProducts as $sp)
-      @include('buyer.partials.product-card', ['p' => $sp, 'route' => 'guest.product'])
+      @include('guest.partials.pf-product-card', ['p' => $sp])
     @empty
     <p style="color:var(--muted);font-size:13px;grid-column:1/-1;padding:8px 0">This shop doesn't have any other products yet.</p>
     @endforelse
@@ -308,7 +359,7 @@
     <div class="pd-related pd-related-side">
       <div class="product-grid product-grid-lg">
         @foreach($related as $rp)
-          @include('buyer.partials.product-card', ['p' => $rp, 'route' => 'guest.product'])
+          @include('guest.partials.pf-product-card', ['p' => $rp])
         @endforeach
       </div>
     </div>
@@ -499,6 +550,6 @@ function filterReviews(star) {
 }
 document.querySelectorAll('.rev-hidden').forEach(el => el.style.display = 'none');
 </script>
-<script src="{{ asset('js/marketplace.js') }}"></script>
+<script src="{{ asset('js/marketplace.js') }}?v={{ @filemtime(public_path('js/marketplace.js')) ?: 1 }}"></script>
 </body>
 </html>

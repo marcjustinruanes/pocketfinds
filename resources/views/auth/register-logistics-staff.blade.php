@@ -1347,7 +1347,7 @@ const STAFF_STEPS = [5, 8, 2, 3, 4, 6];
 </script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="{{ asset('js/auth.js') }}"></script>
-<script src="{{ asset('js/register.js') }}"></script>
+<script src="{{ asset('js/register.js') }}?v={{ @filemtime(public_path('js/register.js')) ?: 1 }}"></script>
 <script>
 function staffSetStep(from, to) {
     document.getElementById('panel-' + from)?.classList.remove('active');

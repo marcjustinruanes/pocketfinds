@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>{{ $shop['name'] }} — PocketFinds</title>
-<link rel="icon" type="image/svg+xml" href="{{ asset('images/logo.svg') }}">
+<link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
 <link rel="stylesheet" href="{{ asset('css/marketplace.css') }}">
 <link rel="stylesheet" href="{{ asset('css/guest-product.css') }}">
 </head>
@@ -97,6 +97,6 @@
 <footer class="footer"><div class="container"><div class="footer-grid"><div><h3>PocketFinds Marketplace</h3><p>A simple marketplace experience for discovering products from local sellers.</p></div><div><h3>Customer Service</h3><a href="#">Help Centre</a><a href="#">Contact Us</a><a href="#">Returns</a></div><div><h3>About</h3><a href="#">About Us</a><a href="#">Careers</a><a href="#">Privacy</a></div><div><h3>Account</h3><a href="{{ url('/login') }}">Sign In</a><a href="{{ url('/register/type') }}">Register</a><a href="#">Seller Centre</a></div></div><div class="footer-bottom">© {{ date('Y') }} PocketFinds. All rights reserved.</div></div></footer>
 
 @include('guest.auth-modal')
-<script src="{{ asset('js/marketplace.js') }}"></script>
+<script src="{{ asset('js/marketplace.js') }}?v={{ @filemtime(public_path('js/marketplace.js')) ?: 1 }}"></script>
 </body>
 </html>

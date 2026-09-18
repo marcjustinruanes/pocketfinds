@@ -610,6 +610,6 @@
 <script>const IS_GOOGLE_SIGNUP = @json($isGoogleSignup ?? false);</script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="{{ asset('js/auth.js') }}"></script>
-<script src="{{ asset('js/register.js') }}"></script>
+<script src="{{ asset('js/register.js') }}?v={{ @filemtime(public_path('js/register.js')) ?: 1 }}"></script>
 </body>
 </html>
