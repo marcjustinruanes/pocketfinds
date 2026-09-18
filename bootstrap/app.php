@@ -12,6 +12,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // The site sits behind Cloudflare, so without this Laravel never sees the
+        // real client scheme/IP — it thinks every request is plain HTTP, which
+        // throws off secure-cookie handling and can desync the session cookie
+        // from what the server stored (the actual cause of the 419s).
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
             'admin'      => \App\Http\Middleware\AdminMiddleware::class,
             'logistics'  => \App\Http\Middleware\LogisticsMiddleware::class,
