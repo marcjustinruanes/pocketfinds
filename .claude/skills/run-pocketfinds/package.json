@@ -1,0 +1,9 @@
+{
+  "name": "run-pocketfinds-driver",
+  "private": true,
+  "description": "Isolated Playwright driver for the run-pocketfinds skill. Not a dependency of the PocketFinds app itself.",
+  "type": "module",
+  "devDependencies": {
+    "playwright": "^1.48.0"
+  }
+}

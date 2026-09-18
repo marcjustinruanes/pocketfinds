@@ -32,10 +32,11 @@ class GuestController extends Controller
             $heroSettings   = \App\Models\Setting::current();
             $products       = $this->dbProducts(24, $categoryId, $search);
             $deals          = $categoryId || $search ? [] : $this->dbDeals(8);
-            $categories     = Category::orderBy('name')->get(['id', 'name']);
+            $categories     = Category::withCount(['products' => fn ($q) => $q->where('status', 'active')->sellerApproved()])
+                ->orderBy('name')->get(['id', 'name']);
             $activeCategory = $categoryId ? $categories->firstWhere('id', $categoryId) : null;
             $announcement   = $this->guestAnnouncement();
-            $shops          = $this->featuredShops(3);
+            $shops          = $this->topSellingShops(5);
             $stats          = [
                 'products'   => Product::where('status', 'active')->sellerApproved()->count(),
                 'shops'      => User::where('account_type', 'seller')->where('status', 'approved')->whereNotNull('business_name')->count(),
@@ -67,16 +68,16 @@ class GuestController extends Controller
         return null;
     }
 
-    /** Approved sellers with the most live listings — real product counts and real average
-     *  ratings across their catalog (null, not a fabricated number, when nobody's reviewed them yet). */
-    private function featuredShops(int $limit = 3)
+    /** Approved sellers ranked by real units sold (completed orders only) — not by
+     *  listing count. Ties (commonly 0 sold, for a young marketplace) keep a stable,
+     *  deterministic order rather than looking shuffled. Real average ratings across
+     *  their catalog too (null, not a fabricated number, when nobody's reviewed them yet). */
+    private function topSellingShops(int $limit = 5)
     {
         return User::where('account_type', 'seller')->where('status', 'approved')->whereNotNull('business_name')
             ->withCount(['products' => fn ($q) => $q->where('status', 'active')])
             ->get()
             ->filter(fn (User $seller) => $seller->products_count > 0)
-            ->sortByDesc('products_count')
-            ->take($limit)
             ->map(function (User $seller) {
                 $productIds = $seller->products()->where('status', 'active')->pluck('id');
                 $avgRating  = $productIds->isNotEmpty() ? Review::whereIn('product_id', $productIds)->avg('rating') : null;
@@ -92,6 +93,8 @@ class GuestController extends Controller
                     'joined'        => $seller->created_at->format('M Y'),
                 ];
             })
+            ->sortByDesc('sold')
+            ->take($limit)
             ->values()
             ->all();
     }

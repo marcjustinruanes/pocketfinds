@@ -111,7 +111,7 @@ trait FetchesProducts
             'badge'       => $hasDiscount ? '-' . $percentOff . '%' : null,
             'rating'      => $reviews->isNotEmpty() ? round($reviews->avg('rating'), 1) : 0,
             'sold'        => $this->soldCount($p->id),
-            'cat'         => $p->category->name ?? '—',
+            'cat'         => $p->category->name ?? 'Uncategorized',
             'category_id' => $p->category_id,
             'img'         => $imageUrls[0] ?? null,
             'images'      => $imageUrls,

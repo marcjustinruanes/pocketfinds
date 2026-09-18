@@ -1,0 +1,658 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   PocketFinds — Editorial Landing Page
+   Structure, type scale, spacing, and restraint borrowed from the Stitch
+   reference design; palette (pink) and logo kept as PocketFinds' own.
+   Loaded after marketplace.css, which still supplies :root color tokens,
+   the base reset, :focus-visible, and the global prefers-reduced-motion rule.
+   New class prefix (pfx-) so nothing here touches shop.blade.php or
+   product.blade.php, which still use the original pf-* component classes.
+───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --pfx-font: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --pfx-ink: #18181b;
+  --pfx-ink-soft: #52525b;
+  --pfx-muted: #6f6f6f;
+  --pfx-surface: #ffffff;
+  --pfx-cream: #fdfaf6;
+  --pfx-surface-2: #faeef4;
+  --pfx-surface-3: #fbeef4;
+  --pfx-border: #ece3e7;
+  --pfx-accent: var(--pink, #d9468f);
+  --pfx-accent-dark: var(--pink-dark, #be3a7d);
+  --pfx-accent-soft: #fdecf3;
+  --pfx-radius-xs: 4px;
+  --pfx-radius-sm: 6px;
+  --pfx-radius-md: 8px;
+  --pfx-radius-lg: 10px;
+  --pfx-ease: cubic-bezier(.16,1,.3,1);
+  --pfx-dur-fast: 150ms;
+  --pfx-dur-base: 260ms;
+  --pfx-shadow-xs: 0 1px 2px rgba(24,24,27,.05);
+  --pfx-shadow-sm: 0 4px 14px rgba(24,24,27,.05);
+  --pfx-shadow-md: 0 12px 28px rgba(24,24,27,.07);
+  --pfx-shadow-lg: 0 22px 48px rgba(24,24,27,.10);
+}
+
+body.pfx-page {
+  font-family: var(--pfx-font);
+  background: var(--pfx-cream);
+  color: var(--pfx-ink);
+}
+/* Bare element selector (not .pfx-page a) so its specificity (0,0,1) stays
+   below every single-class button/link utility below (0,1,0) — a higher-
+   specificity version of this exact rule once silently forced near-black
+   text onto every <a>-tag button regardless of its intended color. */
+a { text-decoration: none; color: inherit; }
+.pfx-page .container { width: min(1200px, calc(100% - 40px)); margin: auto; }
+.pfx-page ::selection { background: var(--pfx-accent-soft); color: var(--pfx-accent-dark); }
+
+/* ── Top ticker ── real facts only, no fabricated shipping/escrow claims */
+.pfx-ticker {
+  background: var(--pfx-ink); color: #f4f0f2;
+  font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+}
+.pfx-ticker-row {
+  display: flex; align-items: center; gap: 22px; flex-wrap: wrap;
+  height: 38px;
+}
+.pfx-ticker-item { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.pfx-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--pfx-accent); flex: none; }
+
+/* ── Header ── */
+.pfx-header {
+  position: sticky; top: 0; z-index: 200;
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--pfx-border);
+}
+.pfx-header-row { height: 76px; display: flex; align-items: center; gap: 20px; }
+.pfx-logo { display: flex; align-items: center; gap: 10px; flex: none; }
+.pfx-logo-mark { width: 36px; height: 36px; border-radius: var(--pfx-radius-sm); overflow: hidden; flex: none; }
+.pfx-logo-mark img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.pfx-logo-word { font-size: 18px; font-weight: 700; letter-spacing: -.01em; color: var(--pfx-ink); }
+.pfx-logo-word span { color: var(--pfx-accent); }
+.pfx-nav { display: flex; align-items: center; gap: 26px; margin-left: 8px; }
+.pfx-nav a {
+  font-size: 13px; font-weight: 600; letter-spacing: .01em; color: var(--pfx-ink-soft);
+  transition: color var(--pfx-dur-fast) var(--pfx-ease);
+}
+.pfx-nav a:hover { color: var(--pfx-accent); }
+.pfx-header-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.pfx-search {
+  display: flex; align-items: center; gap: 8px;
+  height: 40px; padding: 0 14px; min-width: 220px;
+  background: var(--pfx-surface-2); border: 1px solid var(--pfx-border); border-radius: 999px;
+  transition: border-color var(--pfx-dur-fast) var(--pfx-ease), box-shadow var(--pfx-dur-fast) var(--pfx-ease);
+}
+.pfx-search:focus-within { border-color: var(--pfx-accent); box-shadow: 0 0 0 4px var(--pfx-accent-soft); }
+.pfx-search-submit {
+  display: grid; place-items: center; flex: none; width: 22px; height: 22px; margin: -2px;
+  padding: 0; border: 0; background: none; color: var(--pfx-muted); cursor: pointer;
+  transition: color var(--pfx-dur-fast) var(--pfx-ease);
+}
+.pfx-search-submit:hover { color: var(--pfx-accent-dark); }
+.pfx-search:focus-within .pfx-search-submit { color: var(--pfx-accent); }
+.pfx-search input {
+  flex: 1; min-width: 0; border: 0; outline: 0; background: transparent;
+  font: inherit; font-size: 13px; color: var(--pfx-ink);
+}
+.pfx-search input::placeholder { color: #767676; }
+.pfx-icon-btn {
+  width: 40px; height: 40px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--pfx-surface-2); border: 1px solid var(--pfx-border);
+  color: var(--pfx-ink-soft); cursor: pointer;
+  transition: color var(--pfx-dur-fast), border-color var(--pfx-dur-fast), background var(--pfx-dur-fast);
+}
+.pfx-icon-btn:hover { color: var(--pfx-accent); border-color: var(--pfx-accent); background: var(--pfx-accent-soft); }
+.pfx-icon-btn:active { transform: scale(.95); }
+
+.pfx-account-btn { position: relative; }
+.pfx-acct-dropdown {
+  display: none; position: absolute; top: calc(100% + 10px); right: 0;
+  width: 200px; background: var(--pfx-surface); border: 1px solid var(--pfx-border);
+  border-radius: var(--pfx-radius-md); box-shadow: var(--pfx-shadow-lg); padding: 6px; z-index: 300;
+  animation: pfx-drop-in 150ms var(--pfx-ease);
+}
+@keyframes pfx-drop-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.pfx-account-btn.open .pfx-acct-dropdown { display: block; }
+.pfx-acct-dropdown a {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--pfx-radius-sm);
+  font-size: 13px; font-weight: 600; color: var(--pfx-ink);
+  transition: background var(--pfx-dur-fast);
+}
+.pfx-acct-dropdown a:hover { background: var(--pfx-surface-2); }
+.pfx-acct-dropdown a svg { color: var(--pfx-muted); flex: none; }
+.pfx-acct-sep { height: 1px; background: var(--pfx-border); margin: 4px 0; }
+.pfx-acct-dropdown .pfx-register-link { background: var(--pfx-accent-soft); color: var(--pfx-accent-dark); }
+.pfx-acct-dropdown .pfx-register-link:hover { background: #fbdce9; }
+
+/* ── Buttons ── (Stitch's crisp micro-radius, PocketFinds' pink) */
+.pfx-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 46px; padding: 0 22px; border-radius: var(--pfx-radius-sm);
+  font-size: 12.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  transition: background var(--pfx-dur-fast) var(--pfx-ease), color var(--pfx-dur-fast) var(--pfx-ease),
+              border-color var(--pfx-dur-fast) var(--pfx-ease), transform var(--pfx-dur-fast) var(--pfx-ease);
+  cursor: pointer; border: 1px solid transparent;
+}
+.pfx-btn:active { transform: scale(.98); }
+.pfx-btn-primary { background: var(--pfx-accent-dark); color: #fff; }
+.pfx-btn-primary:hover { filter: brightness(0.92); }
+.pfx-btn-ghost { background: transparent; border-color: var(--pfx-border); color: var(--pfx-ink); }
+.pfx-btn-ghost:hover { border-color: var(--pfx-accent); color: var(--pfx-accent-dark); background: var(--pfx-accent-soft); }
+.pfx-btn-text {
+  height: auto; padding: 0; background: none; text-transform: none; letter-spacing: 0;
+  font-size: 13.5px; font-weight: 700; color: var(--pfx-ink);
+}
+.pfx-btn-text:hover { color: var(--pfx-accent-dark); }
+.pfx-btn-text svg { transition: transform var(--pfx-dur-fast) var(--pfx-ease); }
+.pfx-btn-text:hover svg { transform: translateX(3px); }
+
+/* ── Motion primitives (entrance + reveal + stagger) ── */
+@keyframes pfx-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+.pfx-eyebrow, .pfx-hero-h1, .pfx-hero-p, .pfx-hero-actions {
+  animation: pfx-rise 460ms var(--pfx-ease) both;
+}
+.pfx-eyebrow       { animation-delay: 0ms; }
+.pfx-hero-h1       { animation-delay: 60ms; }
+.pfx-hero-p        { animation-delay: 120ms; }
+.pfx-hero-actions  { animation-delay: 180ms; }
+
+.js .pf-reveal { opacity: 0; transform: translateY(24px); }
+.js .pf-reveal.pf-revealed {
+  opacity: 1; transform: none;
+  transition: opacity var(--pfx-dur-base) var(--pfx-ease), transform var(--pfx-dur-base) var(--pfx-ease);
+}
+.js .pf-stagger-item { opacity: 0; transform: translateY(18px); }
+.js .pf-stagger-item.pf-revealed {
+  opacity: 1; transform: none;
+  transition: opacity var(--pfx-dur-base) var(--pfx-ease) var(--stagger-delay, 0ms),
+              transform var(--pfx-dur-base) var(--pfx-ease) var(--stagger-delay, 0ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pfx-eyebrow, .pfx-hero-h1, .pfx-hero-p, .pfx-hero-actions { animation: none; }
+  .js .pf-reveal, .js .pf-stagger-item { opacity: 1; transform: none; }
+  .js .pf-reveal.pf-revealed, .js .pf-stagger-item.pf-revealed { transition: none; }
+}
+
+/* ── Hero ── split editorial layout instead of full-bleed overlay banner */
+.pfx-hero {
+  position: relative; padding: 40px 0 64px;
+  --glow-x: 78%; --glow-y: 28%; /* default position: matches roughly where the product photo sits, so it reads intentional even before JS/on touch devices */
+}
+/* Soft cursor-reactive glow, hero only: motion communicates "this surface responds
+   to you" without spreading decoration anywhere else on the page. JS updates
+   --glow-x/--glow-y on mousemove; under prefers-reduced-motion the JS never
+   attaches, so this just renders as one static ambient wash. */
+.pfx-hero::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(560px circle at var(--glow-x) var(--glow-y), rgba(217,70,143,.10), transparent 68%);
+}
+.pfx-hero-grid { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+.pfx-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px; margin-bottom: 16px;
+  font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--pfx-accent-dark);
+}
+.pfx-hero-h1 {
+  font-size: clamp(32px, 3.6vw, 52px); font-weight: 600; line-height: 1.08; letter-spacing: -.025em;
+  color: var(--pfx-ink); margin: 0 0 20px; text-wrap: balance;
+}
+.pfx-hero-p { font-size: 16px; line-height: 1.6; color: var(--pfx-ink-soft); max-width: 46ch; margin: 0 0 28px; }
+.pfx-hero-actions {
+  display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+  padding-top: 22px; border-top: 1px solid var(--pfx-border);
+}
+.pfx-hero-frame {
+  position: relative; border-radius: var(--pfx-radius-md); overflow: hidden;
+  aspect-ratio: 16/12; background: var(--pfx-surface-3);
+  border: 1px solid var(--pfx-border); box-shadow: var(--pfx-shadow-md);
+}
+.pfx-hero-frame-img {
+  position: absolute; inset: 0;
+  background-image: var(--hero-bg-img, none); background-size: cover; background-position: center; background-repeat: no-repeat;
+  transform: scale(1.06); opacity: 0;
+  animation: pfx-hero-zoom 900ms var(--pfx-ease) 100ms both;
+}
+@keyframes pfx-hero-zoom { from { transform: scale(1.06); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.pfx-hero-frame-empty {
+  display: grid; place-items: center;
+  background: linear-gradient(135deg, var(--pfx-surface-3), var(--pfx-accent-soft));
+}
+.pfx-hero-frame-empty svg { color: var(--pfx-accent); opacity: .4; width: 64px; height: 64px; }
+/* Genuine glass, not just a translucent-looking solid card: lower opacity so
+   the photo actually shows through, a light-reflection highlight along the
+   top edge, and a soft continuous float so it reads as sitting just above
+   the image rather than printed on it. One considered glass moment, not a
+   pattern applied everywhere — restrained is the point. */
+.pfx-hero-caption {
+  position: absolute; left: 14px; right: 14px; bottom: 14px;
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,.5); backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border: 1px solid rgba(255,255,255,.55); border-radius: var(--pfx-radius-sm);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 10px 26px rgba(24,24,27,.14);
+  padding: 12px 14px; font-size: 12px; font-weight: 700; color: var(--pfx-ink);
+  z-index: 1;
+  animation: pfx-caption-float 5s var(--pfx-ease) infinite;
+}
+@keyframes pfx-caption-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.pfx-dot-sm { width: 6px; height: 6px; border-radius: 50%; background: var(--pfx-accent); flex: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pfx-hero-frame-img { animation: none; transform: none; opacity: 1; }
+  .pfx-hero-caption { animation: none; }
+}
+
+/* ── Section shell ── */
+.pfx-section { padding: 64px 0; }
+.pfx-section-tint { background: var(--pfx-surface-2); border-top: 1px solid var(--pfx-border); border-bottom: 1px solid var(--pfx-border); }
+.pfx-section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 36px; flex-wrap: wrap; }
+.pfx-kicker { display: block; font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--pfx-accent-dark); margin-bottom: 6px; }
+.pfx-h2 { font-size: clamp(24px, 2.6vw, 34px); font-weight: 600; letter-spacing: -.02em; color: var(--pfx-ink); margin: 0; text-wrap: balance; }
+
+/* Deals and Shops are both plain, light sections with nothing marking where
+   one ends and the next begins. A hairline here fixes that without turning
+   the section into a color block. */
+#shops { border-top: 1px solid var(--pfx-border); }
+.pfx-section-desc { font-size: 13.5px; line-height: 1.6; color: var(--pfx-ink-soft); max-width: 40ch; margin: 0; }
+
+/* ── Categories ── real data: filter pills are genuine links to the ?category=
+   route, the showcase below is a curated preview built from the same $products
+   the page already loaded. No fabricated counts, no dead client-only filters. */
+/* Stacked head (kicker, heading, description all left-aligned in one column)
+   instead of the default split row — the split row puts the description in a
+   floating top-right corner, which reads fine with no description but looks
+   like an orphaned fragment once one is added. Reused anywhere a section head
+   needs a description. */
+.pfx-cat-head, .pfx-section-head-stack { display: block; }
+.pfx-cat-head .pfx-h2, .pfx-section-head-stack .pfx-h2 { margin-bottom: 10px; }
+.pfx-cat-head .pfx-section-desc, .pfx-section-head-stack .pfx-section-desc { max-width: 54ch; }
+
+.pfx-cat-toolbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px 24px; flex-wrap: wrap;
+  margin-top: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--pfx-border);
+}
+.pfx-cat-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.pfx-cat-pill {
+  display: inline-flex; align-items: center; height: 34px; padding: 0 16px; border-radius: 999px;
+  background: var(--pfx-surface); border: 1px solid var(--pfx-border);
+  font-size: 12.5px; font-weight: 600; color: var(--pfx-ink-soft); white-space: nowrap;
+  transition: background var(--pfx-dur-fast) var(--pfx-ease), border-color var(--pfx-dur-fast) var(--pfx-ease),
+              color var(--pfx-dur-fast) var(--pfx-ease), box-shadow var(--pfx-dur-fast) var(--pfx-ease), transform var(--pfx-dur-fast) var(--pfx-ease);
+}
+.pfx-cat-pill:hover { border-color: var(--pfx-accent); color: var(--pfx-accent-dark); box-shadow: var(--pfx-shadow-xs); transform: translateY(-4px); }
+.pfx-cat-pill:active { transform: translateY(-1px) scale(.97); }
+.pfx-cat-pill[aria-current="page"] { background: var(--pfx-ink); border-color: var(--pfx-ink); color: #fff; }
+.pfx-cat-pill-count { margin-left: 5px; font-weight: 700; opacity: .5; font-variant-numeric: tabular-nums; }
+.pfx-cat-pill[aria-current="page"] .pfx-cat-pill-count { opacity: .68; }
+
+.pfx-cat-controls { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.pfx-cat-check { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--pfx-ink-soft); cursor: pointer; }
+.pfx-cat-check input { width: 16px; height: 16px; accent-color: var(--pfx-accent); cursor: pointer; }
+.pfx-cat-sort { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--pfx-ink-soft); }
+.pfx-cat-sort select {
+  height: 34px; padding: 0 10px; border-radius: var(--pfx-radius-sm); border: 1px solid var(--pfx-border);
+  background: var(--pfx-surface); font: inherit; font-size: 12.5px; font-weight: 600; color: var(--pfx-ink); cursor: pointer;
+}
+.pfx-cat-status { font-size: 12px; font-weight: 600; color: var(--pfx-muted); margin: 18px 0 16px; }
+
+/* ── Showcase ── one big hero card + a compact list, built from the same
+   .pfx-showcase-item markup; only the enclosing slot decides how it's styled,
+   so JS can move an item between slots without touching its content. */
+.pfx-showcase { position: relative; display: grid; grid-template-columns: 1.15fr 1fr; gap: 20px; align-items: start; }
+.pfx-showcase-hero-slot { display: flex; }
+.pfx-showcase-list { display: flex; flex-direction: column; gap: 14px; }
+
+.pfx-showcase-item {
+  position: relative; overflow: hidden; width: 100%;
+  background: var(--pfx-surface); border: 1px solid var(--pfx-border); border-radius: 16px;
+  transition: border-color var(--pfx-dur-base) var(--pfx-ease), box-shadow var(--pfx-dur-base) var(--pfx-ease), transform var(--pfx-dur-base) var(--pfx-ease);
+}
+.pfx-showcase-item:hover, .pfx-showcase-item:focus-within { border-color: var(--pfx-accent); box-shadow: var(--pfx-shadow-md); transform: translateY(-2px); }
+.pfx-showcase-hero-slot .pfx-showcase-item[hidden],
+.pfx-showcase-list .pfx-showcase-item[hidden] { display: none; }
+
+.pfx-showcase-media { position: relative; overflow: hidden; background: var(--pfx-surface-3); display: block; }
+.pfx-showcase-media img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 600ms var(--pfx-ease); }
+.pfx-showcase-item:hover .pfx-showcase-media img { transform: scale(1.04); }
+.pfx-showcase-media .pfx-placeholder-icon { position: absolute; inset: 0; margin: auto; color: var(--pfx-accent); opacity: .3; }
+.pfx-showcase-badges { position: absolute; top: 10px; left: 10px; z-index: 1; display: flex; gap: 6px; pointer-events: none; }
+.pfx-showcase-wish {
+  position: absolute; top: 10px; right: 10px; z-index: 2; width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center; background: rgba(255,255,255,.92); backdrop-filter: blur(4px);
+  border: 1px solid var(--pfx-border); color: var(--pfx-ink-soft); cursor: pointer;
+  transition: color var(--pfx-dur-fast) var(--pfx-ease), border-color var(--pfx-dur-fast) var(--pfx-ease), transform var(--pfx-dur-fast) var(--pfx-ease);
+}
+.pfx-showcase-wish:hover { color: var(--pfx-accent); border-color: var(--pfx-accent); transform: scale(1.08); }
+.pfx-showcase-wish.pfx-added { color: #fff; background: var(--pfx-accent); border-color: var(--pfx-accent); animation: pfx-bag-pop 320ms var(--pfx-ease); }
+
+.pfx-showcase-body { position: relative; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pfx-showcase-seller { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--pfx-muted); }
+.pfx-showcase-cover-link { position: absolute; inset: 0; z-index: 1; }
+.pfx-showcase-name-link { color: inherit; }
+.pfx-showcase-name-link:focus-visible { outline: 2px solid var(--pfx-accent-dark); outline-offset: 2px; border-radius: 2px; }
+.pfx-showcase-name { display: block; font-weight: 700; color: var(--pfx-ink); letter-spacing: -.005em; line-height: 1.35; }
+.pfx-showcase-desc { font-size: 12.5px; line-height: 1.55; color: var(--pfx-ink-soft); }
+
+.pfx-showcase-foot { position: relative; display: flex; align-items: center; gap: 10px; }
+.pfx-showcase-price-row { display: flex; align-items: baseline; gap: 8px; }
+.pfx-showcase-price { font-weight: 700; color: var(--pfx-accent-dark); letter-spacing: -.01em; }
+.pfx-showcase-stock { font-size: 10.5px; font-weight: 700; color: #c2410c; white-space: nowrap; }
+.pfx-showcase-stock.is-out { color: var(--pfx-muted); }
+.pfx-showcase-bag {
+  position: relative; z-index: 2; margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+  height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--pfx-border);
+  background: var(--pfx-surface); font-size: 11.5px; font-weight: 700; color: var(--pfx-ink); cursor: pointer;
+  transition: background var(--pfx-dur-fast) var(--pfx-ease), border-color var(--pfx-dur-fast) var(--pfx-ease), color var(--pfx-dur-fast) var(--pfx-ease);
+}
+.pfx-showcase-bag:hover { background: var(--pfx-ink); border-color: var(--pfx-ink); color: #fff; }
+.pfx-showcase-bag.pfx-added { background: var(--pfx-accent); border-color: var(--pfx-accent); color: #fff; animation: pfx-bag-pop 320ms var(--pfx-ease); }
+
+/* Hero slot: tall image, roomy body */
+.pfx-showcase-hero-slot .pfx-showcase-item { display: flex; flex-direction: column; }
+.pfx-showcase-hero-slot .pfx-showcase-media { aspect-ratio: 16 / 9; max-height: 300px; }
+.pfx-showcase-hero-slot .pfx-showcase-body { padding: 22px 24px 2px; }
+.pfx-showcase-hero-slot .pfx-showcase-name { font-size: 19px; }
+.pfx-showcase-hero-slot .pfx-showcase-desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 2px; }
+.pfx-showcase-hero-slot .pfx-showcase-foot { padding: 14px 24px 22px; flex-wrap: wrap; }
+
+/* List rows: compact horizontal cards */
+.pfx-showcase-list .pfx-showcase-item { display: flex; flex-direction: row; align-items: stretch; }
+.pfx-showcase-list .pfx-showcase-media { width: 84px; flex: none; }
+.pfx-showcase-list .pfx-showcase-body { flex: 1; justify-content: center; padding: 12px 14px; }
+.pfx-showcase-list .pfx-showcase-name { font-size: 13.5px; }
+.pfx-showcase-list .pfx-showcase-desc { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; font-size: 11.5px; }
+.pfx-showcase-list .pfx-showcase-foot { flex: none; flex-direction: column; align-items: flex-end; justify-content: center; gap: 6px; padding: 12px 14px 12px 0; }
+.pfx-showcase-list .pfx-showcase-bag { margin-left: 0; }
+
+.pfx-showcase-empty {
+  grid-column: 1 / -1; text-align: center; padding: 20px; margin: 0;
+  font-size: 13px; color: var(--pfx-muted); background: var(--pfx-surface-2); border: 1px dashed var(--pfx-border); border-radius: var(--pfx-radius-md);
+}
+.pfx-showcase-empty button { background: none; border: 0; padding: 0; color: var(--pfx-accent-dark); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.pfx-showcase-empty-state { text-align: center; padding: 48px 20px; }
+.pfx-showcase-empty-state svg { color: var(--pfx-border); margin: 0 auto 12px; display: block; }
+.pfx-showcase-empty-state p { font-size: 13.5px; color: var(--pfx-muted); margin: 0; }
+.pfx-showcase-empty-state a { color: var(--pfx-accent-dark); font-weight: 700; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pfx-showcase-item, .pfx-showcase-media img, .pfx-showcase-wish, .pfx-showcase-bag, .pfx-cat-pill { transition: none; }
+}
+
+/* ── Featured shops ── */
+.pfx-shop-row { display: flex; flex-wrap: wrap; gap: 16px; }
+.pfx-shop-card {
+  flex: 1 1 300px; max-width: 380px; display: flex; align-items: center; gap: 14px;
+  background: var(--pfx-surface); border: 1px solid var(--pfx-border); border-radius: var(--pfx-radius-md);
+  padding: 18px 20px;
+  transition: border-color var(--pfx-dur-base) var(--pfx-ease), box-shadow var(--pfx-dur-base) var(--pfx-ease), transform var(--pfx-dur-base) var(--pfx-ease);
+}
+.pfx-shop-card:hover { border-color: var(--pfx-accent); box-shadow: var(--pfx-shadow-sm); transform: translateY(-3px); }
+.pfx-shop-av {
+  width: 46px; height: 46px; border-radius: 50%; flex: none;
+  background: var(--pfx-ink); color: #fff; font-weight: 700; font-size: 16px;
+  display: grid; place-items: center;
+  transition: box-shadow var(--pfx-dur-base) var(--pfx-ease);
+}
+.pfx-shop-card:hover .pfx-shop-av { box-shadow: 0 0 0 5px var(--pfx-accent-soft); }
+.pfx-shop-info { flex: 1; min-width: 0; }
+.pfx-shop-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pfx-shop-name { font-size: 14px; font-weight: 700; color: var(--pfx-ink); }
+.pfx-shop-rating { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 600; color: var(--pfx-ink-soft); }
+.pfx-shop-meta { font-size: 12px; color: var(--pfx-muted); margin-top: 3px; }
+.pfx-shop-btn {
+  flex: none; padding: 9px 16px; border-radius: var(--pfx-radius-sm); border: 1px solid var(--pfx-border);
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--pfx-ink);
+  transition: background var(--pfx-dur-fast), border-color var(--pfx-dur-fast), color var(--pfx-dur-fast);
+}
+.pfx-shop-btn:hover { background: var(--pfx-ink); border-color: var(--pfx-ink); color: #fff; }
+
+/* ── Deals panel ── tinted, honest badges (no fabricated urgency) */
+.pfx-deals-panel {
+  background: var(--pfx-accent-soft); border: 1px solid #f6d3e4; border-radius: var(--pfx-radius-lg);
+  padding: 36px 32px;
+}
+.pfx-deals-panel .pfx-section-head { margin-bottom: 24px; }
+
+/* ── Deals carousel ── native scroll-snap, no autoplay: the user always
+   drives it, by touch/swipe or the arrow buttons. Card width is fixed so it
+   reads as a shelf rather than a squeezed grid. */
+.pfx-product-grid.pfx-carousel {
+  display: flex; flex-wrap: nowrap; overflow-x: auto; scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch; scrollbar-width: none; scroll-padding-left: 2px;
+  padding-bottom: 6px; margin-bottom: -6px;
+}
+.pfx-product-grid.pfx-carousel::-webkit-scrollbar { display: none; }
+.pfx-product-grid.pfx-carousel > .pfx-product-card { flex: 0 0 250px; scroll-snap-align: start; }
+.pfx-carousel-nav { display: flex; align-items: center; gap: 8px; }
+.pfx-carousel-btn {
+  width: 36px; height: 36px; border-radius: 50%; flex: none;
+  display: grid; place-items: center; background: var(--pfx-surface); border: 1px solid var(--pfx-border);
+  color: var(--pfx-ink-soft); cursor: pointer;
+  transition: color var(--pfx-dur-fast) var(--pfx-ease), border-color var(--pfx-dur-fast) var(--pfx-ease),
+              background var(--pfx-dur-fast) var(--pfx-ease), transform var(--pfx-dur-fast) var(--pfx-ease);
+}
+.pfx-carousel-btn:hover { color: var(--pfx-accent-dark); border-color: var(--pfx-accent); background: var(--pfx-accent-soft); }
+.pfx-carousel-btn:active { transform: scale(.92); }
+.pfx-carousel-btn:disabled { opacity: .35; cursor: default; pointer-events: none; }
+
+/* ── Product grid (Deals + Latest Listings share this card) ──
+   Whole-card click via a hidden cover-link + a real accessible name-link,
+   same pattern as the category showcase cards — proven not to fight the
+   wishlist/bag buttons that sit above it. */
+.pfx-product-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.pfx-product-card {
+  position: relative; display: flex; flex-direction: column;
+  background: var(--pfx-surface); border: 1px solid var(--pfx-border); border-radius: var(--pfx-radius-md); overflow: hidden;
+  transition: border-color var(--pfx-dur-base) var(--pfx-ease), box-shadow var(--pfx-dur-base) var(--pfx-ease), transform var(--pfx-dur-base) var(--pfx-ease);
+}
+.pfx-product-card:hover, .pfx-product-card:focus-within { border-color: var(--pfx-accent); box-shadow: var(--pfx-shadow-md); transform: translateY(-4px); }
+.pfx-product-card:active { transform: scale(.99); }
+.pfx-product-cover-link { position: absolute; inset: 0; z-index: 1; }
+.pfx-product-media {
+  position: relative; aspect-ratio: 1/1; overflow: hidden; background: var(--pfx-surface-3);
+  display: grid; place-items: center;
+}
+.pfx-product-media img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 500ms var(--pfx-ease); }
+.pfx-product-card:hover .pfx-product-media img { transform: scale(1.03); }
+.pfx-product-media .pfx-placeholder-icon { color: var(--pfx-accent); opacity: .3; }
+.pfx-badge {
+  position: absolute; top: 10px; left: 10px; z-index: 1; pointer-events: none;
+  font-size: 9.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  padding: 4px 8px; border-radius: var(--pfx-radius-xs);
+  background: rgba(255,255,255,.92); backdrop-filter: blur(4px); color: var(--pfx-accent-dark);
+  border: 1px solid var(--pfx-border);
+}
+.pfx-badge-new { background: var(--pfx-ink); color: #fff; border-color: var(--pfx-ink); }
+.pfx-badge-deal { background: var(--pfx-accent-dark); color: #fff; border-color: var(--pfx-accent-dark); }
+.pfx-product-wish {
+  position: absolute; top: 10px; right: 10px; z-index: 2; width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center; background: rgba(255,255,255,.92); backdrop-filter: blur(4px);
+  border: 1px solid var(--pfx-border); color: var(--pfx-ink-soft); cursor: pointer;
+  transition: color var(--pfx-dur-fast) var(--pfx-ease), border-color var(--pfx-dur-fast) var(--pfx-ease), transform var(--pfx-dur-fast) var(--pfx-ease);
+}
+.pfx-product-wish:hover { color: var(--pfx-accent); border-color: var(--pfx-accent); transform: scale(1.08); }
+.pfx-product-wish.pfx-added { color: #fff; background: var(--pfx-accent); border-color: var(--pfx-accent); animation: pfx-bag-pop 320ms var(--pfx-ease); }
+.pfx-product-body { position: relative; z-index: 1; padding: 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.pfx-product-seller { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--pfx-muted); }
+.pfx-product-name-link { position: relative; z-index: 2; color: inherit; }
+.pfx-product-name {
+  font-size: 13.5px; font-weight: 600; color: var(--pfx-ink); line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.pfx-product-price-row { display: flex; align-items: baseline; gap: 8px; margin-top: auto; padding-top: 8px; }
+.pfx-product-price { font-size: 16px; font-weight: 700; color: var(--pfx-accent-dark); letter-spacing: -.01em; }
+.pfx-product-old-price { font-size: 11px; color: #767676; text-decoration: line-through; }
+.pfx-product-meta { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--pfx-muted); flex-wrap: wrap; }
+.pfx-product-meta .sep { opacity: .5; }
+.pfx-product-bag {
+  position: relative; z-index: 2; margin-top: 8px; width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 34px; border-radius: var(--pfx-radius-sm); border: 1px solid var(--pfx-border); background: var(--pfx-surface);
+  font-size: 11.5px; font-weight: 700; color: var(--pfx-ink); cursor: pointer;
+  transition: background var(--pfx-dur-fast) var(--pfx-ease), border-color var(--pfx-dur-fast) var(--pfx-ease), color var(--pfx-dur-fast) var(--pfx-ease), transform var(--pfx-dur-fast) var(--pfx-ease);
+}
+.pfx-product-bag:hover { background: var(--pfx-ink); border-color: var(--pfx-ink); color: #fff; }
+.pfx-product-bag:active, .pfx-product-wish:active { transform: scale(.94); }
+.pfx-product-bag.pfx-added { background: var(--pfx-accent); border-color: var(--pfx-accent); color: #fff; animation: pfx-bag-pop 320ms var(--pfx-ease); }
+@keyframes pfx-bag-pop { 0% { transform: scale(1); } 40% { transform: scale(1.22); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .pfx-product-wish.pfx-added, .pfx-product-bag.pfx-added,
+  .pfx-showcase-wish.pfx-added, .pfx-showcase-bag.pfx-added { animation: none; }
+}
+.pfx-stock-low { font-size: 10.5px; font-weight: 700; color: #c2410c; }
+
+/* ── Trust / doctrine section ── real stats + real features, no fabricated escrow claims */
+.pfx-trust-grid { display: grid; grid-template-columns: 5fr 7fr; gap: 48px; align-items: flex-start; }
+.pfx-trust-col { position: relative; }
+/* Large ornamental quote mark behind the copy: pure typographic texture, not a
+   second interactive element, so a system serif is fine here even though the
+   page's real type is sans-only (this is one glyph, not a body/heading pairing). */
+.pfx-trust-col::before {
+  content: '\201C'; position: absolute; top: -0.28em; left: -14px; z-index: 0;
+  font-family: Georgia, 'Times New Roman', serif; font-size: 200px; line-height: 1; font-weight: 700;
+  color: var(--pfx-accent-soft); pointer-events: none; user-select: none;
+}
+.pfx-trust-col > * { position: relative; z-index: 1; }
+.pfx-trust-quote {
+  font-size: clamp(20px, 2vw, 26px); font-weight: 600; line-height: 1.4; letter-spacing: -.015em; color: var(--pfx-ink);
+  margin: 0 0 20px;
+}
+.pfx-trust-quote::before, .pfx-trust-quote::after { content: '"'; color: var(--pfx-accent); }
+.pfx-trust-body { font-size: 14px; line-height: 1.65; color: var(--pfx-ink-soft); margin: 0 0 24px; }
+.pfx-trust-byline { display: flex; align-items: center; gap: 12px; }
+.pfx-trust-byline-mark {
+  width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--pfx-border);
+  display: grid; place-items: center; font-weight: 700; color: var(--pfx-ink); font-size: 13px; background: var(--pfx-surface);
+}
+.pfx-trust-byline strong { display: block; font-size: 13px; color: var(--pfx-ink); }
+.pfx-trust-byline span { font-size: 11.5px; color: var(--pfx-muted); }
+.pfx-pillars { display: flex; flex-direction: column; gap: 14px; }
+.pfx-pillar {
+  display: flex; align-items: flex-start; gap: 16px;
+  background: var(--pfx-surface); border: 1px solid var(--pfx-border); border-radius: var(--pfx-radius-md);
+  padding: 20px;
+  transition: border-color var(--pfx-dur-base) var(--pfx-ease), box-shadow var(--pfx-dur-base) var(--pfx-ease), transform var(--pfx-dur-base) var(--pfx-ease);
+}
+.pfx-pillar:hover { border-color: var(--pfx-accent); box-shadow: var(--pfx-shadow-sm); transform: translateY(-3px); }
+.pfx-pillar-icon {
+  width: 40px; height: 40px; flex: none; border-radius: var(--pfx-radius-sm);
+  background: var(--pfx-surface-2); border: 1px solid var(--pfx-border); color: var(--pfx-accent-dark);
+  display: grid; place-items: center;
+  transition: background var(--pfx-dur-base) var(--pfx-ease), color var(--pfx-dur-base) var(--pfx-ease), border-color var(--pfx-dur-base) var(--pfx-ease);
+}
+.pfx-pillar:hover .pfx-pillar-icon { background: var(--pfx-accent); border-color: var(--pfx-accent); color: #fff; }
+.pfx-pillar h3 { font-size: 14.5px; font-weight: 700; color: var(--pfx-ink); margin: 0 0 4px; }
+.pfx-pillar p { font-size: 13px; line-height: 1.6; color: var(--pfx-ink-soft); margin: 0; }
+
+/* ── Sell CTA ── kept: real, working seller-recruitment path. Same cursor-glow
+   technique as the hero (consistency, not a new one-off gimmick), tuned
+   brighter since it's sitting on near-black instead of white, plus a fine
+   dot-grid for texture so the panel doesn't read as one flat fill. */
+.pfx-cta-banner {
+  position: relative; overflow: hidden; isolation: isolate;
+  background: var(--pfx-ink); border-radius: var(--pfx-radius-lg);
+  padding: 48px 44px; display: flex; align-items: center; justify-content: space-between; gap: 28px; flex-wrap: wrap;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07);
+  --glow-x: 88%; --glow-y: 15%;
+}
+.pfx-cta-banner::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    radial-gradient(560px circle at var(--glow-x) var(--glow-y), rgba(217,70,143,.32), transparent 70%),
+    radial-gradient(circle, rgba(255,255,255,.07) 1px, transparent 1.5px);
+  background-repeat: no-repeat, repeat;
+  background-size: auto, 16px 16px;
+}
+.pfx-cta-banner > * { position: relative; z-index: 1; }
+.pfx-cta-kicker { font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--pfx-accent); margin-bottom: 8px; }
+.pfx-cta-banner h2 { font-size: 26px; font-weight: 600; letter-spacing: -.02em; color: #fff; margin: 0 0 8px; }
+.pfx-cta-banner p { font-size: 13.5px; color: rgba(255,255,255,.62); max-width: 42ch; line-height: 1.6; margin: 0; }
+.pfx-cta-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.pfx-cta-white { background: #fff; color: var(--pfx-ink); }
+.pfx-cta-white:hover { background: var(--pfx-accent-soft); color: var(--pfx-accent-dark); transform: translateY(-2px); box-shadow: 0 10px 22px rgba(0,0,0,.28); }
+.pfx-cta-ghost { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.2); color: rgba(255,255,255,.85); }
+.pfx-cta-ghost:hover { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.32); transform: translateY(-2px); }
+
+.pfx-cat-preview-note {
+  font-size: 11px; font-weight: 600; color: var(--pfx-muted); white-space: nowrap;
+  padding: 4px 10px; border-radius: 999px; background: var(--pfx-surface-3); border: 1px solid var(--pfx-border);
+}
+
+/* ── Footer ── */
+.pfx-footer { background: var(--pfx-surface-2); border-top: 1px solid var(--pfx-border); padding: 56px 0 0; }
+.pfx-footer-grid { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 40px; padding-bottom: 40px; }
+.pfx-footer-brand .pfx-logo { margin-bottom: 14px; }
+.pfx-footer-brand p { font-size: 13px; line-height: 1.7; color: var(--pfx-ink-soft); max-width: 280px; }
+.pfx-footer-col span { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--pfx-ink); margin-bottom: 14px; }
+.pfx-footer-col a { display: block; font-size: 13px; color: var(--pfx-ink-soft); margin-bottom: 10px; transition: color var(--pfx-dur-fast); }
+.pfx-footer-col a:hover { color: var(--pfx-accent-dark); }
+.pfx-footer-bottom {
+  border-top: 1px solid var(--pfx-border); padding: 18px 0; display: flex; align-items: center; justify-content: space-between;
+  font-size: 12px; color: var(--pfx-muted); flex-wrap: wrap; gap: 10px;
+}
+.pfx-footer-legal { display: flex; gap: 18px; }
+.pfx-footer-legal a { color: var(--pfx-muted); }
+.pfx-footer-legal a:hover { color: var(--pfx-ink); }
+
+/* ── Mobile nav (reuses the same bottom bar pattern as before) ── */
+.pfx-mobile-nav { display: none; }
+@media (max-width: 720px) {
+  .pfx-mobile-nav {
+    display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 150;
+    background: rgba(255,255,255,.96); backdrop-filter: blur(16px);
+    border-top: 1px solid var(--pfx-border);
+    padding: 10px 4px calc(10px + env(safe-area-inset-bottom));
+  }
+  .pfx-mobile-nav a, .pfx-mobile-nav button, .pfx-mobile-nav .pfx-mobile-nav-btn {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    font-size: 10px; font-weight: 600; color: var(--pfx-muted); background: none; border: 0; padding: 0;
+  }
+  body.pfx-page { padding-bottom: 64px; }
+}
+
+/* ── Responsive ── */
+@media (max-width: 1080px) {
+  .pfx-product-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 900px) {
+  .pfx-hero-grid { grid-template-columns: 1fr; }
+  .pfx-hero-frame { aspect-ratio: 16/10; }
+  .pfx-trust-grid { grid-template-columns: 1fr; }
+  .pfx-header-row { flex-wrap: wrap; height: auto; padding: 14px 0; gap: 12px; }
+  .pfx-nav { order: 3; flex-basis: 100%; justify-content: center; }
+  .pfx-search { flex: 1; min-width: 160px; }
+  .pfx-showcase { grid-template-columns: 1fr; }
+  .pfx-shop-card { max-width: none; }
+}
+@media (max-width: 640px) {
+  .pfx-page .container { width: min(100%, calc(100% - 32px)); }
+  .pfx-nav { display: none; }
+  .pfx-section { padding: 44px 0; }
+  .pfx-h2 { font-size: 22px; }
+  .pfx-cat-toolbar { flex-direction: column; align-items: stretch; }
+  .pfx-cat-pills {
+    flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    width: calc(100% + 32px); margin: 0 -16px; padding: 0 16px 2px; min-width: 0; max-width: calc(100% + 32px);
+  }
+  .pfx-cat-pills::-webkit-scrollbar { display: none; }
+  .pfx-cat-pill { flex: none; }
+  .pfx-cat-controls { justify-content: space-between; min-width: 0; }
+  .pfx-showcase-hero-slot .pfx-showcase-body { padding: 18px 16px 2px; }
+  .pfx-showcase-hero-slot .pfx-showcase-foot { padding: 12px 16px 18px; }
+  .pfx-showcase-list .pfx-showcase-media { width: 66px; }
+  .pfx-showcase-list .pfx-showcase-desc { display: none; }
+  .pfx-showcase-wish { width: 36px; height: 36px; }
+  .pfx-showcase-bag { height: 36px; }
+  .pfx-product-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .pfx-product-grid.pfx-carousel > .pfx-product-card { flex-basis: 200px; }
+  .pfx-deals-panel { padding: 22px 16px; border-radius: var(--pfx-radius-md); }
+  .pfx-cta-banner { padding: 32px 24px; }
+  .pfx-footer-grid { grid-template-columns: 1fr 1fr; gap: 28px; }
+  .pfx-ticker-row { justify-content: center; text-align: center; height: auto; padding: 8px 0; }
+  /* Header-actions wraps so icons stay on one line and the search bar takes
+     its own full-width line below, instead of squeezing to an illegibly
+     narrow input with a clipped placeholder. */
+  .pfx-header-actions { flex-wrap: wrap; justify-content: flex-end; row-gap: 10px; }
+  .pfx-search { order: 5; flex-basis: 100%; min-width: 0; }
+}
