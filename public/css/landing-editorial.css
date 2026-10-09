@@ -80,24 +80,31 @@ a { text-decoration: none; color: inherit; }
 .pfx-nav a:hover { color: var(--pfx-accent); }
 .pfx-header-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
 .pfx-search {
-  display: flex; align-items: center; gap: 8px;
-  height: 40px; padding: 0 14px; min-width: 220px;
-  background: var(--pfx-surface-2); border: 1px solid var(--pfx-border); border-radius: 999px;
+  display: flex; align-items: center; gap: 0;
+  height: 42px; padding: 0; min-width: 300px;
+  background: var(--pfx-surface); border: 1.5px solid var(--pfx-border); border-radius: 8px;
+  overflow: hidden;
   transition: border-color var(--pfx-dur-fast) var(--pfx-ease), box-shadow var(--pfx-dur-fast) var(--pfx-ease);
 }
-.pfx-search:focus-within { border-color: var(--pfx-accent); box-shadow: 0 0 0 4px var(--pfx-accent-soft); }
-.pfx-search-submit {
-  display: grid; place-items: center; flex: none; width: 22px; height: 22px; margin: -2px;
-  padding: 0; border: 0; background: none; color: var(--pfx-muted); cursor: pointer;
-  transition: color var(--pfx-dur-fast) var(--pfx-ease);
+.pfx-search:focus-within {
+  border-color: var(--pfx-accent);
+  box-shadow: 0 0 0 3px var(--pfx-accent-soft);
 }
-.pfx-search-submit:hover { color: var(--pfx-accent-dark); }
-.pfx-search:focus-within .pfx-search-submit { color: var(--pfx-accent); }
+.pfx-search-submit {
+  display: grid; place-items: center; flex: none;
+  width: 42px; height: 100%;
+  padding: 0; border: 0; border-right: 1.5px solid var(--pfx-border);
+  background: var(--pfx-surface-2); color: var(--pfx-muted); cursor: pointer;
+  transition: color var(--pfx-dur-fast) var(--pfx-ease), background var(--pfx-dur-fast) var(--pfx-ease);
+  order: -1;
+}
+.pfx-search-submit:hover { background: var(--pfx-accent-soft); color: var(--pfx-accent-dark); }
+.pfx-search:focus-within .pfx-search-submit { color: var(--pfx-accent); border-right-color: var(--pfx-accent); }
 .pfx-search input {
   flex: 1; min-width: 0; border: 0; outline: 0; background: transparent;
-  font: inherit; font-size: 13px; color: var(--pfx-ink);
+  font: inherit; font-size: 13.5px; color: var(--pfx-ink); padding: 0 14px;
 }
-.pfx-search input::placeholder { color: #767676; }
+.pfx-search input::placeholder { color: #a1a1aa; }
 .pfx-icon-btn {
   width: 40px; height: 40px; border-radius: 50%;
   display: grid; place-items: center;
@@ -655,4 +662,306 @@ a { text-decoration: none; color: inherit; }
      narrow input with a clipped placeholder. */
   .pfx-header-actions { flex-wrap: wrap; justify-content: flex-end; row-gap: 10px; }
   .pfx-search { order: 5; flex-basis: 100%; min-width: 0; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   E-COMMERCE REDESIGN — new ecom-* classes for the redesigned home.blade.php
+   Layered on top of existing pfx-* header/footer/nav styles (unchanged).
+══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Hero ─────────────────────────────────────────────────────────────────── */
+.ecom-hero {
+  position: relative;
+  background: linear-gradient(135deg, #2d0a1e 0%, #4a1036 50%, #1a0a12 100%);
+  background-image: var(--hero-img, none);
+  background-size: cover;
+  background-position: center;
+  min-height: 340px;
+  display: flex;
+  align-items: center;
+  overflow: visible;
+  padding-bottom: 48px;
+}
+/* Wave divider sits at the very bottom of the hero, overlapping downward */
+.ecom-hero-wave {
+  position: absolute;
+  bottom: -2px; left: 0; right: 0;
+  line-height: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+.ecom-hero-wave svg {
+  display: block;
+  width: 100%;
+  height: 52px;
+}
+.ecom-hero-overlay {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(to right, rgba(0,0,0,.72) 0%, rgba(0,0,0,.38) 55%, rgba(0,0,0,.08) 100%);
+}
+.ecom-hero-body {
+  position: relative; z-index: 2;
+  padding: 52px 0;
+}
+.ecom-hero-copy { max-width: 520px; }
+.ecom-hero-label {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: rgba(255,255,255,.75);
+  margin-bottom: 14px;
+}
+.ecom-hero-label::before {
+  content: ''; width: 20px; height: 1.5px;
+  background: var(--pfx-accent); flex: none;
+}
+.ecom-hero-h1 {
+  font-size: clamp(28px, 4vw, 48px);
+  font-weight: 700; line-height: 1.1; letter-spacing: -.02em;
+  color: #fff; margin: 0 0 14px;
+}
+.ecom-hero-p {
+  font-size: 15px; line-height: 1.6;
+  color: rgba(255,255,255,.72);
+  margin: 0 0 28px; max-width: 460px;
+}
+.ecom-hero-btns { display: flex; gap: 12px; flex-wrap: wrap; }
+.ecom-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 44px; padding: 0 24px; border-radius: 6px;
+  font-size: 13.5px; font-weight: 700; letter-spacing: .01em;
+  transition: all .18s var(--pfx-ease);
+  cursor: pointer; text-decoration: none;
+}
+.ecom-btn-white  { background: #fff; color: var(--pfx-ink); border: 1.5px solid #fff; }
+.ecom-btn-white:hover  { background: var(--pfx-accent-soft); color: var(--pfx-accent-dark); border-color: var(--pfx-accent-soft); transform: translateY(-1px); }
+.ecom-btn-outline-white { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,.45); }
+.ecom-btn-outline-white:hover { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.7); transform: translateY(-1px); }
+
+/* ── Trust bar ────────────────────────────────────────────────────────────── */
+.ecom-trust-bar {
+  background: #fff;
+  border-bottom: 1px solid var(--pfx-border);
+}
+.ecom-trust-row {
+  display: flex; align-items: center;
+  height: 70px; gap: 0;
+}
+.ecom-trust-item {
+  flex: 1; display: flex; align-items: center; gap: 11px;
+  padding: 0 20px;
+  color: var(--pfx-ink-soft);
+}
+.ecom-trust-item svg { color: var(--pfx-accent); flex: none; }
+.ecom-trust-item strong { display: block; font-size: 13px; font-weight: 700; color: var(--pfx-ink); }
+.ecom-trust-item span  { display: block; font-size: 11.5px; color: var(--pfx-muted); margin-top: 1px; }
+.ecom-trust-sep { width: 1px; height: 32px; background: var(--pfx-border); flex: none; }
+
+/* ── Section commons ──────────────────────────────────────────────────────── */
+.ecom-section { padding: 44px 0; }
+.ecom-section-tint { background: var(--pfx-surface-2); border-top: 1px solid var(--pfx-border); border-bottom: 1px solid var(--pfx-border); }
+.ecom-section-head {
+  display: flex; align-items: flex-end;
+  justify-content: space-between; gap: 12px;
+  margin-bottom: 22px;
+}
+.ecom-kicker {
+  display: block; font-size: 11px; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--pfx-accent-dark); margin-bottom: 4px;
+}
+.ecom-section-title {
+  font-size: clamp(20px, 2.5vw, 26px); font-weight: 700;
+  letter-spacing: -.02em; color: var(--pfx-ink); margin: 0;
+}
+.ecom-see-all {
+  font-size: 13px; font-weight: 700;
+  color: var(--pfx-accent-dark); white-space: nowrap;
+  transition: color .15s;
+}
+.ecom-see-all:hover { color: var(--pfx-accent); }
+
+/* ── Category pills (override the existing .category-grid) ── */
+.category-grid {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  overflow-x: unset !important;
+  padding-bottom: 0 !important;
+}
+.cat-card {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 8px 14px 8px 8px !important;
+  border: 1.5px solid var(--pfx-border) !important;
+  border-radius: 100px !important;
+  background: #fff !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  transition: border-color .15s, background .15s, transform .15s !important;
+  aspect-ratio: unset !important;
+  width: auto !important; max-width: none !important;
+  text-align: left !important;
+}
+.cat-card:hover {
+  border-color: var(--pfx-accent) !important;
+  background: var(--pfx-accent-soft) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(217,70,143,.1) !important;
+}
+.cat-icon {
+  width: 28px !important; height: 28px !important;
+  border-radius: 50% !important;
+  background: var(--pfx-accent-soft) !important;
+  color: var(--pfx-accent) !important;
+  display: grid !important; place-items: center !important;
+  flex: none !important;
+  transition: background .15s, color .15s !important;
+}
+.cat-card:hover .cat-icon { background: var(--pfx-accent) !important; color: #fff !important; }
+.cat-icon svg { width: 14px !important; height: 14px !important; }
+.cat-name {
+  font-size: 12.5px !important; font-weight: 600 !important;
+  color: var(--pfx-ink-soft) !important; line-height: 1 !important;
+  letter-spacing: 0 !important;
+}
+.cat-card:hover .cat-name { color: var(--pfx-accent-dark) !important; }
+
+/* ── Filter pills ─────────────────────────────────────────────────────────── */
+.ecom-pills {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-bottom: 20px;
+}
+.ecom-pill {
+  display: inline-flex; align-items: center;
+  height: 32px; padding: 0 14px; border-radius: 100px;
+  font-size: 12.5px; font-weight: 600;
+  border: 1.5px solid var(--pfx-border);
+  background: #fff; color: var(--pfx-ink-soft);
+  transition: border-color .13s, color .13s, background .13s;
+  white-space: nowrap;
+}
+.ecom-pill:hover  { border-color: var(--pfx-accent); color: var(--pfx-accent-dark); }
+.ecom-pill.active { background: var(--pfx-ink); border-color: var(--pfx-ink); color: #fff; }
+
+/* ── Product grid ─────────────────────────────────────────────────────────── */
+.ecom-product-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+}
+/* Override any pfx-product-card styles if the tile partial uses them */
+.ecom-product-grid .pfx-product-card {
+  border-radius: 10px;
+}
+.ecom-product-grid .pfx-product-bag {
+  background: var(--pfx-accent);
+  border-color: var(--pfx-accent);
+  color: #fff;
+}
+.ecom-product-grid .pfx-product-bag:hover {
+  background: var(--pfx-accent-dark);
+  border-color: var(--pfx-accent-dark);
+}
+
+/* ── Shops grid ───────────────────────────────────────────────────────────── */
+.ecom-shops-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.ecom-shop-card {
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px 20px;
+  background: #fff;
+  border: 1px solid var(--pfx-border);
+  border-radius: 10px;
+  transition: border-color .15s, box-shadow .15s, transform .15s;
+  text-decoration: none;
+}
+.ecom-shop-card:hover {
+  border-color: var(--pfx-accent);
+  box-shadow: 0 6px 20px rgba(217,70,143,.1);
+  transform: translateY(-2px);
+}
+.ecom-shop-av {
+  width: 46px; height: 46px; flex: none; border-radius: 50%;
+  background: linear-gradient(135deg, var(--pfx-accent), var(--pfx-accent-dark));
+  color: #fff; font-weight: 800; font-size: 17px;
+  display: grid; place-items: center;
+}
+.ecom-shop-info { flex: 1; min-width: 0; }
+.ecom-shop-name { display: block; font-size: 14px; font-weight: 700; color: var(--pfx-ink); }
+.ecom-shop-meta {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 12px; color: var(--pfx-muted); margin-top: 3px;
+}
+.ecom-shop-arrow { font-size: 16px; color: var(--pfx-muted); flex: none; }
+
+/* ── Sell CTA ─────────────────────────────────────────────────────────────── */
+.ecom-sell-cta {
+  background: var(--pfx-ink);
+  padding: 56px 0;
+}
+.ecom-sell-inner {
+  display: flex; align-items: center;
+  justify-content: space-between; gap: 32px; flex-wrap: wrap;
+}
+.ecom-sell-cta h2 {
+  font-size: 28px; font-weight: 700; letter-spacing: -.02em;
+  color: #fff; margin: 8px 0;
+}
+.ecom-sell-cta p { font-size: 14px; color: rgba(255,255,255,.62); max-width: 44ch; line-height: 1.6; margin: 0; }
+.ecom-sell-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* ── Footer ───────────────────────────────────────────────────────────────── */
+.ecom-footer {
+  background: var(--pfx-ink);
+  padding: 52px 0 0;
+}
+.ecom-footer-grid {
+  display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 40px;
+  padding-bottom: 40px;
+}
+.ecom-footer-brand .pfx-logo { margin-bottom: 14px; }
+.ecom-footer-brand p { font-size: 13px; color: rgba(255,255,255,.5); line-height: 1.7; max-width: 260px; }
+.ecom-footer-tagline { font-size: 11.5px; color: rgba(255,255,255,.3); font-style: italic; margin-top: 8px; }
+.ecom-footer-col strong { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,.5); margin-bottom: 14px; }
+.ecom-footer-col a { display: block; font-size: 13px; color: rgba(255,255,255,.6); margin-bottom: 10px; transition: color .13s; }
+.ecom-footer-col a:hover { color: #fff; }
+.ecom-footer-bottom {
+  border-top: 1px solid rgba(255,255,255,.08); padding: 18px 0;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 12px; color: rgba(255,255,255,.35); flex-wrap: wrap; gap: 8px;
+}
+.ecom-footer-legal { display: flex; gap: 18px; }
+.ecom-footer-legal a { color: rgba(255,255,255,.35); transition: color .13s; }
+.ecom-footer-legal a:hover { color: rgba(255,255,255,.65); }
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .ecom-product-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width: 900px) {
+  .ecom-hero { min-height: 280px; }
+  .ecom-hero-body { padding: 40px 0; }
+  .ecom-trust-row { flex-wrap: wrap; height: auto; padding: 14px 0; gap: 0; }
+  .ecom-trust-item { flex-basis: 50%; padding: 10px 16px; }
+  .ecom-trust-sep { display: none; }
+  .ecom-product-grid { grid-template-columns: repeat(3, 1fr); }
+  .ecom-shops-grid { grid-template-columns: 1fr; }
+  .ecom-footer-grid { grid-template-columns: 1fr 1fr; }
+  .ecom-sell-inner { flex-direction: column; text-align: center; align-items: center; }
+}
+@media (max-width: 640px) {
+  .ecom-hero { min-height: 220px; }
+  .ecom-hero-h1 { font-size: 24px; }
+  .ecom-hero-p { font-size: 13.5px; }
+  .ecom-trust-item { flex-basis: 100%; }
+  .ecom-product-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .ecom-shops-grid { grid-template-columns: 1fr; }
+  .ecom-footer-grid { grid-template-columns: 1fr 1fr; gap: 24px; }
+  .ecom-footer-bottom { flex-direction: column; text-align: center; }
 }

@@ -121,6 +121,22 @@
     <div class="card">
       <div class="card-head"><div><h2>Shop Information</h2><p>Your store details visible to buyers</p></div></div>
       <div class="card-pad">
+        @if(session('shop_photo_success'))<p role="status" style="color:var(--success)">{{ session('shop_photo_success') }}</p>@endif
+        <form method="POST" action="{{ route('seller.account.shop-photo') }}" enctype="multipart/form-data" style="margin-bottom:24px">
+          @csrf
+          <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+            <div style="width:72px;height:72px;border-radius:50%;background:var(--pink-soft);display:grid;place-items:center;overflow:hidden;color:var(--pink);font-size:24px;font-weight:700">
+              @if($u->profile_picture)<img src="{{ $u->shopPhotoUrl() }}" alt="Your shop picture" style="width:100%;height:100%;object-fit:contain;background:#fff">@else{{ strtoupper(substr($u->business_name ?: $u->given_names, 0, 1)) }}@endif
+            </div>
+            <div class="form-row" style="flex:1;min-width:180px">
+              <label for="shop-profile-picture">Shop picture</label>
+              <input id="shop-profile-picture" type="file" name="profile_picture" accept="image/jpeg,image/png,image/webp" required>
+              <small style="color:var(--muted)">JPG, PNG or WebP, up to 2 MB. Appears on your public shop.</small>
+              @error('profile_picture')<p role="alert" style="color:var(--danger)">{{ $message }}</p>@enderror
+            </div>
+            <button type="submit" class="btn btn-primary">Update Picture</button>
+          </div>
+        </form>
         @if(session('shop_success'))
           <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px">{{ session('shop_success') }}</div>
         @endif

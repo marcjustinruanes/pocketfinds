@@ -16,6 +16,7 @@ use App\Models\Policy;
 use Illuminate\Support\Facades\Storage;
 
 Route::get('/', [GuestController::class, 'home']);
+Route::get('/categories/{id}/image', [GuestController::class, 'categoryImage'])->whereNumber('id')->name('guest.category-image');
 Route::get('/product/{id}', [GuestController::class, 'product'])->name('guest.product');
 Route::get('/shop/{slug}', [GuestController::class, 'shop'])->name('guest.shop');
 // Sends the message itself via the server — unlike a mailto: link, this works the
@@ -28,11 +29,9 @@ Route::middleware('web', 'auth')->get('/message-media/{path}', function (string 
             $query->where('sender_id', auth()->id())->orWhere('receiver_id', auth()->id());
         })->firstOrFail();
 
-    // Attachments live in the public 'messages' Supabase bucket — the access
-    // check above (must be sender/receiver) is what actually gates this,
-    // the redirect just hands off to the CDN once that's confirmed.
-    abort_unless(Storage::disk('supabase_messages')->exists($message->attachment_path), 404);
-    return redirect(rtrim(config('filesystems.disks.supabase_messages.url'), '/') . '/' . ltrim($message->attachment_path, '/'));
+    // Stream private local attachments only after checking conversation membership.
+    abort_unless(Storage::disk('messages')->exists($message->attachment_path), 404);
+    return response()->file(Storage::disk('messages')->path($message->attachment_path));
 })->where('path', '.*')->name('message.media');
 
 Route::middleware('web', 'auth')->get('/report-evidence/{path}', function (string $path) {
@@ -165,6 +164,7 @@ Route::prefix('seller')->name('seller.')->middleware(['web', 'seller'])->group(f
     Route::get('/dashboard',     [SellerController::class, 'dashboard'])->name('dashboard');
     Route::get('/orders',        [SellerController::class, 'orders'])->name('orders');
     Route::patch('/orders/{order}/confirm', [SellerController::class, 'confirmOrder'])->name('orders.confirm');
+    Route::patch('/orders/{order}/cancel', [SellerController::class, 'cancelOrder'])->name('orders.cancel');
     Route::patch('/orders/{order}/preparing', [SellerController::class, 'startPreparing'])->name('orders.preparing');
     Route::patch('/orders/{order}/ready', [SellerController::class, 'readyForPickup'])->name('orders.ready');
     Route::patch('/orders/{order}/confirm-pickup', [SellerController::class, 'confirmPickup'])->name('orders.confirm-pickup');
@@ -193,6 +193,7 @@ Route::prefix('seller')->name('seller.')->middleware(['web', 'seller'])->group(f
     Route::post('/account/profile',  [SellerController::class, 'updateProfile'])->name('account.profile');
     Route::post('/account/address',  [SellerController::class, 'updateAddress'])->name('account.address');
     Route::post('/account/shop',     [SellerController::class, 'updateShop'])->name('account.shop');
+    Route::post('/account/shop-photo', [SellerController::class, 'updateShopPhoto'])->name('account.shop-photo');
     Route::get('/vouchers',      [SellerController::class, 'vouchers'])->name('vouchers');
     Route::post('/vouchers',     [SellerController::class, 'storeVoucher'])->name('vouchers.store');
     Route::patch('/vouchers/{voucher}', [SellerController::class, 'updateVoucher'])->name('vouchers.update');
@@ -227,6 +228,7 @@ Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
     Route::post('/policies/{accountType}', [AdminController::class, 'updatePolicy'])->name('policies.update');
     Route::post('/settings/general', [AdminController::class, 'updateGeneralSettings'])->name('settings.general.update');
     Route::post('/settings/hero', [AdminController::class, 'updateHeroSettings'])->name('settings.hero.update');
+    Route::post('/settings/categories/{id}/photo', [AdminController::class, 'updateCategoryPhoto'])->whereNumber('id')->name('settings.category-photo.update');
     Route::post('/settings/toggles', [AdminController::class, 'updateFeatureToggles'])->name('settings.toggles.update');
     Route::post('/settings/cache/clear', [AdminController::class, 'clearCache'])->name('settings.cache.clear');
     Route::post('/settings/sessions/clear', [AdminController::class, 'clearSessions'])->name('settings.sessions.clear');

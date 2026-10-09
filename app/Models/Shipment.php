@@ -105,8 +105,15 @@ class Shipment extends Model
     /** True only when this shipment actually needs a hub-to-hub relay leg. */
     public function needsHubTransfer(): bool
     {
-        return $this->origin_hub && $this->destination_hub
-            && mb_strtolower(trim($this->origin_hub)) !== mb_strtolower(trim($this->destination_hub));
+        if (!$this->origin_hub || !$this->destination_hub) {
+            return false;
+        }
+        $norm = fn ($value) => mb_strtolower(trim((string) $value));
+
+        // Same-named towns in different provinces are different hubs.
+        return $norm($this->origin_hub) !== $norm($this->destination_hub)
+            || ($this->origin_province && $this->destination_province
+                && $norm($this->origin_province) !== $norm($this->destination_province));
     }
 
     /** Every hop of this shipment's hub-to-hub journey, in order — see ShipmentHubLeg. */

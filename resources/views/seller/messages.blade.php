@@ -96,7 +96,7 @@
               @elseif($attachmentType === 'video')
                 <button type="button" class="chat-media-button" data-media-type="video" data-media-url="{{ route('message.media', ['path' => $msg->attachment_path]) }}"><video src="{{ route('message.media', ['path' => $msg->attachment_path]) }}" class="chat-attach-preview-img" controls preload="metadata" playsinline></video></button>
               @else
-                <a href="{{ Storage::disk('public')->url($msg->attachment_path) }}" target="_blank" class="chat-doc-bubble">
+                <a href="{{ route('message.media', ['path' => $msg->attachment_path]) }}" target="_blank" class="chat-doc-bubble">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                   {{ $msg->attachment_name }}
                 </a>

@@ -50,7 +50,7 @@
   <a href="{{ route('admin.products') }}?q={{ urlencode($msg->product->name) }}" class="bubble-product" style="display:flex;align-items:center;gap:9px;padding:9px;border-radius:10px;background:var(--paper);border:1px solid var(--border);text-decoration:none;color:inherit;max-width:min(280px,72vw)">
     <span style="width:38px;height:38px;border-radius:8px;background:var(--pink-soft);display:grid;place-items:center;overflow:hidden;flex:none">
       @if($msg->product->image)
-        <img src="{{ rtrim(config('filesystems.disks.supabase.url'), '/') . '/' . ltrim($msg->product->image, '/') }}" style="width:100%;height:100%;object-fit:cover">
+        <img src="{{ rtrim(config('filesystems.disks.public.url'), '/') . '/' . ltrim($msg->product->image, '/') }}" style="width:100%;height:100%;object-fit:cover">
       @else
         🛍️
       @endif

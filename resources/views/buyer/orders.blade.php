@@ -44,6 +44,7 @@
 </div>
 
 @if(session('success'))<div class="auth-success" style="margin-bottom:16px">{{ session('success') }}</div>@endif
+@if(session('error'))<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('error') }}</div>@endif
 @if(session('error'))<div class="auth-error" style="margin-bottom:16px">{{ session('error') }}</div>@endif
 @forelse($orders as $order)
 <div class="order-card shopee-order-card" data-order-search="{{ strtolower($order->order_number . ' ' . ($order->seller?->business_name ?? '') . ' ' . collect($order->items ?? [])->pluck('name')->join(' ')) }}">

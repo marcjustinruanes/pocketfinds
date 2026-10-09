@@ -14,14 +14,10 @@
 
 @if($user && $user->profile_picture)
     @php
-        // profile_picture is stored inconsistently across upload paths: some
-        // rows hold a relative storage path (this branch's own convention,
-        // needs Storage::url() to resolve), others already hold a full
-        // absolute URL (another code path stores it pre-resolved). Use it
-        // as-is when it's already absolute.
-        $picUrl = str_starts_with($user->profile_picture, 'http')
+        // Keep resolved URLs as-is; relative upload paths use the profile disk.
+        $picUrl = str_starts_with($user->profile_picture, 'http') || str_starts_with($user->profile_picture, '/storage/')
             ? $user->profile_picture
-            : \Illuminate\Support\Facades\Storage::url($user->profile_picture);
+            : \Illuminate\Support\Facades\Storage::disk('profile_images')->url($user->profile_picture);
     @endphp
     <img
         {{ $attributes->except('style')->merge(['class' => 'user-avatar']) }}

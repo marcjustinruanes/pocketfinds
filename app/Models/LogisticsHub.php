@@ -21,24 +21,31 @@ class LogisticsHub extends Model
      * Company names able to fully service a seller-in-$origin / buyer-in-$destination
      * order via their own connected hub network — i.e. they have a hub in both cities
      * (or one hub covering both, when origin and destination are the same city).
+     *
+     * Pass the provinces too whenever they're known: plenty of municipality names repeat
+     * across provinces (Santa Cruz, San Jose, Rosario…), so matching on the name alone
+     * would treat two different towns as one and pick a company with no hub in the real one.
      */
-    public static function companiesServicing(?string $originMunicipality, ?string $destinationMunicipality): Collection
+    public static function companiesServicing(?string $originMunicipality, ?string $destinationMunicipality, ?string $originProvince = null, ?string $destinationProvince = null): Collection
     {
         if (!$originMunicipality || !$destinationMunicipality) {
             return collect();
         }
 
-        $origins = static::whereRaw('LOWER(municipality) = ?', [mb_strtolower(trim($originMunicipality))])
+        $norm = fn ($value) => mb_strtolower(trim((string) $value));
+        $companiesIn = fn (string $municipality, ?string $province) => static::whereRaw('LOWER(municipality) = ?', [$norm($municipality)])
+            ->when($norm($province) !== '', fn ($query) => $query->whereRaw('LOWER(province) = ?', [$norm($province)]))
             ->pluck('company_name')->unique();
 
-        if (mb_strtolower(trim($originMunicipality)) === mb_strtolower(trim($destinationMunicipality))) {
+        $origins = $companiesIn($originMunicipality, $originProvince);
+
+        $sameCity = $norm($originMunicipality) === $norm($destinationMunicipality)
+            && ($norm($originProvince) === '' || $norm($destinationProvince) === '' || $norm($originProvince) === $norm($destinationProvince));
+        if ($sameCity) {
             return $origins->values();
         }
 
-        $destinations = static::whereRaw('LOWER(municipality) = ?', [mb_strtolower(trim($destinationMunicipality))])
-            ->pluck('company_name')->unique();
-
-        return $origins->intersect($destinations)->values();
+        return $origins->intersect($companiesIn($destinationMunicipality, $destinationProvince))->values();
     }
 
     /** This company's hub cities — used to label a shipment's origin/destination hub. */

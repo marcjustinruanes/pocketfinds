@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
 
 class Announcement extends Model
 {
-    // `announcements.id` is a Postgres uuid — see Order.php for why this is needed.
+    // `announcements.id` is a UUID string — see Order.php for why this is needed.
     protected $keyType      = 'string';
     public    $incrementing = false;
 

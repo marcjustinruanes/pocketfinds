@@ -91,6 +91,15 @@ class User extends Authenticatable
         return $this->belongsTo(Category::class);
     }
 
+    public function shopPhotoUrl(): ?string
+    {
+        if (!$this->profile_picture) return null;
+        if (preg_match('/^category:(\d+)$/', $this->profile_picture, $matches)) {
+            return route('guest.category-image', ['id' => (int) $matches[1]], false);
+        }
+        return \Illuminate\Support\Facades\Storage::disk('profile_images')->url($this->profile_picture);
+    }
+
     /** This user's logistics company's own (admin-approved) Terms & Conditions, if it has submitted one. */
     public function companyPolicy(): ?Policy
     {

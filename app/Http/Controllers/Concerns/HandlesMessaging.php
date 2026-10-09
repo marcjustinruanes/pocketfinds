@@ -29,7 +29,7 @@ trait HandlesMessaging
             'product_name'    => $m->product?->name,
             'product_price'   => $m->product?->price,
             'product_img'     => $m->product?->image
-                ? (rtrim(config('filesystems.disks.supabase.url'), '/') . '/' . ltrim($m->product->image, '/'))
+                ? (rtrim(config('filesystems.disks.public.url'), '/') . '/' . ltrim($m->product->image, '/'))
                 : null,
             'reply_to_id'     => $m->reply_to_id,
             'reply_to'        => $m->replyTo ? [
@@ -51,7 +51,7 @@ trait HandlesMessaging
     private function addStaffAttachment(array &$msg, $file): void
     {
         $mime                    = $file->getMimeType();
-        $msg['attachment_path']  = $file->store('message_attachments', 'supabase_messages');
+        $msg['attachment_path']  = $file->store('message_attachments', 'messages');
         $msg['attachment_name']  = $file->getClientOriginalName();
         $msg['attachment_mime']  = $mime;
         $msg['attachment_size']  = $file->getSize();
@@ -140,7 +140,7 @@ trait HandlesMessaging
             'message_type'   => $message->attachment_type ?: ($message->body ? 'text' : 'message'),
         ];
         if ($evidence) {
-            $values['evidence_path'] = $evidence->store('report_evidence', 'supabase');
+            $values['evidence_path'] = $evidence->store('report_evidence', 'public');
             $values['evidence_name'] = $evidence->getClientOriginalName();
             $values['evidence_mime'] = $evidence->getMimeType();
             $values['evidence_type'] = str_starts_with($values['evidence_mime'], 'video/') ? 'video' : 'image';

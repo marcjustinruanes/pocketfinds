@@ -136,15 +136,8 @@ class RegisterController extends Controller
         return response()->json(Category::orderBy('name')->get(['id', 'name']));
     }
 
-    /**
-     * Uploads $file to Supabase Storage, retrying a couple of times on failure — this
-     * network's DNS is occasionally flaky, and a registration submission can make up to
-     * five of these calls in one request. Previously, any single transient blip failed
-     * the WHOLE submission outright (no partial save — the user has to redo the entire
-     * multi-step form), which is exactly what "it always ends in the network connection"
-     * described. A short retry turns most of those blips into a silent success instead.
-     */
-    private function storeWithRetry(\Illuminate\Http\UploadedFile $file, string $path, string $disk = 'supabase', int $attempts = 3): string
+    /** Store registration documents on the configured local disk. */
+    private function storeWithRetry(\Illuminate\Http\UploadedFile $file, string $path, string $disk = 'public', int $attempts = 3): string
     {
         for ($attempt = 1; $attempt <= $attempts; $attempt++) {
             try {

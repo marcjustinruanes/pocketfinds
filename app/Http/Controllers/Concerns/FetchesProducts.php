@@ -8,10 +8,11 @@ use Illuminate\Support\Facades\DB;
 
 trait FetchesProducts
 {
-    private function supabaseUrl(?string $path): ?string
+    private function productImageUrl(?string $path): ?string
     {
         if (!$path) return null;
-        return rtrim(config('filesystems.disks.supabase.url'), '/') . '/' . ltrim($path, '/');
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://') || str_starts_with($path, '/storage/')) return $path;
+        return rtrim(config('filesystems.disks.public.url'), '/') . '/' . ltrim($path, '/');
     }
 
     /** Real units sold — summed straight from completed orders' line items
@@ -20,20 +21,28 @@ trait FetchesProducts
     private function soldCount(string $productId): int
     {
         $row = DB::selectOne("
-            SELECT COALESCE(SUM((item->>'qty')::int), 0) AS total
-            FROM orders, jsonb_array_elements(items::jsonb) AS item
-            WHERE status = 'completed' AND item->>'product_id' = ?
-        ", [$productId]);
+                SELECT COALESCE(SUM(item.qty), 0) AS total
+                FROM orders
+                JOIN JSON_TABLE(COALESCE(orders.items, JSON_ARRAY()), '$[*]' COLUMNS (
+                    product_id VARCHAR(36) PATH '$.product_id',
+                    qty INT PATH '$.qty'
+                )) AS item ON TRUE
+                WHERE orders.status = 'completed' AND item.product_id = ?
+            ", [$productId]);
+
         return (int) ($row->total ?? 0);
     }
 
-    private function dbProducts(int $limit = 0, ?int $categoryId = null, ?string $search = null, ?string $sort = null)
+    private function dbProducts(int $limit = 0, ?int $categoryId = null, ?string $search = null, ?string $sort = null, ?float $minPrice = null, ?float $maxPrice = null)
     {
         $q = Product::with(['seller', 'category'])
             ->where('status', 'active')
             ->sellerApproved()
             ->when($categoryId, fn($q) => $q->where('category_id', $categoryId))
-            ->when($search, fn($q) => $q->where('name', 'ilike', '%' . $search . '%'));
+            ->when($search, fn($q) => $q->whereLike('name', '%' . $search . '%'));
+        $displayPrice = 'CASE WHEN discount_price IS NOT NULL AND discount_price < price THEN discount_price ELSE price END';
+        if ($minPrice !== null) $q->whereRaw($displayPrice.' >= ?', [$minPrice]);
+        if ($maxPrice !== null) $q->whereRaw($displayPrice.' <= ?', [$maxPrice]);
 
         $q = match ($sort) {
             'price_asc'  => $q->orderBy('price', 'asc'),
@@ -49,12 +58,13 @@ trait FetchesProducts
     /** Real markdowns only — products whose seller actually set a discount_price below price.
      *  No fabricated "flash sale" countdown: the schema has no sale-window field, so this is
      *  just "currently discounted", sorted by the biggest real percentage off. */
-    private function dbDeals(int $limit = 8)
+    private function dbDeals(int $limit = 8, ?int $categoryId = null)
     {
         return Product::with(['seller', 'category'])
             ->where('status', 'active')
             ->sellerApproved()
             ->whereNotNull('discount_price')
+            ->when($categoryId, fn ($q) => $q->where('category_id', $categoryId))
             ->whereColumn('discount_price', '<', 'price')
             ->get()
             ->sortByDesc(fn ($p) => 1 - ((float) $p->discount_price / max((float) $p->price, 0.01)))
@@ -78,7 +88,7 @@ trait FetchesProducts
 
         $variations = collect($p->variations ?? [])->map(function ($variation) {
             $variation['options'] = collect($variation['options'] ?? [])->map(function ($option) {
-                if (!empty($option['image'])) $option['image'] = $this->supabaseUrl($option['image']);
+                if (!empty($option['image'])) $option['image'] = $this->productImageUrl($option['image']);
                 return $option;
             })->all();
             return $variation;
@@ -89,8 +99,8 @@ trait FetchesProducts
             ->values();
 
         $coverImageUrls = !empty($p->images)
-            ? collect($p->images)->map(fn ($path) => $this->supabaseUrl($path))
-            : ($p->image ? collect([$this->supabaseUrl($p->image)]) : collect());
+            ? collect($p->images)->map(fn ($path) => $this->productImageUrl($path))
+            : ($p->image ? collect([$this->productImageUrl($p->image)]) : collect());
 
         $imageUrls = $coverImageUrls->merge($variationImageUrls)->unique()->values()->all();
 
@@ -115,7 +125,7 @@ trait FetchesProducts
             'category_id' => $p->category_id,
             'img'         => $imageUrls[0] ?? null,
             'images'      => $imageUrls,
-            'video'       => $this->supabaseUrl($p->video),
+            'video'       => $this->productImageUrl($p->video),
             'desc'        => $p->description ?? '',
             'sku'         => $p->sku,
             'specs'       => !empty($p->details)

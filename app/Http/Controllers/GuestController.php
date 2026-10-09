@@ -16,27 +16,34 @@ class GuestController extends Controller
     public function home(Request $request)
     {
         $categoryId = $request->integer('category') ?: null;
+        $browseCategoryId = $request->integer('browse_category') ?: null;
+        $productCategoryId = $request->has('category') ? $categoryId : $browseCategoryId;
         $search     = $request->string('q')->trim()->value() ?: null;
+        $priceFilters = $request->validate([
+            'min_price' => 'nullable|numeric|min:0|max:1000000000',
+            'max_price' => 'nullable|numeric|min:0|max:1000000000'.($request->filled('min_price') ? '|gte:min_price' : ''),
+        ]);
+        $minPrice = isset($priceFilters['min_price']) ? (float) $priceFilters['min_price'] : null;
+        $maxPrice = isset($priceFilters['max_price']) ? (float) $priceFilters['max_price'] : null;
 
         // Fallback object so the hero banner always has safe defaults even when DB is down
         $heroSettings = new \App\Models\Setting([
             'hero_image'    => null,
-            'hero_label'    => 'Local Marketplace · Philippines',
             'hero_tagline'  => 'Find It. Love It. Pocket It.',
-            'hero_subtitle' => 'Browse products from verified local sellers — pet supplies, electronics, fashion, home essentials, and more.',
+            'hero_subtitle' => 'Discover everyday finds that fit your needs and budget. Simple, convenient shopping—all in one place.',
             'hero_cta_text' => 'Browse Products',
             'hero_overlay'  => 'dark',
         ]);
 
         try {
             $heroSettings   = \App\Models\Setting::current();
-            $products       = $this->dbProducts(24, $categoryId, $search);
-            $deals          = $categoryId || $search ? [] : $this->dbDeals(8);
+            $products       = $this->dbProducts(24, $productCategoryId, $search, null, $minPrice, $maxPrice);
+            $deals          = $this->dbDeals(8, $browseCategoryId);
             $categories     = Category::withCount(['products' => fn ($q) => $q->where('status', 'active')->sellerApproved()])
-                ->orderBy('name')->get(['id', 'name']);
-            $activeCategory = $categoryId ? $categories->firstWhere('id', $categoryId) : null;
+                ->orderBy('name')->get(['id', 'name', 'image_sha256']);
+            $activeCategory = $productCategoryId ? $categories->firstWhere('id', $productCategoryId) : null;
             $announcement   = $this->guestAnnouncement();
-            $shops          = $this->topSellingShops(5);
+            $shops          = $this->topSellingShops(null, $browseCategoryId);
             $stats          = [
                 'products'   => Product::where('status', 'active')->sellerApproved()->count(),
                 'shops'      => User::where('account_type', 'seller')->where('status', 'approved')->whereNotNull('business_name')->count(),
@@ -57,7 +64,7 @@ class GuestController extends Controller
         return view('guest.home', compact(
             'products', 'deals', 'categories', 'activeCategory',
             'announcement', 'shops', 'stats', 'categoryId', 'search',
-            'heroSettings', 'dbError'
+            'heroSettings', 'dbError', 'minPrice', 'maxPrice', 'browseCategoryId', 'productCategoryId'
         ));
     }
 
@@ -72,9 +79,10 @@ class GuestController extends Controller
      *  listing count. Ties (commonly 0 sold, for a young marketplace) keep a stable,
      *  deterministic order rather than looking shuffled. Real average ratings across
      *  their catalog too (null, not a fabricated number, when nobody's reviewed them yet). */
-    private function topSellingShops(int $limit = 5)
+    private function topSellingShops(?int $limit = null, ?int $categoryId = null)
     {
         return User::where('account_type', 'seller')->where('status', 'approved')->whereNotNull('business_name')
+            ->when($categoryId, fn ($q) => $q->whereHas('products', fn ($products) => $products->where('status', 'active')->where('category_id', $categoryId)))
             ->withCount(['products' => fn ($q) => $q->where('status', 'active')])
             ->get()
             ->filter(fn (User $seller) => $seller->products_count > 0)
@@ -87,6 +95,7 @@ class GuestController extends Controller
                     'name'          => $seller->business_name,
                     'slug'          => $seller->username ?: ('shop-' . $seller->id),
                     'initial'       => strtoupper(substr($seller->business_name, 0, 1)),
+                    'photo'         => $seller->shopPhotoUrl(),
                     'rating'        => $avgRating ? round($avgRating, 1) : null,
                     'sold'          => $soldTotal,
                     'products_count'=> $seller->products_count,
@@ -94,9 +103,22 @@ class GuestController extends Controller
                 ];
             })
             ->sortByDesc('sold')
-            ->take($limit)
+            ->when($limit !== null, fn ($shops) => $shops->take($limit))
             ->values()
             ->all();
+    }
+
+    public function categoryImage(Request $request, int $id)
+    {
+        $category = Category::select(['id', 'image_data', 'image_mime', 'image_sha256'])->findOrFail($id);
+        abort_unless($category->image_data && $category->image_mime === 'image/jpeg', 404);
+        $response = response($category->image_data, 200, [
+            'Content-Type' => $category->image_mime,
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'public, max-age=86400',
+        ])->setEtag($category->image_sha256);
+        $response->isNotModified($request);
+        return $response;
     }
 
     public function product($id)
@@ -145,6 +167,7 @@ class GuestController extends Controller
         $shop = [
             'name'      => $seller->business_name ?? ($seller->given_names . ' ' . $seller->last_name),
             'initial'   => strtoupper(substr($seller->given_names, 0, 1)),
+            'photo'     => $seller->shopPhotoUrl(),
             'rating'    => 0,
             'products'  => count($items),
             'sales'     => '0',

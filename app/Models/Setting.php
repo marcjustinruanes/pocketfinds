@@ -16,7 +16,7 @@ class Setting extends Model
         'google_signin_enabled', 'new_registrations_enabled',
         'maintenance_mode', 'email_notifications_enabled', 'updated_by',
         // Hero banner — admin-controlled from Settings → Hero Banner
-        'hero_image', 'hero_label', 'hero_tagline', 'hero_subtitle',
+        'hero_image', 'hero_tagline', 'hero_subtitle',
         'hero_cta_text', 'hero_overlay',
     ];
 
@@ -34,7 +34,7 @@ class Setting extends Model
      * The one settings row, auto-created with defaults on first use. The defaults are
      * passed explicitly (not left to the migration's column defaults) so the in-memory
      * model returned here is correct immediately — firstOrCreate()'s freshly-created
-     * instance only reflects attributes it actually set, not ones Postgres filled in
+     * instance only reflects attributes it actually set, not ones the database filled in
      * via a column default, which would otherwise leave this object's fields blank
      * until the next request re-fetches the row.
      */
@@ -49,9 +49,8 @@ class Setting extends Model
             'maintenance_mode'             => false,
             'email_notifications_enabled'  => true,
             'hero_image'                   => null,
-            'hero_label'                   => 'Local Marketplace · Philippines',
             'hero_tagline'                 => 'Find It. Love It. Pocket It.',
-            'hero_subtitle'                => 'Browse products from verified local sellers — pet supplies, electronics, fashion, home essentials, and more.',
+            'hero_subtitle'                => 'Discover everyday finds that fit your needs and budget. Simple, convenient shopping—all in one place.',
             'hero_cta_text'                => 'Browse Products',
             'hero_overlay'                 => 'dark',
         ]);

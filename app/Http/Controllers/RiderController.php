@@ -293,58 +293,61 @@ class RiderController extends Controller
      */
     public function advance(Request $request, $id)
     {
-        $shipment = Shipment::with('order')->where('courier_id', auth()->id())->findOrFail($id);
+        // Runs on the locked shipment/order rows. The page names the stage it was showing
+        // (`from`), so a double-tap or a second open tab that fires after the first tap
+        // already landed is rejected instead of silently pushing the parcel one stage
+        // further (a second "Out for delivery" tap would otherwise mark it Delivered).
+        $from = $request->input('from');
 
-        $stageIndex = array_search($shipment->shipping_status, self::STAGE_ORDER, true);
-        $next       = $stageIndex !== false ? (self::STAGE_ORDER[$stageIndex + 1] ?? null) : null;
+        $outcome = DB::transaction(function () use ($id, $from) {
+            $shipment = Shipment::where('courier_id', auth()->id())->lockForUpdate()->findOrFail($id);
+            $order    = $shipment->order_id ? Order::lockFresh($shipment->order_id) : null;
 
-        if (!$next) {
-            return back()->withErrors(['status' => 'This delivery has no further action to take.']);
-        }
-
-        $updates = ['shipping_status' => $next];
-        if (isset(self::STAGE_TIMESTAMPS[$next])) {
-            $updates[self::STAGE_TIMESTAMPS[$next]] = now();
-        }
-        $shipment->update($updates);
-
-        DeliveryAssignment::where('shipment_id', $shipment->id)->where('leg', 'delivery')->update(array_filter([
-            'status'       => $next,
-            'delivered_at' => $next === 'delivered' ? now() : null,
-        ]));
-
-        // Order.status shares the exact same vocabulary as shipping_status now (see
-        // Shipment::STATUSES) — no remapping table needed, it's a direct passthrough. The one
-        // deliberate exception ('delivered' stopping short of 'completed') is baked into
-        // STAGE_ORDER itself: this method can never advance a shipment past 'delivered'.
-        if ($shipment->order) {
-            $shipment->order->update(['status' => $next]);
-
-            DB::table('notifications')->insert([
-                'id' => (string) Str::uuid(), 'user_id' => $shipment->order->buyer_id,
-                'title' => 'Order Update',
-                'message' => 'Your order #' . $shipment->order->order_number . ' is now ' . str_replace('_', ' ', $next) . '.',
-                'notification_type' => 'order_status', 'reference_id' => $shipment->order_id,
-                'is_read' => false, 'created_at' => now(),
-            ]);
-
-            if ($next === 'delivered') {
-                DB::table('notifications')->insert([
-                    'id' => (string) Str::uuid(), 'user_id' => $shipment->order->seller_id,
-                    'title' => 'Courier Marked as Delivered',
-                    'message' => 'Order #' . $shipment->order->order_number . ' was marked delivered by the courier — awaiting the buyer\'s confirmation.',
-                    'notification_type' => 'order_delivered', 'reference_id' => $shipment->order_id,
-                    'is_read' => false, 'created_at' => now(),
-                ]);
+            if ($from !== null && $from !== $shipment->shipping_status) {
+                return ['error' => 'This delivery was already updated — the page now shows its current stage.'];
             }
-        }
 
-        if ($shipment->order_id) {
-            DB::table('order_status_history')->insert([
-                'id' => (string) Str::uuid(), 'order_id' => $shipment->order_id, 'status' => $next,
-                'changed_by' => auth()->id(), 'created_at' => now(),
-            ]);
+            $stageIndex = array_search($shipment->shipping_status, self::STAGE_ORDER, true);
+            $next       = $stageIndex !== false ? (self::STAGE_ORDER[$stageIndex + 1] ?? null) : null;
+
+            if (!$next) {
+                return ['error' => 'This delivery has no further action to take.'];
+            }
+
+            $updates = ['shipping_status' => $next];
+            if (isset(self::STAGE_TIMESTAMPS[$next])) {
+                $updates[self::STAGE_TIMESTAMPS[$next]] = now();
+            }
+            $shipment->update($updates);
+
+            DeliveryAssignment::where('shipment_id', $shipment->id)->where('leg', 'delivery')->update(array_filter([
+                'status'       => $next,
+                'delivered_at' => $next === 'delivered' ? now() : null,
+            ]));
+
+            // Order.status shares the exact same vocabulary as shipping_status now (see
+            // Shipment::STATUSES) — no remapping table needed, it's a direct passthrough. The one
+            // deliberate exception ('delivered' stopping short of 'completed') is baked into
+            // STAGE_ORDER itself: this method can never advance a shipment past 'delivered'.
+            if ($order) {
+                $order->update(['status' => $next]);
+
+                Order::notifyUser($order->buyer_id, 'Order Update', 'Your order #' . $order->order_number . ' is now ' . str_replace('_', ' ', $next) . '.', 'order_status', $order->id);
+
+                if ($next === 'delivered') {
+                    Order::notifyUser($order->seller_id, 'Courier Marked as Delivered', 'Order #' . $order->order_number . ' was marked delivered by the courier — awaiting the buyer\'s confirmation.', 'order_delivered', $order->id);
+                }
+
+                $order->logStatus($next, auth()->id());
+            }
+
+            return ['next' => $next];
+        });
+
+        if (isset($outcome['error'])) {
+            return back()->withErrors(['status' => $outcome['error']]);
         }
+        $next = $outcome['next'];
 
         $labels = ['out_for_delivery' => 'Order marked out for delivery.', 'delivered' => 'Delivery completed. Great job!'];
         return back()->with('success', $labels[$next] ?? 'Updated.');

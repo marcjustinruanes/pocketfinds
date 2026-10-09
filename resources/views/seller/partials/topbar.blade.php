@@ -1,4 +1,3 @@
-<div class="market-top-strip"></div>
 <header class="topbar">
   <button class="menu-toggle" data-sidebar-toggle>
     @include('seller.partials.icon', ['name' => 'menu', 'size' => 20])

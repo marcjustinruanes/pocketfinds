@@ -41,7 +41,8 @@
               <form method="POST" action="{{ route('logistics.requests.approve', $s->id) }}">@csrf @method('PATCH')
                 <button class="btn btn-sm btn-success">Approve</button>
               </form>
-              <form method="POST" action="{{ route('logistics.requests.reject', $s->id) }}">@csrf @method('PATCH')
+              <form method="POST" action="{{ route('logistics.requests.reject', $s->id) }}" style="display:flex;gap:6px" onsubmit="return confirm('Reject this pickup? The order will be cancelled and the buyer and seller notified.')">@csrf @method('PATCH')
+                <input type="text" name="reason" maxlength="200" placeholder="Reason (optional)" style="border:1px solid var(--border);border-radius:8px;padding:5px 8px;font-size:12px;width:150px">
                 <button class="btn btn-sm btn-danger">Reject</button>
               </form>
             </div>

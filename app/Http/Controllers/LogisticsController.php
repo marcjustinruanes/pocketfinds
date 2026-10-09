@@ -76,7 +76,7 @@ class LogisticsController extends Controller
      * Every one of these count queries used to be its own separate `SELECT COUNT(*)`
      * round trip. Over a remote, latency-heavy connection like this one's (~300-400ms
      * per round trip, not per query — see eligibleRiders()) that adds up fast: the
-     * Dashboard alone used to fire ~14 of them. Postgres' `FILTER` clause computes any
+     * Dashboard alone used to fire ~14 of them. Conditional aggregates compute any
      * number of conditional counts against the same table in a single query, so this
      * takes whatever filters a caller needs and returns them all from one round trip.
      *
@@ -86,7 +86,7 @@ class LogisticsController extends Controller
     private function shipmentCounts(array $filters): array
     {
         $select = collect($filters)
-            ->map(fn ($sql, $key) => "count(*) filter (where {$sql}) as \"{$key}\"")
+            ->map(fn ($sql, $key) => 'COUNT(CASE WHEN '.$sql.' THEN 1 END) AS '.DB::connection()->getQueryGrammar()->wrap($key))
             ->implode(', ');
 
         $row = $this->companyScope()->selectRaw($select)->first();
@@ -114,8 +114,8 @@ class LogisticsController extends Controller
         $counts = ['unreadNotifications' => 0];
 
         $userCounts = User::where('business_name', $user->business_name)->selectRaw("
-                count(*) filter (where account_type = 'rider' and status = 'pending') as pending_riders,
-                count(*) filter (where account_type = 'logistics' and logistics_role = 'hub_staff' and status = 'pending') as pending_staff
+                COUNT(CASE WHEN account_type = 'rider' and status = 'pending' THEN 1 END) as pending_riders,
+                COUNT(CASE WHEN account_type = 'logistics' and logistics_role = 'hub_staff' and status = 'pending' THEN 1 END) as pending_staff
             ")->first();
         $counts['pendingRiders'] = (int) $userCounts->pending_riders;
 
@@ -181,16 +181,49 @@ class LogisticsController extends Controller
     /** Approving a request doesn't change its status — it stays ready_for_pickup, now visible to pickup riders. */
     public function approveRequest(Request $request, $id)
     {
-        $this->companyScope()->where('id', $id)->firstOrFail()->update(['pickup_approved_at' => now()]);
+        $shipment = $this->companyScope()->with('order')->findOrFail($id);
+
+        // Conditional update: only a still-pending request can be approved, so a double-click
+        // or an already-rejected/advanced parcel is left alone.
+        $approved = $this->companyScope()->where('id', $shipment->id)
+            ->where('shipping_status', 'ready_for_pickup')->whereNull('pickup_approved_at')
+            ->update(['pickup_approved_at' => now()]);
+        if (!$approved) {
+            return back()->withErrors(['status' => 'This pickup request was already handled.']);
+        }
+
+        Order::notifyUser($shipment->order?->seller_id, 'Pickup Approved', $shipment->logistics_company . ' approved the pickup for order #' . $shipment->order?->order_number . '. A rider will be assigned shortly.', 'order_status', $shipment->order_id);
         return back();
     }
 
+    /**
+     * Declining a pickup request ends the order (the seller picked this company, and it can't
+     * carry the parcel). Stock had already been deducted when the seller confirmed the order,
+     * so it's given back here; the buyer and seller are both told why.
+     */
     public function rejectRequest(Request $request, $id)
     {
-        $shipment = $this->companyScope()->with('order')->findOrFail($id);
-        $shipment->update(['shipping_status' => 'cancelled']);
-        $shipment->order?->update(['status' => 'cancelled']);
-        return back();
+        $data   = $request->validate(['reason' => 'nullable|string|max:200']);
+        $reason = trim((string) ($data['reason'] ?? '')) ?: 'The logistics company could not take this pickup';
+
+        $rejected = DB::transaction(function () use ($id, $reason) {
+            $shipment = $this->companyScope()->where('id', $id)->lockForUpdate()->firstOrFail();
+            if ($shipment->shipping_status !== 'ready_for_pickup' || $shipment->pickup_approved_at) {
+                return false;
+            }
+            $order = Order::lockFresh($shipment->order_id);
+            if (!$order->cancelAndRestock('Rejected by logistics: ' . $reason, null, auth()->id(), ['ready_for_pickup'])) {
+                return false;
+            }
+            $shipment->update(['shipping_status' => 'cancelled']);
+
+            $msg = 'Order #' . $order->order_number . ' was cancelled — ' . $shipment->logistics_company . ' could not take the pickup (' . $reason . ').';
+            Order::notifyUser($order->buyer_id, 'Order Cancelled', $msg, 'order_status', $order->id);
+            Order::notifyUser($order->seller_id, 'Pickup Rejected', $msg . ' Your stock for it has been restored.', 'order_status', $order->id);
+            return true;
+        });
+
+        return $rejected ? back() : back()->withErrors(['status' => 'This pickup request was already handled.']);
     }
 
     /**
@@ -259,8 +292,22 @@ class LogisticsController extends Controller
             return back()->withErrors(['courier_id' => $error])->withInput();
         }
 
-        $shipment->update(['courier_id' => $courier->id, 'shipping_status' => 'assigned_to_rider', 'assigned_at' => now()]);
+        // Only a sorted parcel can be given its delivery rider. Claimed with a conditional
+        // update (same pattern as assignPickupRider()) so a parcel still in transit between
+        // hubs, already with another rider, delivered or cancelled — or a double-submit — is
+        // never overwritten, and a cancelled order can't be revived.
+        $claimed = $this->companyScope()->where('id', $shipment->id)->where('shipping_status', 'sorted')
+            ->update(['courier_id' => $courier->id, 'shipping_status' => 'assigned_to_rider', 'assigned_at' => now()]);
+        if ($claimed === 0) {
+            $message = 'This parcel is no longer waiting for a delivery rider.';
+            if ($request->expectsJson() || $request->ajax()) {
+                abort(422, $message);
+            }
+            return back()->withErrors(['courier_id' => $message]);
+        }
+
         $shipment->order?->update(['status' => 'assigned_to_rider']);
+        $shipment->order?->logStatus('assigned_to_rider', auth()->id());
         DeliveryAssignment::updateOrCreate(
             ['shipment_id' => $shipment->id, 'leg' => 'delivery'],
             ['courier_id' => $courier->id, 'status' => 'assigned_to_rider', 'accepted_at' => now()]
@@ -915,36 +962,65 @@ class LogisticsController extends Controller
             'status' => 'required|in:' . implode(',', self::STATUSES),
             'reason' => 'nullable|string|max:500',
         ]);
-        $shipment = $this->companyScope()->with('order')->findOrFail($id);
-        $status   = $data['status'];
-
-        // Guard the transition server-side too — the UI only ever offers valid next
-        // statuses, but this stops a crafted request from skipping stages or moving
-        // a shipment backward.
-        $allowed = self::STATUS_TRANSITIONS[$shipment->shipping_status] ?? [];
-        if (!in_array($status, $allowed, true)) {
-            return back()->withErrors(['status' => 'Cannot move this shipment from '
-                . ucfirst(str_replace('_', ' ', $shipment->shipping_status)) . ' to '
-                . ucfirst(str_replace('_', ' ', $status)) . '.']);
-        }
+        $status = $data['status'];
 
         // "Out for delivery" is the assigned rider's own call to make (they're the one
         // actually leaving with it) — from their own "My Deliveries" page (RiderController::advance()),
         // not something hub staff mark on the rider's behalf from the Scan page.
         abort_if($status === 'out_for_delivery', 422, 'The assigned rider marks this themselves from their own account when they head out.');
 
-        $updates = ['shipping_status' => $status];
-        if (isset(self::STAGE_TIMESTAMPS[$status])) {
-            $updates[self::STAGE_TIMESTAMPS[$status]] = now();
+        // The whole move happens on the locked shipment/order rows: the transition is
+        // re-validated against the CURRENT status (not a stale copy), and a parcel that
+        // is returned to the seller is restocked exactly once.
+        $result = DB::transaction(function () use ($id, $status, $data) {
+            $shipment = $this->companyScope()->where('id', $id)->lockForUpdate()->firstOrFail();
+            $order    = $shipment->order_id ? Order::lockFresh($shipment->order_id) : null;
+
+            // Guard the transition server-side too — the UI only ever offers valid next
+            // statuses, but this stops a crafted request from skipping stages or moving
+            // a shipment backward.
+            $allowed = self::STATUS_TRANSITIONS[$shipment->shipping_status] ?? [];
+            if (!in_array($status, $allowed, true)) {
+                return 'Cannot move this shipment from '
+                    . ucfirst(str_replace('_', ' ', $shipment->shipping_status)) . ' to '
+                    . ucfirst(str_replace('_', ' ', $status)) . '.';
+            }
+
+            $updates = ['shipping_status' => $status];
+            if (isset(self::STAGE_TIMESTAMPS[$status])) {
+                $updates[self::STAGE_TIMESTAMPS[$status]] = now();
+            }
+            if ($status === 'delivery_failed') {
+                $updates['delivery_failed_reason'] = $data['reason'] ?? 'No reason given.';
+            }
+            $shipment->update($updates);
+            $shipment->setRelation('order', $order);
+
+            if ($order) {
+                $order->update(['status' => $status]);
+
+                // A parcel coming back to the seller means the goods are physically back
+                // in their hands, so the stock the order was holding is released again.
+                if ($status === 'returned') {
+                    $order->restoreStock();
+                    Order::notifyUser($order->seller_id, 'Parcel Returned', 'Order #' . $order->order_number . ' was returned to you (' . ($shipment->delivery_failed_reason ?: 'delivery failed') . '). Its stock has been restored.', 'order_status', $order->id);
+                }
+            }
+
+            DB::table('order_status_history')->insert([
+                'id' => (string) Str::uuid(), 'order_id' => $shipment->order_id, 'status' => $status,
+                'changed_by' => auth()->id(), 'notes' => $data['reason'] ?? null, 'created_at' => now(),
+            ]);
+
+            return $shipment;
+        });
+
+        if (is_string($result)) {
+            return back()->withErrors(['status' => $result]);
         }
-        if ($status === 'delivery_failed') {
-            $updates['delivery_failed_reason'] = $data['reason'] ?? 'No reason given.';
-        }
-        $shipment->update($updates);
+        $shipment = $result;
 
         if ($shipment->order) {
-            $shipment->order->update(['status' => $status]);
-
             DB::table('notifications')->insert([
                 'id'                => (string) Str::uuid(),
                 'user_id'           => $shipment->order->buyer_id,
@@ -984,11 +1060,6 @@ class LogisticsController extends Controller
                 ]);
             }
         }
-
-        DB::table('order_status_history')->insert([
-            'id' => (string) Str::uuid(), 'order_id' => $shipment->order_id, 'status' => $status,
-            'changed_by' => auth()->id(), 'notes' => $data['reason'] ?? null, 'created_at' => now(),
-        ]);
 
         return back();
     }

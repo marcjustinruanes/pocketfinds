@@ -19,12 +19,40 @@
   <nav class="settings-nav" id="settingsNav">
     <a class="settings-nav-item active" data-settings-tab="general"><span class="ic"><x-admin-icon name="settings" /></span> General</a>
     <a class="settings-nav-item" data-settings-tab="hero"><span class="ic"><x-admin-icon name="bag" /></span> Hero Banner</a>
+    <a class="settings-nav-item" data-settings-tab="categories"><span class="ic"><x-admin-icon name="bag" /></span> Category Photos</a>
     <a class="settings-nav-item" data-settings-tab="policies"><span class="ic"><x-admin-icon name="file" /></span> Platform Policies</a>
     <a class="settings-nav-item" data-settings-tab="appearance"><span class="ic"><x-admin-icon name="chart" /></span> Appearance</a>
     <a class="settings-nav-item" data-settings-tab="danger"><span class="ic"><x-admin-icon name="flag" /></span> Danger Zone</a>
   </nav>
 
   <div>
+    <div data-settings-panel="categories" style="display:none">
+      <h2 class="settings-section-title">Category Photos</h2>
+      <p class="settings-section-sub">Replace the square photos on the guest homepage. Other shapes are cropped to the center.</p>
+      @if($errors->has('category_photo'))
+      <p role="alert" style="color:var(--danger)">{{ $errors->first('category_photo') }}</p>
+      @endif
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px">
+        @foreach(\App\Models\Category::orderBy('name')->get(['id','name','image_sha256']) as $category)
+        <div class="card"><div class="card-pad">
+          @if($category->image_sha256)
+          <img src="{{ route('guest.category-image', ['id' => $category->id, 'v' => $category->image_sha256]) }}" alt="{{ $category->name }}" width="104" height="104"
+               style="object-fit:cover;border-radius:14px;display:block;margin-bottom:14px">
+          @endif
+          <h3 style="margin:0 0 14px">{{ $category->name }}</h3>
+          <form method="POST" action="{{ route('admin.settings.category-photo.update', $category->id) }}" enctype="multipart/form-data">
+            @csrf
+            <div class="form-row">
+              <label for="category-photo-{{ $category->id }}">Replace photo</label>
+              <input id="category-photo-{{ $category->id }}" type="file" name="category_photo" accept="image/jpeg,image/png,image/webp" required style="max-width:100%;padding:6px">
+              <span style="font-size:12px;color:var(--muted)">JPG, PNG or WebP, up to 4 MB and 3000 × 3000 pixels.</span>
+            </div>
+            <button type="submit" class="btn btn-primary">Save Photo</button>
+          </form>
+        </div></div>
+        @endforeach
+      </div>
+    </div>
     {{-- ── General ── --}}
     <div data-settings-panel="general">
       <h2 class="settings-section-title"><span class="ic"><x-admin-icon name="settings" /></span> General</h2>
@@ -107,14 +135,7 @@
 
             <div style="height:1px;background:var(--border);margin:20px 0"></div>
 
-            {{-- Season / Theme label --}}
-            <div class="form-row">
-              <label>Season / Theme Label</label>
-              <input type="text" name="hero_label" value="{{ old('hero_label', $setting->hero_label) }}" placeholder="e.g. Summer Sale · Philippines" maxlength="100">
-              <span style="font-size:11.5px;color:var(--muted)">Shown as a small pill above the headline. Keep it short — 30 chars or less works best.</span>
-            </div>
-
-            {{-- Tagline (main headline) --}}
+{{-- Tagline (main headline) --}}
             <div class="form-row">
               <label>Tagline <span style="color:var(--danger)">*</span></label>
               <input type="text" name="hero_tagline" value="{{ old('hero_tagline', $setting->hero_tagline) }}" placeholder="e.g. Fresh Finds. Summer Feels." maxlength="200" required>
@@ -260,6 +281,9 @@ document.querySelectorAll('#settingsNav [data-settings-tab]').forEach(tab => {
 });
 
 // Live preview: apply the chosen theme instantly, before the form even saves.
+@if(session('settings_tab') === 'categories' || $errors->has('category_photo'))
+document.querySelector('#settingsNav [data-settings-tab="categories"]').click();
+@endif
 document.querySelectorAll('#preferencesForm input[name="theme"]').forEach(input => {
   input.addEventListener('change', () => {
     if (input.value === 'system') {

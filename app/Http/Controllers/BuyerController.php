@@ -97,7 +97,7 @@ class BuyerController extends Controller
             ->when($titleTerms->isNotEmpty(), function ($query) use ($titleTerms) {
                 $query->where(function ($matches) use ($titleTerms) {
                     foreach ($titleTerms as $term) {
-                        $matches->orWhere('name', 'ilike', '%' . $term . '%');
+                        $matches->orWhereLike('name', '%' . $term . '%');
                     }
                 });
             }, fn ($query) => $query->whereRaw('1 = 0'))
@@ -302,7 +302,7 @@ class BuyerController extends Controller
             if (isset($option['price'])) $price = (float) $option['price'];
             // The chosen option's own photo (e.g. a specific color) beats the
             // product's generic cover image whenever the seller set one.
-            if (!empty($option['image'])) $img = $this->supabaseUrl($option['image']);
+            if (!empty($option['image'])) $img = $this->productImageUrl($option['image']);
             $variationValue = $data['variation_value'];
             $variationGroup = $data['variation_group'];
         } else {
@@ -414,8 +414,9 @@ class BuyerController extends Controller
             if ($data['qty'] > $optionStock) {
                 return back()->with('error', "Only {$optionStock} item(s) available for this option.");
             }
+            $stockLimit = $optionStock;
             if (isset($option['price'])) $price = (float) $option['price'];
-            if (!empty($option['image'])) $img = $this->supabaseUrl($option['image']);
+            if (!empty($option['image'])) $img = $this->productImageUrl($option['image']);
         } else {
             $available = $product->total_stock;
             if ($available <= 0) {
@@ -424,11 +425,18 @@ class BuyerController extends Controller
             if ($data['qty'] > $available) {
                 return back()->with('error', "Only {$available} item(s) are currently available.");
             }
+            $stockLimit = $available;
         }
 
         $merge = CartItem::where('buyer_id', auth()->id())->where('product_id', $item->product_id)
             ->where('variation_value', $newValue)->where('variation_group', $groupName)
             ->where('id', '!=', $item->id)->first();
+
+        // Merging into a line the cart already has adds the two quantities together,
+        // so the combined total — not just this edit's qty — has to fit in stock.
+        if ($merge && $merge->qty + $data['qty'] > $stockLimit) {
+            return back()->with('error', "Only {$stockLimit} item(s) available — you already have {$merge->qty} of that option in your cart.");
+        }
 
         if ($merge) {
             $merge->update(['qty' => min(99, $merge->qty + $data['qty'])]);
@@ -449,6 +457,8 @@ class BuyerController extends Controller
 
     public function orders(Request $request)
     {
+        Order::autoCompleteDeliveredThrottled();
+
         $allowedTabs = ['all', 'to_ship', 'in_transit', 'out_for_delivery', 'delivered', 'completed', 'cancelled'];
         $tab = in_array($request->query('tab'), $allowedTabs, true) ? $request->query('tab') : 'all';
         $baseQuery = Order::where('buyer_id', auth()->id());
@@ -493,7 +503,7 @@ class BuyerController extends Controller
     public function cancelOrder(Request $request, Order $order)
     {
         abort_unless($order->buyer_id === auth()->id(), 403);
-        if (!in_array($order->status, ['placed', 'confirmed', 'preparing'], true)) {
+        if (!in_array($order->status, Order::CANCELLABLE_STATUSES, true)) {
             return back()->with('error', 'This order can no longer be cancelled.');
         }
 
@@ -502,25 +512,21 @@ class BuyerController extends Controller
             'cancellation_note' => ['nullable', 'string', 'max:500'],
         ]);
 
-        // Stock only actually left inventory once the seller confirmed this order
-        // (see SellerController::confirmOrder()) — a still-"placed" order never
-        // touched it, so there's nothing to give back in that case.
-        $hadDeductedStock = $order->status !== 'placed';
-
-        DB::transaction(function () use ($order, $data, $hadDeductedStock) {
-            $order->update([
-                'status' => 'cancelled',
-                'cancellation_reason' => $data['cancellation_reason'],
-                'cancellation_note' => $data['cancellation_note'] ?? null,
-            ]);
-
-            if ($hadDeductedStock) {
-                foreach ($order->items ?? [] as $item) {
-                    $product = Product::where('id', $item['product_id'])->lockForUpdate()->first();
-                    $product?->deductStock(-(int) $item['qty'], $item['variation_group'] ?: null, $item['variation_value'] ?: null);
-                }
+        // The status is re-read under a row lock: the seller confirming (which deducts
+        // stock) or a double-click can otherwise change it between the check above and
+        // this update, leaving stock deducted for a cancelled order or restored twice.
+        $cancelled = DB::transaction(function () use ($order, $data) {
+            $locked = Order::lockFresh($order->id);
+            $ok = $locked->cancelAndRestock($data['cancellation_reason'], $data['cancellation_note'] ?? null, auth()->id());
+            if ($ok) {
+                Order::notifyUser($locked->seller_id, 'Order Cancelled', 'Order #' . $locked->order_number . ' was cancelled by the buyer: ' . $data['cancellation_reason'] . '.', 'order_status', $locked->id);
             }
+            return $ok;
         });
+
+        if (!$cancelled) {
+            return back()->with('error', 'This order can no longer be cancelled.');
+        }
 
         return redirect()->route('buyer.orders', ['tab' => 'cancelled'])->with('success', 'Order cancelled successfully.');
     }
@@ -536,21 +542,23 @@ class BuyerController extends Controller
             return back()->with('error', 'This order cannot be confirmed as received yet.');
         }
 
-        $order->update(['status' => 'completed']);
-        if ($order->shipment && !$order->shipment->delivered_at) {
-            $order->shipment->update(['delivered_at' => now()]);
-        }
+        $confirmed = DB::transaction(function () use ($order) {
+            $locked = Order::lockFresh($order->id);
+            if ($locked->status !== 'delivered') {
+                return false;
+            }
+            $locked->update(['status' => 'completed']);
+            if ($locked->shipment && !$locked->shipment->delivered_at) {
+                $locked->shipment->update(['delivered_at' => now()]);
+            }
+            $locked->logStatus('completed', auth()->id(), 'Buyer confirmed receipt.');
+            Order::notifyUser($locked->seller_id, 'Order Delivered', 'Order #' . $locked->order_number . ' has been delivered to the customer.', 'order_delivered', $locked->id);
+            return true;
+        });
 
-        DB::table('notifications')->insert([
-            'id'                => (string) Str::uuid(),
-            'user_id'           => $order->seller_id,
-            'title'             => 'Order Delivered',
-            'message'           => 'Order #' . $order->order_number . ' has been delivered to the customer.',
-            'notification_type' => 'order_delivered',
-            'reference_id'      => $order->id,
-            'is_read'           => false,
-            'created_at'        => now(),
-        ]);
+        if (!$confirmed) {
+            return back()->with('error', 'This order cannot be confirmed as received yet.');
+        }
 
         return redirect()->route('buyer.orders', ['tab' => 'completed'])->with('success', 'Thanks for confirming! Your order is now marked as completed.');
     }
@@ -582,7 +590,7 @@ class BuyerController extends Controller
                     $option = collect($group['options'])->first(fn ($o) => ($o['value'] ?? null) === $value);
                     $available = (int) ($option['stock'] ?? 0);
                     if (isset($option['price'])) $price = (float) $option['price'];
-                    if (!empty($option['image'])) $img = $this->supabaseUrl($option['image']);
+                    if (!empty($option['image'])) $img = $this->productImageUrl($option['image']);
                     $variationGroup = $group['name'];
                 }
             }
@@ -637,12 +645,42 @@ class BuyerController extends Controller
         $deliveryAddress = !empty($data['delivery_address_id'])
             ? BuyerAddress::where('id', $data['delivery_address_id'])->where('buyer_id', auth()->id())->first()
             : null;
+        // A chosen address that no longer exists must not silently fall back to the
+        // profile address — the buyer would ship to somewhere they didn't pick.
+        if (!empty($data['delivery_address_id']) && !$deliveryAddress) {
+            return back()->with('error', 'That delivery address is no longer available — please choose another one.');
+        }
         $address = $deliveryAddress
             ? $deliveryAddress->toShippingArray()
             : collect(['house_no', 'street', 'barangay', 'municipality', 'province'])
                 ->mapWithKeys(fn ($field) => [$field => $buyer->{$field} ?: 'Not provided'])->all();
+        if ($problem = $this->deliveryAddressProblem($address)) {
+            return back()->with('error', $problem);
+        }
         $paymentMethod = PaymentMethod::findOrFail($data['payment_method']);
         $voucherCode = !empty($data['voucher_code']) ? strtoupper($data['voucher_code']) : null;
+
+        // Everything in the cart is re-checked against the live product before an order
+        // exists: it must still be listed by an approved seller (the cart only checked
+        // this when the item was added), and its price must still be the one the buyer saw.
+        $priceChanges = [];
+        foreach ($items as $item) {
+            $product = Product::where('id', $item['product_id'])->where('status', 'active')->sellerApproved()->first();
+            if (!$product) {
+                return back()->with('error', "\"{$item['name']}\" is no longer available — remove it from your cart to continue.");
+            }
+            $currentPrice = $this->currentUnitPrice($product, $item['variation_group'] ?: null, $item['variation_value'] ?: null);
+            if ($currentPrice === null) {
+                return back()->with('error', "The option you picked for \"{$item['name']}\" is no longer available — update it in your cart.");
+            }
+            if (abs($currentPrice - (float) $item['price']) > 0.004) {
+                CartItem::where('buyer_id', auth()->id())->where('id', $item['key'])->update(['price' => $currentPrice]);
+                $priceChanges[] = "\"{$item['name']}\" is now ₱" . number_format($currentPrice, 2) . ' (was ₱' . number_format((float) $item['price'], 2) . ')';
+            }
+        }
+        if ($priceChanges) {
+            return back()->with('error', 'Prices changed since you added these items: ' . implode('; ', $priceChanges) . '. Your cart now shows the current prices — review it and check out again.');
+        }
 
         // Validate the voucher against the shops actually in this checkout
         // *before* creating anything — an invalid code should reject the
@@ -657,7 +695,9 @@ class BuyerController extends Controller
             DB::transaction(function () use ($items, $data, $address, $paymentMethod, $voucherCode, $buyer, &$created) {
             foreach ($items->groupBy('seller_slug') as $sellerSlug => $sellerItems) {
                 $seller = User::where('username', $sellerSlug)->where('account_type', 'seller')->first();
-                if (!$seller) continue;
+                if (!$seller) {
+                    throw new \RuntimeException('Some items in your order are from a shop that is no longer available. Remove them from your cart and try again.');
+                }
 
                 // A courtesy check only — placing an order never touches stock, so
                 // this doesn't lock anything. Stock only actually leaves inventory
@@ -665,7 +705,7 @@ class BuyerController extends Controller
                 // which means several buyers can "place" against the same limited
                 // stock and it's the seller who decides who gets confirmed.
                 foreach ($sellerItems as $item) {
-                    $product = Product::find($item['product_id']);
+                    $product = Product::where('id', $item['product_id'])->where('status', 'active')->sellerApproved()->first();
                     if (!$product) {
                         throw new \RuntimeException("\"{$item['name']}\" is no longer available.");
                     }
@@ -685,7 +725,8 @@ class BuyerController extends Controller
                 $discount = 0;
                 $appliedVoucher = null;
                 if ($voucherCode) {
-                    $voucher = Voucher::where('seller_id', $seller->id)->where('code', $voucherCode)->first();
+                    // Locked so two simultaneous checkouts can't both slip under the usage limit.
+                    $voucher = Voucher::where('seller_id', $seller->id)->where('code', $voucherCode)->lockForUpdate()->first();
                     if ($voucher && $voucher->isUsable() && $subtotal >= $voucher->minimum_spend) {
                         $discount = $voucher->isFreeShipping()
                             ? $shipping
@@ -706,6 +747,7 @@ class BuyerController extends Controller
                     'payment_method_id' => $data['payment_method'] ?? null,
                 ]);
                 $created[] = $order;
+                $order->logStatus('placed', auth()->id());
 
                 DB::table('notifications')->insert([
                     'id' => (string) Str::uuid(),
@@ -728,6 +770,39 @@ class BuyerController extends Controller
         }
 
         return redirect()->route('buyer.orders', ['tab' => 'placed'])->with('success', 'Order submitted successfully.');
+    }
+
+    /**
+     * Why this delivery address can't be shipped to, or null if it can. Barangay, city and
+     * province drive hub routing (a blank one strands the order — no logistics company
+     * matches it), and riders need a house number or street to actually find the door.
+     */
+    private function deliveryAddressProblem(array $address): ?string
+    {
+        $missing = fn ($value) => !filled($value) || strcasecmp(trim((string) $value), 'Not provided') === 0;
+
+        if ($missing($address['barangay'] ?? null) || $missing($address['municipality'] ?? null) || $missing($address['province'] ?? null)) {
+            return 'Your delivery address is missing its barangay, city/municipality or province — please complete it before checking out.';
+        }
+        if ($missing($address['street'] ?? null) && $missing($address['house_no'] ?? null)) {
+            return 'Please add your house number or street to your delivery address so the rider can find you.';
+        }
+        return null;
+    }
+
+    /** What one unit of this product (or of the chosen variation option) costs right now — null if that option no longer exists. */
+    private function currentUnitPrice(Product $product, ?string $group, ?string $value): ?float
+    {
+        $hasDiscount = $product->discount_price !== null && (float) $product->discount_price < (float) $product->price;
+        $price = (float) ($hasDiscount ? $product->discount_price : $product->price);
+
+        if (!empty($product->variations)) {
+            if (!$group || !$value) return null;
+            $option = $this->findVariationOption($product, $group, $value);
+            if (!$option) return null;
+            if (isset($option['price'])) $price = (float) $option['price'];
+        }
+        return $price;
     }
 
     /** Whether the given code matches a usable voucher for any shop present in $items. */
@@ -802,7 +877,7 @@ class BuyerController extends Controller
                     'value' => $request->query('variation_value'),
                     'label' => $request->query('variation_group') . ': ' . $option['value'],
                     'price' => (float) ($option['price'] ?? $product->price),
-                    'image' => !empty($option['image']) ? (rtrim(config('filesystems.disks.supabase.url'), '/') . '/' . ltrim($option['image'], '/')) : null,
+                    'image' => !empty($option['image']) ? (rtrim(config('filesystems.disks.public.url'), '/') . '/' . ltrim($option['image'], '/')) : null,
                 ];
             }
         }
@@ -907,7 +982,7 @@ class BuyerController extends Controller
             'message_body' => $message->body, 'message_type' => $message->attachment_type ?: ($message->body ? 'text' : 'message'),
         ];
         if ($evidence) {
-            $values['evidence_path'] = $evidence->store('report_evidence', 'supabase');
+            $values['evidence_path'] = $evidence->store('report_evidence', 'public');
             $values['evidence_name'] = $evidence->getClientOriginalName();
             $values['evidence_mime'] = $evidence->getMimeType();
             $values['evidence_type'] = str_starts_with($values['evidence_mime'], 'video/') ? 'video' : 'image';
@@ -938,7 +1013,7 @@ class BuyerController extends Controller
             'message_body' => $product->name, 'message_type' => 'product',
         ];
         if ($evidence) {
-            $values['evidence_path'] = $evidence->store('report_evidence', 'supabase');
+            $values['evidence_path'] = $evidence->store('report_evidence', 'public');
             $values['evidence_name'] = $evidence->getClientOriginalName();
             $values['evidence_mime'] = $evidence->getMimeType();
             $values['evidence_type'] = str_starts_with($values['evidence_mime'], 'video/') ? 'video' : 'image';
@@ -1012,7 +1087,7 @@ class BuyerController extends Controller
     {
         $mime = $file->getMimeType();
         $extension = strtolower($file->getClientOriginalExtension());
-        $msg['attachment_path'] = $file->store('message_attachments', 'supabase_messages');
+        $msg['attachment_path'] = $file->store('message_attachments', 'messages');
         $msg['attachment_name'] = $file->getClientOriginalName();
         $msg['attachment_mime'] = $mime;
         $msg['attachment_size'] = $file->getSize();
@@ -1031,8 +1106,8 @@ class BuyerController extends Controller
             'product_name'    => $m->variation_label ?: $m->product?->name,
             'product_price'   => $m->variation_price ?? $m->product?->price,
             'product_img'     => $m->variation_image
-                ? (rtrim(config('filesystems.disks.supabase.url'), '/') . '/' . ltrim($m->variation_image, '/'))
-                : ($m->product?->image ? (rtrim(config('filesystems.disks.supabase.url'), '/') . '/' . ltrim($m->product->image, '/')) : null),
+                ? (rtrim(config('filesystems.disks.public.url'), '/') . '/' . ltrim($m->variation_image, '/'))
+                : ($m->product?->image ? (rtrim(config('filesystems.disks.public.url'), '/') . '/' . ltrim($m->product->image, '/')) : null),
             'product_url'     => $m->product_id ? route('buyer.product', $m->product_id) : null,
             'order_id'        => $m->order_id,
             'order_number'    => $m->order?->order_number,

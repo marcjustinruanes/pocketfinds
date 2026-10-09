@@ -3,17 +3,22 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class ShopFollow extends Model
 {
-    // `shop_follows.id` is a Postgres uuid with a gen_random_uuid() default,
-    // and the table has no updated_at column — see Announcement.php for the
-    // uuid half of this pattern.
+    // Generate UUIDs in the application so inserts also work on MySQL.
     protected $keyType      = 'string';
     public    $incrementing = false;
     public    $timestamps   = false;
 
     protected $fillable = ['buyer_id', 'seller_id'];
+
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(fn ($model) => $model->id = $model->id ?: (string) Str::uuid());
+    }
 
     public function buyer()
     {

@@ -166,7 +166,7 @@
             <button type="button" class="product-picker-item" data-product-id="{{ $p->id }}" data-product-name="{{ strtolower($p->name) }}"
                     style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:9px;background:#fff;text-align:left;cursor:pointer">
               <span style="width:36px;height:36px;border-radius:8px;background:var(--pink-soft);display:grid;place-items:center;overflow:hidden;flex:none">
-                @if($p->image)<img src="{{ rtrim(config('filesystems.disks.supabase.url'), '/') . '/' . ltrim($p->image, '/') }}" style="width:100%;height:100%;object-fit:cover">@else 🛍️ @endif
+                @if($p->image)<img src="{{ rtrim(config('filesystems.disks.public.url'), '/') . '/' . ltrim($p->image, '/') }}" style="width:100%;height:100%;object-fit:cover">@else 🛍️ @endif
               </span>
               <span style="min-width:0">
                 <span style="display:block;font-size:12.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ $p->name }}</span>

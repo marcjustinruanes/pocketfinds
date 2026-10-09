@@ -437,11 +437,40 @@ class AdminController extends Controller
         return back()->with('success', 'General settings saved.');
     }
 
+    /** Store an admin's replacement category photo directly in MySQL. */
+    public function updateCategoryPhoto(Request $request, int $id)
+    {
+        $request->validate([
+            'category_photo' => 'required|image|mimes:jpg,jpeg,png,webp|max:4096|dimensions:min_width=64,min_height=64,max_width=3000,max_height=3000',
+        ]);
+        $category = \App\Models\Category::findOrFail($id);
+        $source = imagecreatefromstring(file_get_contents($request->file('category_photo')->getRealPath()));
+        abort_unless($source, 422, 'This image could not be read.');
+        $photo = imagecreatetruecolor(480, 480);
+        imagefill($photo, 0, 0, imagecolorallocate($photo, 255, 255, 255));
+        $side = min(imagesx($source), imagesy($source));
+        imagecopyresampled($photo, $source, 0, 0,
+            (int) ((imagesx($source) - $side) / 2), (int) ((imagesy($source) - $side) / 2),
+            480, 480, $side, $side);
+        ob_start();
+        imagejpeg($photo, null, 88);
+        $bytes = ob_get_clean();
+        imagedestroy($source);
+        imagedestroy($photo);
+        $category->forceFill([
+            'image_data' => $bytes,
+            'image_mime' => 'image/jpeg',
+            'image_sha256' => hash('sha256', $bytes),
+            'image_source' => null,
+        ])->save();
+        return redirect()->route('admin.settings')->with('settings_tab', 'categories')
+            ->with('success', $category->name.' photo updated.');
+    }
+
     /** Admin uploads/sets the landing page hero banner image, tagline, and seasonal theme label. */
     public function updateHeroSettings(Request $request)
     {
         $data = $request->validate([
-            'hero_label'    => 'nullable|string|max:100',
             'hero_tagline'  => 'nullable|string|max:200',
             'hero_subtitle' => 'nullable|string|max:500',
             'hero_cta_text' => 'nullable|string|max:80',
@@ -454,15 +483,15 @@ class AdminController extends Controller
         if ($request->hasFile('hero_image')) {
             // Remove old image if it exists
             if ($setting->hero_image) {
-                \Illuminate\Support\Facades\Storage::disk('supabase')->delete($setting->hero_image);
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($setting->hero_image);
             }
-            $data['hero_image'] = $request->file('hero_image')->store('hero_banners', 'supabase');
+            $data['hero_image'] = $request->file('hero_image')->store('hero_banners', 'public');
         }
 
         // Allow clearing the image via a hidden checkbox
         if ($request->boolean('hero_image_clear')) {
             if ($setting->hero_image) {
-                \Illuminate\Support\Facades\Storage::disk('supabase')->delete($setting->hero_image);
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($setting->hero_image);
             }
             $data['hero_image'] = null;
         }
@@ -725,10 +754,10 @@ class AdminController extends Controller
 
         if ($request->hasFile('profile_picture')) {
             if ($user->profile_picture) {
-                Storage::disk('supabase')->delete($user->profile_picture);
+                Storage::disk('profile_images')->delete($user->profile_picture);
             }
 
-            $data['profile_picture'] = $request->file('profile_picture')->store('profile-pictures', 'supabase');
+            $data['profile_picture'] = $request->file('profile_picture')->store('profile-pictures', 'profile_images');
         }
 
         $user->update($data);

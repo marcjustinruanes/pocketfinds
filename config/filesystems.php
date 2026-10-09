@@ -38,72 +38,28 @@ return [
             'report' => false,
         ],
 
-        // 'public' resolves to the same Supabase-backed bucket as 'supabase' below —
-        // every ->store($dir, 'public') upload across the app (admin message
-        // attachments, etc.) already targets this disk by that name.
         'public' => [
-            'driver' => 's3',
-            'key' => env('AWS_ACCESS_KEY_ID'),
-            'secret' => env('AWS_SECRET_ACCESS_KEY'),
-            'region' => env('AWS_DEFAULT_REGION'),
-            'bucket' => env('AWS_BUCKET'),
-            'url' => env('AWS_URL'),
-            'endpoint' => env('AWS_ENDPOINT'),
-            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', true),
+            'driver' => 'local',
+            'root' => storage_path('app/public'),
+            'url' => '/storage',
             'visibility' => 'public',
-            'throw' => false,
+            'throw' => true,
             'report' => false,
         ],
 
-        'supabase' => [
-            'driver'                  => 's3',
-            'key'                     => env('AWS_ACCESS_KEY_ID'),
-            'secret'                  => env('AWS_SECRET_ACCESS_KEY'),
-            'region'                  => 'ap-northeast-2',
-            'bucket'                  => env('AWS_BUCKET', 'products'),
-            'url'                     => env('SUPABASE_URL') . '/storage/v1/object/public/' . env('AWS_BUCKET', 'products'),
-            'endpoint'                => env('AWS_ENDPOINT'),
-            'use_path_style_endpoint' => true,
-            'throw'                   => true,
-            // connect_timeout makes a DNS/connection failure fail fast (this network's DNS
-            // resolver is occasionally flaky) rather than hang for 10+ seconds per attempt —
-            // callers that retry (see RegisterController::storeWithRetry()) stay responsive.
-            'options'                 => ['@http' => ['verify' => false, 'connect_timeout' => 5, 'timeout' => 25]],
+        // Message attachments are served through the authenticated message.media route.
+        'messages' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/messages'),
+            'throw' => true,
         ],
 
-        // Chat attachments (buyer/seller/logistics/admin messaging) get their own
-        // Supabase bucket, separate from the 'products' bucket above.
-        'supabase_messages' => [
-            'driver'                  => 's3',
-            'key'                     => env('AWS_ACCESS_KEY_ID'),
-            'secret'                  => env('AWS_SECRET_ACCESS_KEY'),
-            'region'                  => 'ap-northeast-2',
-            'bucket'                  => env('AWS_BUCKET_MESSAGES', 'messages'),
-            'url'                     => env('SUPABASE_URL') . '/storage/v1/object/public/' . env('AWS_BUCKET_MESSAGES', 'messages'),
-            'endpoint'                => env('AWS_ENDPOINT'),
-            'use_path_style_endpoint' => true,
-            'throw'                   => true,
-            // connect_timeout makes a DNS/connection failure fail fast (this network's DNS
-            // resolver is occasionally flaky) rather than hang for 10+ seconds per attempt —
-            // callers that retry (see RegisterController::storeWithRetry()) stay responsive.
-            'options'                 => ['@http' => ['verify' => false, 'connect_timeout' => 5, 'timeout' => 25]],
-        ],
-
-        // Profile pictures get their own Supabase bucket, separate from 'products'.
         'profile_images' => [
-            'driver'                  => 's3',
-            'key'                     => env('AWS_ACCESS_KEY_ID'),
-            'secret'                  => env('AWS_SECRET_ACCESS_KEY'),
-            'region'                  => 'ap-northeast-2',
-            'bucket'                  => env('AWS_BUCKET_PROFILES', 'profile-images'),
-            'url'                     => env('SUPABASE_URL') . '/storage/v1/object/public/' . env('AWS_BUCKET_PROFILES', 'profile-images'),
-            'endpoint'                => env('AWS_ENDPOINT'),
-            'use_path_style_endpoint' => true,
-            'throw'                   => true,
-            // connect_timeout makes a DNS/connection failure fail fast (this network's DNS
-            // resolver is occasionally flaky) rather than hang for 10+ seconds per attempt —
-            // callers that retry (see RegisterController::storeWithRetry()) stay responsive.
-            'options'                 => ['@http' => ['verify' => false, 'connect_timeout' => 5, 'timeout' => 25]],
+            'driver' => 'local',
+            'root' => storage_path('app/public/profiles'),
+            'url' => '/storage/profiles',
+            'visibility' => 'public',
+            'throw' => true,
         ],
 
         's3' => [

@@ -81,7 +81,7 @@
         // Only companies with a hub in BOTH your city and the buyer's city can
         // actually move this parcel through their own connected hub network.
         $eligibleCompanies = ($order->status === 'preparing' && !$shipment)
-          ? \App\Models\LogisticsHub::companiesServicing(auth()->user()->municipality, $order->shipping_address['municipality'] ?? null)
+          ? \App\Models\LogisticsHub::companiesServicing(auth()->user()->municipality, $order->shipping_address['municipality'] ?? null, auth()->user()->province, $order->shipping_address['province'] ?? null)
           : collect();
         $detailPayload = [
           'number' => $order->order_number,
@@ -176,6 +176,12 @@
                 <button type="submit" class="btn btn-sm btn-primary">@include('seller.partials.icon', ['name' => 'check', 'size' => 13]) Confirm Order</button>
               </form>
             @endif
+            @if(in_array($order->status, \App\Models\Order::CANCELLABLE_STATUSES, true))
+              <button type="button" class="btn btn-sm btn-outline" style="color:var(--danger)"
+                onclick="openCancelOrderModal('{{ route('seller.orders.cancel', $order) }}', '{{ $order->order_number }}', {{ $order->status === 'placed' ? 'false' : 'true' }})">
+                @include('seller.partials.icon', ['name' => 'x', 'size' => 13]) Cancel Order
+              </button>
+            @endif
             @if($order->status === 'confirmed')
               <form method="POST" action="{{ route('seller.orders.preparing', $order) }}">
                 @csrf @method('PATCH')
@@ -265,6 +271,41 @@
       <div class="modal-foot">
         <button type="button" class="btn btn-outline" data-modal-close>Cancel</button>
         <button type="submit" class="btn btn-primary">Save Schedule</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="cancelOrderModal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-head">
+      <div><h3>Cancel Order</h3><p id="cancelOrderLabel"></p></div>
+      <button class="modal-close" type="button" data-modal-close>✕</button>
+    </div>
+    <form method="POST" id="cancelOrderForm">
+      @csrf @method('PATCH')
+      <div class="modal-body">
+        <div class="form-row">
+          <label for="cancelOrderReason">Reason</label>
+          <select name="cancellation_reason" id="cancelOrderReason" required>
+            <option value="Out of stock">Out of stock</option>
+            <option value="Unable to fulfil this order">Unable to fulfil this order</option>
+            <option value="Cannot deliver to the buyer location">Cannot deliver to the buyer's location</option>
+            <option value="Buyer requested cancellation">Buyer requested cancellation</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="cancelOrderNote">Note to the buyer (optional)</label>
+          <textarea name="cancellation_note" id="cancelOrderNote" rows="2" maxlength="500"></textarea>
+        </div>
+        <p style="margin:0;font-size:12px;color:var(--muted)">
+          The buyer is notified right away. <span id="cancelOrderRestockNote">Items already reserved for this order go back into your stock.</span> This can't be undone.
+        </p>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-outline" data-modal-close>Keep Order</button>
+        <button type="submit" class="btn btn-danger">Cancel Order</button>
       </div>
     </form>
   </div>
@@ -519,6 +560,14 @@ function openScheduleModal(orderId, orderNumber) {
   document.getElementById('scheduleOrderLabel').textContent = 'Order ' + orderNumber;
   document.getElementById('scheduleForm').action = '{{ url('/seller/orders') }}/' + orderId + '/schedule-pickup';
   document.getElementById('scheduleModal').classList.add('open');
+}
+
+function openCancelOrderModal(formAction, orderNumber, stockWasReserved) {
+  document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+  document.getElementById('cancelOrderLabel').textContent = 'Order ' + orderNumber;
+  document.getElementById('cancelOrderForm').action = formAction;
+  document.getElementById('cancelOrderRestockNote').style.display = stockWasReserved ? '' : 'none';
+  document.getElementById('cancelOrderModal').classList.add('open');
 }
 
 function openConfirmPickupModal(formAction, orderNumber, riderName) {

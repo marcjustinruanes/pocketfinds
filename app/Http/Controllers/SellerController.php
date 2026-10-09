@@ -53,6 +53,8 @@ class SellerController extends Controller
     }
     public function orders(Request $request)
     {
+        Order::autoCompleteDeliveredThrottled();
+
         $status = $request->query('status', 'all');
         $orders = Order::with(['buyer', 'paymentMethod', 'shipment.courier', 'shipment.pickupRider'])
             ->where('seller_id', auth()->id())
@@ -76,13 +78,16 @@ class SellerController extends Controller
     private function advanceOrderStage(Order $order, string $from, string $to): void
     {
         abort_unless($order->seller_id === auth()->id(), 403);
-        abort_unless($order->status === $from, 422, "This order is not at the \"{$from}\" stage.");
 
-        $order->update(['status' => $to]);
-        DB::table('order_status_history')->insert([
-            'id' => (string) Str::uuid(), 'order_id' => $order->id, 'status' => $to,
-            'changed_by' => auth()->id(), 'created_at' => now(),
-        ]);
+        // Re-read under a row lock so a double-click or a concurrent buyer cancel can't
+        // move an order from a stage it's no longer at.
+        DB::transaction(function () use ($order, $from, $to) {
+            $locked = Order::lockFresh($order->id);
+            abort_unless($locked->status === $from, 422, "This order is not at the \"{$from}\" stage.");
+
+            $locked->update(['status' => $to]);
+            $locked->logStatus($to, auth()->id());
+        });
     }
 
     /**
@@ -94,12 +99,16 @@ class SellerController extends Controller
     public function confirmOrder(Order $order)
     {
         abort_unless($order->seller_id === auth()->id(), 403);
-        abort_unless($order->status === 'placed', 422, 'This order is not at the "placed" stage.');
 
         try {
             DB::transaction(function () use ($order) {
+                // Locked + re-read first: a double-click must not deduct stock twice, and
+                // a buyer cancelling at the same instant must not be overwritten.
+                $locked = Order::lockFresh($order->id);
+                abort_unless($locked->status === 'placed', 422, 'This order is not at the "placed" stage.');
+
                 $products = [];
-                foreach ($order->items ?? [] as $item) {
+                foreach ($locked->items ?? [] as $item) {
                     $product = $products[$item['product_id']]
                         ?? Product::where('id', $item['product_id'])->lockForUpdate()->first();
                     if (!$product) {
@@ -109,12 +118,12 @@ class SellerController extends Controller
                     $available = $product->availableStock($item['variation_group'] ?: null, $item['variation_value'] ?: null);
                     if ($available < (int) $item['qty']) {
                         throw new \RuntimeException($available > 0
-                            ? "Only {$available} of \"{$item['name']}\" left in stock — cancel or adjust before confirming."
-                            : "\"{$item['name']}\" is now out of stock.");
+                            ? "Only {$available} of \"{$item['name']}\" left in stock — you can cancel this order instead."
+                            : "\"{$item['name']}\" is now out of stock — you can cancel this order instead.");
                     }
                 }
 
-                foreach ($order->items ?? [] as $item) {
+                foreach ($locked->items ?? [] as $item) {
                     $products[$item['product_id']]->deductStock(
                         (int) $item['qty'],
                         $item['variation_group'] ?: null,
@@ -122,11 +131,8 @@ class SellerController extends Controller
                     );
                 }
 
-                $order->update(['status' => 'confirmed']);
-                DB::table('order_status_history')->insert([
-                    'id' => (string) Str::uuid(), 'order_id' => $order->id, 'status' => 'confirmed',
-                    'changed_by' => auth()->id(), 'created_at' => now(),
-                ]);
+                $locked->update(['status' => 'confirmed']);
+                $locked->logStatus('confirmed', auth()->id());
             });
         } catch (\RuntimeException $e) {
             return back()->with('error', $e->getMessage());
@@ -157,7 +163,8 @@ class SellerController extends Controller
 
         $seller = auth()->user();
         $buyerMunicipality = $order->shipping_address['municipality'] ?? null;
-        $eligible = \App\Models\LogisticsHub::companiesServicing($seller->municipality, $buyerMunicipality);
+        $buyerProvince     = $order->shipping_address['province'] ?? null;
+        $eligible = \App\Models\LogisticsHub::companiesServicing($seller->municipality, $buyerMunicipality, $seller->province, $buyerProvince);
 
         $data = $request->validate([
             'logistics_company' => ['required', 'string', function ($attribute, $value, $fail) use ($eligible) {
@@ -167,26 +174,31 @@ class SellerController extends Controller
             }],
         ]);
 
-        if (!$order->shipment) {
-            // pickup_approved_at stays null until the company's admin confirms the handoff
-            // (LogisticsController::approveRequest()) — until then this is invisible to
-            // every pickup rider, even though its status is already 'ready_for_pickup'.
-            Shipment::create([
-                'order_id'             => $order->id,
-                'tracking_number'      => 'PF-SHIP-' . now()->format('ymd') . '-' . strtoupper(Str::random(6)),
-                'shipping_status'      => 'ready_for_pickup',
-                'logistics_company'    => $data['logistics_company'],
-                'origin_hub'           => $seller->municipality,
-                'origin_province'      => $seller->province,
-                'destination_hub'      => $buyerMunicipality,
-                'destination_province' => $order->shipping_address['province'] ?? null,
-            ]);
-        }
-        $order->update(['status' => 'ready_for_pickup']);
-        DB::table('order_status_history')->insert([
-            'id' => (string) Str::uuid(), 'order_id' => $order->id, 'status' => 'ready_for_pickup',
-            'changed_by' => auth()->id(), 'created_at' => now(),
-        ]);
+        // One transaction on the locked order row: the shipment and the status change
+        // land together or not at all, and a buyer cancel that got there first (which
+        // has already restocked) can't be overwritten into a shipped, cancelled order.
+        DB::transaction(function () use ($order, $data, $seller, $buyerMunicipality, $buyerProvince) {
+            $locked = Order::lockFresh($order->id);
+            abort_unless($locked->status === 'preparing', 422, 'This order is not awaiting preparation.');
+
+            if (!$locked->shipment) {
+                // pickup_approved_at stays null until the company's admin confirms the handoff
+                // (LogisticsController::approveRequest()) — until then this is invisible to
+                // every pickup rider, even though its status is already 'ready_for_pickup'.
+                Shipment::create([
+                    'order_id'             => $locked->id,
+                    'tracking_number'      => 'PF-SHIP-' . now()->format('ymd') . '-' . strtoupper(Str::random(6)),
+                    'shipping_status'      => 'ready_for_pickup',
+                    'logistics_company'    => $data['logistics_company'],
+                    'origin_hub'           => $seller->municipality,
+                    'origin_province'      => $seller->province,
+                    'destination_hub'      => $buyerMunicipality,
+                    'destination_province' => $buyerProvince,
+                ]);
+            }
+            $locked->update(['status' => 'ready_for_pickup']);
+            $locked->logStatus('ready_for_pickup', auth()->id());
+        });
 
         return back()->with('order_success', 'Order handed off to ' . $data['logistics_company'] . ' for courier pickup.');
     }
@@ -201,29 +213,57 @@ class SellerController extends Controller
     public function confirmPickup(Order $order)
     {
         abort_unless($order->seller_id === auth()->id(), 403);
-        $order->load('shipment');
-        abort_unless($order->shipment && $order->shipment->shipping_status === 'ready_for_pickup', 422, 'No pickup rider has accepted this order yet.');
-        abort_unless($order->shipment->pickup_rider_id, 422, 'No pickup rider has accepted this order yet.');
-        abort_unless($order->shipment->rider_confirmed_pickup_at, 422, 'Waiting for the rider to confirm they picked up the parcel first.');
-        abort_if($order->shipment->seller_confirmed_pickup_at, 422, 'You already confirmed this handover.');
 
-        $order->shipment->update(['seller_confirmed_pickup_at' => now()]);
-        // The rider confirmed first (enforced above), so this always completes the pair.
-        $order->shipment->maybeAdvancePastPickupConfirmation();
-        $order->update(['status' => 'picked_up']);
-        DB::table('order_status_history')->insert([
-            'id' => (string) Str::uuid(), 'order_id' => $order->id, 'status' => 'picked_up',
-            'changed_by' => auth()->id(), 'created_at' => now(),
-        ]);
+        DB::transaction(function () use ($order) {
+            // Order and shipment locked together so a double-click can't confirm twice.
+            $locked   = Order::lockFresh($order->id);
+            $shipment = Shipment::where('order_id', $locked->id)->lockForUpdate()->first();
 
-        DB::table('notifications')->insert([
-            'id' => (string) Str::uuid(), 'user_id' => $order->shipment->pickup_rider_id,
-            'title' => 'Pickup Confirmed', 'message' => 'The seller confirmed you picked up order #' . $order->order_number . '. Bring it to the sorting center.',
-            'notification_type' => 'order_status', 'reference_id' => $order->id,
-            'is_read' => false, 'created_at' => now(),
-        ]);
+            abort_unless($shipment && $shipment->shipping_status === 'ready_for_pickup', 422, 'No pickup rider has accepted this order yet.');
+            abort_unless($shipment->pickup_rider_id, 422, 'No pickup rider has accepted this order yet.');
+            abort_unless($shipment->rider_confirmed_pickup_at, 422, 'Waiting for the rider to confirm they picked up the parcel first.');
+            abort_if($shipment->seller_confirmed_pickup_at, 422, 'You already confirmed this handover.');
+
+            $shipment->update(['seller_confirmed_pickup_at' => now()]);
+            // The rider confirmed first (enforced above), so this always completes the pair.
+            $shipment->maybeAdvancePastPickupConfirmation();
+            $locked->update(['status' => 'picked_up']);
+            $locked->logStatus('picked_up', auth()->id());
+
+            Order::notifyUser($shipment->pickup_rider_id, 'Pickup Confirmed', 'The seller confirmed you picked up order #' . $locked->order_number . '. Bring it to the sorting center.', 'order_status', $locked->id);
+        });
 
         return back()->with('order_success', 'Pickup confirmed.');
+    }
+
+    /**
+     * Seller cancels an order that hasn't been handed to a courier yet — out of stock,
+     * can't ship to that area, buyer asked, etc. Stock is given back if it had already
+     * been deducted (i.e. the order was confirmed), and the buyer is told why.
+     */
+    public function cancelOrder(Request $request, Order $order)
+    {
+        abort_unless($order->seller_id === auth()->id(), 403);
+
+        $data = $request->validate([
+            'cancellation_reason' => ['required', 'string', 'in:Out of stock,Unable to fulfil this order,Cannot deliver to the buyer location,Buyer requested cancellation,Other'],
+            'cancellation_note'   => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $cancelled = DB::transaction(function () use ($order, $data) {
+            $locked = Order::lockFresh($order->id);
+            $ok = $locked->cancelAndRestock('Cancelled by seller: ' . $data['cancellation_reason'], $data['cancellation_note'] ?? null, auth()->id());
+            if ($ok) {
+                Order::notifyUser($locked->buyer_id, 'Order Cancelled', 'Your order #' . $locked->order_number . ' was cancelled by the seller: ' . $data['cancellation_reason'] . '.', 'order_status', $locked->id);
+            }
+            return $ok;
+        });
+
+        if (!$cancelled) {
+            return back()->with('error', 'This order can no longer be cancelled — it has already been handed to a courier.');
+        }
+
+        return back()->with('order_success', 'Order cancelled.');
     }
 
     /** Printable waybill/shipping label for a prepared order. */
@@ -434,7 +474,7 @@ class SellerController extends Controller
             'message_body' => $message->body, 'message_type' => $message->attachment_type ?: ($message->body ? 'text' : 'message'),
         ];
         if ($evidence) {
-            $values['evidence_path'] = $evidence->store('report_evidence', 'supabase');
+            $values['evidence_path'] = $evidence->store('report_evidence', 'public');
             $values['evidence_name'] = $evidence->getClientOriginalName();
             $values['evidence_mime'] = $evidence->getMimeType();
             $values['evidence_type'] = str_starts_with($values['evidence_mime'], 'video/') ? 'video' : 'image';
@@ -491,7 +531,7 @@ class SellerController extends Controller
     {
         $mime = $file->getMimeType();
         $extension = strtolower($file->getClientOriginalExtension());
-        $msg['attachment_path'] = $file->store('message_attachments', 'supabase_messages');
+        $msg['attachment_path'] = $file->store('message_attachments', 'messages');
         $msg['attachment_name'] = $file->getClientOriginalName();
         $msg['attachment_mime'] = $mime;
         $msg['attachment_size'] = $file->getSize();
@@ -509,7 +549,7 @@ class SellerController extends Controller
             'product_id'      => $m->product_id,
             'product_name'    => $m->product?->name,
             'product_price'   => $m->product?->price,
-            'product_img'     => $m->product?->image ? (rtrim(config('filesystems.disks.supabase.url'), '/') . '/' . ltrim($m->product->image, '/')) : null,
+            'product_img'     => $m->product?->image ? (rtrim(config('filesystems.disks.public.url'), '/') . '/' . ltrim($m->product->image, '/')) : null,
             'product_url'     => $m->product_id ? route('buyer.product', $m->product_id) : null,
             'order_id'        => $m->order_id,
             'order_number'    => $m->order?->order_number,
@@ -570,7 +610,7 @@ class SellerController extends Controller
             return back()->withErrors(['images' => 'Please set your shop category in Account settings before adding products.']);
         }
 
-        $imagePaths = collect($request->file('images', []))->map(fn ($file) => $file->store('product_images', 'supabase'))->values();
+        $imagePaths = collect($request->file('images', []))->map(fn ($file) => $file->store('product_images', 'public'))->values();
         $variations = $request->filled('variations') ? json_decode($request->variations, true) : null;
         $details    = $request->filled('details') ? json_decode($request->details, true) : null;
 
@@ -581,7 +621,7 @@ class SellerController extends Controller
         }
 
         $coverImages = $imagePaths->isNotEmpty() ? $imagePaths->all() : [$firstVariationImage];
-        $videoPath   = $request->hasFile('video') ? $request->file('video')->store('product_videos', 'supabase') : null;
+        $videoPath   = $request->hasFile('video') ? $request->file('video')->store('product_videos', 'public') : null;
 
         Product::create([
             'seller_id'    => $seller->id,
@@ -647,7 +687,7 @@ class SellerController extends Controller
         $seller = auth()->user();
 
         $keptImages = collect($request->input('existing_images', []));
-        $newImages  = collect($request->file('images', []))->map(fn ($file) => $file->store('product_images', 'supabase'));
+        $newImages  = collect($request->file('images', []))->map(fn ($file) => $file->store('product_images', 'public'));
         $variations = $request->filled('variations') ? json_decode($request->variations, true) : null;
         $details    = $request->filled('details') ? json_decode($request->details, true) : null;
 
@@ -662,7 +702,7 @@ class SellerController extends Controller
         if ($coverImages->isEmpty()) $coverImages = collect([$firstVariationImage]);
 
         $videoPath = $request->hasFile('video')
-            ? $request->file('video')->store('product_videos', 'supabase')
+            ? $request->file('video')->store('product_videos', 'public')
             : ($request->boolean('keep_video') ? $product->video : null);
 
         $product->update([
@@ -710,7 +750,7 @@ class SellerController extends Controller
                 $key = $option['image_key'] ?? null;
                 unset($option['image_key']);
                 if ($key && isset($variationImages[$key])) {
-                    $path = $variationImages[$key]->store('product_images', 'supabase');
+                    $path = $variationImages[$key]->store('product_images', 'public');
                     $option['image'] = $path;
                 } elseif (!empty($option['existing_image'])) {
                     $option['image'] = $option['existing_image'];
@@ -962,6 +1002,25 @@ class SellerController extends Controller
         );
     }
 
+    public function updateShopPhoto(Request $request)
+    {
+        $request->validate([
+            'profile_picture' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048|dimensions:max_width=4000,max_height=4000',
+        ]);
+        $seller = $request->user();
+        $disk = \Illuminate\Support\Facades\Storage::disk('profile_images');
+        $oldPhoto = $seller->profile_picture;
+        $newPhoto = $request->file('profile_picture')->store('shop-photos', 'profile_images');
+        try {
+            $seller->update(['profile_picture' => $newPhoto]);
+        } catch (\Throwable $exception) {
+            $disk->delete($newPhoto);
+            throw $exception;
+        }
+        if ($oldPhoto && $oldPhoto !== $newPhoto && !str_starts_with($oldPhoto, 'category:')) $disk->delete($oldPhoto);
+        return back()->with('shop_photo_success', 'Shop picture updated.');
+    }
+
     public function vouchers()
     {
         $vouchers = Voucher::where('seller_id', auth()->id())->latest('created_at')->get();
@@ -1021,7 +1080,7 @@ class SellerController extends Controller
         return $this->submitAccountUpdateRequest(
             $request,
             ['id_type_id'],
-            ['id_file' => 'supabase', 'business_permit_file' => 'supabase'],
+            ['id_file' => 'public', 'business_permit_file' => 'public'],
             'docs_success'
         );
     }

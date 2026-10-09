@@ -82,6 +82,7 @@
         @if($info['button'])
         <form method="POST" action="{{ route('rider.deliveries.advance', $shipment->id) }}">
           @csrf @method('PATCH')
+          <input type="hidden" name="from" value="{{ $shipment->shipping_status }}">
           <button class="btn btn-primary" style="width:100%">{{ $info['button'] }}</button>
         </form>
         @else
