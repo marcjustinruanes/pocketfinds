@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<meta name="csrf-token" content="{{ csrf_token() }}">
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>{{ $product['name'] }} — PocketFinds</title>
 <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
@@ -12,66 +13,12 @@
 {{-- Loaded last so its header/search styles win over marketplace.css's, matching the guest homepage. --}}
 <link rel="stylesheet" href="{{ asset('css/landing.css') }}?v={{ filemtime(public_path('css/landing.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/guest-responsive.css') }}?v={{ filemtime(public_path('css/guest-responsive.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/product-detail.css') }}?v={{ filemtime(public_path('css/product-detail.css')) }}">
 </head>
-<body class="marketplace">
+<body class="marketplace product-detail-page">
 
 
-<header class="market-header">
-  <div class="container header-main">
-
-    <a class="logo" href="{{ url('/') }}">
-      <span class="logo-mark">
-        <img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="PocketFinds" class="brand-logo-img">
-      </span>
-      <span><span class="logo-pocket">Pocket</span><span class="logo-finds">Finds</span></span>
-    </a>
-
-    <div class="pf-search-wrap">
-      <form class="search" action="{{ url('/') }}" method="GET">
-        <span class="pf-search-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        </span>
-        <input name="q" type="search" placeholder="Search">
-        <button type="submit">
-          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        </button>
-      </form>
-    </div>
-
-    <nav class="nav-links">
-      <a class="nav-link" href="{{ url('/') }}#shops">Shops</a>
-      <a class="nav-link" href="{{ url('/') }}#deals">Deals</a>
-      <a class="nav-link" href="{{ url('/') }}#about">About</a>
-    </nav>
-
-    <div class="header-actions">
-      <button class="pf-acct-icon" type="button" data-protected title="Wishlist" aria-label="Wishlist"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 4 5 5L7 22l-5-5L15 4Z"/><path d="m12 7 5 5M5 3v4M3 5h4M19 15v4M17 17h4M19 2v2M18 3h2"/></svg>
-      </button>
-      <button class="pf-acct-icon" type="button" data-protected title="Cart">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 5m12-5l2 5M9 21a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"/></svg>
-      </button>
-
-      {{-- Account icon → dropdown with Sign In + Register --}}
-      <div class="pf-account-btn" id="pf-acct-btn">
-        <button class="pf-acct-icon" type="button" id="pf-acct-toggle" aria-label="Account">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        </button>
-        <div class="pf-acct-dropdown" id="pf-acct-dropdown">
-          <a href="{{ url('/login') }}">
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-            Sign In
-          </a>
-          <div class="pf-acct-sep"></div>
-          <a class="register-link" href="{{ url('/register/type') }}">
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-            Create Account
-          </a>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</header>
+@include('guest.partials.header')
 
 <main class="container" style="padding:20px 0 40px">
 
@@ -85,6 +32,12 @@
 
 <div class="pd-page-grid {{ count($related) ? '' : 'pd-page-grid-solo' }}">
 <div class="pd-page-main">
+
+<nav class="pd-breadcrumb" aria-label="Breadcrumb">
+  <a href="{{ url('/') }}">Home</a><span aria-hidden="true">/</span>
+  <span>{{ $product['cat'] }}</span><span aria-hidden="true">/</span>
+  <span aria-current="page">{{ $product['name'] }}</span>
+</nav>
 
 <section class="pd-shop-card">
   <a href="{{ url('/') }}" class="pd-shop-back" aria-label="Back"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></a>
@@ -124,14 +77,14 @@
       <div class="pd-thumb-viewport">
         <div class="pd-thumb-track" id="pdThumbTrack">
           @if(!empty($product['video']))
-          <button type="button" class="pd-thumb active" data-thumb-video onclick="showProductVideo(this)" style="background:#000;position:relative">
+          <button type="button" class="pd-thumb active" aria-label="View product video" data-thumb-video onclick="showProductVideo(this)" style="background:#000;position:relative">
             <video src="{{ $product['video'] }}" style="width:100%;height:100%;object-fit:cover;opacity:.7;border-radius:6px"></video>
             <svg style="position:absolute;inset:0;margin:auto;color:#fff" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>
           </button>
           @endif
           @foreach($product['images'] as $idx => $imgUrl)
-          <button type="button" class="pd-thumb {{ $idx === 0 && empty($product['video']) ? 'active' : '' }}" onclick="showProductImage('{{ $imgUrl }}', this)">
-            <img src="{{ $imgUrl }}" style="width:100%;height:100%;object-fit:cover;border-radius:6px">
+          <button type="button" class="pd-thumb {{ $idx === 0 && empty($product['video']) ? 'active' : '' }}" aria-label="View product photo {{ $idx + 1 }}" onclick="showProductImage('{{ $imgUrl }}', this)">
+            <img src="{{ $imgUrl }}" alt="{{ $product['name'] }} photo {{ $idx + 1 }}" style="width:100%;height:100%;object-fit:cover;border-radius:6px">
           </button>
           @endforeach
         </div>
@@ -143,7 +96,7 @@
     @endif
     <div class="pd-main-img" onclick="openImgViewer()">  
       @if($hasRealImg)
-        <img src="{{ $product['img'] }}" id="pdMainImg">
+        <img src="{{ $product['img'] }}" id="pdMainImg" alt="{{ $product['name'] }}">
       @else
         <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity=".25"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
       @endif
@@ -164,7 +117,10 @@
       </div>
       <div class="pd-title-price-row">
         <h1 class="pd-title">{{ $product['name'] }}</h1>
-        <span class="pd-price" id="pdPrice" data-base-price="{{ $product['price'] }}">₱{{ number_format($product['price']) }}</span>
+        <div class="pd-price-group">
+          <span class="pd-price" id="pdPrice" data-base-price="{{ $product['price'] }}">₱{{ number_format($product['price']) }}</span>
+          @if($product['old_price'])<span class="pd-old">₱{{ number_format($product['old_price']) }}</span>@endif
+        </div>
       </div>
       <div class="pd-meta-row">
         <span class="pd-stars-row">
@@ -176,39 +132,14 @@
         <span class="pd-meta-sep">·</span>
         <span class="pd-meta-muted">{{ number_format($product['sold']) }} sold</span>
         <span class="pd-meta-sep">·</span>
-        <a class="pd-meta-link" href="#" onclick="event.preventDefault();switchTab(document.querySelector('[data-tab=reviews]'),'reviews')">{{ count($reviews) }} reviews</a>
+        <a class="pd-meta-link" href="#tab-reviews" onclick="event.preventDefault();switchTab(document.querySelector('[data-tab=reviews]'),'reviews');document.querySelector('.pd-product-information').scrollIntoView({behavior:'smooth',block:'start'})">{{ count($reviews) }} reviews</a>
         <button type="button" class="pd-report-btn" title="Report this listing" data-protected>
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4m0 1h10l-2 3 2 3H5"/></svg>
         </button>
-        <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
-          @if($product['old_price'])<span class="pd-old">₱{{ number_format($product['old_price']) }}</span>@endif
-        </div>
       </div>
-      <div class="pd-actions">
-        <button class="pd-btn-chat" type="button" data-protected>@include('buyer.partials.icon', ['name' => 'chat', 'size' => 15]) Chat</button>
-        <button class="pd-btn-cart" id="pdAddCartBtn" type="button" data-protected {{ $product['stock'] <= 0 ? 'disabled' : '' }}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 5m12-5l2 5M9 21a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"/></svg>
-          {{ $product['stock'] <= 0 ? 'Out of Stock' : 'Add to Cart' }}
-        </button>
-        <button class="pd-btn-buy" id="pdBuyNowBtn" type="button" data-protected {{ $product['stock'] <= 0 ? 'disabled' : '' }}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          {{ $product['stock'] <= 0 ? 'Unavailable' : 'Buy Now' }}
-        </button>
-      </div>
-      @if($product['stock'] <= 0 && $product['restock_date'])
-        <div class="pd-restock-note">Expected restock: {{ $product['restock_date'] }}</div>
-      @endif
     </div>
 
-    {{-- Description / tabs card --}}
-    <div class="pd-tabs-wrap">
-      <div class="pd-tab-bar">
-        <button class="pd-tab active" data-tab="options" onclick="switchTab(this,'options')">Options</button>
-        <button class="pd-tab"        data-tab="description" onclick="switchTab(this,'description')">Description</button>
-        <button class="pd-tab"        data-tab="details" onclick="switchTab(this,'details')">Details</button>
-        <button class="pd-tab"        data-tab="reviews" onclick="switchTab(this,'reviews')">Reviews</button>
-      </div>
-
+    <div class="pd-purchase-options">
       {{-- Options --}}
       <div class="pd-tab-pane active" id="tab-options">
         @if(!empty($product['variations']))
@@ -253,22 +184,45 @@
           <div class="pd-opt-label">Quantity</div>
           <div style="display:flex;align-items:center;gap:12px">
             <div class="pd-qty-row">
-              <button type="button" class="pd-qty-btn" onclick="changeQty(-1)">−</button>
+              <button type="button" class="pd-qty-btn" aria-label="Decrease quantity" onclick="changeQty(-1)">−</button>
               <span class="pd-qty-num" id="pdQty">1</span>
-              <button type="button" class="pd-qty-btn" onclick="changeQty(1)">+</button>
+              <button type="button" class="pd-qty-btn" aria-label="Increase quantity" onclick="changeQty(1)">+</button>
             </div>
             <span class="pd-qty-total" id="pdQtyTotal" style="display:none"></span>
           </div>
         </div>
       </div>
 
+    </div>
+    <div class="pd-actions">
+      <button class="pd-btn-cart" id="pdAddCartBtn" type="button" data-protected {{ $product['stock'] <= 0 ? 'disabled' : '' }}>
+        @include('buyer.partials.icon', ['name' => 'cart', 'size' => 15])
+        {{ $product['stock'] <= 0 ? 'Out of Stock' : 'Add to Cart' }}
+      </button>
+      <button class="pd-btn-buy" id="pdBuyNowBtn" type="button" data-protected {{ $product['stock'] <= 0 ? 'disabled' : '' }}>
+        @include('buyer.partials.icon', ['name' => 'bag', 'size' => 15])
+        {{ $product['stock'] <= 0 ? 'Unavailable' : 'Buy Now' }}
+      </button>
+    </div>
+    @if($product['stock'] <= 0 && $product['restock_date'])
+      <div class="pd-restock-note">Expected restock: {{ $product['restock_date'] }}</div>
+    @endif
+  </div>{{-- end pd-right-col --}}
+</div>{{-- end pd-main-grid --}}
+
+    <section class="pd-tabs-wrap pd-product-information" aria-label="Product information">
+      <div class="pd-tab-bar" role="tablist" aria-label="Product information">
+        <button type="button" class="pd-tab active" id="pdTabDescription" role="tab" aria-selected="true" aria-controls="tab-description" data-tab="description" onclick="switchTab(this,'description')">Description</button>
+        <button type="button" class="pd-tab" id="pdTabDetails" role="tab" aria-selected="false" aria-controls="tab-details" data-tab="details" onclick="switchTab(this,'details')">Specifications</button>
+        <button type="button" class="pd-tab" id="pdTabReviews" role="tab" aria-selected="false" aria-controls="tab-reviews" data-tab="reviews" onclick="switchTab(this,'reviews')">Reviews ({{ count($reviews) }})</button>
+      </div>
       {{-- Description --}}
-      <div class="pd-tab-pane" id="tab-description">
+      <div class="pd-tab-pane active" id="tab-description" role="tabpanel" aria-labelledby="pdTabDescription">
         <p class="pd-desc-text">{{ $product['desc'] ?: 'No description provided.' }}</p>
       </div>
 
       {{-- Details --}}
-      <div class="pd-tab-pane" id="tab-details">
+      <div class="pd-tab-pane" id="tab-details" role="tabpanel" aria-labelledby="pdTabDetails">
         @if(!empty($product['specs']))
         <div class="pd-section-label">Specifications</div>
         <div class="pd-specs-grid">
@@ -285,7 +239,7 @@
       </div>
 
       {{-- Reviews --}}
-      <div class="pd-tab-pane" id="tab-reviews">
+      <div class="pd-tab-pane" id="tab-reviews" role="tabpanel" aria-labelledby="pdTabReviews">
         <div class="pd-rev-filter">
           <div class="pd-rev-chips">
             <button class="pd-rev-chip active" data-star="0" onclick="filterReviews(0)">All</button>
@@ -329,16 +283,12 @@
         </div>
       </div>
 
-    </div>{{-- end pd-tabs-wrap --}}
-
-  </div>{{-- end pd-right-col --}}
-
-</div>{{-- end pd-main-grid --}}
+    </section>{{-- end pd-tabs-wrap --}}
 
 {{-- List of products from this shop — placed right after the main picture/title/options grid --}}
 <div class="pd-shop-more">
   <div class="pd-shop-more-head">
-    <div class="pd-shop-more-label">From the Same Shop</div>
+    <h2 class="pd-shop-more-label">From the Same Shop</h2>
     <a href="{{ route('guest.shop', $product['seller_slug']) }}" class="pd-shop-more-link">
       See All
       <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
@@ -358,6 +308,7 @@
 @if(count($related))
 <div class="pd-page-side">
     <div class="pd-related pd-related-side">
+      <div class="pd-related-head"><h2>You Might Also Like</h2></div>
       <div class="product-grid product-grid-lg">
         @foreach($related as $rp)
           @include('guest.partials.pf-product-card', ['p' => $rp])
@@ -520,11 +471,32 @@ function changeQty(d) {
   updateQtyTotal();
 }
 function switchTab(btn, id) {
-  document.querySelectorAll('.pd-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.pd-tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.pd-tab').forEach(t => {
+    t.classList.remove('active');
+    t.setAttribute('aria-selected', 'false');
+    t.tabIndex = -1;
+  });
+  document.querySelectorAll('.pd-product-information .pd-tab-pane').forEach(p => p.classList.remove('active'));
   btn.classList.add('active');
+  btn.setAttribute('aria-selected', 'true');
+  btn.tabIndex = 0;
   document.getElementById('tab-' + id).classList.add('active');
 }
+const informationTabs = [...document.querySelectorAll('.pd-product-information .pd-tab')];
+informationTabs.forEach((tab, index) => {
+  tab.tabIndex = tab.classList.contains('active') ? 0 : -1;
+  tab.addEventListener('keydown', event => {
+    let next;
+    if (event.key === 'ArrowRight') next = (index + 1) % informationTabs.length;
+    else if (event.key === 'ArrowLeft') next = (index + informationTabs.length - 1) % informationTabs.length;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = informationTabs.length - 1;
+    else return;
+    event.preventDefault();
+    informationTabs[next].focus();
+    switchTab(informationTabs[next], informationTabs[next].dataset.tab);
+  });
+});
 let expanded = false;
 function toggleReviews() {
   expanded = !expanded;
@@ -552,5 +524,6 @@ function filterReviews(star) {
 document.querySelectorAll('.rev-hidden').forEach(el => el.style.display = 'none');
 </script>
 <script src="{{ asset('js/marketplace.js') }}?v={{ @filemtime(public_path('js/marketplace.js')) ?: 1 }}"></script>
+@include('buyer.partials.assistant', ['assistantGuest' => true])
 </body>
 </html>

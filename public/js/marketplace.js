@@ -1,4 +1,26 @@
 document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll('.pf-price-filter input[type="number"]').forEach(input => {
+        const field = document.createElement("span");
+        field.className = "pf-number-field";
+        input.before(field);
+        field.append(input);
+        const label = input.closest("label")?.querySelector("span")?.textContent.trim() || "price";
+        [1, -1].forEach(direction => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = `pf-number-step pf-number-step-${direction > 0 ? "up" : "down"}`;
+            button.title = `${direction > 0 ? "Increase" : "Decrease"} ${label}`;
+            button.setAttribute("aria-label", button.title);
+            button.disabled = input.disabled || input.readOnly;
+            button.addEventListener("click", () => {
+                if (direction > 0) input.stepUp();
+                else input.stepDown();
+                input.dispatchEvent(new Event("input", { bubbles: true }));
+                input.dispatchEvent(new Event("change", { bubbles: true }));
+            });
+            field.append(button);
+        });
+    });
     const scrollKey = "pocketfinds-category-scroll";
     try {
         const saved = JSON.parse(sessionStorage.getItem(scrollKey) || "null");
@@ -24,6 +46,23 @@ document.addEventListener("DOMContentLoaded", () => {
     productFilters?.querySelectorAll('input[name="category"]').forEach((choice) => {
         choice.addEventListener("change", () => productFilters.requestSubmit());
     });
+    productFilters?.querySelector('select[name="sort"]')?.addEventListener("change", () => productFilters.requestSubmit());
+    const validateCatalogRange = () => {
+        const minimum = productFilters.elements.min_price;
+        const maximum = productFilters.elements.max_price;
+        maximum.setCustomValidity(minimum.value !== "" && maximum.value !== "" && Number(maximum.value) < Number(minimum.value) ? "Maximum price must be at least the minimum price." : "");
+    };
+    productFilters?.addEventListener("input", validateCatalogRange);
+    productFilters?.addEventListener("submit", () => {
+        const target = new URL(productFilters.action);
+        target.search = new URLSearchParams(new FormData(productFilters)).toString();
+        try { sessionStorage.setItem(scrollKey, JSON.stringify({ url: target.pathname + target.search, top: window.scrollY })); } catch (_) {}
+    });
+    document.querySelectorAll("[data-catalog-reset]").forEach(link => link.addEventListener("click", event => {
+        if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        const target = new URL(link.href);
+        try { sessionStorage.setItem(scrollKey, JSON.stringify({ url: target.pathname + target.search, top: window.scrollY })); } catch (_) {}
+    }));
     const dealSection = document.getElementById("deals");
     const shopList = document.querySelector("#shops .pf-shop-row");
     if (shopList) {
@@ -146,9 +185,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const gallery = showcase.closest(".pf-deal-gallery-frame");
         const previousDeal = gallery?.querySelector("[data-deal-prev]");
         const nextDeal = gallery?.querySelector("[data-deal-next]");
-        let dealMotionTimer = null;
-        let requestedDeal = null;
-        const selectDeal = (selected) => {
+        const section = showcase.closest("#deals");
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+        let rotationTimer = null;
+        let sectionVisible = typeof IntersectionObserver === "undefined";
+        const selectDeal = (selected, animate = true) => {
+            const mobile = window.matchMedia("(max-width: 600px)").matches;
             const visible = panels.filter((panel) => !panel.hidden);
             const selectedPanel = panels.find((panel) => panel.dataset.dealPanel === selected);
             const position = visible.indexOf(selectedPanel);
@@ -165,27 +207,31 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (offset > visible.length / 2) offset -= visible.length;
                 if (offset < -visible.length / 2) offset += visible.length;
                 const distance = Math.abs(offset);
-                const outside = distance > 2;
+                const outside = distance > (mobile ? 0 : 2);
                 const initialized = panel.dataset.dealOffset !== undefined;
                 const oldOffset = Number(panel.dataset.dealOffset ?? offset);
                 panel.dataset.dealOffset = offset;
                 panel.classList.remove("is-repositioning");
                 const travel = distance === 0 ? 0 : distance === 1 ? 24 : 42 + (distance - 2) * 24;
-                panel.style.setProperty("--deal-position", `${50 + Math.sign(offset) * travel}%`);
+                panel.style.setProperty("--deal-position", `${mobile ? 50 + offset * 105 : 50 + Math.sign(offset) * travel}%`);
                 panel.inert = outside;
-                panel.style.setProperty("--deal-scale", distance === 0 ? 1 : distance === 1 ? .9 : .8);
-                panel.style.setProperty("--deal-rise", distance === 0 ? "28px" : "0px");
+                panel.style.setProperty("--deal-scale", mobile ? 1 : distance === 0 ? 1 : distance === 1 ? .9 : .8);
+                panel.style.setProperty("--deal-rise", !mobile && distance === 0 ? "12px" : "0px");
                 panel.style.setProperty("--deal-opacity", 1);
                 panel.style.setProperty("--deal-depth", Math.max(0, 3 - distance));
-                panel.style.setProperty("--deal-tilt", `${Math.sign(offset) * -26}deg`);
-                panel.classList.toggle("is-outside", Math.abs(offset) > 2);
+                panel.style.setProperty("--deal-tilt", `${mobile ? 0 : Math.sign(offset) * -26}deg`);
+                panel.classList.toggle("is-outside", outside);
                 panel.querySelector(".pf-deal-fold-details").hidden = !active;
-                if (initialized && !panel.hidden && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+                if (animate && initialized && !panel.hidden && (!mobile || active || oldOffset === 0) && !reducedMotion.matches) {
                     const style = getComputedStyle(panel);
                     let start = previousFrames.get(panel);
                     let end = { left: style.left, transform: style.transform, opacity: style.opacity, visibility: style.visibility };
+                    if (mobile) {
+                        start = { ...start, visibility: "visible", opacity: "1" };
+                        end = { ...end, visibility: "visible", opacity: "1" };
+                    }
                     const wrapped = Math.abs(oldOffset - offset) > visible.length / 2;
-                    if (!active && (wrapped || start.visibility === "hidden")) {
+                    if (!mobile && !active && (wrapped || start.visibility === "hidden")) {
                         // Recycled cards enter/exit at the perimeter; never cross the center.
                         if (outside) {
                             end = { ...start, left: `${(oldOffset < 0 ? -.2 : 1.2) * showcase.clientWidth}px`, opacity: "0", visibility: "visible" };
@@ -196,7 +242,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     panel.animate([
                         start,
                         end,
-                    ], { duration: 280, easing: "cubic-bezier(.25,.8,.25,1)" });
+                    ], { duration: 600, easing: "cubic-bezier(.25,.8,.25,1)" });
                 }
             });
             options.forEach((option) => {
@@ -209,10 +255,8 @@ document.addEventListener("DOMContentLoaded", () => {
             if (counter) counter.textContent = `${Math.max(0, position + 1)} / ${visible.length}`;
         };
         const animateToDeal = (selected) => {
-            window.clearTimeout(dealMotionTimer);
-            dealMotionTimer = null;
-            requestedDeal = selected;
             selectDeal(selected);
+            scheduleRotation();
         };
         const moveDeal = (direction) => {
             const visible = panels.filter((panel) => !panel.hidden);
@@ -220,6 +264,23 @@ document.addEventListener("DOMContentLoaded", () => {
             const target = visible[(position + direction + visible.length) % visible.length];
             if (target) animateToDeal(target.dataset.dealPanel);
         };
+        const scheduleRotation = () => {
+            window.clearTimeout(rotationTimer);
+            rotationTimer = null;
+            if (!sectionVisible || document.hidden || reducedMotion.matches || panels.filter(panel => !panel.hidden).length < 2) return;
+            rotationTimer = window.setTimeout(() => moveDeal(1), 3000);
+        };
+        document.addEventListener("visibilitychange", scheduleRotation);
+        reducedMotion.addEventListener("change", scheduleRotation);
+        window.addEventListener("resize", () => {
+            selectDeal(panels.find(panel => panel.classList.contains("is-active"))?.dataset.dealPanel ?? "", false);
+        });
+        if (typeof IntersectionObserver !== "undefined") {
+            new IntersectionObserver(entries => {
+                sectionVisible = entries[0].isIntersecting;
+                scheduleRotation();
+            }, { threshold: .15 }).observe(section);
+        }
         previousDeal?.addEventListener("click", () => moveDeal(-1));
         nextDeal?.addEventListener("click", () => moveDeal(1));
         options.forEach((option) => {
@@ -230,9 +291,6 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         });
         const applyDealFilters = () => {
-            window.clearTimeout(dealMotionTimer);
-            dealMotionTimer = null;
-            requestedDeal = null;
             const minimum = priceForm?.elements.deal_min_price.value ?? "";
             const maximum = priceForm?.elements.deal_max_price.value ?? "";
             if (priceForm) {
@@ -252,6 +310,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (gallery) gallery.hidden = !first;
             if (emptyMessage) emptyMessage.hidden = !!first;
             selectDeal(first?.dataset.dealSelect ?? "");
+            scheduleRotation();
         };
         categoryFilter?.addEventListener("change", applyDealFilters);
         priceForm?.addEventListener("submit", (event) => { event.preventDefault(); applyDealFilters(); });
@@ -259,6 +318,7 @@ document.addEventListener("DOMContentLoaded", () => {
         priceForm?.querySelector("[data-clear-deal-range]")?.addEventListener("click", () => { priceForm.reset(); applyDealFilters(); });
         selectDeal(options.find((option) => !option.hidden)?.dataset.dealSelect ?? "");
         if (savedDealFilters.has("deal_category") || savedDealFilters.has("deal_min_price") || savedDealFilters.has("deal_max_price")) applyDealFilters();
+        scheduleRotation();
         categoryChoices.forEach((choice) => choice.addEventListener("change", () => {
             if (!categoryFilter) return;
             categoryFilter.value = choice.value;
@@ -272,13 +332,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (hero && categories && root.classList.contains("hero-intro")) {
         window.scrollTo({ top: 0, left: 0, behavior: "instant" });
         const measureHero = () => {
-            if (!root.classList.contains("hero-intro")) return;
             const viewport = window.visualViewport?.height || window.innerHeight;
             const headerHeight = hero.getBoundingClientRect().top + window.scrollY;
             root.style.setProperty("--hero-header-height", `${headerHeight}px`);
             const categorySpace = categories.getBoundingClientRect().height + 30;
             const content = hero.querySelector(".pf-hero-content");
-            const minimumHeight = content.getBoundingClientRect().height + 52;
+            const minimumHeight = content.getBoundingClientRect().height;
             root.style.setProperty("--hero-compact-height", `${Math.max(minimumHeight, viewport - headerHeight - categorySpace)}px`);
         };
         measureHero();
@@ -291,7 +350,7 @@ document.addEventListener("DOMContentLoaded", () => {
             photo.onload = photo.onerror = resolve;
             photo.src = photoUrl;
             if (photo.complete) resolve();
-            window.setTimeout(resolve, 2000);
+            window.setTimeout(resolve, 700);
         });
         photoReady.then(() => {
             window.setTimeout(() => {
@@ -301,8 +360,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (!root.classList.contains("hero-intro")) return;
                     measureHero();
                     root.classList.add("hero-revealed");
-                }, 1600);
-            }, 900);
+                }, 500);
+            }, 100);
         });
         window.addEventListener("resize", measureHero);
         // Keep the final measured layout after the intro's safety timeout.
@@ -319,14 +378,32 @@ document.addEventListener("DOMContentLoaded", () => {
     const heroFrame = document.getElementById("heroPhotoFrame");
     if (heroFrame) {
         const slides = [...heroFrame.querySelectorAll(".hero-slide")];
-        if (slides.length > 1) {
+        const ready = image => new Promise(resolve => {
+            if (image.complete) return resolve(image.naturalWidth > 0);
+            image.addEventListener("load", () => resolve(true), { once: true });
+            image.addEventListener("error", () => resolve(false), { once: true });
+        });
+        Promise.all(slides.map(ready)).then(loaded => {
+            const photos = slides.filter((slide, index) => loaded[index]);
+            slides.forEach(slide => slide.classList.remove("active"));
+            if (!photos.length) return;
+            photos[0].classList.add("active");
             let heroIdx = 0;
-            setInterval(() => {
-                slides[heroIdx].classList.remove("active");
-                heroIdx = (heroIdx + 1) % slides.length;
-                slides[heroIdx].classList.add("active");
-            }, 5000);
-        }
+            let rotation = null;
+            const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+            const startRotation = () => {
+                window.clearInterval(rotation);
+                if (photos.length < 2 || reducedMotion.matches) return;
+                rotation = window.setInterval(() => {
+                    if (document.hidden) return;
+                    photos[heroIdx].classList.remove("active");
+                    heroIdx = (heroIdx + 1) % photos.length;
+                    photos[heroIdx].classList.add("active");
+                }, 5000);
+            };
+            reducedMotion.addEventListener("change", startRotation);
+            startRotation();
+        });
     }
 
     // ── Search ──
@@ -339,18 +416,70 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ── Auth modal ──
     const modal = document.getElementById("authModal");
-    const openModal = (tab = "signin") => { modal.classList.add("open"); switchTab(tab); };
-    const closeModal = () => modal.classList.remove("open");
+    let modalTrigger = null;
+    let previousOverflow = "";
+    const inertBackground = new Map();
+    const dialog = modal?.querySelector('[role="dialog"]');
+    const modalFocusables = () => [...modal.querySelectorAll('a[href], button:not(:disabled), input:not(:disabled), [tabindex="0"]')]
+        .filter(el => el.getClientRects().length > 0);
+    const openModal = (tab = "signin") => {
+        if (!modal || modal.classList.contains("open")) return;
+        modalTrigger = document.activeElement;
+        previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        // Isolate the dialog even when the shared partial is nested in a page.
+        for (let node = modal; node.parentElement; node = node.parentElement) {
+            [...node.parentElement.children].forEach(sibling => {
+                if (sibling !== node && sibling instanceof HTMLElement) {
+                    inertBackground.set(sibling, sibling.inert);
+                    sibling.inert = true;
+                }
+            });
+            if (node.parentElement === document.body) break;
+        }
+        modal.classList.add("open");
+        modal.setAttribute("aria-hidden", "false");
+        switchTab(tab);
+        (window.innerWidth > 600 ? document.getElementById("am_email") : dialog)?.focus({ preventScroll: true });
+    };
+    const closeModal = () => {
+        if (!modal?.classList.contains("open")) return;
+        modal.classList.remove("open");
+        modal.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = previousOverflow;
+        inertBackground.forEach((value, el) => el.inert = value);
+        inertBackground.clear();
+        if (modalTrigger?.isConnected) modalTrigger.focus({ preventScroll: true });
+    };
     document.getElementById("authModalClose")?.addEventListener("click", closeModal);
     modal?.addEventListener("click", e => { if (e.target === modal) closeModal(); });
+    modal?.querySelectorAll("[data-auth-dismiss]").forEach(btn => btn.addEventListener("click", closeModal));
+    document.addEventListener("keydown", e => {
+        if (!modal?.classList.contains("open")) return;
+        if (e.key === "Escape") { e.preventDefault(); closeModal(); }
+        if (e.key !== "Tab") return;
+        const focusables = modalFocusables();
+        const first = focusables[0], last = focusables[focusables.length - 1];
+        if (!first) { e.preventDefault(); dialog?.focus(); return; }
+        if (e.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+            e.preventDefault(); last.focus();
+        } else if (!e.shiftKey && (document.activeElement === last || document.activeElement === dialog)) {
+            e.preventDefault(); first.focus();
+        }
+    });
 
     // ── Tab switching ──
     const panes = { signin: document.getElementById("amSignin"), register: document.getElementById("amRegister") };
     function switchTab(name) {
         Object.entries(panes).forEach(([k, el]) => el && (el.style.display = k === name ? "" : "none"));
+        dialog?.setAttribute("aria-labelledby", name === "register" ? "amRegisterTitle" : "amDialogTitle");
+        dialog?.setAttribute("aria-describedby", name === "register" ? "amRegisterDescription" : "amDialogDescription");
     }
     document.querySelectorAll(".am-switch").forEach(btn =>
-        btn.addEventListener("click", () => switchTab(btn.dataset.tab))
+        btn.addEventListener("click", () => {
+            switchTab(btn.dataset.tab);
+            (btn.dataset.tab === "register" ? panes.register?.querySelector("a") : document.getElementById("am_email"))?.focus();
+        })
     );
 
     // ── Password toggle inside modal ──
@@ -359,7 +488,11 @@ document.addEventListener("DOMContentLoaded", () => {
             const inp = document.getElementById(btn.dataset.passwordToggle);
             if (!inp) return;
             inp.type = inp.type === "password" ? "text" : "password";
-            btn.textContent = inp.type === "password" ? "Show" : "Hide";
+            const label = inp.type === "password" ? "Show password" : "Hide password";
+            btn.setAttribute("aria-label", label);
+            btn.setAttribute("title", label);
+            btn.setAttribute("aria-pressed", String(inp.type !== "password"));
+            if (!btn.querySelector("svg")) btn.textContent = inp.type === "password" ? "Show" : "Hide";
         });
     });
 

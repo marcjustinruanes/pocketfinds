@@ -5,6 +5,7 @@
 @php use Illuminate\Support\Facades\Storage; @endphp
 
 @section('content')
+@include('admin.partials.ai-link', ['aiMode' => 'product', 'aiLabel' => 'AI product screening'])
 @if(session('success'))
 <div class="modal-overlay open" id="productActionResultModal">
   <div class="modal" style="max-width:400px">
@@ -135,6 +136,7 @@
           <td>
             <div class="row-actions">
               <button class="btn btn-sm btn-outline" data-modal-open="productModal-{{ $product->id }}"><x-admin-icon name="eye" /> Review</button>
+              <a class="btn btn-sm btn-outline" href="{{ route('admin.ai', ['mode' => 'product', 'product_id' => $product->id]) }}"><x-admin-icon name="shield" /> AI screen</a>
             </div>
           </td>
         </tr>

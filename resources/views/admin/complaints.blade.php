@@ -4,6 +4,7 @@
 @section('page-sub', 'Manage buyer/seller disputes and platform complaints')
 
 @section('content')
+@include('admin.partials.ai-link', ['aiMode' => 'reports', 'aiLabel' => 'AI complaint summary'])
 <div class="card">
   <div class="card-head"><div><h2>Dispute Cases</h2><p>{{ $complaints->count() }} total cases</p></div></div>
   <div class="card-pad">

@@ -6,16 +6,28 @@
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <title>@yield('title', 'Buyer') — PocketFinds</title>
 <link rel="stylesheet" href="/css/buyer.css?v={{ filemtime(public_path('css/buyer.css')) }}">
+<link href="https://fonts.googleapis.com/css2?family=Allura&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ asset('css/marketplace.css') }}?v={{ filemtime(public_path('css/marketplace.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/landing.css') }}?v={{ filemtime(public_path('css/landing.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/guest-responsive.css') }}?v={{ filemtime(public_path('css/guest-responsive.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/buyer-storefront.css') }}?v={{ filemtime(public_path('css/buyer-storefront.css')) }}">
 @stack('head')
+<link rel="stylesheet" href="{{ asset('css/buyer-pages.css') }}?v={{ filemtime(public_path('css/buyer-pages.css')) }}">
 </head>
-<body class="buyer">
+<body class="buyer marketplace buyer-storefront buyer-pages">
 <div class="shell" id="appShell">
   <div style="display:flex;flex-direction:column;min-width:0">
-    @include('buyer.partials.topbar')
+    @include('buyer.partials.storefront-header')
     <main class="content">
+      @sectionMissing('hide-page-heading')
+      <div class="buyer-page-heading">
+        <a href="{{ route('buyer.dashboard') }}">Home</a><span aria-hidden="true"> / </span><span>@yield('page-title', 'My Account')</span>
+        <h1>@yield('page-title', 'My Account')</h1>
+      </div>
+      @endif
       @yield('content')
     </main>
-    @include('components.marketplace-footer', ['buyerFooter' => true])
+    @include('components.marketplace-footer', ['landing' => true])
   </div>
 </div>
 
@@ -116,6 +128,9 @@
 </div>
 
 <div class="toast-stack" id="toastStack"></div>
-<script src="/js/buyer.js"></script>
+@include('buyer.partials.storefront-mobile-nav')
+@include('buyer.partials.assistant')
+<script src="/js/buyer.js?v={{ filemtime(public_path('js/buyer.js')) }}"></script>
+<script src="{{ asset('js/buyer-storefront.js') }}?v={{ filemtime(public_path('js/buyer-storefront.js')) }}"></script>
 </body>
 </html>

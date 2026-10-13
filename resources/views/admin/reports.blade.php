@@ -4,6 +4,7 @@
 @section('page-sub', 'Sales summary and commission reports')
 
 @section('content')
+@include('admin.partials.ai-link', ['aiMode' => 'chat', 'aiLabel' => 'Ask dashboard'])
 <div class="kpi-grid" style="margin-bottom:18px">
   <div class="kpi"><div class="label">Total Users</div><div class="value">{{ number_format($totalUsers) }}</div><div class="delta up">All accounts</div></div>
   <div class="kpi tone-info"><div class="label">Buyers</div><div class="value">{{ number_format($buyerCount) }}</div></div>

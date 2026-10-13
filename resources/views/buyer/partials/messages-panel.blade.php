@@ -3,7 +3,7 @@
   $myId = auth()->id();
 @endphp
 
-<div class="chat-shell">
+<div class="chat-shell" data-has-conversation="{{ $seller ? 'true' : 'false' }}">
   {{-- Conversation list --}}
   <div class="chat-list" id="chatList">
     <div class="chat-list-head"><strong style="font-size:13.5px">Conversations</strong></div>
@@ -44,6 +44,7 @@
   <div class="chat-main">
     <div class="chat-head">
       @if($seller)
+        <a class="chat-mobile-back" href="{{ route('buyer.messages') }}" aria-label="Back to conversations">@include('buyer.partials.icon', ['name' => 'arrow-right', 'size' => 18, 'class' => 'rotate-180'])</a>
         <div class="chat-head-av">{{ strtoupper(substr($sellerName,0,1)) }}</div>
         <div class="chat-head-info">
           <div class="chat-head-name">{{ $sellerName }}</div>

@@ -45,8 +45,8 @@ trait FetchesProducts
         if ($maxPrice !== null) $q->whereRaw($displayPrice.' <= ?', [$maxPrice]);
 
         $q = match ($sort) {
-            'price_asc'  => $q->orderBy('price', 'asc'),
-            'price_desc' => $q->orderBy('price', 'desc'),
+            'price_asc'  => $q->orderByRaw($displayPrice.' asc')->orderBy('id'),
+            'price_desc' => $q->orderByRaw($displayPrice.' desc')->orderBy('id'),
             default      => $q->latest(),
         };
 

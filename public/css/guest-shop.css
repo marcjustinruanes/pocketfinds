@@ -1,0 +1,50 @@
+.guest-shop-page { background: var(--paper); font-family: var(--font-body); }
+.guest-shop-page .gp-back { margin-bottom: 20px; font-family: var(--font-body); font-size: 12px; }
+.guest-shop-page .gs-hero { grid-template-columns: 80px minmax(0, 1fr) auto; align-items: center; padding: 0 0 24px; margin-bottom: 28px; gap: 20px; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: transparent; box-shadow: none; text-align: left; }
+.guest-shop-page .gs-avatar { width: 80px; height: 80px; border-radius: 8px; margin: 0; border: 1px solid var(--border); background: var(--pink-dark); overflow: hidden; }
+.guest-shop-page .gs-info { min-width: 0; }
+.guest-shop-page .gs-name { font-family: var(--font-body); font-size: 24px; font-weight: 700; line-height: 1.3; letter-spacing: 0; overflow-wrap: anywhere; }
+.guest-shop-page .gs-name-row { gap: 12px; justify-content: flex-start; margin-bottom: 8px; }
+.guest-shop-page .gs-rating-row { flex-wrap: wrap; justify-content: flex-start; gap: 4px; margin-bottom: 12px; }
+.guest-shop-page .gs-follow-btn { height: 36px; border-radius: 6px; padding-inline: 12px; font-size: 12px; }
+.guest-shop-page .gs-chat-btn { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; background: #fff; border: 1px solid var(--border); border-radius: 6px; color: var(--pink-dark); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.guest-shop-page .gs-chat-btn:hover { border-color: var(--pink); background: var(--pink-soft); }
+.guest-shop-page .gs-desc { margin-bottom: 12px; overflow-wrap: anywhere; }
+.guest-shop-page .gs-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; max-width: 390px; }
+.guest-shop-page .gs-stat { min-width: 0; padding: 8px 16px; border: 0; border-left: 1px solid var(--border); border-radius: 0; background: transparent; }
+.guest-shop-page .gs-stat-val { font-family: var(--font-body); font-size: 16px; font-weight: 700; line-height: 1.5; color: var(--text); letter-spacing: 0; }
+.guest-shop-page .gs-stat-label { font-size: 11px; margin-top: 3px; }
+.guest-shop-page .gs-stat:last-child .gs-stat-val { font-size: 14px; white-space: nowrap; }
+.guest-shop-page .gs-products-head { align-items: center; gap: 12px; margin-bottom: 18px; }
+.guest-shop-page .gs-products-head h2 { margin: 0; font-family: var(--font-body); font-size: 20px; font-weight: 700; letter-spacing: 0; }
+.guest-shop-page .gs-products-count { font-family: var(--font-body); font-size: 12px; }
+.guest-shop-page .gs-product-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
+.guest-shop-page .pf-product-card { min-width: 0; border-radius: 8px; }
+.guest-shop-page .pf-product-media { background: #fff; }
+.guest-shop-page .pf-product-media img { object-fit: contain; }
+.guest-shop-page .pf-product-name { -webkit-line-clamp: 2; min-height: 2.7em; }
+.guest-shop-page .gs-empty { grid-column: 1 / -1; padding: 48px 0; text-align: center; color: var(--muted); }
+.guest-shop-page .gs-empty h2 { font-size: 18px; color: var(--text); }
+.guest-shop-page .gs-empty p { font-size: 13px; }
+.guest-shop-page .gs-follow-btn:focus-visible,
+.guest-shop-page .gs-chat-btn:focus-visible { outline: 2px solid var(--pink-dark); outline-offset: 3px; }
+@media (max-width: 1000px) {
+  .guest-shop-page .gs-hero { grid-template-columns: 80px minmax(0, 1fr); }
+  .guest-shop-page .gs-stats { grid-column: 1 / -1; width: 100%; max-width: none; }
+  .guest-shop-page .gs-stat:first-child { border-left: 0; }
+  .guest-shop-page .gs-product-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .guest-shop-page .gs-product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+}
+@media (max-width: 480px) {
+  .guest-shop-page .gs-hero { grid-template-columns: 64px minmax(0, 1fr); gap: 16px; padding-bottom: 20px; }
+  .guest-shop-page .gs-avatar { width: 64px; height: 64px; }
+  .guest-shop-page .gs-name { font-size: 20px; }
+  .guest-shop-page .gs-name-row { gap: 8px; }
+  .guest-shop-page .gs-follow-btn, .guest-shop-page .gs-chat-btn { min-height: 44px; }
+  .guest-shop-page .gs-stat { padding: 6px; }
+  .guest-shop-page .gs-stat-val { font-size: 14px; }
+  .guest-shop-page .gs-product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .guest-shop-page .gs-products-head h2 { font-size: 18px; }
+}

@@ -1,27 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<meta name="csrf-token" content="{{ csrf_token() }}">
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>{{ $shop['name'] }} — PocketFinds</title>
 <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
-<link rel="stylesheet" href="{{ asset('css/marketplace.css') }}">
+<link rel="stylesheet" href="{{ asset('css/marketplace.css') }}?v={{ filemtime(public_path('css/marketplace.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/buyer.css') }}?v={{ filemtime(public_path('css/buyer.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/guest-product.css') }}">
+<link rel="stylesheet" href="{{ asset('css/landing.css') }}?v={{ filemtime(public_path('css/landing.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/guest-responsive.css') }}?v={{ filemtime(public_path('css/guest-responsive.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/guest-shop.css') }}?v={{ filemtime(public_path('css/guest-shop.css')) }}">
 </head>
-<body class="marketplace">
+<body class="marketplace guest-shop-page">
 
-<header class="market-header"><div class="container header-main">
-<a class="logo" href="{{ url('/') }}"><span class="logo-mark"><x-brand-logo :size="16" /></span><span>PocketFinds</span></a>
-<form class="search" action="{{ url('/') }}" method="GET">
-  <input name="q" type="search" placeholder="Search for products, brands and categories">
-  <button type="submit"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
-</form>
-<div class="header-actions">
-<button class="icon-action" type="button" data-protected><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 4 5 5L7 22l-5-5L15 4Z"/><path d="m12 7 5 5M5 3v4M3 5h4M19 15v4M17 17h4M19 2v2M18 3h2"/></svg><span>Wishlist</span></button>
-<button class="icon-action" type="button" data-protected><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 4 5 5L7 22l-5-5L15 4Z"/><path d="m12 7 5 5M5 3v4M3 5h4M19 15v4M17 17h4M19 2v2M18 3h2"/></svg><span>Cart</span></button>
-<a class="signin" href="{{ url('/login') }}">Sign In</a><a class="register" href="{{ url('/register/type') }}">Register</a>
-</div>
-</div></header>
+@include('guest.partials.header')
 
 <main class="container" style="padding:20px 0 40px">
 
@@ -47,7 +40,8 @@
       <span class="gs-rating-val">{{ $shop['rating'] }}</span>
       <span class="gs-followers-count">· {{ number_format($shop['followers']) }} follower{{ $shop['followers'] === 1 ? '' : 's' }}</span>
     </div>
-    <p class="gs-desc">{{ $shop['desc'] }}</p>
+    @if(!empty($shop['desc']))<p class="gs-desc">{{ $shop['desc'] }}</p>@endif
+    <button class="gs-chat-btn" type="button" data-protected>@include('buyer.partials.icon', ['name' => 'chat', 'size' => 15]) Chat with Seller</button>
   </div>
   <div class="gs-stats">
     <div class="gs-stat"><div class="gs-stat-val">{{ $shop['products'] }}</div><div class="gs-stat-label">Products</div></div>
@@ -58,45 +52,25 @@
 </div>
 
 <div class="gs-products-head">
-  <span>All Products</span>
+  <h2>All Products</h2>
   <span class="gs-products-count">{{ count($items) }} item{{ count($items)!==1?'s':'' }}</span>
 </div>
 
 
-<div class="deal-grid" style="margin-top:0">
+<div class="gs-product-grid">
   @forelse($items as $p)
-  <a class="product" href="{{ route('guest.product', $p['id']) }}" style="text-decoration:none;color:inherit">
-    <div class="product-img">
-      @if(!empty($p['img']))
-        <img src="{{ $p['img'] }}" alt="{{ $p['name'] }}" style="width:100%;height:100%;object-fit:cover">
-      @else
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".35"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-      @endif
-      @if($p['badge'])<span class="badge">{{ $p['badge'] }}</span>@endif
-    </div>
-    <div class="product-body">
-      <div class="product-name">{{ $p['name'] }}</div>
-      <div class="price">₱{{ number_format($p['price']) }}</div>
-      <div class="meta">
-        <span class="meta-rating"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> {{ $p['rating'] }}</span>
-        <span>{{ number_format($p['sold']) }} sold</span>
-      </div>
-      <div class="product-actions">
-        <button class="btn-cart" type="button" data-protected onclick="event.preventDefault();event.stopPropagation()"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 5m12-5l2 5M9 21a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"/></svg> Cart</button>
-        <button class="btn-buy" type="button" data-protected onclick="event.preventDefault();event.stopPropagation()">Buy Now</button>
-      </div>
-    </div>
-  </a>
+    @include('guest.partials.pf-product-card', ['p' => $p])
   @empty
-  <p style="color:var(--muted);font-size:13px;grid-column:1/-1">No products yet.</p>
+    <div class="gs-empty"><h2>No products yet</h2><p>Check back soon for new arrivals.</p></div>
   @endforelse
 </div>
 
 </main>
 
-@include('components.marketplace-footer')
+@include('components.marketplace-footer', ['landing' => true])
 
 @include('guest.auth-modal')
 <script src="{{ asset('js/marketplace.js') }}?v={{ @filemtime(public_path('js/marketplace.js')) ?: 1 }}"></script>
+@include('buyer.partials.assistant', ['assistantGuest' => true])
 </body>
 </html>

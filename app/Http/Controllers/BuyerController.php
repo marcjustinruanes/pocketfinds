@@ -27,13 +27,13 @@ use Illuminate\Support\Str;
 class BuyerController extends Controller
 {
     use FetchesProducts;
+    use \App\Http\Controllers\Concerns\LoadsStorefront;
     use HandlesAccountUpdateRequests;
 
-    public function dashboard()
+    public function dashboard(Request $request)
     {
         $buyerId    = auth()->id();
-        $categories = \App\Models\Category::orderBy('name')->get(['id', 'name']);
-        $featured   = $this->dbProducts(8);
+        $storefront = $this->storefrontData($request);
 
         // 'to_ship'/'in_transit' are never literal status values — they're the
         // same multi-status buckets orders() filters by (Order::BUYER_TO_SHIP_STATUSES/
@@ -49,7 +49,7 @@ class BuyerController extends Controller
         ];
         $activeOrders    = $statusCounts['to_ship'] + $statusCounts['in_transit'] + $statusCounts['out_for_delivery'];
         $completedOrders = $statusCounts['completed'];
-        $cartCount       = collect(session('cart', []))->count();
+        $cartCount       = (int) CartItem::where('buyer_id', $buyerId)->sum('qty');
         $unreadMessages  = Message::where('receiver_id', $buyerId)->where('read', false)->count();
 
         $recentOrders = Order::with('seller')
@@ -58,10 +58,14 @@ class BuyerController extends Controller
             ->limit(3)
             ->get();
 
-        return view('buyer.dashboard', compact(
-            'categories', 'featured', 'statusCounts', 'activeOrders', 'completedOrders',
+        $buyerMode = true;
+        $notifications = DB::table('notifications')->where('user_id', $buyerId)
+            ->orderByDesc('created_at')->limit(8)->get();
+
+        return view('buyer.dashboard', array_merge($storefront, compact(
+            'buyerMode', 'notifications', 'statusCounts', 'activeOrders', 'completedOrders',
             'cartCount', 'unreadMessages', 'recentOrders'
-        ));
+        )));
     }
 
     public function browse(Request $request)
@@ -116,6 +120,7 @@ class BuyerController extends Controller
         $shop   = [
             'name'         => $seller->business_name ?? ($seller->given_names . ' ' . $seller->last_name),
             'initial'      => strtoupper(substr($seller->given_names, 0, 1)),
+            'photo'        => $seller->shopPhotoUrl(),
             'rating'       => 0,
             'products'     => count($items),
             'sales'        => '0',

@@ -4,6 +4,7 @@
 @section('page-sub', 'Welcome back, ' . auth()->user()->given_names)
 
 @section('content')
+@include('admin.partials.ai-link', ['aiMode' => 'dashboard', 'aiLabel' => 'AI summary'])
 @php
   $buyers   = \App\Models\User::where('account_type','buyer')->where('is_admin',false)->count();
   $sellers  = \App\Models\User::where('account_type','seller')->where('is_admin',false)->count();

@@ -7,7 +7,12 @@ use Illuminate\Support\Facades\DB;
 $pdo=DB::connection()->getPdo();
 if (DB::connection()->getDriverName()!=='mysql') throw new RuntimeException('MySQL required');
 $file=storage_path('app/private/mysql-migration/mysql-backup.sql');
+$directory=dirname($file);
+if (!is_dir($directory) && !mkdir($directory, 0700, true) && !is_dir($directory)) {
+    throw new RuntimeException('Could not create the private MySQL backup directory.');
+}
 $out=fopen($file,'w');
+if ($out===false) throw new RuntimeException('Could not open the private MySQL backup file.');
 $quote=fn ($v)=>$v===null ? 'NULL' : $pdo->quote((string)$v);
 fwrite($out,"-- Private PocketFinds MySQL backup; contains account records.\n-- Restore into an EMPTY database selected before executing this file.\nSET NAMES utf8mb4;\nSET @OLD_SQL_MODE=@@SQL_MODE;\nSET SQL_MODE='NO_AUTO_VALUE_ON_ZERO';\nSET @OLD_FK=@@FOREIGN_KEY_CHECKS;\nSET FOREIGN_KEY_CHECKS=0;\n\n");
 $pdo->beginTransaction();

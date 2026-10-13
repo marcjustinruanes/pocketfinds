@@ -5,6 +5,7 @@
 @php use Illuminate\Support\Facades\Storage; @endphp
 
 @section('content')
+@include('admin.partials.ai-link', ['aiMode' => 'seller', 'aiLabel' => 'AI seller review'])
 @if(session('success'))
 <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px">
   {{ session('success') }}
@@ -61,6 +62,7 @@
             <td>
               <div class="row-actions">
                 <button class="btn btn-sm btn-outline" data-modal-open="reviewModal-{{ $user->id }}">Review</button>
+                @if($user->account_type === 'seller')<a class="btn btn-sm btn-outline" href="{{ route('admin.ai', ['mode' => 'seller', 'seller_id' => $user->id]) }}"><x-admin-icon name="chart" /> AI review</a>@endif
               </div>
             </td>
           </tr>

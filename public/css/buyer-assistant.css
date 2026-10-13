@@ -1,0 +1,86 @@
+.pf-assistant { --assistant-pink: #bf3c7d; font-family: Inter, sans-serif; font-size: 14px; color: #25232b; }
+.pf-assistant * { box-sizing: border-box; letter-spacing: 0; }
+.pf-assistant [hidden] { display: none !important; }
+.pf-assistant button, .pf-assistant a { -webkit-tap-highlight-color: transparent; }
+.pf-assistant button { cursor: pointer; font: inherit; }
+.pf-assistant-launch { position: fixed; right: 24px; bottom: 24px; z-index: 160; display: flex; align-items: center; gap: 9px; min-height: 48px; padding: 12px 18px; border: 1px solid #ac316e; border-radius: 24px; background: #bf3c7d; color: white; box-shadow: 0 4px 18px #bf3c7d33; transition: transform .18s, box-shadow .18s; }
+.pf-assistant-launch:hover { transform: translateY(-2px); box-shadow: 0 6px 22px #bf3c7d55; }
+body:has(#messagesModal.open) .pf-assistant-launch { display: none; }
+.pf-assistant-panel { position: fixed; right: 24px; bottom: 24px; z-index: 170; width: 390px; max-width: calc(100% - 32px); height: 610px; max-height: calc(100dvh - 48px); display: flex; flex-direction: column; overflow: hidden; background: white; border: 1px solid #e9d8e1; border-radius: 8px; box-shadow: 0 12px 48px #29202b30; animation: pfAssistantIn .18s ease-out; }
+.pf-assistant-head { flex: none; display: flex; align-items: center; gap: 10px; padding: 15px; border-bottom: 1px solid #eee5eb; background: #fff8fc; }
+.pf-assistant-head img { object-fit: contain; }
+.pf-assistant-head div { flex: 1; min-width: 0; }
+.pf-assistant-head strong { display: block; font-size: 14px; }
+.pf-assistant-head small { display: block; font-size: 11px; color: #79717e; margin-top: 3px; }
+.pf-assistant-head button { display: grid; place-items: center; width: 34px; height: 34px; flex: none; padding: 0; background: transparent; border: 0; border-radius: 6px; color: #746776; }
+.pf-assistant-head button:hover { color: #bf3c7d; background: #f7e8f0; }
+.pf-assistant-engine { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin: 10px 14px 0; padding: 3px; border: 1px solid #e9d8e1; border-radius: 6px; background: #faf7f9; }
+.pf-assistant-engine label { position: relative; text-align: center; padding: 8px; font-size: 12px; color: #746776; border-radius: 4px; cursor: pointer; }
+.pf-assistant-engine label:has(input:checked) { background: #bf3c7d; color: white; }
+.pf-assistant-engine input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.pf-assistant-engine input { left: 0; top: 0; padding: 0; margin: 0; }
+.pf-assistant[data-guest="false"] .pf-assistant-engine { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pf-assistant-history { flex: 1; min-height: 0; overflow-y: auto; padding: 14px; }
+.pf-assistant-history header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.pf-assistant-history button, .pf-assistant-older { border: 1px solid #eed8e4; border-radius: 5px; background: white; color: #9b2e63; padding: 8px; font-size: 12px; }
+.pf-assistant-history header button, .pf-chat-row > button:not(:first-child) { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; flex: none; }
+.pf-chat-row { display: flex; align-items: center; gap: 5px; padding: 8px 0; border-bottom: 1px solid #eee5eb; }
+.pf-chat-row > button:first-child { flex: 1; min-width: 0; text-align: left; border: 0; overflow-wrap: anywhere; }
+.pf-chat-row small { display: block; color: #79717e; margin-top: 4px; font-size: 10px; }
+.pf-chat-row[aria-current="true"] > button:first-child { background: #fceaf3; }
+.pf-assistant-history form { margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee5eb; }
+.pf-assistant-history input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #e5dbe3; border-radius: 5px; font: inherit; background: white; color: #25232b; }
+.pf-assistant-older { flex: none; margin: 8px 14px 0; }
+.pf-assistant-panel:has(.pf-assistant-history:not([hidden])) :is(.pf-assistant-engine, .pf-assistant-feed, .pf-assistant-prompts, .pf-assistant-consent, .pf-assistant-form, .pf-assistant-older) { display: none; }
+.pf-assistant-message > .pf-reply-mode { display: block; margin-top: 8px; font-size: 10px; color: #79717e; }
+.pf-assistant-panel:has(.pf-assistant-support:not([hidden])) :is(.pf-assistant-history, .pf-assistant-older) { display: none; }
+.pf-assistant-engine label:has(input:focus-visible) { outline: 2px solid #bf3c7d; outline-offset: 2px; }
+.pf-assistant-engine label:has(input:disabled) { cursor: wait; opacity: .6; }
+.pf-assistant-feed { flex: 1; min-height: 70px; overflow-y: auto; overscroll-behavior: contain; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.pf-assistant-message { flex: none; max-width: 94%; padding: 11px 13px; background: #f5f3f6; border-radius: 8px; line-height: 1.55; font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; animation: pfAssistantIn .18s ease-out; }
+.pf-assistant-message[data-role="user"] { align-self: flex-end; color: #7f2654; background: #fceaf3; }
+.pf-assistant-message a { display: block; margin-top: 9px; padding-top: 8px; border-top: 1px solid #e7dce4; color: #ad316d; text-decoration: none; white-space: normal; }
+.pf-assistant-message a:hover { text-decoration: underline; }
+.pf-assistant-message a strong, .pf-assistant-message a small { display: block; }
+.pf-assistant-prompts { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 14px; }
+.pf-assistant-prompts button { background: white; border: 1px solid #eed8e4; border-radius: 6px; color: #9b2e63; font-size: 11px; padding: 8px 10px; }
+.pf-assistant-prompts button:hover { background: #fff0f7; }
+.pf-assistant-shortcuts { display: flex; flex-wrap: wrap; gap: 14px; padding: 5px 15px 9px; font-size: 11px; }
+.pf-assistant-shortcuts a { color: #9b2e63; }
+.pf-assistant-shortcuts button { padding: 0; background: none; border: 0; color: #9b2e63; font-size: inherit; text-decoration: underline; }
+.pf-assistant-support { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; }
+.pf-assistant-support label { display: block; font-size: 12px; margin: 14px 0 6px; }
+.pf-assistant-support input, .pf-assistant-support textarea { width: 100%; padding: 10px; font: inherit; border: 1px solid #e5dbe3; border-radius: 6px; background: white; color: #25232b; }
+.pf-assistant-support small { display: block; font-size: 11px; line-height: 1.5; color: #77717a; margin: 10px 0; }
+.pf-assistant-support button { padding: 10px 12px; border: 1px solid #eed8e4; background: white; border-radius: 6px; color: #9b2e63; }
+.pf-assistant-support button[type="submit"] { background: #bf3c7d; color: white; }
+.pf-assistant-support p { font-size: 12px; line-height: 1.5; }
+.pf-assistant-panel:has(.pf-assistant-support:not([hidden])) :is(.pf-assistant-engine, .pf-assistant-feed, .pf-assistant-prompts, .pf-assistant-consent, .pf-assistant-status) { display: none; }
+.pf-assistant-consent { padding: 9px 15px; border-top: 1px solid #eee5eb; background: #faf9fb; }
+.pf-assistant-consent label { display: flex; align-items: center; gap: 7px; font-size: 11px; line-height: 1.4; }
+.pf-assistant-consent input { width: 15px; height: 15px; margin: 0; accent-color: #bf3c7d; flex: none; }
+.pf-assistant-consent small { display: block; margin-top: 6px; color: #77717a; font-size: 10px; line-height: 1.45; }
+.pf-assistant-status { margin: 0; padding: 0 15px; font-size: 11px; color: #9e315f; line-height: 1.4; overflow-wrap: anywhere; }
+.pf-assistant-status:not(:empty) { padding-top: 7px; }
+.pf-assistant-form { display: flex; flex: none; align-items: end; gap: 8px; padding: 12px; }
+.pf-assistant-form textarea { flex: 1; min-width: 0; max-height: 100px; resize: none; padding: 11px; border: 1px solid #e5dbe3; border-radius: 6px; font: inherit; line-height: 1.4; color: #25232b; background: white; }
+.pf-assistant-form button { flex: none; width: 42px; height: 42px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; color: white; background: #bf3c7d; }
+.pf-assistant button:disabled { opacity: .55; cursor: wait; }
+.pf-assistant :focus-visible { outline: 2px solid #bf3c7d; outline-offset: 3px; }
+.pf-assistant-sr { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+@keyframes pfAssistantIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 700px) {
+  .pf-assistant-launch { right: 14px; bottom: calc(76px + env(safe-area-inset-bottom)); padding: 0; width: 48px; height: 48px; justify-content: center; }
+  .pf-assistant-launch span { display: none; }
+  .pf-assistant-panel { right: 12px; bottom: calc(76px + env(safe-area-inset-bottom)); width: calc(100% - 24px); max-width: none; max-height: calc(100dvh - 100px - env(safe-area-inset-bottom)); }
+  .pf-assistant-form textarea { font-size: 16px; min-height: 68px; }
+  .pf-assistant-support input, .pf-assistant-support textarea { font-size: 16px; }
+  .pf-assistant-history input { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { .pf-assistant * { animation: none !important; transition: none !important; } }
+@media (max-height: 600px) {
+  .pf-assistant-panel { top: 12px; bottom: 12px; height: calc(100dvh - 24px); max-height: calc(100dvh - 24px); }
+  .pf-assistant-feed { min-height: 0; }
+  .pf-assistant-prompts { display: none; }
+  .pf-assistant-head { padding: 10px 15px; }
+}

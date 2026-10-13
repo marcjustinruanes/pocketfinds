@@ -49,6 +49,10 @@
     </a>
 
     <div class="nav-label">System</div>
+    <a href="{{ route('admin.faqs') }}" class="nav-item {{ request()->routeIs('admin.faqs*') ? 'active' : '' }}"><span class="ic"><x-admin-icon name="file" /></span> FAQs</a>
+    <a href="{{ route('admin.ai') }}" class="nav-item {{ request()->routeIs('admin.ai*') ? 'active' : '' }}">
+      <span class="ic"><x-admin-icon name="chart" /></span> AI Workspace
+    </a>
     <a href="{{ route('admin.messages') }}" class="nav-item {{ request()->routeIs('admin.messages*') ? 'active' : '' }}">
       <span class="ic"><x-admin-icon name="mail" /></span> Messages
       @if(!empty($unreadMessages))

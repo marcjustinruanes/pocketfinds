@@ -13,13 +13,15 @@
       <div class="pf-deal-fold-prices"><strong>₱{{ number_format($p['price'], 2) }}</strong>
         @if($p['old_price'] ?? null)<del>₱{{ number_format($p['old_price'], 2) }}</del>@endif
       </div>
-      <a class="pf-deal-fold-link" href="{{ route('guest.product', $p['id']) }}">View product <span aria-hidden="true">↗</span></a>
+      <a class="pf-deal-fold-link" href="{{ route($productRoute ?? 'guest.product', $p['id']) }}">View product <span aria-hidden="true">↗</span></a>
     </div>
   </article>
   @endforeach
 </div>
 <div class="pf-deal-gallery-controls">
+  <button type="button" data-deal-prev aria-label="Previous deal" title="Previous deal">&larr;</button>
   <span data-deal-position aria-live="polite">1 / {{ count($deals) }}</span>
+  <button type="button" data-deal-next aria-label="Next deal" title="Next deal">&rarr;</button>
 </div>
 </div>
 <p class="pf-deal-empty" data-deal-filter-empty hidden role="status">No deals match these filters right now.</p>

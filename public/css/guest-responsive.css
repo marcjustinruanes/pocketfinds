@@ -1,4 +1,22 @@
 /* Shared guest layouts: size content to available space rather than device names. */
+.pf-price-filter input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
+.pf-price-filter input[type="number"]::-webkit-inner-spin-button,
+.pf-price-filter input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.pf-price-filter .pf-number-field,
+#deals .pf-price-filter .pf-number-field,
+#products .pf-price-filter .pf-number-field { display: block; position: relative; width: 100%; height: auto; min-width: 0; flex: 1; overflow: visible; clip-path: none; }
+.pf-price-filter .pf-number-field input,
+#deals .pf-price-filter .pf-number-field input,
+#products .pf-price-filter .pf-number-field input { padding-right: 34px; }
+.pf-price-filter .pf-number-step,
+#deals .pf-price-filter .pf-number-step,
+#products .pf-price-filter .pf-number-step { position: absolute; right: 3px; width: 28px; height: 50%; min-height: 0; padding: 0; margin: 0; display: grid; place-items: center; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: inherit; cursor: pointer; }
+.pf-price-filter .pf-number-step-up { top: 0; }
+.pf-price-filter .pf-number-step-down { bottom: 0; }
+.pf-price-filter .pf-number-step::before { content: ""; width: 5px; height: 5px; border-top: 1.5px solid currentColor; border-right: 1.5px solid currentColor; transform: rotate(-45deg); }
+.pf-price-filter .pf-number-step-down::before { transform: rotate(135deg); }
+.pf-price-filter .pf-number-step:hover { opacity: .7; }
+.pf-price-filter .pf-number-step:focus-visible { outline: 1px solid currentColor; outline-offset: -3px; }
 #shops .pf-shop-row {
   display: flex;
   flex-direction: column;
@@ -30,7 +48,7 @@
 #deals .pf-deal-intro { margin-top: 0; }
 #deals .pf-deal-category-filter { margin-top: 0; align-self: flex-start; }
 #deals .pf-deal-price-form { background: transparent; border: 0; border-radius: 0; padding: 22px 0 0; margin: 0; }
-#deals .pf-price-filter { display: flex; flex-wrap: nowrap; justify-content: center; align-items: center; gap: 16px; overflow-x: auto; padding-bottom: 6px; }
+#deals .pf-price-filter { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px; padding-bottom: 6px; }
 #deals .pf-deal-range-title { flex: none; font-size: 10px; font-weight: 600; letter-spacing: .24em; text-transform: uppercase; color: #dfb7cb; white-space: nowrap; }
 #deals .pf-deal-range-title::before, #deals .pf-deal-range-title::after { display: none; }
 #deals .pf-price-filter label { display: flex; flex-direction: column; align-items: stretch; gap: 6px; font-size: 11px; min-width: 0; text-align: center; }
@@ -80,6 +98,9 @@ body.marketplace { overflow-wrap: break-word; }
 .market-header .header-main { min-width: 0; }
 .market-header .pf-search-wrap, .market-header .search { min-width: 0; }
 .pf-product-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 155px), 1fr)); gap: clamp(10px, 1.5vw, 18px); }
+.pf-product-grid > * { min-width: 0; }
+.pf-product-media img { position: absolute; inset: 0; }
+.pf-product-body { min-width: 0; }
 .pf-section { margin-bottom: clamp(28px, 5vw, 52px); }
 .pf-shop-card { max-width: none; }
 #deals { container-type: inline-size; }
@@ -110,6 +131,8 @@ body.marketplace { overflow-wrap: break-word; }
   .pf-price-filter button { min-height: 44px; }
   .pd-shop-card { display: flex; flex-wrap: wrap; gap: 14px; }
   .pd-shop-card-actions { padding-left: 0; }
+  .pf-section-head { flex-wrap: wrap; align-items: center; }
+  .pf-footer-brand { grid-column: 1 / -1; }
 }
 @container (max-width: 460px) {
   .pf-deal-showcase { grid-template-columns: minmax(0, 1fr); }
@@ -118,19 +141,45 @@ body.marketplace { overflow-wrap: break-word; }
   .pf-deal-option { flex: 0 0 180px; scroll-snap-align: start; }
 }
 @media (max-width: 600px) {
-  .market-header .logo { font-size: clamp(16px, 4.5vw, 19px); gap: 5px; }
+  .market-header .logo { font-size: 17px; letter-spacing: 0; gap: 5px; }
   .market-header .logo-mark { width: 28px; height: 28px; }
   .market-header .nav-link { padding: 8px 10px; min-height: 40px; }
   .market-header .nav-links { justify-content: space-evenly; gap: 0; }
-  .pf-hero-h1 { font-size: clamp(26px, 7vw, 40px); }
-  .pf-hero-p { display: -webkit-box; font-size: clamp(13px, 3.5vw, 16px); margin-bottom: 18px; }
+  .pf-hero-h1 { font-size: 32px; }
+  .pf-hero-p { display: block; font-size: 14px; margin-bottom: 0; overflow: visible; }
   .pf-hero-content { padding: 28px 0; }
   .pf-hero-cta { min-height: 44px; }
-  .pf-product-grid, .deal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .pf-category-heading .pf-section-title { font-size: clamp(30px, 8vw, 38px); }
-  #shops .pf-section-title, #deals .pf-section-title { font-size: clamp(30px, 8vw, 38px); }
-  #deals .pf-section-title { font-size: clamp(38px, 10vw, 48px); }
-  #deals .pf-deal-heading { gap: 10px; }
+  .pf-product-grid, .deal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .pf-product-card { border-radius: 8px; height: 100%; }
+  .pf-product-name { -webkit-line-clamp: 2; min-height: 2.7em; }
+  .pf-product-loc { white-space: normal; align-items: flex-start; line-height: 1.4; }
+  .pf-product-loc svg { margin-top: 2px; }
+  .pf-category-heading .pf-section-title { font-size: 34px; }
+  #shops .pf-section-title, #deals .pf-section-title { font-size: 34px; }
+  #deals .pf-section-title { font-size: 40px; }
+  #deals .pf-deal-heading { flex-direction: column; align-items: stretch; gap: 16px; }
+  #deals .pf-deal-heading > div { order: 0; align-items: flex-start; text-align: left; }
+  #deals .pf-deal-heading > select { order: 1; width: 100%; max-width: none; flex: none; }
+  #deals .pf-price-filter { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; overflow: visible; }
+  #deals .pf-deal-range-title { grid-column: 1 / -1; text-align: left; letter-spacing: 0; }
+  #deals .pf-price-filter label { width: 100%; }
+  #deals .pf-price-filter input { min-height: 44px; font-size: 16px; }
+  #deals .pf-deal-range-actions { grid-column: 1 / -1; justify-content: flex-start; }
+  #deals .pf-deal-range-actions button { min-height: 44px; flex: 1; font-size: 12px; padding: 8px 12px; }
+  .pf-category-carousel { padding: 0; }
+  .category-grid { gap: 12px; padding: 16px 0; }
+  .category-grid .cat-card { flex-basis: calc((100% - 12px) / 2); gap: 8px; }
+  .cat-photo-ring { width: min(140px, 100%); }
+  .cat-name { width: 100%; font-size: 12px; letter-spacing: 0; }
+  .marketplace .cat-caption { font-size: 11px; letter-spacing: 0; }
+  .pf-category-controls { position: static; justify-content: center; gap: 16px; margin-top: 4px; }
+  .pf-category-controls button { width: 44px; height: 44px; }
+  #products .pf-price-filter { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #products .pf-price-filter > span:first-child, #products .pf-price-filter > button, #products .pf-price-filter > a { grid-column: 1 / -1; }
+  #products .pf-price-filter label { flex-direction: column; align-items: stretch; gap: 6px; }
+  #products .pf-price-filter input, .market-header .search input { font-size: 16px; }
+  .pf-section { padding-bottom: 16px; margin-bottom: 28px; }
+  #shops .pf-shop-row { max-height: none; padding-right: 0; }
   .pf-deal-category-filter { flex: 1 1 150px; min-width: 0; max-width: 100%; min-height: 44px; }
   .pf-price-filter > span:first-child { flex-basis: 100%; }
   .pf-price-filter label { flex: 1 1 calc(50% - 6px); }
@@ -139,12 +188,16 @@ body.marketplace { overflow-wrap: break-word; }
   .pd-actions { flex-wrap: wrap; }
   .gs-name-row, .gs-rating-row { flex-wrap: wrap; justify-content: center; }
   .gs-name { overflow-wrap: anywhere; }
-  .mobile-nav { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
-  body.marketplace { padding-bottom: calc(62px + env(safe-area-inset-bottom)); }
+  .mobile-nav { height: auto; min-height: 62px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+  .mobile-nav > * { flex: 1; min-width: 0; min-height: 44px; justify-content: center; }
+  body.marketplace { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
 }
 @media (max-width: 380px) {
   .pf-footer-wrap, .footer-grid { grid-template-columns: minmax(0, 1fr); }
   .market-header .header-actions { gap: 2px; }
   .market-header .icon-action, .market-header .pf-acct-icon { width: 34px; }
   .pf-price-filter label { flex-basis: 100%; }
+}
+@media (min-width: 480px) and (max-width: 600px) {
+  .category-grid .cat-card { flex-basis: calc((100% - 24px) / 3); }
 }

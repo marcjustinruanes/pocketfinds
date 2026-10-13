@@ -55,8 +55,10 @@ class Product extends Model
      */
     public function deductStock(int $qty, ?string $group = null, ?string $value = null): void
     {
+        $before = $this->total_stock;
         if (empty($this->variations)) {
             $this->update(['stock' => max(0, (int) $this->stock - $qty)]);
+            $this->recordStockMovement($before, -$qty);
             return;
         }
         $variations = $this->variations;
@@ -71,6 +73,19 @@ class Product extends Model
         }
         unset($variation);
         $this->update(['variations' => $variations]);
+        $this->recordStockMovement($before, -$qty);
+    }
+
+    private function recordStockMovement(int $before, int $requestedDelta): void
+    {
+        // Old installations keep working until they apply the additive migration.
+        if (!\Illuminate\Support\Facades\Schema::hasTable('inventory_movements')) return;
+        \Illuminate\Support\Facades\DB::table('inventory_movements')->insert([
+            'product_id' => $this->id, 'stock_before' => $before, 'stock_after' => $this->total_stock,
+            'delta' => $this->total_stock - $before, 'requested_delta' => $requestedDelta,
+            'actor_id' => auth()->id(), 'reason' => request()->route()?->getName() ?? 'Application stock operation',
+            'created_at' => now(),
+        ]);
     }
 
     protected static function boot()

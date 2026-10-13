@@ -1,0 +1,48 @@
+#authModal { background: rgba(25, 20, 25, .48); backdrop-filter: none; padding: 20px; overscroll-behavior: contain; }
+#authModal .am-card { width: min(420px, 100%); display: block; border-radius: 8px; background: #fff; color: #27272a; max-height: calc(100dvh - 40px); overflow-y: auto; box-shadow: 0 16px 48px rgba(0, 0, 0, .2); font-family: Inter, Arial, sans-serif; }
+#authModal .am-form-panel { padding: 28px; display: block; }
+#authModal .am-brand-header { margin-bottom: 24px; padding-right: 32px; }
+#authModal .am-logo { font-size: 19px; letter-spacing: 0; gap: 8px; }
+#authModal .am-logo-pocket { color: #563747; }
+#authModal .am-logo-mark { width: 30px; height: 34px; }
+#authModal .am-logo-mark img { width: 100%; height: 100%; object-fit: contain; }
+#authModal .am-close { width: 40px; height: 40px; top: 12px; right: 12px; padding: 0; }
+#authModal .am-page-header { margin-bottom: 22px; }
+#authModal .am-title-row h3 { font-size: 22px; font-weight: 700; letter-spacing: 0; line-height: 1.35; }
+#authModal .am-page-header p { margin-top: 6px; font-size: 13px; line-height: 1.5; color: #71717a; }
+#authModal .am-form { gap: 16px; }
+#authModal .am-label { color: #3f3f46; font-size: 12px; font-weight: 600; }
+#authModal .am-input { height: 46px; border-radius: 6px; padding-inline: 12px; font-size: 16px; color: #27272a; }
+#authModal .am-input::placeholder { color: #a1a1aa; font-size: 14px; }
+#authModal .am-input.has-toggle { padding-right: 48px; }
+#authModal .am-input:focus { box-shadow: 0 0 0 3px rgba(217, 70, 143, .12); }
+#authModal .am-pw-toggle { width: 40px; height: 40px; padding: 0; right: 3px; display: grid; place-items: center; border-radius: 4px; }
+#authModal .am-eye-slash { display: none; }
+#authModal .am-pw-toggle[aria-pressed="true"] .am-eye-slash { display: block; }
+#authModal .am-row { flex-wrap: wrap; gap: 8px; }
+#authModal .am-check-label, #authModal .am-link { font-size: 12px; }
+#authModal .am-check-label { min-height: 32px; }
+#authModal .am-btn { border-radius: 6px; min-height: 46px; background: #be3a7d; font-size: 14px; font-weight: 600; margin: 0; }
+#authModal .am-btn:hover { background: #a62f6a; transform: none; box-shadow: none; }
+#authModal .am-bottom { border-top: 1px solid #e9e4ea; padding-top: 20px; margin-top: 24px; font-size: 12px; line-height: 1.6; }
+#authModal .am-link { color: #be3a7d; }
+#authModal .am-dismiss { display: block; margin: 8px auto 0; padding: 8px 12px; min-height: 36px; border: 0; background: none; color: #71717a; font: inherit; font-size: 12px; cursor: pointer; }
+#authModal .am-dismiss:hover { color: #27272a; text-decoration: underline; }
+#authModal .am-method-grid { gap: 14px; }
+#authModal .am-method-card { border-radius: 6px; border-width: 1px; padding: 10px 12px; min-height: 48px; gap: 12px; }
+#authModal .am-method-card:hover { transform: none; box-shadow: none; }
+#authModal .am-method-icon { width: 28px; height: 28px; flex-basis: 28px; background: none; border-radius: 0; }
+#authModal .am-method-name { font-size: 13px; font-weight: 600; margin: 0; }
+#authModal .am-method-arrow { color: #71717a; }
+#authModal button:focus-visible, #authModal a:focus-visible { outline: 2px solid #be3a7d; outline-offset: 3px; }
+@media (max-width: 480px) {
+  #authModal { padding: 12px; }
+  #authModal .am-card { max-height: calc(100dvh - 24px); }
+  #authModal .am-form-panel { padding: 24px 20px; }
+  #authModal .am-brand-header { margin-bottom: 20px; }
+  #authModal .am-dismiss { min-height: 44px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  #authModal.open .am-card { animation: am-enter .16s ease-out; }
+  @keyframes am-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+}

@@ -16,12 +16,15 @@ use App\Models\Policy;
 use Illuminate\Support\Facades\Storage;
 
 Route::get('/', [GuestController::class, 'home']);
+Route::get('/assistant', [\App\Http\Controllers\GuestAssistantController::class, 'history'])->middleware('throttle:30,1')->name('guest.assistant.history');
+Route::post('/assistant', [\App\Http\Controllers\GuestAssistantController::class, 'send'])->middleware('throttle:6,1')->name('guest.assistant.send');
+Route::delete('/assistant', [\App\Http\Controllers\GuestAssistantController::class, 'clear'])->middleware('throttle:10,1')->name('guest.assistant.clear');
 Route::get('/categories/{id}/image', [GuestController::class, 'categoryImage'])->whereNumber('id')->name('guest.category-image');
 Route::get('/product/{id}', [GuestController::class, 'product'])->name('guest.product');
 Route::get('/shop/{slug}', [GuestController::class, 'shop'])->name('guest.shop');
 // Sends the message itself via the server — unlike a mailto: link, this works the
 // same for every visitor regardless of what mail client their browser is set to use.
-Route::post('/support/contact', [SupportController::class, 'contact'])->name('support.contact');
+Route::post('/support/contact', [SupportController::class, 'contact'])->middleware('throttle:3,1')->name('support.contact');
 
 Route::middleware('web', 'auth')->get('/message-media/{path}', function (string $path) {
     $message = Message::where('attachment_path', $path)
@@ -122,6 +125,16 @@ Route::middleware('web')->group(function () {
 
 // Buyer routes
 Route::prefix('buyer')->name('buyer.')->middleware(['web', 'buyer'])->group(function () {
+    Route::get('/faqs', [\App\Http\Controllers\FaqController::class, 'buyer'])->name('faqs');
+    Route::get('/assistant/conversations', [\App\Http\Controllers\BuyerConversationController::class, 'index'])->middleware('throttle:60,1')->name('assistant.conversations');
+    Route::post('/assistant/conversations', [\App\Http\Controllers\BuyerConversationController::class, 'create'])->middleware('throttle:20,1');
+    Route::get('/assistant/conversations/{conversation}', [\App\Http\Controllers\BuyerConversationController::class, 'show'])->middleware('throttle:60,1');
+    Route::patch('/assistant/conversations/{conversation}', [\App\Http\Controllers\BuyerConversationController::class, 'update'])->middleware('throttle:30,1');
+    Route::delete('/assistant/conversations/{conversation}', [\App\Http\Controllers\BuyerConversationController::class, 'delete'])->middleware('throttle:20,1');
+    Route::post('/assistant/conversations/{conversation}/messages', [\App\Http\Controllers\BuyerConversationController::class, 'send'])->middleware('throttle:10,1');
+    Route::get('/assistant', [\App\Http\Controllers\BuyerAssistantController::class, 'history'])->middleware('throttle:30,1')->name('assistant.history');
+    Route::post('/assistant', [\App\Http\Controllers\BuyerAssistantController::class, 'send'])->middleware('throttle:10,1')->name('assistant.send');
+    Route::delete('/assistant', [\App\Http\Controllers\BuyerAssistantController::class, 'clear'])->middleware('throttle:10,1')->name('assistant.clear');
     Route::get('/dashboard', [BuyerController::class, 'dashboard'])->name('dashboard');
     Route::get('/browse', [BuyerController::class, 'browse'])->name('browse');
     Route::get('/product/{id}', [BuyerController::class, 'product'])->name('product');
@@ -205,6 +218,17 @@ Route::prefix('seller')->name('seller.')->middleware(['web', 'seller'])->group(f
 
 // Admin routes
 Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
+    Route::get('/faqs', [AdminController::class, 'faqs'])->name('faqs');
+    Route::post('/faqs', [\App\Http\Controllers\FaqController::class, 'save'])->middleware('throttle:30,1')->name('faqs.store');
+    Route::put('/faqs/{faq}', [\App\Http\Controllers\FaqController::class, 'save'])->middleware('throttle:30,1')->name('faqs.update');
+    Route::delete('/faqs/{faq}', [\App\Http\Controllers\FaqController::class, 'delete'])->middleware('throttle:30,1')->name('faqs.delete');
+    Route::get('/ai', [AdminController::class, 'aiWorkspace'])->name('ai');
+    Route::get('/ai/export', [\App\Http\Controllers\AdminAssistantController::class, 'export'])->middleware('throttle:10,1')->name('ai.export');
+    Route::get('/ai/orders/{order}', [AdminController::class, 'aiOrderReview'])->name('ai.order');
+    Route::get('/ai/products/{product}/photo', [\App\Http\Controllers\AdminAssistantController::class, 'photo'])->name('ai.photo');
+    Route::post('/ai/analyze', [\App\Http\Controllers\AdminAssistantController::class, 'analyze'])->middleware('throttle:6,1')->name('ai.analyze');
+    Route::delete('/ai/chat', [\App\Http\Controllers\AdminAssistantController::class, 'clear'])->name('ai.clear');
+    Route::post('/ai/prepare-draft', [\App\Http\Controllers\AdminAssistantController::class, 'prepareDraft'])->name('ai.prepare-draft');
     Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/registrations', [AdminController::class, 'registrations'])->name('registrations');

@@ -4,6 +4,11 @@
 @section('page-sub', 'Broadcast messages to platform users')
 
 @section('content')
+@include('admin.partials.ai-link', ['aiMode' => 'draft', 'aiLabel' => 'AI announcement draft'])
+@php $aiDraft = session('ai_announcement_draft', []); @endphp
+@if($aiDraft)
+<p role="status" style="padding:12px 0;color:var(--warning);font-size:13px">AI draft loaded. Check the details before posting. Nothing has been published.</p>
+@endif
 @if(session('success'))
 <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px">
   {{ session('success') }}
@@ -50,19 +55,19 @@
         @csrf
         <div class="form-row">
           <label>Title</label>
-          <input type="text" name="title" placeholder="Announcement title" required value="{{ old('title') }}">
+          <input type="text" name="title" placeholder="Announcement title" required value="{{ old('title', $aiDraft['title'] ?? '') }}">
         </div>
         <div class="form-row">
           <label>Message</label>
-          <textarea name="body" rows="4" placeholder="Write your announcement here..." required>{{ old('body') }}</textarea>
+          <textarea name="body" rows="4" placeholder="Write your announcement here..." required>{{ old('body', $aiDraft['body'] ?? '') }}</textarea>
         </div>
         <div class="form-row">
           <label>Audience</label>
           <select name="audience">
-            <option value="all">All Users</option>
-            <option value="buyer">Buyers Only</option>
-            <option value="seller">Sellers Only</option>
-            <option value="rider">Riders Only</option>
+            <option value="all" @selected(old('audience', $aiDraft['audience'] ?? 'all') === 'all')>All Users</option>
+            <option value="buyer" @selected(old('audience', $aiDraft['audience'] ?? 'all') === 'buyer')>Buyers Only</option>
+            <option value="seller" @selected(old('audience', $aiDraft['audience'] ?? 'all') === 'seller')>Sellers Only</option>
+            <option value="rider" @selected(old('audience', $aiDraft['audience'] ?? 'all') === 'rider')>Riders Only</option>
           </select>
         </div>
         <button class="btn btn-primary btn-block" type="submit"><x-admin-icon name="megaphone" /> Post Announcement</button>

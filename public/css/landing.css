@@ -192,13 +192,13 @@
   background-position: center;
   background-repeat: no-repeat;
   overflow: visible;
-  padding-bottom: 52px;
+  padding-bottom: 0;
 }
 @media (min-width: 960px) {
   .pf-hero-banner { min-height: 320px; }
 }
 
-/* Slanted edge divider */
+/* Hero introduction */
 html.hero-intro,
 html.hero-intro body.marketplace {
   overflow: hidden;
@@ -208,7 +208,7 @@ html.hero-intro .mobile-nav { visibility: hidden; pointer-events: none; }
 html.hero-intro .pf-hero-banner {
   height: calc(100svh - var(--hero-header-height, 76px));
   min-height: 0;
-  transition: height 1.2s cubic-bezier(.22, 1, .36, 1);
+  transition: height .45s cubic-bezier(.22, 1, .36, 1);
   overflow: hidden;
   overflow-anchor: none;
 }
@@ -235,17 +235,17 @@ html.hero-intro .pf-hero-cta {
 html.hero-intro.hero-text-visible .pf-hero-h1,
 html.hero-intro.hero-text-visible .pf-hero-p,
 html.hero-intro.hero-text-visible .pf-hero-cta {
-  animation: pf-hero-text-in .7s cubic-bezier(.22, 1, .36, 1) both;
+  animation: pf-hero-text-in .3s cubic-bezier(.22, 1, .36, 1) both;
 }
 html.hero-intro.hero-text-visible .pf-hero-h1 { animation-delay: 0s; }
-html.hero-intro.hero-text-visible .pf-hero-p { animation-delay: .2s; }
-html.hero-intro.hero-text-visible .pf-hero-cta { animation-delay: .4s; }
+html.hero-intro.hero-text-visible .pf-hero-p { animation-delay: .08s; }
+html.hero-intro.hero-text-visible .pf-hero-cta { animation-delay: .16s; }
 html.hero-intro.hero-revealed #categories,
 html.hero-intro.hero-revealed .pf-split-row,
 html.hero-intro.hero-revealed #products,
 html.hero-intro.hero-revealed #about {
   visibility: visible;
-  animation: pf-hero-text-in .8s cubic-bezier(.22, 1, .36, 1) .3s both;
+  animation: pf-hero-text-in .35s cubic-bezier(.22, 1, .36, 1) .1s both;
 }
 @media (prefers-reduced-motion: reduce) {
   html.hero-intro .pf-hero-h1,
@@ -263,15 +263,14 @@ html.hero-intro.hero-revealed #about {
   html.hero-layout .cat-caption { font-size: 8px; }
 }
 
-.pf-hero-wave {
-  position: absolute;
-  bottom: -2px; left: 0; right: 0;
-  line-height: 0; z-index: 3; pointer-events: none;
-}
-.pf-hero-wave svg { display: block; width: 100%; height: 52px; }
+/* Photo layers crossfade without moving the hero content. */
+#heroPhotoFrame { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+#heroPhotoFrame .hero-slide { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: 0; transition: opacity .7s ease; }
+#heroPhotoFrame .hero-slide.active { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { #heroPhotoFrame .hero-slide { transition: none; } }
 
 /* Overlays for when an image is uploaded */
-.pf-hero-overlay { position: absolute; inset: 0; pointer-events: none; }
+.pf-hero-overlay { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
 .pf-overlay-dark .pf-hero-overlay {
   background: linear-gradient(to right, rgba(0,0,0,.7) 0%, rgba(0,0,0,.35) 55%, transparent 100%);
 }
@@ -284,6 +283,10 @@ html.hero-intro.hero-revealed #about {
 /* Content */
 .pf-hero-content {
   position: relative; z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 20px;
   padding: 48px 0 40px;
   text-align: left;
 }
@@ -305,16 +308,20 @@ html.hero-intro.hero-revealed #about {
 
 /* Headline */
 .pf-hero-h1 {
-  max-width: 600px;
+  max-width: 760px;
   font-family: 'DM Serif Display', Georgia, serif;
-  font-size: clamp(28px, 4vw, 52px);
+  font-size: 52px;
   font-weight: 400; line-height: 1.12;
-  letter-spacing: -.015em;
+  letter-spacing: 0;
   color: #ffe5ed;
-  margin: 0 0 14px;
+  margin: 0;
 }
 .pf-hero-h1 em { font-style: normal; color: #f9a8d4; }
 .pf-hero-pocket-it {
+  display: inline-block;
+  vertical-align: baseline;
+  white-space: nowrap;
+  line-height: 1;
   font-family: 'Allura', 'Brush Script MT', cursive;
   font-size: 1.25em;
   font-weight: 700;
@@ -338,9 +345,9 @@ html.hero-intro.hero-revealed #about {
 /* Subtitle */
 .pf-hero-p {
   font-family: 'Manrope', Arial, sans-serif;
-  font-size: clamp(14px, 1.4vw, 18px); line-height: 1.4;
+  font-size: 18px; line-height: 1.4;
   color: rgba(255,255,255,.6);
-  max-width: 600px; margin: 0 0 26px;
+  max-width: 600px; margin: 0;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;

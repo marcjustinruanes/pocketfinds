@@ -130,6 +130,18 @@ class AdminController extends Controller
         ];
     }
 
+    public function faqs(Request $request)
+    {
+        abort_unless($request->user()->is_admin, 403);
+        $data = $request->validate(['audience' => ['sometimes', 'in:buyer,admin'], 'edit' => ['sometimes', 'integer']]);
+        $audience = $data['audience'] ?? 'admin';
+        $editing = isset($data['edit']) ? \App\Models\SupportFaq::findOrFail($data['edit']) : null;
+        return view('admin.faqs', array_merge($this->sidebarCounts(), [
+            'audience' => $audience, 'editing' => $editing,
+            'faqs' => \App\Models\SupportFaq::where('audience', $audience)->orderBy('sort_order')->orderBy('id')->paginate(20)->withQueryString(),
+        ]));
+    }
+
     public function approveUser(User $user)
     {
         $user->update(['status' => 'approved', 'status_reason' => null]);
@@ -228,6 +240,34 @@ class AdminController extends Controller
         return view('admin.dashboard', array_merge($counts, compact(
             'totalUsers', 'pendingCount', 'recentUsers', 'latestAnnouncement', 'salesSeries', 'salesTotal', 'salesDays'
         )));
+    }
+
+    public function aiOrderReview(\App\Models\Order $order)
+    {
+        abort_unless(auth()->user()?->is_admin, 403);
+        return view('admin.ai-order-review', array_merge($this->sidebarCounts(), ['order' => $order]));
+    }
+
+    public function aiWorkspace(Request $request)
+    {
+        $selection = $request->validate([
+            'mode' => 'sometimes|in:dashboard,reports,seller,product,draft,chat,analytics,inventory,anomalies,product_copy',
+            'product_id' => 'sometimes|string|max:64', 'seller_id' => 'sometimes|integer|min:1',
+        ]);
+        $products = Product::orderByRaw("status = 'pending' DESC")->latest()->limit(100)->get(['id', 'name', 'status']);
+        $sellers = User::where('account_type', 'seller')->where('is_admin', false)
+            ->orderByRaw("status = 'pending' DESC")->latest()->limit(100)->get(['id', 'business_name', 'status']);
+        if (!empty($selection['product_id']) && !$products->contains('id', $selection['product_id'])) {
+            $products->prepend(Product::findOrFail($selection['product_id'], ['id', 'name', 'status']));
+        }
+        if (!empty($selection['seller_id']) && !$sellers->contains('id', $selection['seller_id'])) {
+            $sellers->prepend(User::where('account_type', 'seller')->where('is_admin', false)->findOrFail($selection['seller_id'], ['id', 'business_name', 'status']));
+        }
+        return view('admin.ai-workspace', array_merge($this->sidebarCounts(), compact('products', 'sellers', 'selection'), [
+            'aiAvailable' => (bool) config('services.groq.key'),
+            'chatHistory' => $request->session()->get('admin_assistant.'.auth()->id(), []),
+            'chatEngine' => $request->session()->get('admin_assistant_engine.'.auth()->id(), $request->session()->has('admin_assistant.'.auth()->id()) ? 'ai' : 'automated'),
+        ]));
     }
 
     public function registrations()

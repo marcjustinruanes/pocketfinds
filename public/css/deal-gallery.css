@@ -1,18 +1,19 @@
 /* Five-card gallery: consistent card dimensions and gentle movement. */
 #deals .pf-deal-gallery-frame { background: transparent; border: 0; padding: 0; margin-inline: -12px; overflow: clip; overflow-clip-margin: 12px; }
 #deals .pf-deal-gallery-frame[hidden] { display: none; }
-#deals .pf-deal-accordion { position: relative; display: block; height: clamp(300px, 35vw, 390px); margin: 12px 0 16px; padding: 0; overflow: visible; scrollbar-width: none; }
+#deals .pf-deal-accordion { position: relative; display: block; height: 310px; margin: 4px 0 8px; padding: 0; overflow: visible; scrollbar-width: none; }
 #deals .pf-deal-fold, #deals .pf-deal-fold.is-active {
-  position: absolute; top: 4%; left: var(--deal-position, 50%);
-  width: 24%; height: 82%; margin: 0; border-radius: 16px;
+  position: absolute; top: 2%; left: var(--deal-position, 50%);
+  width: 24%; height: 92%; margin: 0; border-radius: 16px;
   transform: translateX(-50%) translateY(var(--deal-rise, 0px)) perspective(800px) rotateY(var(--deal-tilt, 0deg)) scale(var(--deal-scale, 1));
   opacity: var(--deal-opacity, 1); z-index: var(--deal-depth, 1);
   visibility: visible;
-  transition: none;
+  transition: box-shadow .22s ease;
   box-shadow: 0 10px 22px rgba(0,0,0,.15);
 }
 #deals .pf-deal-fold.is-outside { visibility: hidden; pointer-events: none; opacity: 0; }
 #deals .pf-deal-fold.is-active { z-index: 5; }
+#deals .pf-deal-fold:hover, #deals .pf-deal-fold:focus-within { box-shadow: 0 0 0 1px rgba(245, 163, 203, .65), 0 0 18px rgba(217, 70, 143, .24), 0 10px 22px rgba(0, 0, 0, .15); }
 #deals .pf-deal-fold-photo, #deals .pf-deal-fold.is-active .pf-deal-fold-photo { opacity: 1; }
 #deals .pf-deal-fold::after { background: linear-gradient(180deg,transparent 50%,rgba(20,12,18,.75)); }
 #deals .pf-deal-fold-title, #deals .is-active .pf-deal-fold-title { writing-mode: horizontal-tb; top: 16px; left: 12px; right: 12px; font-size: 12px; line-height: 1.4; max-height: 52px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -29,13 +30,40 @@
 #deals .pf-deal-gallery-controls button:hover:not(:disabled) { background: #61374e; }
 #deals .pf-deal-gallery-controls button:disabled { opacity: .3; cursor: default; }
 @media(max-width:600px) {
-  #deals .pf-deal-gallery-frame { overflow-clip-margin: 4px; }
-  #deals .pf-deal-accordion { height: 260px; }
-  #deals .pf-deal-fold-title, #deals .is-active .pf-deal-fold-title { left: 6px; right: 6px; font-size: 10px; }
-  #deals .pf-deal-fold:not(.is-active) .pf-deal-fold-title { font-size: 10px; }
-  #deals .pf-deal-fold-details { left: 6px; right: 6px; bottom: 12px; }
-  #deals .pf-deal-fold-badge, #deals .pf-deal-fold-prices del { display: none; }
-  #deals .pf-deal-fold-prices strong { font-size: 13px; }
-  #deals .pf-deal-fold-link { font-size: 9px; }
+  #deals .pf-deal-gallery-frame { margin-inline: 0; overflow-clip-margin: 0; }
+  #deals .pf-deal-accordion { height: 330px; }
+  #deals .pf-deal-fold, #deals .pf-deal-fold.is-active { width: 100%; height: 100%; top: 0; border-radius: 8px; }
+  #deals .pf-deal-fold:not(.is-active) { visibility: hidden; pointer-events: none; }
+  #deals .pf-deal-fold.is-active { transform: translateX(-50%); }
+  #deals .is-active .pf-deal-fold-title { left: 16px; right: 16px; bottom: 102px; font-size: 18px; line-height: 1.4; max-height: 52px; }
+  #deals .pf-deal-fold-details { left: 16px; right: 16px; bottom: 16px; }
+  #deals .pf-deal-fold-prices strong { font-size: 22px; }
+  #deals .pf-deal-fold-prices del { font-size: 12px; }
+  #deals .pf-deal-fold-link { font-size: 13px; min-height: 44px; margin-top: 4px; }
+  #deals .pf-deal-gallery-controls { gap: 20px; font-size: 12px; letter-spacing: 0; }
+  #deals .pf-deal-gallery-controls button { width: 44px; height: 44px; font-size: 20px; }
 }
 @media(prefers-reduced-motion:reduce) { #deals .pf-deal-fold, #deals .pf-deal-fold.is-outside { transition: none; } }
+
+
+/* Keep the coverflow styling while making the grouped filters easier to scan. */
+#deals .pf-deal-heading { justify-content: flex-start; margin-bottom: 14px; }
+#deals .pf-deal-heading > div { align-items: flex-start; text-align: left; }
+#deals .pf-deal-heading .pf-section-title { font-weight: 400; font-size: 44px; line-height: 1.15; }
+#deals .pf-deal-intro { margin-top: 4px; }
+#deals .pf-deal-price-form { padding: 0; margin: 0 0 14px; border: 0; background: transparent; }
+#deals .pf-price-filter { display: grid; grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(0, 1fr)) auto; gap: 10px; align-items: end; }
+#deals .pf-price-filter label { min-width: 0; text-align: left; }
+#deals .pf-price-filter label > span { position: static; width: auto; height: auto; overflow: visible; clip-path: none; color: #f5e7ee; text-align: left; }
+#deals .pf-price-filter input, #deals .pf-deal-category-filter { flex: none; width: 100%; max-width: none; height: 40px; min-height: 40px; border-radius: 8px; text-align: left; font-size: 12px; }
+#deals .pf-deal-range-actions { grid-column: auto; justify-content: flex-end; gap: 6px; }
+#deals .pf-deal-range-actions button { height: 40px; min-height: 40px; padding: 8px 12px; }
+#deals .pf-deal-gallery-controls { letter-spacing: 0; }
+#deals .pf-deal-gallery-controls button { width: 44px; height: 40px; }
+@media (max-width: 600px) {
+  #deals .pf-deal-heading .pf-section-title { font-size: 36px; }
+  #deals .pf-price-filter { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #deals .pf-deal-category-label { grid-column: 1 / -1; }
+  #deals .pf-deal-range-actions { grid-column: 1 / -1; }
+  #deals .pf-price-filter input, #deals .pf-deal-category-filter, #deals .pf-deal-range-actions button { min-height: 44px; height: 44px; }
+}

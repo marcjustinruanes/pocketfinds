@@ -2,6 +2,7 @@
   $landing = $landing ?? false;
   $buyerFooter = $buyerFooter ?? false;
   $signedInBuyer = auth()->check() && auth()->user()->account_type === 'buyer';
+  $footerHome = $signedInBuyer ? route('buyer.dashboard') : url('/');
   try { $supportEmail = \App\Models\Setting::current()->support_email; }
   catch (\Throwable $e) { $supportEmail = null; }
   $heading = $landing ? 'h4' : 'h3';
@@ -10,7 +11,7 @@
   <div class="{{ $buyerFooter ? 'footer-inner' : 'container' }}">
     <div class="{{ $landing ? 'pf-footer-wrap' : 'footer-grid' }}">
       <div class="{{ $landing ? 'pf-footer-brand' : '' }}">
-        <a class="logo" href="{{ url('/') }}" style="display:flex;flex-direction:row;align-items:center;gap:10px">
+        <a class="logo" href="{{ $footerHome }}" style="display:flex;flex-direction:row;align-items:center;gap:10px">
           <span class="logo-mark"><img src="{{ asset('images/logo.png') }}" alt="" class="brand-logo-img" width="30" height="30"></span>
           <span><span class="logo-pocket" style="color:#593346">Pocket</span><span class="logo-finds" style="color:#bf3c7d">Finds</span></span>
         </a>
@@ -19,10 +20,10 @@
       </div>
       <div class="{{ $landing ? 'pf-footer-col' : '' }}">
         <{{ $heading }}>Explore</{{ $heading }}>
-        <a href="{{ url('/') }}#products">All Products</a>
-        <a href="{{ url('/') }}#categories">Shop by Category</a>
-        <a href="{{ url('/') }}#shops">Featured Shops</a>
-        <a href="{{ url('/') }}#deals">Deals</a>
+        <a href="{{ $footerHome }}#products">All Products</a>
+        <a href="{{ $footerHome }}#categories">Shop by Category</a>
+        <a href="{{ $footerHome }}#shops">Featured Shops</a>
+        <a href="{{ $footerHome }}#deals">Deals</a>
       </div>
       <div class="{{ $landing ? 'pf-footer-col' : '' }}">
         <{{ $heading }}>Your Account</{{ $heading }}>

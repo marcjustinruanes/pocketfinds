@@ -190,7 +190,7 @@
         @empty
         <p style="font-size:13px;color:var(--muted)">No payment accounts connected yet.</p>
         @endforelse
-        <div style="display:flex;gap:10px;margin-top:4px">
+        <div class="buyer-payment-actions">
           <button type="button" class="btn btn-outline" onclick="openPaymentAccountModal('gcash')">Connect GCash</button>
           <button type="button" class="btn btn-outline" onclick="openPaymentAccountModal('paymaya')">Connect PayMaya</button>
           <button type="button" class="btn btn-outline" onclick="openPaymentAccountModal('bank')">Connect Bank Account</button>

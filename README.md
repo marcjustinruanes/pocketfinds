@@ -20,6 +20,32 @@ The SQL schema is in `database/pocketfinds-mysql-schema.sql`; queue infrastructu
 
 ## Migration and backups
 
+### Existing products on another laptop
+
+`git pull` downloads application files, not MySQL records or ignored uploaded files.
+The active migrations create the schema only. There are no product seeders or
+product records in the tracked SQL files. With `DB_HOST=127.0.0.1`, each laptop
+connects to its own MySQL server even when everyone uses the same `.env` values.
+
+On a teammate's laptop where the existing products are visible, run:
+
+```sh
+php database/backup_mysql.php
+```
+
+Transfer `storage/app/private/mysql-migration/mysql-backup.sql` and its `.sha256`
+file privately. Also copy `storage/app/public` for product images and profiles;
+copy `storage/app/private/messages` if message attachments are needed. Do not
+commit these files to GitHub.
+
+The backup includes schema and records. Restore it into an empty MySQL database,
+not over tables already created by `php artisan migrate`. For an existing local
+database, back it up and validate the teammate's export in a separate database
+before replacing or importing records. After restoration, run
+`php artisan migrate`, `php artisan config:clear`, and `php artisan storage:link`,
+then restart the local server. Guest listings require active products belonging
+to approved sellers.
+
 See [the migration report](docs/mysql-migration.md) for validation, storage paths, and recovery details. Private backups under `storage/app/private/mysql-migration` contain personal records and credentials and must never be committed or shared publicly.
 
 The application no longer connects to Supabase. The old cloud project remains available as a recovery source; it was not deleted. A separately hosted application and teammates' installations need their own environment changes and uploaded files copied to their host.
