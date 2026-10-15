@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * One physical vehicle in a logistics company's fleet.
@@ -30,8 +31,8 @@ class CompanyVehicle extends Model
     ];
 
     protected $casts = [
-        'is_available'         => 'boolean',
-        'reviewed_at'          => 'datetime',
+        'is_available' => 'boolean',
+        'reviewed_at' => 'datetime',
         'platform_reviewed_at' => 'datetime',
     ];
 
@@ -62,7 +63,12 @@ class CompanyVehicle extends Model
     /** Vehicles visible to riders: platform-approved and currently available (not in maintenance). */
     public function scopeRiderVisible($query)
     {
-        return $query->where('platform_status', 'approved')->where('is_available', true);
+        $query->where('platform_status', 'approved')->where('is_available', true);
+        if (Schema::hasTable('hub_transfer_batches')) {
+            $query->whereNotIn('id', HubTransferBatch::where('status', 'in_transit')->whereNotNull('vehicle_id')->select('vehicle_id'));
+        }
+
+        return $query;
     }
 
     // ── Static helpers ─────────────────────────────────────────────
@@ -75,8 +81,7 @@ class CompanyVehicle extends Model
     {
         return static::where('logistics_hub_id', $hubId)
             ->where('vehicle_type', $vehicleType)
-            ->where('platform_status', 'approved')
-            ->where('is_available', true)
+            ->riderVisible()
             ->exists();
     }
 
@@ -87,8 +92,7 @@ class CompanyVehicle extends Model
     public static function availableTypesForHub(int $hubId): array
     {
         return static::where('logistics_hub_id', $hubId)
-            ->where('platform_status', 'approved')
-            ->where('is_available', true)
+            ->riderVisible()
             ->distinct()
             ->pluck('vehicle_type')
             ->values()

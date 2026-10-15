@@ -4,11 +4,12 @@
 @section('page-sub', "Approve/disapprove courier applications, activate or suspend riders")
 
 @section('content')
+<a href="{{ route('logistics.accounts',['role'=>'rider']) }}" class="btn btn-outline" style="margin-bottom:16px">Create or edit accounts and hub assignments</a>
 @if(session('success'))<div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('success') }}</div>@endif
 
 <div class="card">
   <div class="card-head">
-    <div><h2>Courier Applications</h2><p>{{ $riders->count() }} in this view</p></div>
+    <div><h2>Courier Applications</h2><p>{{ $riders->total() }} in this view</p></div>
   </div>
   <div class="card-pad">
     <div data-tabs id="riderTabs">
@@ -140,4 +141,5 @@
 </div>
 
 @include('admin.partials.doc-lightbox')
+{{ $riders->links() }}
 @endsection

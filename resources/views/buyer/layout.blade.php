@@ -11,8 +11,10 @@
 <link rel="stylesheet" href="{{ asset('css/landing.css') }}?v={{ filemtime(public_path('css/landing.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/guest-responsive.css') }}?v={{ filemtime(public_path('css/guest-responsive.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/buyer-storefront.css') }}?v={{ filemtime(public_path('css/buyer-storefront.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/navigation.css') }}?v={{ filemtime(public_path('css/navigation.css')) }}">
 @stack('head')
 <link rel="stylesheet" href="{{ asset('css/buyer-pages.css') }}?v={{ filemtime(public_path('css/buyer-pages.css')) }}">
+@include('buyer.partials.confirmation-styles')
 </head>
 <body class="buyer marketplace buyer-storefront buyer-pages">
 <div class="shell" id="appShell">
@@ -23,6 +25,9 @@
       <div class="buyer-page-heading">
         <a href="{{ route('buyer.dashboard') }}">Home</a><span aria-hidden="true"> / </span><span>@yield('page-title', 'My Account')</span>
         <h1>@yield('page-title', 'My Account')</h1>
+        @if(request()->routeIs('buyer.messages'))
+        <div class="messages-page-help page-assistant-help">@include('buyer.partials.assistant')</div>
+        @endif
       </div>
       @endif
       @yield('content')
@@ -35,7 +40,7 @@
 
 {{-- Logout confirm modal --}}
 <div class="modal-overlay" id="logoutOverlay">
-  <div class="modal" style="max-width:380px">
+  <div class="modal pf-confirm" style="max-width:380px">
     <div class="modal-head">
       <div><h3>Sign out?</h3><p>You will be returned to the login screen.</p></div>
       <button class="modal-close" data-modal-close>✕</button>
@@ -129,8 +134,12 @@
 
 <div class="toast-stack" id="toastStack"></div>
 @include('buyer.partials.storefront-mobile-nav')
+@unless(request()->routeIs('buyer.messages'))
 @include('buyer.partials.assistant')
+@endunless
 <script src="/js/buyer.js?v={{ filemtime(public_path('js/buyer.js')) }}"></script>
 <script src="{{ asset('js/buyer-storefront.js') }}?v={{ filemtime(public_path('js/buyer-storefront.js')) }}"></script>
+<script src="{{ asset('js/navigation.js') }}?v={{ filemtime(public_path('js/navigation.js')) }}"></script>
+@stack('scripts')
 </body>
 </html>

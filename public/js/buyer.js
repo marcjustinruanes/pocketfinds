@@ -57,6 +57,11 @@ function loadMessagesPanel(url) {
 }
 
 function openMessagesModal(url) {
+    // The dedicated Messages page already has a conversation panel.
+    if (window.location.pathname.replace(/\/+$/, '') === MESSAGES_BASE_URL) {
+        window.location.assign(url || MESSAGES_BASE_URL);
+        return;
+    }
     document.getElementById('messagesModal')?.classList.add('open');
     loadMessagesPanel(url || MESSAGES_BASE_URL);
 }
@@ -77,12 +82,11 @@ document.querySelectorAll('[data-messages-trigger]').forEach(btn => {
     });
 });
 
-// Conversation switches and "Chat with Seller" links rendered inside the
-// modal (or anywhere on the page pointing at buyer.messages) reload the
-// panel in place instead of navigating away.
+// Only conversations inside the floating widget reload its panel in place.
+// Full-page conversation links retain ordinary browser navigation.
 document.addEventListener('click', (e) => {
-    const link = e.target.closest('a.chat-list-item');
-    if (link) {
+    const link = e.target.closest('a.chat-list-item, a.chat-mobile-back');
+    if (link?.closest('#messagesModal') && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey && e.button === 0) {
         e.preventDefault();
         openMessagesModal(link.getAttribute('href'));
     }

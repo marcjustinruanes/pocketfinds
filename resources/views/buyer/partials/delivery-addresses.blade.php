@@ -16,7 +16,7 @@
         @endif
       </span>
       @unless($addr->is_default)
-        <button type="button" class="icon-btn" data-delete-address="{{ $addr->id }}" title="Remove address" style="width:24px;height:24px;flex:none">
+        <button type="button" class="icon-btn" data-delete-address="{{ $addr->id }}" aria-label="Remove {{ $addr->label ?: 'saved' }} address" title="Remove address" style="width:24px;height:24px;flex:none">
           @include('buyer.partials.icon', ['name' => 'trash', 'size' => 12])
         </button>
       @endunless
@@ -26,29 +26,63 @@
   @endforelse
 </div>
 
-<div class="modal-overlay" id="addAddressModal">
-  <div class="modal" style="max-width:460px">
+<style>
+.buyer-pages .address-modal { z-index: 240; padding: 16px; }
+.buyer-pages .address-modal.open { display: flex; align-items: center; justify-content: center; }
+.address-modal [hidden] { display: none !important; }
+.buyer-pages .address-modal > .modal { display: flex; flex-direction: column; width: min(560px, 100%); max-width: 560px; max-height: calc(100dvh - 32px); margin: 0; border-radius: 14px; overflow: hidden; }
+.address-modal .modal-head, .address-modal .modal-foot { flex: none; position: static; }
+.address-modal .modal-head p { line-height: 1.5; }
+.address-modal .modal-close { min-width: 40px; min-height: 40px; cursor: pointer; }
+.address-modal form { display: flex; flex-direction: column; min-height: 0; }
+.address-modal .modal-body { padding: 20px 22px; overflow-y: auto; min-height: 0; }
+.address-form-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 16px; }
+.address-modal .form-row { margin: 0; min-width: 0; }
+.address-modal .form-row label { font-size: 13px; line-height: 1.5; }
+.address-modal .form-row input, .address-modal .form-row select { box-sizing: border-box; width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #dcd2dc; border-radius: 8px; background: #fff; color: #302733; font: inherit; font-size: 14px; }
+.address-modal .form-row select:disabled { background: #f8f5f7; color: #746776; }
+.address-form-wide { grid-column: 1 / -1; }
+.address-modal .address-hint { font-size: 12px; line-height: 1.5; color: #695e6c; margin: 6px 0 0; }
+.address-modal .address-error { font-size: 13px; line-height: 1.5; color: #a72734; margin: 12px 0 0; }
+.address-modal .modal-foot .btn { min-height: 44px; }
+.address-modal :is(button,input,select):focus-visible { outline: 3px solid #1b6b91; outline-offset: 2px; }
+.address-modal button:disabled { opacity: .6; cursor: wait; }
+#removeAddressModal > .modal { max-width: 420px; }
+#removeAddressModal .modal-body p { margin: 0; line-height: 1.6; overflow-wrap: anywhere; }
+@media(max-width:560px) { .address-form-grid { grid-template-columns: minmax(0,1fr); gap: 12px; } .address-modal .form-row input, .address-modal .form-row select { font-size: 16px; } .address-modal .modal-head, .address-modal .modal-body, .address-modal .modal-foot { padding: 16px; } }
+</style>
+<div class="modal-overlay address-modal" id="addAddressModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="addAddressTitle" aria-describedby="addAddressDescription">
     <div class="modal-head">
-      <div><h3>Add Delivery Address</h3><p>Save it once, pick it at checkout anytime</p></div>
-      <button class="modal-close" type="button" data-modal-close>✕</button>
+      <div><h3 id="addAddressTitle">Add delivery address</h3><p id="addAddressDescription">Save an address to use at checkout. Fields marked * are required.</p></div>
+      <button class="modal-close" type="button" data-modal-close aria-label="Close address form">✕</button>
     </div>
-    <div class="modal-body" style="display:flex;flex-direction:column;gap:12px">
+    <form id="addAddressForm">
+    <div class="modal-body"><div class="address-form-grid">
       <div class="form-row"><label for="addrLabel">Label <span style="color:var(--muted);font-weight:400">(optional)</span></label><input class="auth-input" id="addrLabel" placeholder="e.g. Home, Work" maxlength="50"></div>
-      <div class="form-row"><label for="addrRecipientName">Recipient Name</label><input class="auth-input" id="addrRecipientName" maxlength="150"></div>
-      <div class="form-row"><label for="addrContactNo">Contact No.</label><input class="auth-input" id="addrContactNo" placeholder="09XXXXXXXXX" maxlength="11" inputmode="numeric"></div>
-      <div class="form-row"><label for="addrProvince">Province</label><select class="select" id="addrProvince"><option value="" disabled selected>Loading provinces…</option></select></div>
-      <div class="form-row"><label for="addrMunicipality">City / Municipality</label><select class="select" id="addrMunicipality" disabled><option value="" disabled selected>Select province first</option></select></div>
-      <div class="form-row"><label for="addrBarangay">Barangay</label><select class="select" id="addrBarangay" disabled><option value="" disabled selected>Select municipality first</option></select></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="form-row"><label for="addrRecipientName">Recipient name *</label><input class="auth-input" id="addrRecipientName" maxlength="150" autocomplete="name" required></div>
+      <div class="form-row address-form-wide"><label for="addrContactNo">Mobile number (optional)</label><input class="auth-input" id="addrContactNo" type="tel" placeholder="09XXXXXXXXX" maxlength="11" inputmode="numeric" pattern="09[0-9]{9}" autocomplete="tel-national" aria-describedby="addrContactHint"><p class="address-hint" id="addrContactHint">Use an 11-digit mobile number starting with 09.</p></div>
+      <div class="form-row"><label for="addrProvince">Province *</label><select class="select" id="addrProvince" required><option value="" disabled selected>Loading provinces…</option></select></div>
+      <div class="form-row"><label for="addrMunicipality">City / municipality *</label><select class="select" id="addrMunicipality" disabled required><option value="" disabled selected>Select province first</option></select></div>
+      <div class="form-row address-form-wide"><label for="addrBarangay">Barangay *</label><select class="select" id="addrBarangay" disabled required><option value="" disabled selected>Select municipality first</option></select></div>
         <div class="form-row"><label for="addrHouseNo">House No. / Unit</label><input class="auth-input" id="addrHouseNo" maxlength="100"></div>
         <div class="form-row"><label for="addrStreet">Street</label><input class="auth-input" id="addrStreet" maxlength="150"></div>
       </div>
-      <p id="addAddressError" style="display:none;color:var(--danger);font-size:12px;margin:0"></p>
+      <button type="button" class="btn btn-outline" id="retryAddressLocations" hidden>Retry loading provinces</button>
+      <p id="addAddressError" class="address-error" role="alert" style="display:none"></p>
     </div>
     <div class="modal-foot">
       <button type="button" class="btn btn-outline" data-modal-close>Cancel</button>
-      <button type="button" class="btn btn-primary" id="saveAddressBtn">Save Address</button>
+      <button type="submit" class="btn btn-primary" id="saveAddressBtn">Save address</button>
     </div>
+    </form>
+  </div>
+</div>
+<div class="modal-overlay address-modal" id="removeAddressModal" aria-hidden="true">
+  <div class="modal pf-confirm" role="dialog" aria-modal="true" aria-labelledby="removeAddressTitle" aria-describedby="removeAddressDescription">
+    <div class="modal-head"><h3 id="removeAddressTitle">Remove saved address?</h3><button type="button" class="modal-close" data-modal-close aria-label="Close confirmation">&times;</button></div>
+    <div class="modal-body"><p id="removeAddressDescription">Remove this address from your saved list? Delivery details on existing orders will stay unchanged.</p><p class="address-error" id="removeAddressError" role="alert" hidden></p></div>
+    <div class="modal-foot"><button type="button" class="btn btn-outline" data-modal-close id="keepAddressBtn">No, keep it</button><button type="button" class="btn btn-danger" id="confirmRemoveAddressBtn">Yes, remove</button></div>
   </div>
 </div>
 
@@ -59,6 +93,44 @@ document.addEventListener('DOMContentLoaded', () => {
   const addrProvince = document.getElementById('addrProvince');
   const addrMunicipality = document.getElementById('addrMunicipality');
   const addrBarangay = document.getElementById('addrBarangay');
+  const addrContactNo = document.getElementById('addrContactNo');
+  addrContactNo.addEventListener('input', () => {
+    addrContactNo.value = addrContactNo.value.replace(/[^0-9]/g, '').slice(0, 11);
+    const number = addrContactNo.value;
+    const message = number && !number.startsWith('09') && number.length >= 2
+      ? 'Mobile number must start with 09.'
+      : number && number.length !== 11 ? 'Enter exactly 11 digits starting with 09.' : '';
+    addrContactNo.setCustomValidity(message);
+    document.getElementById('addrContactHint').textContent = message || 'Use an 11-digit mobile number starting with 09.';
+    addrContactNo.setAttribute('aria-invalid', message ? 'true' : 'false');
+  });
+  const addModal = document.getElementById('addAddressModal');
+  const removeModal = document.getElementById('removeAddressModal');
+  let returnFocus = null, pendingAddressButton = null;
+  const closeAddressModal = modal => {
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    returnFocus?.focus();
+  };
+  document.addEventListener('click', event => {
+    const opener = event.target.closest('[data-modal-open="addAddressModal"]');
+    if (opener) {
+      returnFocus = opener;
+      addModal.setAttribute('aria-hidden', 'false');
+      document.getElementById('addrLabel').focus();
+      if (!addrProvince.dataset.loaded) loadProvinces();
+    }
+    const modal = event.target.closest('.address-modal');
+    if (modal && (event.target === modal || event.target.closest('[data-modal-close]'))) closeAddressModal(modal);
+  });
+  [addModal, removeModal].forEach(modal => modal.addEventListener('keydown', event => {
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeAddressModal(modal); }
+    if (event.key !== 'Tab') return;
+    const controls = [...modal.querySelectorAll('button,input,select')].filter(el => !el.disabled && el.getClientRects().length);
+    const first = controls[0], last = controls[controls.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+  }));
 
   async function fetchAddrJSON(url) {
     const res = await fetch(url);
@@ -75,10 +147,19 @@ document.addEventListener('DOMContentLoaded', () => {
     sel.disabled = false;
   }
 
-  if (addrProvince) {
+  function loadProvinces() {
+    if (addrProvince.dataset.loading) return;
+    addrProvince.dataset.loading = 'true';
+    const retry = document.getElementById('retryAddressLocations');
+    retry.hidden = true;
+    addrProvince.disabled = true;
     fetchAddrJSON(`${PSGC}/provinces/`)
-      .then(data => populateAddrSelect(addrProvince, data, 'Select province'))
-      .catch(() => { addrProvince.innerHTML = '<option value="" disabled selected>Failed to load provinces</option>'; addrProvince.disabled = false; });
+      .then(data => { populateAddrSelect(addrProvince, data, 'Select province'); addrProvince.dataset.loaded = 'true'; })
+      .catch(() => { addrProvince.innerHTML = '<option value="" disabled selected>Could not load provinces</option>'; retry.hidden = false; })
+      .finally(() => { delete addrProvince.dataset.loading; });
+  }
+  document.getElementById('retryAddressLocations').addEventListener('click', loadProvinces);
+  if (addrProvince) {
 
     addrProvince.addEventListener('change', function () {
       addrMunicipality.innerHTML = '<option value="" disabled selected>Loading…</option>';
@@ -101,7 +182,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  document.getElementById('saveAddressBtn')?.addEventListener('click', () => {
+  document.getElementById('addAddressForm')?.addEventListener('submit', event => {
+    event.preventDefault();
+    if (document.getElementById('saveAddressBtn').disabled) return;
     const errorEl = document.getElementById('addAddressError');
     errorEl.style.display = 'none';
     const payload = {
@@ -123,32 +206,54 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.disabled = true; btn.textContent = 'Saving…';
     fetch('{{ route('buyer.addresses.store') }}', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
       body: JSON.stringify(payload),
     })
     .then(r => r.json())
     .then(data => {
-      btn.disabled = false; btn.textContent = 'Save Address';
+      btn.disabled = false; btn.textContent = 'Save address';
       if (data.success) {
         window.location.reload();
       } else {
-        errorEl.textContent = data.message || 'Could not save this address.';
+        errorEl.textContent = Object.values(data.errors || {}).flat().join(' ') || data.message || 'Could not save this address.';
         errorEl.style.display = 'block';
       }
     })
-    .catch(() => { btn.disabled = false; btn.textContent = 'Save Address'; errorEl.textContent = 'Network error. Try again.'; errorEl.style.display = 'block'; });
+    .catch(() => { btn.disabled = false; btn.textContent = 'Save address'; errorEl.textContent = 'Network error. Try again.'; errorEl.style.display = 'block'; });
   });
 
   document.querySelectorAll('[data-delete-address]').forEach(btn => {
     btn.addEventListener('click', (event) => {
       event.preventDefault();
-      if (!confirm('Remove this delivery address?')) return;
-      const id = btn.dataset.deleteAddress;
-      fetch(`/buyer/addresses/${id}`, {
-        method: 'DELETE',
-        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
-      }).then(() => window.location.reload());
+      if (document.getElementById('confirmRemoveAddressBtn').disabled) return;
+      pendingAddressButton = btn;
+      returnFocus = btn;
+      document.getElementById('removeAddressError').hidden = true;
+      removeModal.classList.add('open');
+      removeModal.setAttribute('aria-hidden', 'false');
+      document.getElementById('keepAddressBtn').focus();
     });
+  });
+  document.getElementById('confirmRemoveAddressBtn').addEventListener('click', async event => {
+    const button = event.currentTarget, error = document.getElementById('removeAddressError');
+    if (!pendingAddressButton || button.disabled) return;
+    button.disabled = true;
+    button.textContent = 'Removing…';
+    error.hidden = true;
+    try {
+      const response = await fetch(`/buyer/addresses/${pendingAddressButton.dataset.deleteAddress}`, {
+        method: 'DELETE',
+        headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.message || 'Could not remove this address.');
+      window.location.reload();
+    } catch (failure) {
+      error.textContent = failure.message || 'Could not remove this address. Please try again.';
+      error.hidden = false;
+      button.disabled = false;
+      button.textContent = 'Yes, remove';
+    }
   });
 });
 </script>

@@ -74,10 +74,14 @@
                 @include('admin.partials.user-profile-body', ['user' => $user])
               </div>
               <div class="modal-foot">
-                @if($user->status !== 'suspended')
+                @if(app(\App\Services\HubHiring::class)->role($user) !== null && in_array($user->status, ['pending', 'interview', 'rejected'], true))
+                <p>Application decisions are handled by the company Logistics Admin.</p>
+                @endif
+                @php($personnel = app(\App\Services\HubHiring::class)->role($user) !== null)
+                @if($user->status !== 'suspended' && (!$personnel || $user->status === 'approved'))
                 <button type="button" class="btn btn-outline" onclick="openReasonModal('suspend', '{{ route('admin.users.suspend', $user->id) }}')">Suspend</button>
                 @endif
-                @if($user->status !== 'approved')
+                @if($user->status !== 'approved' && (!$personnel || $user->status === 'suspended'))
                 <form method="POST" action="{{ route('admin.users.approve', $user->id) }}" style="display:inline">
                   @csrf @method('PATCH')
                   <button class="btn btn-success" type="submit">Activate</button>

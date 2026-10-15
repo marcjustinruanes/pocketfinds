@@ -59,14 +59,13 @@
 {{-- Vehicle list --}}
 <div class="card">
   <div class="card-head">
-    <div><h2>Company Vehicles</h2><p>{{ $vehicles->count() }} total across {{ $hubs->count() }} hub{{ $hubs->count() === 1 ? '' : 's' }}</p></div>
+    <div><h2>Company Vehicles</h2><p>{{ $vehicles->total() }} total across {{ $hubs->count() }} hub{{ $hubs->count() === 1 ? '' : 's' }}</p></div>
   </div>
   <div class="card-pad">
-    <div data-tabs id="fleetTabs">
-      <a class="tab active" data-tab="all">All <span class="tab-count">{{ $vehicles->count() }}</span></a>
-      <a class="tab" data-tab="pending">Awaiting Review <span class="tab-count">{{ $platformCounts['pending'] ?? 0 }}</span></a>
-      <a class="tab" data-tab="approved">Approved <span class="tab-count">{{ $platformCounts['approved'] ?? 0 }}</span></a>
-      <a class="tab" data-tab="rejected">Rejected <span class="tab-count">{{ $platformCounts['rejected'] ?? 0 }}</span></a>
+    <div class="tabs" id="fleetTabs">
+      @foreach(['all' => 'All', 'pending' => 'Awaiting Review', 'approved' => 'Approved', 'rejected' => 'Rejected'] as $key => $label)
+      <a class="tab {{ $status === $key ? 'active' : '' }}" href="{{ route('logistics.vehicles', ['status' => $key]) }}">{{ $label }} <span class="tab-count">{{ $key === 'all' ? $platformCounts->sum() : ($platformCounts[$key] ?? 0) }}</span></a>
+      @endforeach
     </div>
 
     <div class="table-wrap">
@@ -130,4 +129,6 @@
     </div>
   </div>
 </div>
+<div class="card"><div class="card-head"><h2>Vehicle availability and maintenance</h2></div><div class="table-wrap"><table class="dtable"><thead><tr><th>Vehicle</th><th>Hub</th><th>Maintenance / availability</th></tr></thead><tbody>@forelse($vehicles as $vehicle)<tr><td>{{ $vehicle->plate_number }}<br>{{ $vehicle->brand }} {{ $vehicle->model }}</td><td>{{ $vehicle->hub?->municipality }}</td><td><form method="POST" action="{{ route('logistics.vehicles.update',$vehicle->id) }}">@csrf @method('PATCH')<div class="logistics-form-grid"><label>Availability<select name="is_available"><option value="1" @selected($vehicle->is_available)>Available</option><option value="0" @selected(!$vehicle->is_available)>Maintenance / unavailable</option></select></label><label>Maintenance note<input name="status_reason" value="{{ $vehicle->status_reason }}" maxlength="500"></label></div><button class="btn btn-sm btn-outline">Save condition</button></form></td></tr>@empty<tr><td colspan="3"><div class="empty"><h3>No company vehicles</h3></div></td></tr>@endforelse</tbody></table></div></div>
+{{ $vehicles->links() }}
 @endsection

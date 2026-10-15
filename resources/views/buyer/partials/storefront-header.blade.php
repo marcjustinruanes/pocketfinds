@@ -53,12 +53,29 @@
         <summary class="pf-acct-icon pf-buyer-avatar" aria-label="Account menu" title="{{ auth()->user()->given_names }}">
           {{ mb_strtoupper(mb_substr(auth()->user()->given_names, 0, 1)) }}
         </summary>
-        <div class="pf-buyer-dropdown">
+        <div class="pf-buyer-dropdown pf-buyer-account-navigation">
           <div class="pf-buyer-identity"><strong>{{ auth()->user()->given_names }} {{ auth()->user()->last_name }}</strong><small>Buyer account</small></div>
-          <a href="{{ route('buyer.account') }}">@include('buyer.partials.icon', ['name' => 'user', 'size' => 16]) My Account</a>
-          <a href="{{ route('buyer.faqs') }}">@include('buyer.partials.icon', ['name' => 'chat', 'size' => 16]) FAQs</a>
-          <a href="{{ route('buyer.orders') }}">@include('buyer.partials.icon', ['name' => 'package', 'size' => 16]) My Orders</a>
-          <a href="{{ route('buyer.announcements') }}">@include('buyer.partials.icon', ['name' => 'bell', 'size' => 16]) Announcements</a>
+<a href="{{ route('buyer.dashboard') }}" @if(request()->routeIs('buyer.dashboard')) aria-current="page" @endif>@include('buyer.partials.icon', ['name' => 'home', 'size' => 16]) Home</a>
+<x-navigation-group id="buyer-shopping" label="Shopping" :active="request()->routeIs('buyer.browse', 'buyer.cart', 'buyer.product', 'buyer.shop')">
+<a href="{{ route('buyer.browse') }}" @if(request()->routeIs('buyer.browse', 'buyer.product', 'buyer.shop')) aria-current="page" @endif>@include('buyer.partials.icon', ['name' => 'search', 'size' => 16]) Browse Products</a>
+<a href="{{ route('buyer.cart') }}" @if(request()->routeIs('buyer.cart')) aria-current="page" @endif>@include('buyer.partials.icon', ['name' => 'cart', 'size' => 16]) Cart</a>
+</x-navigation-group>
+<x-navigation-group id="buyer-orders" label="Orders" :active="request()->routeIs('buyer.orders', 'gcash.*')">
+<a href="{{ route('buyer.orders') }}" @if(request()->routeIs('buyer.orders')) aria-current="page" @endif>@include('buyer.partials.icon', ['name' => 'package', 'size' => 16]) My Orders</a>
+@if(\App\Services\GcashInventory::installed())
+<a href="{{ route('gcash.index') }}" @if(request()->routeIs('gcash.*')) aria-current="page" @endif>@include('buyer.partials.icon', ['name' => 'wallet', 'size' => 16]) GCash payments</a>
+@endif
+</x-navigation-group>
+<x-navigation-group id="buyer-communications" label="Communications" :active="request()->routeIs('buyer.messages', 'buyer.announcements*')">
+<a href="{{ route('buyer.messages') }}" @if(request()->routeIs('buyer.messages')) aria-current="page" @endif>@include('buyer.partials.icon', ['name' => 'mail', 'size' => 16]) Messages</a>
+<a href="{{ route('buyer.announcements') }}" @if(request()->routeIs('buyer.announcements*')) aria-current="page" @endif>@include('buyer.partials.icon', ['name' => 'bell', 'size' => 16]) Announcements</a>
+</x-navigation-group>
+@if(auth()->user()->account_type === 'buyer' && !auth()->user()->is_admin)
+<x-navigation-group id="buyer-support" label="Support" :active="request()->routeIs('buyer.faqs')">
+<a href="{{ route('buyer.faqs') }}" @if(request()->routeIs('buyer.faqs')) aria-current="page" @endif>@include('buyer.partials.icon', ['name' => 'chat', 'size' => 16]) FAQs</a>
+</x-navigation-group>
+@endif
+<a href="{{ route('buyer.account') }}" @if(request()->routeIs('buyer.account*')) aria-current="page" @endif>@include('buyer.partials.icon', ['name' => 'user', 'size' => 16]) My Account</a>
           <form method="POST" action="{{ route('buyer.logout') }}">@csrf<button type="submit">@include('buyer.partials.icon', ['name' => 'logout', 'size' => 16]) Sign Out</button></form>
         </div>
       </details>

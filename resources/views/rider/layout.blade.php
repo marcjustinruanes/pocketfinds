@@ -8,10 +8,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="/css/admin.css">
+<link rel="stylesheet" href="{{ asset('css/navigation.css') }}?v={{ filemtime(public_path('css/navigation.css')) }}">
 @stack('head')
 </head>
 <body class="admin">
-<div class="shell" id="riderShell">
+<div class="shell" id="riderShell" data-navigation-shell data-collapse-key="rider_sidebar_collapsed">
   @include('rider.partials.sidebar')
   <div style="display:flex;flex-direction:column;min-width:0">
     @include('rider.partials.topbar')
@@ -45,17 +46,7 @@
 
 <div class="toast-stack" id="toastStack"></div>
 <script src="/js/admin.js"></script>
-<script>
-  const rShell = document.getElementById('riderShell');
-  const RKEY = 'rider_sidebar_collapsed';
-  if (localStorage.getItem(RKEY) === '1') rShell?.classList.add('collapsed');
-  document.querySelector('[data-sidebar-toggle]')?.addEventListener('click', () => {
-    if (window.innerWidth > 860) {
-      const c = rShell?.classList.toggle('collapsed');
-      localStorage.setItem(RKEY, c ? '1' : '0');
-    }
-  });
-</script>
 @stack('scripts')
+<script src="{{ asset('js/navigation.js') }}?v={{ filemtime(public_path('js/navigation.js')) }}"></script>
 </body>
 </html>

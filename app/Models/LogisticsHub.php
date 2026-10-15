@@ -13,9 +13,21 @@ use Illuminate\Support\Collection;
  */
 class LogisticsHub extends Model
 {
-    protected $fillable = ['company_name', 'province', 'municipality', 'is_regional_hub', 'is_hiring'];
+    protected $fillable = ['company_name', 'province', 'municipality', 'is_regional_hub', 'is_hiring', 'name', 'address', 'contact_no', 'is_operational'];
 
-    protected $casts = ['is_regional_hub' => 'boolean', 'is_hiring' => 'boolean'];
+    public function staff()
+    {
+        return $this->hasMany(User::class, 'logistics_hub_id')->where('logistics_role', 'hub_staff')->where('account_type', 'logistics')->where('is_logistics', true);
+    }
+
+    public function riders()
+    {
+        return $this->hasMany(User::class, 'logistics_hub_id')->where('account_type', 'rider');
+    }
+
+    protected $casts = ['is_regional_hub' => 'boolean', 'is_hiring' => 'boolean', 'is_operational' => 'boolean',
+        'rider_hiring_open' => 'boolean', 'staff_hiring_open' => 'boolean', 'rider_hire_limit' => 'integer', 'staff_hire_limit' => 'integer',
+        'rider_hiring_closes_at' => 'datetime', 'staff_hiring_closes_at' => 'datetime'];
 
     /**
      * Company names able to fully service a seller-in-$origin / buyer-in-$destination
@@ -28,12 +40,12 @@ class LogisticsHub extends Model
      */
     public static function companiesServicing(?string $originMunicipality, ?string $destinationMunicipality, ?string $originProvince = null, ?string $destinationProvince = null): Collection
     {
-        if (!$originMunicipality || !$destinationMunicipality) {
+        if (! $originMunicipality || ! $destinationMunicipality) {
             return collect();
         }
 
         $norm = fn ($value) => mb_strtolower(trim((string) $value));
-        $companiesIn = fn (string $municipality, ?string $province) => static::whereRaw('LOWER(municipality) = ?', [$norm($municipality)])
+        $companiesIn = fn (string $municipality, ?string $province) => static::where('is_operational', true)->whereRaw('LOWER(municipality) = ?', [$norm($municipality)])
             ->when($norm($province) !== '', fn ($query) => $query->whereRaw('LOWER(province) = ?', [$norm($province)]))
             ->pluck('company_name')->unique();
 
@@ -51,14 +63,17 @@ class LogisticsHub extends Model
     /** This company's hub cities — used to label a shipment's origin/destination hub. */
     public static function forCompany(string $companyName): Collection
     {
-        return static::where('company_name', $companyName)->orderBy('province')->orderBy('municipality')->get();
+        return static::where('is_operational', true)->where('company_name', $companyName)->orderBy('province')->orderBy('municipality')->get();
     }
 
     /** True if this company has a hub in the given municipality. */
     public static function companyHasHubIn(string $companyName, ?string $municipality): bool
     {
-        if (!$municipality) return false;
-        return static::where('company_name', $companyName)
+        if (! $municipality) {
+            return false;
+        }
+
+        return static::where('is_operational', true)->where('company_name', $companyName)
             ->whereRaw('LOWER(municipality) = ?', [mb_strtolower(trim($municipality))])
             ->exists();
     }
@@ -72,7 +87,7 @@ class LogisticsHub extends Model
      */
     public static function regionalHubFor(string $companyName, string $province): ?string
     {
-        $inProvince = static::where('company_name', $companyName)
+        $inProvince = static::where('is_operational', true)->where('company_name', $companyName)
             ->whereRaw('LOWER(province) = ?', [mb_strtolower(trim($province))]);
 
         return (clone $inProvince)->where('is_regional_hub', true)->value('municipality')
@@ -99,11 +114,11 @@ class LogisticsHub extends Model
         $sameProvince = $originProvince && $destinationProvince
             && mb_strtolower(trim($originProvince)) === mb_strtolower(trim($destinationProvince));
 
-        if ($sameProvince || !$originProvince || !$destinationProvince) {
+        if ($sameProvince || ! $originProvince || ! $destinationProvince) {
             return [['leg_type' => 'direct', 'from_hub' => $originMunicipality, 'to_hub' => $destinationMunicipality]];
         }
 
-        $originRegional      = static::regionalHubFor($companyName, $originProvince) ?: $originMunicipality;
+        $originRegional = static::regionalHubFor($companyName, $originProvince) ?: $originMunicipality;
         $destinationRegional = static::regionalHubFor($companyName, $destinationProvince) ?: $destinationMunicipality;
 
         $legs = [];

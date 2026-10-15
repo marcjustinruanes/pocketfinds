@@ -6,7 +6,19 @@
 @section('content')
 @php $myId = auth()->id(); @endphp
 
-<div class="chat-shell">
+<link rel="stylesheet" href="{{ asset('css/messaging.css') }}?v={{ filemtime(public_path('css/messaging.css')) }}">
+@if(\App\Services\GcashInventory::installed())
+@include('gcash.assets')
+<div class="gcash-context" role="region" aria-label="GCash payment navigation">
+  <div><strong>GCash payment</strong><p>Send payment details and review private receipts on the linked purchase. Chat alone does not verify payment.</p></div>
+  <div class="gcash-actions"><a class="gcash-button gcash-button-secondary" href="{{ route('gcash.index',['contact'=>$buyer?->id]) }}">GCash purchases and payment review</a>
+  @if(request('purchase'))
+    <a class="gcash-button" href="{{ route('gcash.show',request('purchase')) }}">Open linked purchase</a>
+  @endif
+  </div>
+</div>
+@endif
+<div class="chat-shell" data-has-conversation="{{ $buyer ? 'true' : 'false' }}">
   <div class="chat-list" id="chatList">
     <div class="chat-list-head"><strong style="font-size:13.5px">Conversations</strong></div>
     @if($admin && !$conversations->has($admin->id))
@@ -29,7 +41,7 @@
         <x-user-avatar :user="$other" size="36" class="cli-av" />
         <div class="cli-body">
           <div class="cli-name">{{ $otherName }}</div>
-          <div class="cli-preview">{{ $last->body ?: ($last->product_id ? '📦 Product' : '📎 Attachment') }} · {{ $last->created_at?->format('g:i A') ?? '—' }} {{ $last->sender_id === $myId ? ($last->read ? '✓✓ Seen' : '✓ Delivered') : '' }}</div>
+          <div class="cli-preview">{{ $last->displayBody() ?: ($last->product_id ? '📦 Product' : '📎 Attachment') }} · {{ $last->created_at?->format('g:i A') ?? '—' }} {{ $last->sender_id === $myId ? ($last->read ? '✓✓ Seen' : '✓ Delivered') : '' }}</div>
         </div>
       </a>
     @empty
@@ -42,6 +54,7 @@
 
   <div class="chat-main">
     <div class="chat-head">
+      @if($buyer)<a class="chat-mobile-back" href="{{ route('seller.messages') }}" aria-label="Back to conversations">&larr;</a>@endif
       @if($buyer)
         @php $buyerName = $buyer->given_names . ' ' . $buyer->last_name; @endphp
         <x-user-avatar :user="$buyer" size="34" class="chat-head-av" />
@@ -54,7 +67,7 @@
       @endif
     </div>
 
-    <div class="chat-body" id="chatBody" style="{{ !$buyer ? 'align-items:center;justify-content:center' : '' }}">
+    <div class="chat-body" id="chatBody" tabindex="0" role="region" aria-label="Conversation messages" style="{{ !$buyer ? 'align-items:center;justify-content:center' : '' }}">
       @if(!$buyer)
         <div style="text-align:center;color:var(--muted)">
           <div style="margin-bottom:8px;opacity:.4">@include('seller.partials.icon', ['name' => 'chat', 'size' => 36])</div>
@@ -103,7 +116,7 @@
               @endif
             @endif
             @if($msg->body)
-              <div class="chat-bubble {{ $isMe ? 'chat-bubble-out' : 'chat-bubble-in' }}">{{ $msg->body }}</div>
+              <div class="chat-bubble {{ $isMe ? 'chat-bubble-out' : 'chat-bubble-in' }}">{{ $msg->displayBody() }}</div>
             @endif
             <div class="chat-time">
               <span>{{ $msg->created_at?->format('g:i A') ?? '' }}</span>
@@ -162,6 +175,8 @@
         <button type="button" class="chat-reply-close" onclick="clearReply()" title="Cancel reply">×</button>
       </div>
 
+      <button type="button" class="chat-new-messages" id="chatNewMessages" hidden onclick="document.getElementById('chatBody').scrollTop=document.getElementById('chatBody').scrollHeight;this.hidden=true">New messages &darr;</button>
+      <div class="chat-feedback" id="chatFeedback" role="status" aria-live="polite" tabindex="-1"></div>
       <form class="chat-input" id="chatForm">
         <input type="file" id="fileInput" style="display:none" accept="image/*,video/*" multiple onchange="previewFile(this)">
         <button class="icon-btn" type="button" onclick="document.getElementById('fileInput').click()" title="Attach file">
@@ -169,11 +184,12 @@
         </button>
         <button class="icon-btn" type="button" title="Products" onclick="togglePicker('products')">@include('seller.partials.icon', ['name' => 'inventory', 'size' => 16])</button>
         <button class="icon-btn" type="button" title="Orders" onclick="togglePicker('orders')">@include('seller.partials.icon', ['name' => 'orders', 'size' => 16])</button>
-        <input type="text" id="chatInput" placeholder="Type a message…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}">
+        <textarea id="chatInput" rows="1" aria-label="Message" aria-describedby="chatComposeHint" placeholder="Write a message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();sendMessage()}"></textarea>
         <button type="submit" class="btn btn-primary">
           @include('seller.partials.icon', ['name' => 'send', 'size' => 15]) <span class="send-button-label">Send</span>
         </button>
       </form>
+      <p class="chat-compose-hint" id="chatComposeHint">Enter to send &middot; Shift+Enter for a new line. Use the linked purchase to submit private GCash proof.</p>
     @else
       <div class="chat-input">
         <input type="text" placeholder="Type a message…" disabled>
@@ -349,8 +365,10 @@ function removeFile(index = null) {
   document.getElementById('chatAttachments').style.display = attachedFiles.length ? 'flex' : 'none';
 }
 
+let messageSending = false;
 async function sendMessage(event) {
   event?.preventDefault();
+  if (messageSending) return;
   const input = document.getElementById('chatInput');
   const text  = input.value.trim();
   if (!text && !attachedFiles.length && !attachedProduct?.id && !attachedOrder?.id) return;
@@ -365,6 +383,11 @@ async function sendMessage(event) {
 
   const sendButton = document.querySelector('.chat-input .btn-primary');
   const sendButtonLabel = sendButton.querySelector('.send-button-label');
+  messageSending = true;
+  document.getElementById('chatFeedback').textContent = '';
+  document.getElementById('chatForm').setAttribute('aria-busy', 'true');
+  const draftControls = [...document.querySelectorAll('#chatForm input, #chatForm textarea, #chatForm button, .chat-picker-send, .chat-attach-remove')];
+  draftControls.forEach(control => control.disabled = true);
   sendButton.disabled = true;
   sendButtonLabel.textContent = 'Sending...';
   try {
@@ -382,14 +405,21 @@ async function sendMessage(event) {
     attachedOrder = null;
     document.getElementById('attachedOrderChip')?.classList.remove('open');
   } catch (error) {
-    alert(error.message || 'Message could not be sent.');
+    const feedback = document.getElementById('chatFeedback');
+    feedback.textContent = (error.message || 'Message could not be sent.') + ' Your draft is kept. Check the conversation before retrying if the result is uncertain.';
+    feedback.focus();
   } finally {
+    messageSending = false;
+    document.getElementById('chatForm').removeAttribute('aria-busy');
+    draftControls.forEach(control => control.disabled = false);
     sendButton.disabled = false;
     sendButtonLabel.textContent = 'Send';
+    if (!document.getElementById('chatFeedback').textContent) input.focus();
   }
 }
 
 document.getElementById('chatForm').addEventListener('submit', sendMessage);
+document.getElementById('chatBody').addEventListener('scroll', () => { const body = document.getElementById('chatBody'); if (body.scrollHeight - body.scrollTop - body.clientHeight < 100) document.getElementById('chatNewMessages').hidden = true; });
 
 function appendMessage(msg, isMe = msg.sender_id === MY_ID, localMediaUrl = null, localMediaType = null) {
   const body = document.getElementById('chatBody');
@@ -476,8 +506,10 @@ function appendMessage(msg, isMe = msg.sender_id === MY_ID, localMediaUrl = null
   actions.innerHTML = '<button type="button" class="chat-msg-action" title="React" onclick="toggleReaction(this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 8.7c0 5.2-8.8 10.3-8.8 10.3S3.2 13.9 3.2 8.7A4.7 4.7 0 0112 6.1a4.7 4.7 0 018.8 2.6z"/></svg></button><button type="button" class="chat-msg-action" title="Reply" onclick="replyToMessage(this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 17l-5-5 5-5M4 12h10a6 6 0 016 6v1"/></svg></button><button type="button" class="chat-msg-action" title="Report" onclick="reportMessage(this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4m0 1h10l-2 3 2 3H5"/></svg></button>';
   wrap.appendChild(actions);
 
+  const nearBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 100;
   body.appendChild(wrap);
-  body.scrollTop = body.scrollHeight;
+  if (isMe || nearBottom) body.scrollTop = body.scrollHeight;
+  else document.getElementById('chatNewMessages').hidden = false;
 }
 
 async function pollMessages() {
@@ -508,6 +540,21 @@ async function pollMessages() {
   } catch (_) {}
 }
 
+function fitConversationViewport() {
+  const form = document.getElementById('chatForm');
+  if (!form) return;
+  const shell = form.closest('.chat-shell');
+  if (!matchMedia('(max-width: 860px)').matches || shell.closest('.chat-widget')) {
+    shell.style.removeProperty('height'); shell.style.removeProperty('min-height'); return;
+  }
+  const navigation = document.querySelector('.mobile-nav');
+  const bottomInset = navigation && getComputedStyle(navigation).display !== 'none' ? navigation.getBoundingClientRect().height : 0;
+  const available = window.innerHeight - shell.getBoundingClientRect().top - bottomInset - 16;
+  shell.style.minHeight = '280px';
+  shell.style.height = Math.max(280, available) + 'px';
+}
+window.addEventListener('resize', fitConversationViewport);
+fitConversationViewport();
 setInterval(pollMessages, 3000);
 
 document.getElementById('chatBody').scrollTop = document.getElementById('chatBody').scrollHeight;

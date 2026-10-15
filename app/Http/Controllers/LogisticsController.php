@@ -2,27 +2,41 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Concerns\HandlesMessaging;
 use App\Http\Controllers\Concerns\HandlesAccountUpdateRequests;
+use App\Http\Controllers\Concerns\HandlesMessaging;
 use App\Models\CompanyVehicle;
 use App\Models\DeliveryAssignment;
+use App\Models\LogisticsCompany;
 use App\Models\LogisticsHub;
 use App\Models\Message;
 use App\Models\Order;
+use App\Models\Policy;
 use App\Models\Shipment;
 use App\Models\ShipmentHubLeg;
 use App\Models\UnserviceableArea;
 use App\Models\User;
+use App\Services\GcashLocks;
+use App\Services\GcashWorkflow;
+use App\Services\HubHiring;
+use App\Services\HubTransferWorkflow;
+use App\Services\LogisticsAccess;
+use App\Services\MediaLifecycle;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class LogisticsController extends Controller
 {
-    use HandlesMessaging;
     use HandlesAccountUpdateRequests;
+    use HandlesMessaging;
 
     /** The full ERP pipeline — see Shipment::STATUSES, the single source of truth. */
     const STATUSES = Shipment::STATUSES;
@@ -44,32 +58,39 @@ class LogisticsController extends Controller
      */
     private const STATUS_TRANSITIONS = [
         'assigned_to_rider' => ['out_for_delivery', 'delivery_failed'],
-        'out_for_delivery'  => ['delivered', 'delivery_failed'],
-        'delivered'         => ['completed'],
-        'delivery_failed'   => ['assigned_to_rider', 'returned'],
+        'out_for_delivery' => ['delivered', 'delivery_failed'],
+        'delivered' => ['completed'],
+        'delivery_failed' => ['assigned_to_rider', 'returned'],
     ];
 
     /** Human label for the primary (non-failure) target of each transition. */
     private const STAGE_LABELS = [
         'at_sorting_center' => 'Receive at Sorting Center',
-        'sorted'            => 'Mark Sorted',
-        'out_for_delivery'  => 'Mark Out for Delivery',
-        'delivered'         => 'Mark Delivered',
-        'completed'         => 'Mark Completed',
+        'sorted' => 'Mark Sorted',
+        'out_for_delivery' => 'Mark Out for Delivery',
+        'delivered' => 'Mark Delivered',
+        'completed' => 'Mark Completed',
         'assigned_to_rider' => 'Reassign for Redelivery',
-        'returned'          => 'Mark Returned to Seller',
+        'returned' => 'Mark Returned to Seller',
     ];
 
     /** Every query below is scoped to the acting staff's own company — a hub network is only ever this company's own. */
-    private function companyScope()
+    protected function companyScope()
     {
-        return Shipment::where('logistics_company', auth()->user()->business_name);
+        return app(LogisticsAccess::class)->shipments(auth()->user());
     }
 
     /** Same company-scoping, for queries that start from a leg instead of a shipment. */
     private function hubLegScope()
     {
-        return ShipmentHubLeg::forCompany(auth()->user()->business_name);
+        return app(LogisticsAccess::class)->legs(auth()->user())
+            ->where(function ($q) {
+                $q->where('status', '!=', 'pending')->orWhereNotExists(function ($q) {
+                    $q->selectRaw('1')->from('shipment_hub_legs as prior')
+                        ->whereColumn('prior.shipment_id', 'shipment_hub_legs.shipment_id')
+                        ->whereColumn('prior.sequence', '<', 'shipment_hub_legs.sequence')->where('prior.status', '!=', 'completed');
+                });
+            });
     }
 
     /**
@@ -80,7 +101,7 @@ class LogisticsController extends Controller
      * number of conditional counts against the same table in a single query, so this
      * takes whatever filters a caller needs and returns them all from one round trip.
      *
-     * @param array<string,string> $filters  output key => raw SQL boolean condition
+     * @param  array<string,string>  $filters  output key => raw SQL boolean condition
      * @return array<string,int>
      */
     private function shipmentCounts(array $filters): array
@@ -102,8 +123,8 @@ class LogisticsController extends Controller
     {
         return [
             'pendingDeliveries' => "shipping_status = 'ready_for_pickup' and pickup_approved_at is null",
-            'activeDeliveries'  => "shipping_status in ('picked_up', 'at_sorting_center', 'hub_transfer', 'sorted', 'assigned_to_rider', 'out_for_delivery')",
-            'unassigned'        => "shipping_status = 'sorted' and courier_id is null",
+            'activeDeliveries' => "shipping_status in ('picked_up', 'at_sorting_center', 'hub_transfer', 'sorted', 'assigned_to_rider', 'out_for_delivery')",
+            'unassigned' => "shipping_status = 'sorted' and courier_id is null",
         ];
     }
 
@@ -128,14 +149,14 @@ class LogisticsController extends Controller
                 ->where('platform_status', 'pending')->count();
         } elseif ($user->isHubStaff() && $user->logisticsHub) {
             // Legs sitting at this staff member's own hub, ready to be requested onward.
-            $counts['requestableHubLegs'] = $this->hubLegScope()->fromHub($user->logisticsHub->municipality)
+            $counts['requestableHubLegs'] = $this->hubLegScope()->fromHub($user->logisticsHub->municipality, $user->logisticsHub->province)
                 ->where('status', 'pending')->whereNull('requested_at')->count();
         }
 
         return $counts;
     }
 
-    private function sidebarCounts(): array
+    protected function sidebarCounts(): array
     {
         return array_merge(
             $this->shipmentCounts($this->sidebarShipmentFilters()),
@@ -152,47 +173,55 @@ class LogisticsController extends Controller
         // All shipment-table numbers this page needs — the 3 sidebar badges plus the
         // 5 dashboard tiles — in one query instead of 8 separate ones.
         $shipmentStats = $this->shipmentCounts(array_merge($this->sidebarShipmentFilters(), [
-            'total'     => 'true',
+            'total' => 'true',
             'forVerify' => "shipping_status = 'ready_for_pickup' and pickup_approved_at is not null and pickup_rider_id is null",
             'available' => "shipping_status = 'sorted'",
             'completed' => "shipping_status in ('delivered', 'completed')",
             'cancelled' => "shipping_status in ('cancelled', 'delivery_failed', 'returned')",
+            'inTransit' => "shipping_status in ('picked_up','at_sorting_center','hub_transfer')",
+            'inProgress' => "shipping_status in ('assigned_to_rider','out_for_delivery')",
+            'failed' => "shipping_status = 'delivery_failed'",
         ]));
 
         $counts = array_merge($shipmentStats, $this->nonShipmentCounts(auth()->user()));
         $recent = $this->companyScope()->with(['order.buyer', 'courier', 'pickupRider', 'hubTransferRider'])->latest('created_at')->take(8)->get();
 
-        return view('logistics.dashboard', array_merge($counts, compact('recent'), [
+        $activeRiders = User::where('business_name', auth()->user()->business_name)->where('account_type', 'rider')->where('status', 'approved')->count();
+        $municipalHubs = LogisticsHub::where('company_name', auth()->user()->business_name)->count();
+        $recentActivities = DB::table('logistics_activity_logs as l')->leftJoin('users as u', 'u.id', '=', 'l.actor_id')
+            ->where('l.company_name', auth()->user()->business_name)->select('l.action', 'l.record_id', 'l.created_at', 'u.username')->orderByDesc('l.id')->limit(8)->get();
+
+        return view('logistics.dashboard', array_merge($counts, compact('recent', 'activeRiders', 'municipalHubs', 'recentActivities'), [
             'pending' => $counts['pendingDeliveries'],
-            'active'  => $counts['activeDeliveries'],
+            'active' => $counts['activeDeliveries'],
         ]));
     }
 
     /** Pickup requests fresh from a seller — "Confirm/approve/verify parcel pickup requests from seller". */
     public function requests()
     {
-        $counts    = $this->sidebarCounts();
+        $counts = $this->sidebarCounts();
         $shipments = $this->companyScope()->with(['order.buyer'])
             ->where('shipping_status', 'ready_for_pickup')->whereNull('pickup_approved_at')
-            ->latest('created_at')->get();
+            ->latest('created_at')->orderByDesc('id')->paginate(20)->withQueryString();
+
         return view('logistics.requests', array_merge($counts, compact('shipments')));
     }
 
     /** Approving a request doesn't change its status — it stays ready_for_pickup, now visible to pickup riders. */
     public function approveRequest(Request $request, $id)
     {
-        $shipment = $this->companyScope()->with('order')->findOrFail($id);
+        DB::transaction(function () use ($id) {
+            GcashLocks::shipment((string) $id);
+            $shipment = $this->companyScope()->with('order')->lockForUpdate()->findOrFail($id);
+            if ($shipment->order) {
+                app(GcashWorkflow::class)->assertOrderOperation($shipment->order, $shipment->shipping_status === 'ready_for_pickup');
+            }
+            abort_unless($shipment->shipping_status === 'ready_for_pickup' && ! $shipment->pickup_approved_at, 422, 'This pickup request was already handled.');
+            $shipment->update(['pickup_approved_at' => now()]);
+            Order::notifyUser($shipment->order?->seller_id, 'Pickup Approved', $shipment->logistics_company.' approved the pickup for order #'.$shipment->order?->order_number.'. A rider will be assigned shortly.', 'order_status', $shipment->order_id);
+        }, 3);
 
-        // Conditional update: only a still-pending request can be approved, so a double-click
-        // or an already-rejected/advanced parcel is left alone.
-        $approved = $this->companyScope()->where('id', $shipment->id)
-            ->where('shipping_status', 'ready_for_pickup')->whereNull('pickup_approved_at')
-            ->update(['pickup_approved_at' => now()]);
-        if (!$approved) {
-            return back()->withErrors(['status' => 'This pickup request was already handled.']);
-        }
-
-        Order::notifyUser($shipment->order?->seller_id, 'Pickup Approved', $shipment->logistics_company . ' approved the pickup for order #' . $shipment->order?->order_number . '. A rider will be assigned shortly.', 'order_status', $shipment->order_id);
         return back();
     }
 
@@ -203,23 +232,25 @@ class LogisticsController extends Controller
      */
     public function rejectRequest(Request $request, $id)
     {
-        $data   = $request->validate(['reason' => 'nullable|string|max:200']);
+        $data = $request->validate(['reason' => 'nullable|string|max:200']);
         $reason = trim((string) ($data['reason'] ?? '')) ?: 'The logistics company could not take this pickup';
 
         $rejected = DB::transaction(function () use ($id, $reason) {
+            GcashLocks::shipment((string) $id);
             $shipment = $this->companyScope()->where('id', $id)->lockForUpdate()->firstOrFail();
             if ($shipment->shipping_status !== 'ready_for_pickup' || $shipment->pickup_approved_at) {
                 return false;
             }
             $order = Order::lockFresh($shipment->order_id);
-            if (!$order->cancelAndRestock('Rejected by logistics: ' . $reason, null, auth()->id(), ['ready_for_pickup'])) {
+            if (! $order->cancelAndRestock('Rejected by logistics: '.$reason, null, auth()->id(), ['ready_for_pickup'])) {
                 return false;
             }
             $shipment->update(['shipping_status' => 'cancelled']);
 
-            $msg = 'Order #' . $order->order_number . ' was cancelled — ' . $shipment->logistics_company . ' could not take the pickup (' . $reason . ').';
+            $msg = 'Order #'.$order->order_number.' was cancelled — '.$shipment->logistics_company.' could not take the pickup ('.$reason.').';
             Order::notifyUser($order->buyer_id, 'Order Cancelled', $msg, 'order_status', $order->id);
-            Order::notifyUser($order->seller_id, 'Pickup Rejected', $msg . ' Your stock for it has been restored.', 'order_status', $order->id);
+            Order::notifyUser($order->seller_id, 'Pickup Rejected', $msg.' Your stock for it has been restored.', 'order_status', $order->id);
+
             return true;
         });
 
@@ -238,6 +269,8 @@ class LogisticsController extends Controller
     {
         $riders = User::where('account_type', 'rider')->where('status', 'approved')
             ->where('business_name', auth()->user()->business_name)->where('vehicle_type', $vehicleType)
+            ->whereHas('logisticsHub', fn ($q) => $q->where('company_name', auth()->user()->business_name)->where('is_operational', true))
+            ->when(auth()->user()->isHubStaff(), fn ($q) => $q->where('logistics_hub_id', auth()->user()->logistics_hub_id))
             ->orderBy('given_names')->get();
 
         // One query for every hub these riders need checked, instead of one query PER rider
@@ -247,7 +280,7 @@ class LogisticsController extends Controller
             ->where('vehicle_type', $vehicleType)->riderVisible()
             ->pluck('logistics_hub_id')->unique();
 
-        return $riders->filter(fn ($r) => $r->vehicle_ownership !== 'company' || !$r->logistics_hub_id
+        return $riders->filter(fn ($r) => $r->vehicle_ownership !== 'company' || ! $r->logistics_hub_id
                 || $hubsWithAvailableUnit->contains($r->logistics_hub_id))
             ->values();
     }
@@ -255,40 +288,58 @@ class LogisticsController extends Controller
     /** Same check as eligibleRiders(), for a specific already-chosen rider — the server-side half of the same gate. */
     private function vehicleEligibilityError(User $rider, string $requiredType): ?string
     {
+        if ($rider->status !== 'approved' || $rider->business_name !== auth()->user()->business_name) {
+            return 'This rider is not active in your company.';
+        }
+        if (! $rider->logisticsHub || ! $rider->logisticsHub->is_operational || $rider->logisticsHub->company_name !== $rider->business_name) {
+            return 'This rider needs an operational hub in your company.';
+        }
+        if (! in_array($rider->vehicle_ownership, ['own', 'company'], true)) {
+            return 'This rider has no verified vehicle ownership setting.';
+        }
         $label = fn ($type) => str_replace('_', ' ', $type);
         if ($rider->vehicle_type !== $requiredType) {
             return "{$rider->given_names} is registered with a {$label($rider->vehicle_type)}, but this leg needs a {$label($requiredType)}.";
         }
         if ($rider->vehicle_ownership === 'company' && $rider->logistics_hub_id
-            && !CompanyVehicle::typeAvailableAtHub($rider->logistics_hub_id, $requiredType)) {
+            && ! CompanyVehicle::typeAvailableAtHub($rider->logistics_hub_id, $requiredType)) {
             return "{$rider->given_names} uses a company-provided vehicle, but their hub has no available {$label($requiredType)} right now.";
         }
+
         return null;
     }
 
     /** Delivery-leg assignment: sorted parcels waiting for a rider to take them from the sorting center to the buyer. */
     public function assignments()
     {
-        $counts    = $this->sidebarCounts();
-        $shipments = $this->companyScope()->with(['order.buyer', 'deliveryAssignment.courier', 'courier', 'hubTransferAssignment.courier', 'hubTransferRider'])
+        $counts = $this->sidebarCounts();
+        $shipments = $this->companyScope()->with(['order.buyer', 'deliveryAssignment.courier', 'courier', 'hubTransferAssignment.courier', 'hubTransferRider', 'hubLegs'])
             ->whereIn('shipping_status', ['at_sorting_center', 'hub_transfer', 'sorted', 'assigned_to_rider', 'out_for_delivery'])
-            ->latest('created_at')->get();
+            ->latest('created_at')->orderByDesc('id')->paginate(20)->withQueryString();
+        $assignmentCounts = $this->companyScope()->selectRaw('shipping_status, COUNT(*) as total')->groupBy('shipping_status')->pluck('total', 'shipping_status');
         // Only this company's own riders, and only ones whose vehicle actually fits a delivery leg (two-wheeler).
-        $couriers  = $this->eligibleRiders('two_wheels');
-        return view('logistics.assign', array_merge($counts, compact('shipments', 'couriers')));
+        $couriers = $this->eligibleRiders('two_wheels');
+
+        return view('logistics.assign', array_merge($counts, compact('shipments', 'couriers', 'assignmentCounts')));
     }
 
     public function assignCourier(Request $request, $id)
     {
-        $company  = auth()->user()->business_name;
-        $data     = $request->validate(['courier_id' => 'required|integer|exists:users,id']);
-        $shipment = $this->companyScope()->with('order')->findOrFail($id);
-        $courier  = User::where('id', $data['courier_id'])->where('account_type', 'rider')->where('status', 'approved')->where('business_name', $company)->firstOrFail();
+        $company = auth()->user()->business_name;
+        $data = $request->validate(['courier_id' => 'required|integer|exists:users,id']);
+        GcashLocks::operation([(string) $id], [], [auth()->id(), $data['courier_id']]);
+        $shipment = $this->companyScope()->with('order')->lockForUpdate()->findOrFail($id);
+        app(LogisticsAccess::class)->requireLocation(auth()->user(), $shipment->destination_hub, $shipment->destination_province);
+        $courier = User::where('id', $data['courier_id'])->where('account_type', 'rider')->where('status', 'approved')->where('business_name', $company)->lockForUpdate()->firstOrFail();
 
+        $requiredMunicipality = $shipment->shipping_status === 'ready_for_pickup' ? $shipment->origin_hub : $shipment->destination_hub;
+        $requiredProvince = $shipment->shipping_status === 'ready_for_pickup' ? $shipment->origin_province : $shipment->destination_province;
+        abort_unless($courier->logisticsHub && app(LogisticsAccess::class)->matches($courier->logisticsHub, $requiredMunicipality, $requiredProvince), 422, 'Choose a rider assigned to the parcel hub.');
         if ($error = $this->vehicleEligibilityError($courier, 'two_wheels')) {
             if ($request->expectsJson() || $request->ajax()) {
                 abort(422, $error);
             }
+
             return back()->withErrors(['courier_id' => $error])->withInput();
         }
 
@@ -296,6 +347,9 @@ class LogisticsController extends Controller
         // update (same pattern as assignPickupRider()) so a parcel still in transit between
         // hubs, already with another rider, delivered or cancelled — or a double-submit — is
         // never overwritten, and a cancelled order can't be revived.
+        if ($shipment->order) {
+            app(GcashWorkflow::class)->assertOrderOperation($shipment->order, $shipment->shipping_status === 'ready_for_pickup');
+        }
         $claimed = $this->companyScope()->where('id', $shipment->id)->where('shipping_status', 'sorted')
             ->update(['courier_id' => $courier->id, 'shipping_status' => 'assigned_to_rider', 'assigned_at' => now()]);
         if ($claimed === 0) {
@@ -303,6 +357,7 @@ class LogisticsController extends Controller
             if ($request->expectsJson() || $request->ajax()) {
                 abort(422, $message);
             }
+
             return back()->withErrors(['courier_id' => $message]);
         }
 
@@ -315,7 +370,7 @@ class LogisticsController extends Controller
 
         DB::table('notifications')->insert([
             'id' => (string) Str::uuid(), 'user_id' => $courier->id,
-            'title' => 'New Delivery Assignment', 'message' => 'You were assigned to deliver order #' . ($shipment->order?->order_number ?? $shipment->id) . '.',
+            'title' => 'New Delivery Assignment', 'message' => 'You were assigned to deliver order #'.($shipment->order?->order_number ?? $shipment->id).'.',
             'notification_type' => 'delivery_assigned', 'reference_id' => $shipment->order_id,
             'is_read' => false, 'created_at' => now(),
         ]);
@@ -338,48 +393,18 @@ class LogisticsController extends Controller
      */
     public function assignHubTransferRider(Request $request, $id)
     {
-        $company  = auth()->user()->business_name;
-        $data     = $request->validate(['courier_id' => 'required|integer|exists:users,id']);
-        $shipment = $this->companyScope()->with('order')->findOrFail($id);
-        abort_unless(in_array($shipment->shipping_status, ['at_sorting_center', 'hub_transfer'], true) && $shipment->needsHubTransfer(), 422, 'This parcel is not awaiting a hub transfer.');
-
+        abort_unless(auth()->user()->isLogisticsAdmin(), 403, 'Only Logistics Admin can dispatch hub transfers.');
+        $data = $request->validate(['courier_id' => 'required|integer', 'vehicle_id' => 'nullable|integer']);
+        GcashLocks::operation([(string) $id], [], [auth()->id(), $data['courier_id']], [], CompanyVehicle::where('company_name', auth()->user()->business_name)->pluck('id')->all());
+        $shipment = $this->companyScope()->findOrFail($id);
         $leg = $shipment->nextAssignableHubLeg();
-        if (!$leg) {
-            $pending = $shipment->nextPendingHubLeg();
-            abort(422, $pending
-                ? ($pending->requested_at
-                    ? 'This leg is still waiting on the admin to approve the transfer request.'
-                    : 'Request this transfer from the hub dashboard before it can be assigned.')
-                : 'This parcel has no pending hub-transfer leg.');
-        }
+        abort_unless($leg, 422, 'This parcel has no approved next transfer leg.');
+        $flow = app(HubTransferWorkflow::class);
+        $batch = $flow->legacyBatch(auth()->user(), $leg->id);
+        $batch = $flow->dispatch(auth()->user(), $batch->id, $data['courier_id'], $data['vehicle_id'] ?? null);
+        $request->attributes->set('logistics_record_ids', $batch->members()->pluck('leg_id')->all());
 
-        $courier = User::where('id', $data['courier_id'])->where('account_type', 'rider')->where('status', 'approved')->where('business_name', $company)->firstOrFail();
-        if ($error = $this->vehicleEligibilityError($courier, 'four_wheels')) {
-            abort(422, $error);
-        }
-        $now = now();
-
-        $leg->update(['rider_id' => $courier->id, 'status' => 'in_transit', 'started_at' => $now]);
-
-        $shipment->update([
-            'hub_transfer_rider_id'   => $courier->id, // whoever is currently carrying the active leg
-            'shipping_status'         => 'hub_transfer',
-            'hub_transfer_started_at' => $shipment->hub_transfer_started_at ?: $now, // stamped once, on the first leg
-        ]);
-        $shipment->order?->update(['status' => 'hub_transfer']);
-        DeliveryAssignment::updateOrCreate(
-            ['shipment_id' => $shipment->id, 'leg' => 'hub_transfer'],
-            ['courier_id' => $courier->id, 'status' => 'hub_transfer', 'accepted_at' => $now]
-        );
-
-        DB::table('notifications')->insert([
-            'id' => (string) Str::uuid(), 'user_id' => $courier->id,
-            'title' => 'New Hub Transfer', 'message' => "Carry order #" . ($shipment->order?->order_number ?? $shipment->id) . " from {$leg->from_hub} to {$leg->to_hub}.",
-            'notification_type' => 'hub_transfer_assigned', 'reference_id' => $shipment->order_id,
-            'is_read' => false, 'created_at' => $now,
-        ]);
-
-        return back()->with('success', 'Hub transfer rider assigned.');
+        return back()->with('success', 'Approved transfer batch dispatched.');
     }
 
     /**
@@ -391,45 +416,17 @@ class LogisticsController extends Controller
      */
     public function completeHubTransfer(Request $request, $id)
     {
-        $shipment = $this->companyScope()->with('order')->findOrFail($id);
-        abort_unless($shipment->shipping_status === 'hub_transfer', 422, 'This parcel is not currently in hub transfer.');
-
+        GcashLocks::shipment((string) $id);
+        $shipment = $this->companyScope()->findOrFail($id);
         $leg = $shipment->activeHubLeg();
-        abort_if(!$leg, 422, 'No hub-transfer leg is currently in progress for this parcel.');
-        abort_unless($leg->rider_confirmed_pickup_at, 422, "The rider hasn't confirmed picking this up from {$leg->from_hub} yet.");
+        abort_unless($leg, 422, 'No dispatched transfer leg is active for this parcel.');
+        app(LogisticsAccess::class)->requireLocation(auth()->user(), $leg->to_hub, $leg->to_province);
+        $flow = app(HubTransferWorkflow::class);
+        $batch = $flow->legacyBatch(auth()->user(), $leg->id);
+        $batch = $flow->receive(auth()->user(), $batch->id, [$shipment->id]);
+        $request->attributes->set('logistics_record_id', $leg->id);
 
-        // Only the DESTINATION hub's own staff physically receive it there — the origin hub
-        // (or any other hub) scanning the same tracking number shouldn't be able to mark it
-        // received somewhere they aren't. The admin still can, for any hub, same as elsewhere.
-        $user = auth()->user();
-        if ($user->isHubStaff()) {
-            abort_unless($user->logisticsHub && mb_strtolower(trim($user->logisticsHub->municipality)) === mb_strtolower(trim($leg->to_hub)),
-                403, "Only {$leg->to_hub}'s own hub staff can mark this received there.");
-        }
-
-        $now = now();
-        $leg->update(['status' => 'completed', 'completed_at' => $now]);
-
-        $nextLeg = $shipment->nextPendingHubLeg();
-        if ($nextLeg) {
-            $shipment->update(['hub_transfer_rider_id' => null]);
-            return response()->json(['ok' => true, 'message' => "Arrived at {$leg->to_hub}. This hub's staff can now request the onward transfer to {$nextLeg->to_hub}."]);
-        }
-
-        $shipment->update([
-            'shipping_status'           => 'sorted',
-            'hub_transfer_completed_at' => $now,
-            'sorted_at'                 => $now,
-            'sorted_area'               => $shipment->destination_hub,
-        ]);
-        $shipment->order?->update(['status' => 'sorted']);
-
-        DB::table('order_status_history')->insert([
-            'id' => (string) Str::uuid(), 'order_id' => $shipment->order_id, 'status' => 'sorted',
-            'changed_by' => auth()->id(), 'created_at' => $now,
-        ]);
-
-        return response()->json(['ok' => true, 'message' => "Parcel arrived at {$shipment->destination_hub} and is ready for local delivery assignment."]);
+        return response()->json(['ok' => true, 'batch_id' => $batch->id, 'message' => 'Parcel received at the destination hub.']);
     }
 
     /**
@@ -441,47 +438,45 @@ class LogisticsController extends Controller
     {
         $user = auth()->user();
         abort_unless($user->logisticsHub, 403, 'Your account isn\'t linked to a hub yet — contact your company admin.');
-        $hub     = $user->logisticsHub;
-        $counts  = $this->sidebarCounts();
+        $hub = $user->logisticsHub;
+        $counts = $this->sidebarCounts();
 
         // Pickup requests the admin has already approved, still waiting for a rider —
         // scoped to parcels actually originating at THIS hub (a seller's nearest hub,
         // see LogisticsController::approveRequest()). Assignable right here, or a rider
         // can still self-accept from their own Pickup Requests page — whichever happens first.
         $pickupRequests = $this->companyScope()->with(['order.buyer', 'order.seller'])
-            ->whereRaw('LOWER(origin_hub) = ?', [mb_strtolower(trim($hub->municipality))])
+            ->whereRaw('LOWER(origin_hub) = ?', [mb_strtolower(trim($hub->municipality))])->whereRaw('LOWER(origin_province) = ?', [mb_strtolower(trim($hub->province))])
             ->where('shipping_status', 'ready_for_pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')
-            ->latest('created_at')->get();
+            ->latest('created_at')->orderByDesc('id')->paginate(20, ['*'], 'pickup_page')->withQueryString();
         $pickupRiders = $this->eligibleRiders('two_wheels');
 
         // Both sides have already confirmed the handoff (Shipment::maybeAdvancePastPickupConfirmation())
         // and the rider is physically carrying it here — nothing to assign, just visibility
         // until it's actually scanned in on the Scan page (receiveAtSortingCenter()).
         $incomingPickups = $this->companyScope()->with(['order.buyer', 'order.seller', 'pickupRider'])
-            ->whereRaw('LOWER(origin_hub) = ?', [mb_strtolower(trim($hub->municipality))])
+            ->whereRaw('LOWER(origin_hub) = ?', [mb_strtolower(trim($hub->municipality))])->whereRaw('LOWER(origin_province) = ?', [mb_strtolower(trim($hub->province))])
             ->where('shipping_status', 'picked_up')
-            ->latest('picked_up_at')->get();
+            ->latest('picked_up_at')->orderByDesc('id')->paginate(20, ['*'], 'arrivals_page')->withQueryString();
 
-        $requestable = $this->hubLegScope()->fromHub($hub->municipality)
-            ->where('status', 'pending')->whereNull('requested_at')
-            ->with('shipment.order')->get()
-            ->groupBy('to_hub');
+        [$requestable, $requestablePages, $requestableCount] = $this->transferBatches(
+            $this->hubLegScope()->fromHub($hub->municipality, $hub->province)->where('status', 'pending')->whereNull('requested_at'),
+            ['to_hub', 'to_province'], ['shipment.order'], 'request_batch_page');
 
-        $pendingApproval = $this->hubLegScope()->fromHub($hub->municipality)
-            ->where('status', 'pending')->whereNotNull('requested_at')->whereNull('approved_at')
-            ->with('shipment.order')->get()
-            ->groupBy('to_hub');
+        [$pendingApproval, $pendingApprovalPages, $pendingApprovalCount] = $this->transferBatches(
+            $this->hubLegScope()->fromHub($hub->municipality, $hub->province)->where('status', 'pending')->whereNotNull('requested_at')->where(fn ($q) => $q->whereNull('approved_at')->orWhereHas('transferBatch', fn ($q) => $q->where('status', 'pending'))),
+            ['to_hub', 'to_province'], ['shipment.order'], 'approval_batch_page');
 
-        $readyToAssign = $this->hubLegScope()->fromHub($hub->municipality)
-            ->where('status', 'pending')->whereNotNull('approved_at')
-            ->with('shipment.order')->get();
+        $readyToAssign = $this->hubLegScope()->fromHub($hub->municipality, $hub->province)
+            ->where('status', 'pending')->whereNotNull('approved_at')->whereHas('transferBatch', fn ($q) => $q->where('status', 'approved'))
+            ->with('shipment.order')->orderBy('id')->paginate(20, ['*'], 'transfer_page')->withQueryString();
 
-        $incoming = $this->hubLegScope()->where('to_hub', $hub->municipality)
+        $incoming = $this->hubLegScope()->where('to_hub', $hub->municipality)->where('to_province', $hub->province)
             ->whereIn('status', ['in_transit'])
-            ->with(['shipment.order', 'rider'])->get();
+            ->with(['shipment.order', 'rider'])->orderBy('id')->paginate(20, ['*'], 'incoming_page')->withQueryString();
 
         return view('logistics.hub-dashboard', array_merge($counts, compact(
-            'hub', 'pickupRequests', 'pickupRiders', 'incomingPickups', 'requestable', 'pendingApproval', 'readyToAssign', 'incoming'
+            'hub', 'pickupRequests', 'pickupRiders', 'incomingPickups', 'requestable', 'requestablePages', 'requestableCount', 'pendingApproval', 'pendingApprovalPages', 'pendingApprovalCount', 'readyToAssign', 'incoming'
         )));
     }
 
@@ -497,25 +492,29 @@ class LogisticsController extends Controller
     {
         $user = auth()->user();
         $data = $request->validate(['courier_id' => 'required|integer|exists:users,id']);
+        GcashLocks::operation([(string) $id], [], [auth()->id(), $data['courier_id']]);
         $shipment = $this->companyScope()->with('order')->where('shipping_status', 'ready_for_pickup')
-            ->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')->findOrFail($id);
+            ->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')->lockForUpdate()->findOrFail($id);
 
-        if ($user->isHubStaff()) {
-            abort_unless($user->logisticsHub && mb_strtolower(trim((string) $shipment->origin_hub)) === mb_strtolower(trim($user->logisticsHub->municipality)),
-                403, 'This pickup does not originate at your hub.');
-        }
-
-        $courier = User::where('id', $data['courier_id'])->where('account_type', 'rider')->where('status', 'approved')->where('business_name', $user->business_name)->firstOrFail();
+        app(LogisticsAccess::class)->requireLocation($user, $shipment->origin_hub, $shipment->origin_province);
+        $courier = User::where('id', $data['courier_id'])->where('account_type', 'rider')->where('status', 'approved')->where('business_name', $user->business_name)->lockForUpdate()->firstOrFail();
+        $requiredMunicipality = $shipment->shipping_status === 'ready_for_pickup' ? $shipment->origin_hub : $shipment->destination_hub;
+        $requiredProvince = $shipment->shipping_status === 'ready_for_pickup' ? $shipment->origin_province : $shipment->destination_province;
+        abort_unless($courier->logisticsHub && app(LogisticsAccess::class)->matches($courier->logisticsHub, $requiredMunicipality, $requiredProvince), 422, 'Choose a rider assigned to the parcel hub.');
         if ($error = $this->vehicleEligibilityError($courier, 'two_wheels')) {
             if ($request->expectsJson() || $request->ajax()) {
                 abort(422, $error);
             }
+
             return back()->withErrors(['courier_id' => $error])->withInput();
         }
 
         // Same FCFS-safe conditional update the rider self-accept path uses — whichever
         // request (this one, or a rider claiming it themselves) hits the still-unclaimed
         // row first wins; the other finds 0 rows affected.
+        if ($shipment->order) {
+            app(GcashWorkflow::class)->assertOrderOperation($shipment->order, $shipment->shipping_status === 'ready_for_pickup');
+        }
         $claimed = $this->companyScope()->where('id', $shipment->id)
             ->where('shipping_status', 'ready_for_pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')
             ->update(['pickup_rider_id' => $courier->id]);
@@ -528,14 +527,14 @@ class LogisticsController extends Controller
 
         DB::table('notifications')->insert([
             'id' => (string) Str::uuid(), 'user_id' => $courier->id,
-            'title' => 'New Pickup Assignment', 'message' => 'You were assigned to pick up order #' . ($shipment->order?->order_number ?? $shipment->id) . '.',
+            'title' => 'New Pickup Assignment', 'message' => 'You were assigned to pick up order #'.($shipment->order?->order_number ?? $shipment->id).'.',
             'notification_type' => 'pickup_assigned', 'reference_id' => $shipment->order_id,
             'is_read' => false, 'created_at' => now(),
         ]);
         if ($shipment->order?->seller_id) {
             DB::table('notifications')->insert([
                 'id' => (string) Str::uuid(), 'user_id' => $shipment->order->seller_id,
-                'title' => 'Pickup Rider Assigned', 'message' => 'A rider was assigned to pick up order #' . $shipment->order->order_number . '. They\'re on their way.',
+                'title' => 'Pickup Rider Assigned', 'message' => 'A rider was assigned to pick up order #'.$shipment->order->order_number.'. They\'re on their way.',
                 'notification_type' => 'order_status', 'reference_id' => $shipment->order_id,
                 'is_read' => false, 'created_at' => now(),
             ]);
@@ -552,44 +551,65 @@ class LogisticsController extends Controller
      */
     public function requestHubTransfer(Request $request)
     {
-        $user = auth()->user();
-        abort_unless($user->isHubStaff() && $user->logisticsHub, 403);
+        abort_unless(auth()->user()->isHubStaff(), 403);
+        $data = $request->validate(['to_hub' => 'required|string|max:255', 'to_province' => 'required|string|max:255']);
+        $origin = app(LogisticsAccess::class)->hub(auth()->user());
+        $destination = $this->transferHub($data['to_hub'], $data['to_province']);
+        $ids = $this->hubLegScope()->fromHub($origin->municipality, $origin->province)
+            ->whereRaw('LOWER(to_hub) = ?', [mb_strtolower(trim($destination->municipality))])->whereRaw('LOWER(to_province) = ?', [mb_strtolower(trim($destination->province))])
+            ->where('status', 'pending')->whereNull('requested_at')->whereNull('transfer_batch_id')->pluck('shipment_id')->all();
+        $batch = app(HubTransferWorkflow::class)->request(auth()->user(), $origin->id, $destination->id, $ids);
+        $request->attributes->set('logistics_record_ids', $batch->members()->pluck('leg_id')->all());
 
-        $data = $request->validate(['to_hub' => 'required|string']);
+        return redirect()->route('logistics.transfers.show', $batch->id)->with('success', 'Transfer requested; Logistics Admin approval is required.');
+    }
 
-        $updated = $this->hubLegScope()->fromHub($user->logisticsHub->municipality)
-            ->whereRaw('LOWER(to_hub) = ?', [mb_strtolower(trim($data['to_hub']))])
-            ->where('status', 'pending')->whereNull('requested_at')
-            ->update(['requested_at' => now(), 'requested_by' => $user->id]);
+    private function transferHub(string $town, string $province): LogisticsHub
+    {
+        $hubs = LogisticsHub::where('company_name', auth()->user()->business_name)->whereRaw('LOWER(municipality) = ?', [mb_strtolower(trim($town))])
+            ->whereRaw('LOWER(province) = ?', [mb_strtolower(trim($province))])->get();
+        abort_unless($hubs->count() === 1, 422, 'Select a valid unambiguous company hub.');
 
-        abort_if($updated === 0, 422, 'Nothing here is waiting to move to that hub.');
-
-        // Notify the company admin(s) — mirrors every other "new thing to review" notification.
-        $adminIds = User::where('is_logistics', true)->where('business_name', $user->business_name)
-            ->where(fn ($q) => $q->where('logistics_role', 'admin')->orWhereNull('logistics_role'))
-            ->pluck('id');
-        foreach ($adminIds as $adminId) {
-            DB::table('notifications')->insert([
-                'id' => (string) Str::uuid(), 'user_id' => $adminId,
-                'title' => 'Hub Transfer Request',
-                'message' => "{$user->logisticsHub->municipality} hub requests {$updated} parcel(s) be moved to {$data['to_hub']}.",
-                'notification_type' => 'hub_transfer_requested', 'reference_id' => null,
-                'is_read' => false, 'created_at' => now(),
-            ]);
-        }
-
-        return back()->with('success', "Requested transfer of {$updated} parcel(s) to {$data['to_hub']}.");
+        return $hubs->first();
     }
 
     /** Admin's queue: every hub's outstanding requests and handoffs, grouped for one-click batch approval. */
+    /** Paginate route groups first, then load every leg of the selected complete batches. */
+    private function transferBatches(Builder $query, array $columns, array $relations, string $page): array
+    {
+        $cast = DB::connection()->getDriverName() === 'mysql' ? 'BINARY' : 'BLOB';
+        $grammar = DB::connection()->getQueryGrammar();
+        $expressions = array_map(fn ($column) => 'CAST(COALESCE('.$grammar->wrap($column).", '') AS $cast)", $columns);
+        $groups = (clone $query)->reorder()->select([]);
+        foreach ($columns as $index => $column) {
+            $groups->selectRaw($expressions[$index].' AS '.$grammar->wrap($column))->groupByRaw($expressions[$index])->orderByRaw($expressions[$index]);
+        }
+        $pages = $groups->paginate(10, ['*'], $page)->withQueryString();
+        $legs = (clone $query)->with($relations)->where(function ($query) use ($pages, $columns, $expressions, $cast) {
+            if ($pages->isEmpty()) {
+                $query->whereRaw('1 = 0');
+
+                return;
+            }
+            foreach ($pages as $group) {
+                $query->orWhere(function ($query) use ($group, $columns, $expressions, $cast) {
+                    foreach ($columns as $index => $column) {
+                        $query->whereRaw($expressions[$index]." = CAST(? AS $cast)", [$group->getAttribute($column)]);
+                    }
+                });
+            }
+        })->orderBy('id')->get()->groupBy(fn ($leg) => implode('|', array_map(fn ($column) => $leg->getAttribute($column), $columns)));
+
+        return [$legs, $pages, (clone $query)->count()];
+    }
+
     public function hubRequests()
     {
         $counts = $this->sidebarCounts();
 
-        $pendingTransferRequests = $this->hubLegScope()
-            ->where('status', 'pending')->whereNotNull('requested_at')->whereNull('approved_at')
-            ->with(['shipment.order', 'requestedBy'])->get()
-            ->groupBy(fn ($leg) => $leg->from_hub . '|' . $leg->to_hub);
+        [$pendingTransferRequests, $pendingTransferPages] = $this->transferBatches(
+            $this->hubLegScope()->where('status', 'pending')->whereNotNull('requested_at')->where(fn ($q) => $q->whereNull('approved_at')->orWhereHas('transferBatch', fn ($q) => $q->where('status', 'pending'))),
+            ['from_hub', 'from_province', 'to_hub', 'to_province'], ['shipment.order', 'requestedBy'], 'pending_batch_page');
 
         // Legs sitting at a hub that hasn't requested them yet — normally the origin hub's own
         // staff do that (see requestHubTransfer()), but the admin oversees every hub and
@@ -597,12 +617,11 @@ class LogisticsController extends Controller
         // 'direct' leg (one hop, no gateway routing) that's just as real a transfer as a
         // cross-province one. adminRequestHubTransfer() below lets the admin push these straight
         // through — company-wide, any leg type, same or different province.
-        $notYetRequested = $this->hubLegScope()
-            ->where('status', 'pending')->whereNull('requested_at')
-            ->with(['shipment.order'])->get()
-            ->groupBy(fn ($leg) => $leg->from_hub . '|' . $leg->to_hub);
+        [$notYetRequested, $notYetRequestedPages] = $this->transferBatches(
+            $this->hubLegScope()->where('status', 'pending')->whereNull('requested_at'),
+            ['from_hub', 'from_province', 'to_hub', 'to_province'], ['shipment.order'], 'unrequested_batch_page');
 
-        return view('logistics.hub-requests', array_merge($counts, compact('pendingTransferRequests', 'notYetRequested')));
+        return view('logistics.hub-requests', array_merge($counts, compact('pendingTransferRequests', 'pendingTransferPages', 'notYetRequested', 'notYetRequestedPages')));
     }
 
     /**
@@ -614,83 +633,43 @@ class LogisticsController extends Controller
      */
     public function adminRequestHubTransfer(Request $request)
     {
-        $data = $request->validate(['from_hub' => 'required|string', 'to_hub' => 'required|string']);
-        $now  = now();
+        abort_unless(auth()->user()->isLogisticsAdmin(), 403);
+        $data = $request->validate(['from_hub' => 'required|string|max:255', 'from_province' => 'required|string|max:255', 'to_hub' => 'required|string|max:255', 'to_province' => 'required|string|max:255']);
+        $origin = $this->transferHub($data['from_hub'], $data['from_province']);
+        $destination = $this->transferHub($data['to_hub'], $data['to_province']);
+        $ids = $this->hubLegScope()->fromHub($origin->municipality, $origin->province)->whereRaw('LOWER(to_hub) = ?', [mb_strtolower(trim($destination->municipality))])
+            ->whereRaw('LOWER(to_province) = ?', [mb_strtolower(trim($destination->province))])->where('status', 'pending')->whereNull('requested_at')->whereNull('transfer_batch_id')->pluck('shipment_id')->all();
+        $batch = app(HubTransferWorkflow::class)->request(auth()->user(), $origin->id, $destination->id, $ids);
+        $request->attributes->set('logistics_record_ids', $batch->members()->pluck('leg_id')->all());
 
-        $legs = $this->hubLegScope()
-            ->whereRaw('LOWER(from_hub) = ?', [mb_strtolower(trim($data['from_hub']))])
-            ->whereRaw('LOWER(to_hub) = ?', [mb_strtolower(trim($data['to_hub']))])
-            ->where('status', 'pending')->whereNull('requested_at')
-            ->get();
-
-        abort_if($legs->isEmpty(), 422, 'Nothing here is waiting to move to that hub.');
-
-        foreach ($legs as $leg) {
-            $leg->update([
-                'requested_at' => $now, 'requested_by' => auth()->id(),
-                'approved_at'  => $now, 'approved_by'  => auth()->id(),
-            ]);
-        }
-
-        // Notify that hub's own staff — they're the ones who'll actually assign a rider to it
-        // from the Scan page, same as if they'd requested it themselves.
-        $company  = auth()->user()->business_name;
-        $hubStaff = User::where('account_type', 'logistics')->where('logistics_role', 'hub_staff')
-            ->where('business_name', $company)->whereHas('logisticsHub', fn ($q) => $q->whereRaw('LOWER(municipality) = ?', [mb_strtolower(trim($data['from_hub']))]))
-            ->pluck('id');
-        foreach ($hubStaff as $staffId) {
-            DB::table('notifications')->insert([
-                'id' => (string) Str::uuid(), 'user_id' => $staffId,
-                'title' => 'Hub Transfer Ready', 'message' => "Your admin initiated and approved a transfer of {$legs->count()} parcel(s) to {$data['to_hub']} — assign a rider from the Scan page.",
-                'notification_type' => 'hub_transfer_approved', 'reference_id' => null,
-                'is_read' => false, 'created_at' => $now,
-            ]);
-        }
-
-        return back()->with('success', "Requested and approved transfer of {$legs->count()} parcel(s) from {$data['from_hub']} to {$data['to_hub']}.");
+        return redirect()->route('logistics.transfers.show', $batch->id)->with('success', 'Transfer requested. Review and approve it before dispatch.');
     }
 
-    /** Approves every pending, requested (not yet approved) leg for one (from_hub, to_hub) batch at once. */
+    private function decideTransferRoute(Request $request, string $decision)
+    {
+        abort_unless(auth()->user()->isLogisticsAdmin(), 403);
+        $data = $request->validate(['from_hub' => 'required|string|max:255', 'from_province' => 'required|string|max:255', 'to_hub' => 'required|string|max:255', 'to_province' => 'required|string|max:255', 'reason' => ($decision === 'rejected' ? 'required' : 'nullable').'|string|max:1000']);
+        $legs = $this->hubLegScope()->fromHub($data['from_hub'], $data['from_province'])->whereRaw('LOWER(to_hub) = ?', [mb_strtolower(trim($data['to_hub']))])
+            ->whereRaw('LOWER(to_province) = ?', [mb_strtolower(trim($data['to_province']))])->where('status', 'pending')->whereNotNull('requested_at')->where(fn ($q) => $q->whereNull('approved_at')->orWhereHas('transferBatch', fn ($q) => $q->where('status', 'pending')))->get();
+        abort_if($legs->isEmpty(), 422, 'No pending request matches this route.');
+        $flow = app(HubTransferWorkflow::class);
+        $batches = $legs->map(fn ($leg) => $flow->legacyBatch(auth()->user(), $leg->id))->unique('id');
+        foreach ($batches as $batch) {
+            $flow->decide(auth()->user(), $batch->id, $decision, $data['reason'] ?? null);
+        }
+        $request->attributes->set('logistics_record_ids', $legs->pluck('id')->all());
+
+        return back()->with('success', $decision === 'approved' ? 'Transfer approved; dispatch is a separate Admin action.' : 'Transfer rejected and its reason recorded.');
+    }
+
     public function approveHubTransferRequest(Request $request)
     {
-        $data = $request->validate(['from_hub' => 'required|string', 'to_hub' => 'required|string']);
-
-        $legs = $this->hubLegScope()
-            ->whereRaw('LOWER(from_hub) = ?', [mb_strtolower(trim($data['from_hub']))])
-            ->whereRaw('LOWER(to_hub) = ?', [mb_strtolower(trim($data['to_hub']))])
-            ->where('status', 'pending')->whereNotNull('requested_at')->whereNull('approved_at')
-            ->get();
-
-        abort_if($legs->isEmpty(), 422, 'No pending request matches that hub pair.');
-
-        $now = now();
-        foreach ($legs as $leg) {
-            $leg->update(['approved_at' => $now, 'approved_by' => auth()->id()]);
-            if ($leg->requested_by) {
-                DB::table('notifications')->insert([
-                    'id' => (string) Str::uuid(), 'user_id' => $leg->requested_by,
-                    'title' => 'Hub Transfer Approved',
-                    'message' => "Approved: {$data['from_hub']} \u{2192} {$data['to_hub']}. You can now assign a rider from the Scan page.",
-                    'notification_type' => 'hub_transfer_approved', 'reference_id' => $leg->shipment_id,
-                    'is_read' => false, 'created_at' => $now,
-                ]);
-            }
-        }
-
-        return back()->with('success', "Approved transfer of {$legs->count()} parcel(s) from {$data['from_hub']} to {$data['to_hub']}.");
+        return $this->decideTransferRoute($request, 'approved');
     }
 
     public function rejectHubTransferRequest(Request $request)
     {
-        $data = $request->validate(['from_hub' => 'required|string', 'to_hub' => 'required|string']);
-
-        $updated = $this->hubLegScope()
-            ->whereRaw('LOWER(from_hub) = ?', [mb_strtolower(trim($data['from_hub']))])
-            ->whereRaw('LOWER(to_hub) = ?', [mb_strtolower(trim($data['to_hub']))])
-            ->where('status', 'pending')->whereNotNull('requested_at')->whereNull('approved_at')
-            ->update(['requested_at' => null, 'requested_by' => null]);
-
-        return back()->with('success', "Sent {$updated} parcel(s) back to {$data['from_hub']} hub to re-request.");
+        return $this->decideTransferRoute($request, 'rejected');
     }
 
     /** e.g. "Leg 2 of 3" — null when there's only one leg, since numbering it adds nothing. */
@@ -701,13 +680,15 @@ class LogisticsController extends Controller
             return null;
         }
         $done = $shipment->hubLegs()->where('status', 'completed')->count();
-        return 'Leg ' . min($done + 1, $total) . ' of ' . $total;
+
+        return 'Leg '.min($done + 1, $total).' of '.$total;
     }
 
     /** Scan-station entry point: barcode/QR camera scan or USB scanner keyboard input. */
     public function scan()
     {
         $counts = $this->sidebarCounts();
+
         return view('logistics.scan', $counts);
     }
 
@@ -720,38 +701,38 @@ class LogisticsController extends Controller
             ->where('tracking_number', $code)
             ->first();
 
-        if (!$shipment) {
+        if (! $shipment) {
             $order = Order::where('order_number', $code)->first();
             if ($order) {
                 $shipment = $this->companyScope()->with(['order.buyer', 'courier', 'hubTransferRider'])->where('order_id', $order->id)->first();
             }
         }
 
-        if (!$shipment) {
-            return response()->json(['ok' => false, 'message' => 'No shipment found for "' . $code . '".'], 404);
+        if (! $shipment) {
+            return response()->json(['ok' => false, 'message' => 'No shipment found for "'.$code.'".'], 404);
         }
 
-        $buyer       = $shipment->order?->buyer;
-        $addr        = $shipment->order?->shipping_address ?? [];
-        $area        = $addr['municipality'] ?? null; // delivery area = the order's destination municipality
+        $buyer = $shipment->order?->buyer;
+        $addr = $shipment->order?->shipping_address ?? [];
+        $area = $addr['municipality'] ?? null; // delivery area = the order's destination municipality
         $allowedNext = self::STATUS_TRANSITIONS[$shipment->shipping_status] ?? [];
-        $forwardNext = collect($allowedNext)->first(fn ($s) => !in_array($s, ['delivery_failed', 'returned'], true));
-        $canFail     = in_array('delivery_failed', $allowedNext, true);
+        $forwardNext = collect($allowedNext)->first(fn ($s) => ! in_array($s, ['delivery_failed', 'returned'], true));
+        $canFail = in_array('delivery_failed', $allowedNext, true);
 
         // Sorting-center stage this parcel is at: receive+sort it in (one scan, since sorting
         // is just an automatic address lookup), assign it to an area rider, or (once assigned)
         // advance it through the normal delivery statuses.
-        $stage            = 'none';
-        $areaRiders       = [];
-        $areaMatched      = false;
-        $areaServiceable  = true;
-        $areaNote         = null;
+        $stage = 'none';
+        $areaRiders = [];
+        $areaMatched = false;
+        $areaServiceable = true;
+        $areaNote = null;
         $hubTransferRiders = [];
-        $currentHubLeg     = null;
-        $hubLegProgress    = null;
+        $currentHubLeg = null;
+        $hubLegProgress = null;
         // Hub transfers ride on a four-wheeler — see eligibleRiders().
         $availableHubTransferRiders = fn () => $this->eligibleRiders('four_wheels')
-            ->map(fn ($r) => ['id' => $r->id, 'name' => trim($r->given_names . ' ' . $r->last_name)])->values();
+            ->map(fn ($r) => ['id' => $r->id, 'name' => trim($r->given_names.' '.$r->last_name)])->values();
 
         if ($shipment->shipping_status === 'ready_for_pickup') {
             $stage = $shipment->pickup_rider_id ? 'awaiting_seller_confirm' : 'awaiting_pickup_rider';
@@ -760,10 +741,10 @@ class LogisticsController extends Controller
         } elseif ($shipment->shipping_status === 'at_sorting_center' && $shipment->needsHubTransfer()) {
             // Additive on top of the normal flow — only reached when this shipment's
             // origin and destination hub differ (see receiveAtSortingCenter()).
-            $currentHubLeg  = $shipment->nextPendingHubLeg();
+            $currentHubLeg = $shipment->nextPendingHubLeg();
             $hubLegProgress = $this->hubLegProgress($shipment);
             if ($shipment->nextAssignableHubLeg()) {
-                $stage             = 'assign_hub_transfer';
+                $stage = 'assign_hub_transfer';
                 $hubTransferRiders = $availableHubTransferRiders();
             } else {
                 // Not requested/approved yet — this hub's staff need to request it
@@ -775,13 +756,13 @@ class LogisticsController extends Controller
             if ($activeLeg) {
                 // Rider is already carrying it on the current leg — nothing to do
                 // here until the receiving hub scans it in via completeHubTransfer().
-                $stage         = 'in_hub_transfer';
+                $stage = 'in_hub_transfer';
                 $currentHubLeg = $activeLeg;
             } else {
                 // The previous leg was just completed and another one remains.
                 $currentHubLeg = $shipment->nextPendingHubLeg();
                 if ($shipment->nextAssignableHubLeg()) {
-                    $stage             = 'assign_hub_transfer';
+                    $stage = 'assign_hub_transfer';
                     $hubTransferRiders = $availableHubTransferRiders();
                 } else {
                     $stage = 'awaiting_transfer_approval';
@@ -799,20 +780,20 @@ class LogisticsController extends Controller
                 // Set from Logistics Settings — don't silently hand back a rider
                 // list for an area the sorting center isn't currently dispatching to.
                 $areaServiceable = false;
-                $areaNote        = $unserviceable->note;
+                $areaNote = $unserviceable->note;
             } else {
                 // Only this company's own riders whose vehicle actually fits a delivery leg (two-wheeler).
-                $riders = $this->eligibleRiders('two_wheels');
+                $riders = $this->eligibleRiders('two_wheels')->filter(fn ($r) => $r->logisticsHub && app(LogisticsAccess::class)->matches($r->logisticsHub, $shipment->destination_hub, $shipment->destination_province));
                 if ($area) {
                     $matched = $riders->filter(fn ($r) => mb_strtolower(trim((string) $r->municipality)) === mb_strtolower(trim($area)))->values();
                     if ($matched->isNotEmpty()) {
-                        $riders      = $matched;
+                        $riders = $matched;
                         $areaMatched = true;
                     }
                 }
                 $areaRiders = $riders->map(fn ($r) => [
-                    'id'           => $r->id,
-                    'name'         => trim($r->given_names . ' ' . $r->last_name),
+                    'id' => $r->id,
+                    'name' => trim($r->given_names.' '.$r->last_name),
                     'municipality' => $r->municipality,
                 ])->values();
             }
@@ -820,59 +801,85 @@ class LogisticsController extends Controller
             $stage = 'advance';
         }
 
+        if (auth()->user()->isHubStaff()) {
+            $access = app(LogisticsAccess::class);
+            $hub = $access->hub(auth()->user());
+            if ($currentHubLeg && ! $access->matches($hub, $currentHubLeg->from_hub, $currentHubLeg->from_province)
+                && ! $access->matches($hub, $currentHubLeg->to_hub, $currentHubLeg->to_province)) {
+                // Parcel-route visibility does not expose another hub's active transfer details.
+                $currentHubLeg = null;
+                $hubLegProgress = null;
+                $stage = 'none';
+                $hubTransferRiders = [];
+            }
+            $permitted = match ($stage) {
+                'receive' => $access->matches($hub, $shipment->origin_hub, $shipment->origin_province),
+                'assign','advance' => $access->matches($hub, $shipment->destination_hub, $shipment->destination_province),
+                'assign_hub_transfer' => false,
+                default => true,
+            };
+            if (! $permitted) {
+                $stage = 'none';
+                $areaRiders = [];
+                $hubTransferRiders = [];
+                $forwardNext = null;
+                $canFail = false;
+            }
+        }
+
         return response()->json([
-            'ok'       => true,
+            'ok' => true,
             'shipment' => [
-                'id'              => $shipment->id,
+                'id' => $shipment->id,
                 'tracking_number' => $shipment->tracking_number ?? substr($shipment->id, 0, 8),
-                'order_number'    => $shipment->order?->order_number,
-                'buyer_name'      => trim(($buyer->given_names ?? '') . ' ' . ($buyer->last_name ?? '')) ?: null,
-                'buyer_contact'   => $buyer->contact_no ?? null,
-                'address'         => implode(', ', array_filter([
+                'order_number' => $shipment->order?->order_number,
+                'buyer_name' => trim(($buyer->given_names ?? '').' '.($buyer->last_name ?? '')) ?: null,
+                'buyer_contact' => $buyer->contact_no ?? null,
+                'address' => implode(', ', array_filter([
                     $addr['house_no'] ?? null, $addr['street'] ?? null, $addr['barangay'] ?? null,
                     $addr['municipality'] ?? null, $addr['province'] ?? null,
                 ])) ?: null,
-                'delivery_area'   => $area,
+                'delivery_area' => $area,
                 'pickup_rider_name' => $shipment->pickupRider
-                    ? trim($shipment->pickupRider->given_names . ' ' . $shipment->pickupRider->last_name)
+                    ? trim($shipment->pickupRider->given_names.' '.$shipment->pickupRider->last_name)
                     : null,
-                'courier_name'    => $shipment->courier
-                    ? trim($shipment->courier->given_names . ' ' . $shipment->courier->last_name)
+                'courier_name' => $shipment->courier
+                    ? trim($shipment->courier->given_names.' '.$shipment->courier->last_name)
                     : null,
-                'origin_hub'      => $shipment->origin_hub,
+                'origin_hub' => $shipment->origin_hub,
                 'destination_hub' => $shipment->destination_hub,
-                'hub_transfer_rider_name' => $shipment->hubTransferRider
-                    ? trim($shipment->hubTransferRider->given_names . ' ' . $shipment->hubTransferRider->last_name)
+                'hub_transfer_rider_name' => $shipment->hubTransferRider && (! auth()->user()->isHubStaff() || $currentHubLeg)
+                    ? trim($shipment->hubTransferRider->given_names.' '.$shipment->hubTransferRider->last_name)
                     : null,
                 // The leg actually being worked right now — for a same-province transfer
                 // this is the whole trip (from_hub/to_hub == origin_hub/destination_hub);
                 // for a cross-province one it's just the current hop of up to three.
-                'current_leg'     => $currentHubLeg ? [
-                    'leg_type'        => $currentHubLeg->leg_type,
-                    'from_hub'        => $currentHubLeg->from_hub,
-                    'to_hub'          => $currentHubLeg->to_hub,
-                    'requested'       => (bool) $currentHubLeg->requested_at,
+                'current_leg' => $currentHubLeg ? [
+                    'leg_type' => $currentHubLeg->leg_type,
+                    'from_hub' => $currentHubLeg->from_hub,
+                    'to_hub' => $currentHubLeg->to_hub,
+                    'requested' => (bool) $currentHubLeg->requested_at,
                     'rider_confirmed' => (bool) $currentHubLeg->rider_confirmed_pickup_at,
                     // Only the destination hub's own staff (or the admin) can mark it received
                     // there — the origin hub, or any other hub, scanning the same tracking
                     // number shouldn't see that action at all.
-                    'can_complete'    => !auth()->user()->isHubStaff() || (auth()->user()->logisticsHub
-                        && mb_strtolower(trim(auth()->user()->logisticsHub->municipality)) === mb_strtolower(trim($currentHubLeg->to_hub))),
+                    'can_complete' => ! auth()->user()->isHubStaff() || (auth()->user()->logisticsHub
+                        && app(LogisticsAccess::class)->matches(auth()->user()->logisticsHub, $currentHubLeg->to_hub, $currentHubLeg->to_province)),
                 ] : null,
                 'hub_leg_progress' => $hubLegProgress,
-                'status'          => $shipment->shipping_status,
-                'status_label'    => ucfirst(str_replace('_', ' ', $shipment->shipping_status)),
-                'updated_at'      => optional($shipment->updated_at)->format('M d, Y H:i'),
+                'status' => $shipment->shipping_status,
+                'status_label' => ucfirst(str_replace('_', ' ', $shipment->shipping_status)),
+                'updated_at' => optional($shipment->updated_at)->format('M d, Y H:i'),
             ],
-            'stage'             => $stage,
-            'area_riders'       => $areaRiders,
-            'area_matched'      => $areaMatched,
-            'area_serviceable'  => $areaServiceable,
-            'area_note'         => $areaNote,
+            'stage' => $stage,
+            'area_riders' => $areaRiders,
+            'area_matched' => $areaMatched,
+            'area_serviceable' => $areaServiceable,
+            'area_note' => $areaNote,
             'hub_transfer_riders' => $hubTransferRiders,
-            'next_status'  => $forwardNext,
-            'next_label'   => $forwardNext ? (self::STAGE_LABELS[$forwardNext] ?? ucfirst(str_replace('_', ' ', $forwardNext))) : null,
-            'can_fail'     => $canFail,
+            'next_status' => $forwardNext,
+            'next_label' => $forwardNext ? (self::STAGE_LABELS[$forwardNext] ?? ucfirst(str_replace('_', ' ', $forwardNext))) : null,
+            'can_fail' => $canFail,
         ]);
     }
 
@@ -887,11 +894,13 @@ class LogisticsController extends Controller
      */
     public function receiveAtSortingCenter(Request $request, $id)
     {
-        $shipment = $this->companyScope()->with('order')->findOrFail($id);
+        GcashLocks::shipment((string) $id);
+        $shipment = $this->companyScope()->with('order')->lockForUpdate()->findOrFail($id);
         abort_unless($shipment->shipping_status === 'picked_up', 422, 'This parcel has not been picked up from the seller yet.');
+        app(LogisticsAccess::class)->requireLocation(auth()->user(), $shipment->origin_hub, $shipment->origin_province);
 
         $area = $shipment->order?->shipping_address['municipality'] ?? null;
-        $now  = now();
+        $now = now();
 
         if ($shipment->needsHubTransfer()) {
             $shipment->buildHubLegs();
@@ -904,14 +913,15 @@ class LogisticsController extends Controller
             ]);
 
             $firstLeg = $shipment->nextPendingHubLeg();
-            return response()->json(['ok' => true, 'message' => "Received at {$shipment->origin_hub}. This hub's staff can now request a transfer to " . ($firstLeg->to_hub ?? $shipment->destination_hub) . " from their dashboard."]);
+
+            return response()->json(['ok' => true, 'message' => "Received at {$shipment->origin_hub}. This hub's staff can now request a transfer to ".($firstLeg->to_hub ?? $shipment->destination_hub).' from their dashboard.']);
         }
 
         $shipment->update([
-            'shipping_status'      => 'sorted',
+            'shipping_status' => 'sorted',
             'at_sorting_center_at' => $now,
-            'sorted_at'            => $now,
-            'sorted_area'          => $area,
+            'sorted_at' => $now,
+            'sorted_area' => $area,
         ]);
         $shipment->order?->update(['status' => 'sorted']);
 
@@ -924,28 +934,29 @@ class LogisticsController extends Controller
             'changed_by' => auth()->id(), 'created_at' => $now,
         ]);
 
-        return response()->json(['ok' => true, 'message' => 'Parcel received and sorted' . ($area ? " to {$area}" : '') . '.']);
+        return response()->json(['ok' => true, 'message' => 'Parcel received and sorted'.($area ? " to {$area}" : '').'.']);
     }
 
     public function monitor()
     {
-        $counts      = $this->sidebarCounts();
-        $shipments   = $this->companyScope()->with(['order.buyer', 'courier', 'pickupRider', 'hubTransferRider', 'deliveryAssignment'])
+        $counts = $this->sidebarCounts();
+        $shipments = $this->companyScope()->with(['order.buyer', 'courier', 'pickupRider', 'hubTransferRider', 'deliveryAssignment'])
             ->whereIn('shipping_status', ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'hub_transfer', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'delivery_failed'])
-            ->latest('created_at')->get();
+            ->latest('created_at')->orderByDesc('id')->paginate(20)->withQueryString();
         $transitions = self::STATUS_TRANSITIONS;
+
         return view('logistics.monitor', array_merge($counts, compact('shipments', 'transitions')));
     }
 
     /** Shipment stage → the timestamp column on `shipments` to stamp. */
     private const STAGE_TIMESTAMPS = [
         'at_sorting_center' => 'at_sorting_center_at',
-        'sorted'            => 'sorted_at',
+        'sorted' => 'sorted_at',
         'assigned_to_rider' => 'assigned_at',
-        'out_for_delivery'  => 'out_for_delivery_at',
-        'delivered'         => 'delivered_at',
-        'delivery_failed'   => 'delivery_failed_at',
-        'returned'          => 'returned_at',
+        'out_for_delivery' => 'out_for_delivery_at',
+        'delivered' => 'delivered_at',
+        'delivery_failed' => 'delivery_failed_at',
+        'returned' => 'returned_at',
     ];
 
     /**
@@ -959,7 +970,7 @@ class LogisticsController extends Controller
     public function updateStatus(Request $request, $id)
     {
         $data = $request->validate([
-            'status' => 'required|in:' . implode(',', self::STATUSES),
+            'status' => 'required|in:'.implode(',', self::STATUSES),
             'reason' => 'nullable|string|max:500',
         ]);
         $status = $data['status'];
@@ -973,19 +984,26 @@ class LogisticsController extends Controller
         // re-validated against the CURRENT status (not a stale copy), and a parcel that
         // is returned to the seller is restocked exactly once.
         $result = DB::transaction(function () use ($id, $status, $data) {
+            GcashLocks::shipment((string) $id);
             $shipment = $this->companyScope()->where('id', $id)->lockForUpdate()->firstOrFail();
-            $order    = $shipment->order_id ? Order::lockFresh($shipment->order_id) : null;
+            app(LogisticsAccess::class)->requireLocation(auth()->user(), $shipment->destination_hub, $shipment->destination_province);
+            $order = $shipment->order_id ? Order::lockFresh($shipment->order_id) : null;
 
             // Guard the transition server-side too — the UI only ever offers valid next
             // statuses, but this stops a crafted request from skipping stages or moving
             // a shipment backward.
             $allowed = self::STATUS_TRANSITIONS[$shipment->shipping_status] ?? [];
-            if (!in_array($status, $allowed, true)) {
+            if (! in_array($status, $allowed, true)) {
                 return 'Cannot move this shipment from '
-                    . ucfirst(str_replace('_', ' ', $shipment->shipping_status)) . ' to '
-                    . ucfirst(str_replace('_', ' ', $status)) . '.';
+                    .ucfirst(str_replace('_', ' ', $shipment->shipping_status)).' to '
+                    .ucfirst(str_replace('_', ' ', $status)).'.';
             }
 
+            if ($status === 'assigned_to_rider') {
+                $rider = $shipment->courier;
+                abort_unless($rider && ! $this->vehicleEligibilityError($rider, 'two_wheels') && app(LogisticsAccess::class)->matches($rider->logisticsHub, $shipment->destination_hub, $shipment->destination_province), 422, 'Assign an approved rider with an available vehicle before retrying delivery.');
+                DeliveryAssignment::updateOrCreate(['shipment_id' => $shipment->id, 'leg' => 'delivery'], ['courier_id' => $rider->id, 'status' => 'assigned_to_rider', 'accepted_at' => now()]);
+            }
             $updates = ['shipping_status' => $status];
             if (isset(self::STAGE_TIMESTAMPS[$status])) {
                 $updates[self::STAGE_TIMESTAMPS[$status]] = now();
@@ -1003,7 +1021,7 @@ class LogisticsController extends Controller
                 // in their hands, so the stock the order was holding is released again.
                 if ($status === 'returned') {
                     $order->restoreStock();
-                    Order::notifyUser($order->seller_id, 'Parcel Returned', 'Order #' . $order->order_number . ' was returned to you (' . ($shipment->delivery_failed_reason ?: 'delivery failed') . '). Its stock has been restored.', 'order_status', $order->id);
+                    Order::notifyUser($order->seller_id, 'Parcel Returned', 'Order #'.$order->order_number.' was returned to you ('.($shipment->delivery_failed_reason ?: 'delivery failed').'). Its stock has been restored.', 'order_status', $order->id);
                 }
             }
 
@@ -1022,41 +1040,41 @@ class LogisticsController extends Controller
 
         if ($shipment->order) {
             DB::table('notifications')->insert([
-                'id'                => (string) Str::uuid(),
-                'user_id'           => $shipment->order->buyer_id,
-                'title'             => 'Order Update',
-                'message'           => 'Your order #' . $shipment->order->order_number . ' is now ' . str_replace('_', ' ', $status) . '.',
+                'id' => (string) Str::uuid(),
+                'user_id' => $shipment->order->buyer_id,
+                'title' => 'Order Update',
+                'message' => 'Your order #'.$shipment->order->order_number.' is now '.str_replace('_', ' ', $status).'.',
                 'notification_type' => 'order_status',
-                'reference_id'      => $shipment->order_id,
-                'is_read'           => false,
-                'created_at'        => now(),
+                'reference_id' => $shipment->order_id,
+                'is_read' => false,
+                'created_at' => now(),
             ]);
 
             // Let the seller know the moment the parcel is marked delivered — the order
             // itself still waits on the buyer's own confirmation to close out.
             if ($status === 'delivered') {
                 DB::table('notifications')->insert([
-                    'id'                => (string) Str::uuid(),
-                    'user_id'           => $shipment->order->seller_id,
-                    'title'             => 'Courier Marked as Delivered',
-                    'message'           => 'Order #' . $shipment->order->order_number . ' was marked delivered by the courier — awaiting the buyer\'s confirmation.',
+                    'id' => (string) Str::uuid(),
+                    'user_id' => $shipment->order->seller_id,
+                    'title' => 'Courier Marked as Delivered',
+                    'message' => 'Order #'.$shipment->order->order_number.' was marked delivered by the courier — awaiting the buyer\'s confirmation.',
                     'notification_type' => 'order_delivered',
-                    'reference_id'      => $shipment->order_id,
-                    'is_read'           => false,
-                    'created_at'        => now(),
+                    'reference_id' => $shipment->order_id,
+                    'is_read' => false,
+                    'created_at' => now(),
                 ]);
             }
 
             if ($status === 'delivery_failed') {
                 DB::table('notifications')->insert([
-                    'id'                => (string) Str::uuid(),
-                    'user_id'           => $shipment->order->seller_id,
-                    'title'             => 'Delivery Attempt Failed',
-                    'message'           => 'Order #' . $shipment->order->order_number . ' delivery failed: ' . ($data['reason'] ?? 'No reason given.'),
+                    'id' => (string) Str::uuid(),
+                    'user_id' => $shipment->order->seller_id,
+                    'title' => 'Delivery Attempt Failed',
+                    'message' => 'Order #'.$shipment->order->order_number.' delivery failed: '.($data['reason'] ?? 'No reason given.'),
                     'notification_type' => 'delivery_failed',
-                    'reference_id'      => $shipment->order_id,
-                    'is_read'           => false,
-                    'created_at'        => now(),
+                    'reference_id' => $shipment->order_id,
+                    'is_read' => false,
+                    'created_at' => now(),
                 ]);
             }
         }
@@ -1066,43 +1084,96 @@ class LogisticsController extends Controller
 
     public function issues()
     {
-        $counts    = $this->sidebarCounts();
+        $counts = $this->sidebarCounts();
         $shipments = $this->companyScope()->with(['order.buyer', 'courier'])
             ->whereIn('shipping_status', ['delivery_failed', 'returned', 'cancelled'])
             ->latest('created_at')->get();
+
         return view('logistics.issues', array_merge($counts, compact('shipments')));
     }
 
-    public function history()
+    protected function filteredShipments(Request $request)
     {
-        $counts    = $this->sidebarCounts();
-        $shipments = $this->companyScope()->with(['order.buyer', 'courier'])
-            ->whereIn('shipping_status', ['delivered', 'completed'])
-            ->latest('delivered_at')->get();
-        return view('logistics.history', array_merge($counts, compact('shipments')));
+        $data = $request->validate(['search' => 'nullable|string|max:100', 'from' => 'nullable|date', 'to' => 'nullable|date'.($request->filled('from') ? '|after_or_equal:from' : ''),
+            'hub_id' => ['nullable', 'integer', Rule::exists('logistics_hubs', 'id')->where('company_name', auth()->user()->business_name)],
+            'status' => 'nullable|in:delivered,completed,delivery_failed,returned,cancelled']);
+        $query = $this->companyScope();
+        if (! empty($data['hub_id'])) {
+            $hub = LogisticsHub::where('company_name', auth()->user()->business_name)->findOrFail($data['hub_id']);
+            $access = app(LogisticsAccess::class);
+            $query->where(fn ($q) => $q->where(fn ($q) => $access->pair($q, 'origin_hub', 'origin_province', $hub))->orWhere(fn ($q) => $access->pair($q, 'destination_hub', 'destination_province', $hub))
+                ->orWhereHas('hubLegs', fn ($q) => $q->where(fn ($q) => $access->pair($q, 'from_hub', 'from_province', $hub))->orWhere(fn ($q) => $access->pair($q, 'to_hub', 'to_province', $hub))));
+        }
+
+        return $query->when($data['search'] ?? null, fn ($q, $s) => $q->where(fn ($q) => $q->where('tracking_number', 'like', '%'.$s.'%')->orWhereHas('order', fn ($q) => $q->where('order_number', 'like', '%'.$s.'%'))))
+            ->when($data['from'] ?? null, fn ($q, $v) => $q->whereDate('shipments.created_at', '>=', $v))
+            ->when($data['to'] ?? null, fn ($q, $v) => $q->whereDate('shipments.created_at', '<=', $v))
+            ->when($data['status'] ?? null, fn ($q, $v) => $q->where('shipping_status', $v));
     }
 
-    public function reports()
+    public function history(Request $request)
     {
-        $counts    = $this->sidebarCounts();
-        $company   = auth()->user()->business_name;
-        $total     = $this->companyScope()->count();
-        $completed = $this->companyScope()->whereIn('shipping_status', ['delivered', 'completed'])->count();
-        $cancelled = $this->companyScope()->where('shipping_status', 'cancelled')->count();
-        $failed    = $this->companyScope()->whereIn('shipping_status', ['delivery_failed', 'returned'])->count();
-        $couriers  = User::where('account_type', 'rider')->where('status', 'approved')->where('business_name', $company)->count();
+        $shipments = $this->filteredShipments($request)->with(['order.buyer', 'courier'])
+            ->whereIn('shipping_status', ['delivered', 'completed', 'delivery_failed', 'returned', 'cancelled'])->latest('updated_at')->paginate(20)->withQueryString();
+        $hubs = LogisticsHub::where('company_name', auth()->user()->business_name)
+            ->when(auth()->user()->isHubStaff(), fn ($q) => $q->where('id', auth()->user()->logistics_hub_id))->get();
 
-        $courierStats = User::where('account_type', 'rider')
-            ->where('status', 'approved')->where('business_name', $company)
-            ->selectRaw("users.*, (SELECT COUNT(*) FROM shipments WHERE shipments.courier_id = users.id AND shipping_status IN ('delivered','completed')) AS delivered_count")
-            ->orderByDesc('delivered_count')
-            ->take(10)->get();
-
-        return view('logistics.reports', array_merge($counts, compact(
-            'total', 'completed', 'cancelled', 'failed', 'couriers', 'courierStats'
-        )));
+        return view('logistics.history', array_merge($this->sidebarCounts(), compact('shipments', 'hubs')));
     }
 
+    public function reports(Request $request)
+    {
+        $query = $this->filteredShipments($request);
+        $total = (clone $query)->count();
+        $completed = (clone $query)->whereIn('shipping_status', ['delivered', 'completed'])->count();
+        $cancelled = (clone $query)->where('shipping_status', 'cancelled')->count();
+        $failed = (clone $query)->whereIn('shipping_status', ['delivery_failed', 'returned'])->count();
+        $deliveredByRider = (clone $query)->whereIn('shipping_status', ['delivered', 'completed'])
+            ->selectRaw('courier_id, COUNT(*) as delivered_count')->groupBy('courier_id');
+        $courierStats = User::where('account_type', 'rider')->where('business_name', auth()->user()->business_name)
+            ->when($request->filled('hub_id'), fn ($q) => $q->where('logistics_hub_id', $request->integer('hub_id')))
+            ->leftJoinSub($deliveredByRider, 'deliveries', fn ($join) => $join->on('users.id', '=', 'deliveries.courier_id'))
+            ->select('users.*')->selectRaw('COALESCE(deliveries.delivered_count, 0) as delivered_count')
+            ->orderByDesc('delivered_count')->orderBy('users.id')->limit(10)->get();
+        $couriers = User::where('account_type', 'rider')->where('business_name', auth()->user()->business_name)->where('status', 'approved')
+            ->when($request->filled('hub_id'), fn ($q) => $q->where('logistics_hub_id', $request->integer('hub_id')))->count();
+        $hubs = LogisticsHub::where('company_name', auth()->user()->business_name)->get();
+        $summary = (clone $query)->selectRaw('shipping_status, COUNT(*) as total')->groupBy('shipping_status')->get();
+        $vehicleSummary = CompanyVehicle::where('company_name', auth()->user()->business_name)
+            ->when($request->filled('hub_id'), fn ($q) => $q->where('logistics_hub_id', $request->integer('hub_id')))->selectRaw('platform_status, is_available, COUNT(*) as total')->groupBy('platform_status', 'is_available')->get();
+
+        // UNION route endpoints, then count each parcel only once per municipality/province.
+        // Hub names are trimmed like LogisticsAccess::pair; parcel endpoint values are not.
+        $touches = (clone $query)->selectRaw('shipments.id as shipment_id, LOWER(origin_hub) as municipality, LOWER(origin_province) as province')->toBase();
+        $touches->unionAll((clone $query)->selectRaw('shipments.id as shipment_id, LOWER(destination_hub) as municipality, LOWER(destination_province) as province')->toBase());
+        foreach (['from', 'to'] as $endpoint) {
+            $touches->unionAll(DB::table('shipment_hub_legs')->whereIn('shipment_id', (clone $query)->select('shipments.id'))
+                ->selectRaw('shipment_id, LOWER('.$endpoint.'_hub) as municipality, LOWER('.$endpoint.'_province) as province'));
+        }
+        $touchCounts = DB::query()->fromSub($touches, 'touches')->selectRaw('municipality, province, COUNT(DISTINCT shipment_id) as parcel_count')->groupBy('municipality', 'province');
+        $hubSummary = LogisticsHub::where('company_name', auth()->user()->business_name)
+            ->when($request->filled('hub_id'), fn ($q) => $q->where('logistics_hubs.id', $request->integer('hub_id')))
+            ->leftJoinSub($touchCounts, 'touch_counts', fn ($join) => $join->on(DB::raw('LOWER(TRIM(logistics_hubs.municipality))'), '=', 'touch_counts.municipality')
+                ->on(DB::raw('LOWER(TRIM(logistics_hubs.province))'), '=', 'touch_counts.province'))
+            ->select('logistics_hubs.*')->selectRaw('COALESCE(touch_counts.parcel_count, 0) as parcel_count')->get();
+
+        return view('logistics.reports', array_merge($this->sidebarCounts(), compact('total', 'completed', 'cancelled', 'failed', 'couriers', 'courierStats', 'hubs', 'summary', 'vehicleSummary', 'hubSummary')));
+    }
+
+    public function exportReport(Request $request)
+    {
+        $query = $this->filteredShipments($request)->with(['courier', 'pickupRider', 'hubTransferRider']);
+
+        return response()->streamDownload(function () use ($query) {
+            $out = fopen('php://output', 'w');
+            $safe = fn ($value) => preg_match('/^[\s]*[=+@-]/', (string) $value) ? "'".$value : $value;
+            fputcsv($out, ['Tracking', 'Status', 'Origin municipality', 'Origin province', 'Destination municipality', 'Destination province', 'Delivery rider', 'Pickup rider', 'Transfer rider', 'Created', 'Delivered'], ',', '"', '');
+            foreach ($query->lazy(200) as $s) {
+                fputcsv($out, array_map($safe, [$s->tracking_number, $s->shipping_status, $s->origin_hub, $s->origin_province, $s->destination_hub, $s->destination_province, $s->courier?->username, $s->pickupRider?->username, $s->hubTransferRider?->username, $s->created_at, $s->delivered_at]), ',', '"', '');
+            }
+            fclose($out);
+        }, 'logistics-report.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
     // ── Rider management: "approve/disapprove rider/courier application; activate/deactivate" ──
     // Per the ERP spec, courier applications wait on the Logistics/Sorting Center's approval,
     // not the Admin's — unlike buyer/seller/logistics, which stay on AdminController.
@@ -1116,9 +1187,10 @@ class LogisticsController extends Controller
         // A company's own roster only — riders who joined this exact company at registration.
         $riders = User::where('account_type', 'rider')->where('business_name', $company)
             ->when($status, fn ($q) => $q->where('status', $status))
-            ->latest()->get();
+            ->latest()->orderByDesc('id')->paginate(20)->withQueryString();
         $statusCounts = User::where('account_type', 'rider')->where('business_name', $company)
             ->selectRaw('status, count(*) as c')->groupBy('status')->pluck('c', 'status');
+
         return view('logistics.riders', array_merge($counts, compact('riders', 'status', 'statusCounts')));
     }
 
@@ -1130,12 +1202,19 @@ class LogisticsController extends Controller
     /** Mirrors AdminController::notifyRegistrationDecision() — riders get the same email promise. */
     private function notifyRiderDecision(User $rider, bool $approved): void
     {
-        if (!$rider->email) return;
+        if (DB::transactionLevel() > 0) {
+            DB::afterCommit(fn () => $this->notifyRiderDecision($rider, $approved));
+
+            return;
+        }
+        if (! $rider->email) {
+            return;
+        }
         try {
-            \Illuminate\Support\Facades\Mail::raw(
+            Mail::raw(
                 $approved
-                    ? "Good news! Your PocketFinds Courier account has been approved by the Logistics/Sorting Center team. You can now log in at " . url('/login') . "."
-                    : "Your PocketFinds Courier account application was not approved. If you believe this is a mistake, please contact support.",
+                    ? 'Good news! Your PocketFinds Courier account has been approved by the Logistics/Sorting Center team. You can now log in at '.url('/login').'.'
+                    : 'Your PocketFinds Courier account application was not approved. If you believe this is a mistake, please contact support.',
                 fn ($m) => $m->to($rider->email)->subject($approved ? 'PocketFinds — Courier Application Approved' : 'PocketFinds — Courier Application Update')
             );
         } catch (\Exception $e) {
@@ -1146,28 +1225,38 @@ class LogisticsController extends Controller
     public function approveRider($id)
     {
         $rider = $this->rider($id);
+        abort_unless($rider->status === 'pending', 422, 'Only pending rider applications can be approved.');
         $rider->update(['status' => 'approved']);
         $this->notifyRiderDecision($rider, true);
+
         return back()->with('success', 'Courier application approved.');
     }
 
     public function rejectRider($id)
     {
         $rider = $this->rider($id);
+        abort_unless($rider->status === 'pending', 422, 'Only pending rider applications can be rejected.');
         $rider->update(['status' => 'rejected']);
         $this->notifyRiderDecision($rider, false);
+
         return back()->with('success', 'Courier application rejected.');
     }
 
     public function activateRider($id)
     {
-        $this->rider($id)->update(['status' => 'approved']);
+        $rider = $this->rider($id);
+        abort_unless($rider->status === 'suspended', 422, 'Only suspended personnel can be reactivated.');
+        $rider->update(['status' => 'approved']);
+
         return back()->with('success', 'Courier activated.');
     }
 
     public function suspendRider($id)
     {
-        $this->rider($id)->update(['status' => 'suspended']);
+        $rider = $this->rider($id);
+        abort_unless($rider->status === 'approved', 422, 'Only approved personnel can be suspended.');
+        $rider->update(['status' => 'suspended']);
+
         return back()->with('success', 'Courier suspended.');
     }
 
@@ -1176,20 +1265,17 @@ class LogisticsController extends Controller
      * existing company the same way a rider does, so it's this company's own admin who
      * reviews them, not the platform admin (see AdminController::registrations()).
      */
-    /**
-     * Every hub staff application, fetched once — the Pending/Interview/Approved/... tabs
-     * filter this same set client-side (see the shared [data-tabs] handler in admin.js),
-     * so switching tabs no longer round-trips to the server and re-renders the whole page.
-     */
     public function staff(Request $request)
     {
-        $counts  = $this->sidebarCounts();
+        $counts = $this->sidebarCounts();
         $company = auth()->user()->business_name;
-        $staff = User::with('logisticsHub')->where('account_type', 'logistics')->where('logistics_role', 'hub_staff')
-            ->where('business_name', $company)
-            ->latest()->get();
-        $statusCounts = $staff->countBy('status');
-        return view('logistics.staff', array_merge($counts, compact('staff', 'statusCounts')));
+        $status = in_array($request->query('status'), ['pending', 'interview', 'approved', 'rejected', 'suspended'], true) ? $request->query('status') : 'all';
+        $base = User::where('account_type', 'logistics')->where('logistics_role', 'hub_staff')->where('business_name', $company);
+        $statusCounts = (clone $base)->selectRaw('status, COUNT(*) as c')->groupBy('status')->pluck('c', 'status');
+        $staff = $base->with('logisticsHub')->when($status !== 'all', fn ($q) => $q->where('status', $status))
+            ->latest()->orderByDesc('id')->paginate(20)->withQueryString();
+
+        return view('logistics.staff', array_merge($counts, compact('staff', 'status', 'statusCounts')));
     }
 
     private function staffMember(int $id): User
@@ -1201,23 +1287,30 @@ class LogisticsController extends Controller
     /** Mirrors notifyRiderDecision() — hub staff get the same email promise, one per stage of the review. */
     private function notifyStaffStatus(User $staff, string $status, ?string $reason = null): void
     {
-        if (!$staff->email) return;
+        if (DB::transactionLevel() > 0) {
+            DB::afterCommit(fn () => $this->notifyStaffStatus($staff, $status, $reason));
+
+            return;
+        }
+        if (! $staff->email) {
+            return;
+        }
         $reasonLine = $reason ? "\n\nReason: {$reason}" : '';
         [$subject, $body] = match ($status) {
             'interview' => [
                 'PocketFinds — Face-to-Face Interview Invitation',
                 "Good news! {$staff->business_name} would like to move forward with your Hub Staff application.\n\n"
-                    . "You're invited to a face-to-face interview:\n"
-                    . "  Date: " . $staff->interview_scheduled_at?->format('l, F j, Y') . "\n"
-                    . "  Time: " . $staff->interview_scheduled_at?->format('g:i A') . "\n"
-                    . "  Location: {$staff->interview_location}\n\n"
-                    . "Once that's completed and confirmed, your account will be enabled and you'll be able to log in.\n\n"
-                    . "If you have any questions or need to reschedule, please reach out to {$staff->business_name} directly.",
+                    ."You're invited to a face-to-face interview:\n"
+                    .'  Date: '.$staff->interview_scheduled_at?->format('l, F j, Y')."\n"
+                    .'  Time: '.$staff->interview_scheduled_at?->format('g:i A')."\n"
+                    ."  Location: {$staff->interview_location}\n\n"
+                    ."Once that's completed and confirmed, your account will be enabled and you'll be able to log in.\n\n"
+                    ."If you have any questions or need to reschedule, please reach out to {$staff->business_name} directly.",
             ],
             'approved' => [
                 'PocketFinds — Hub Staff Application Approved',
                 "Good news! Your PocketFinds Hub Staff account for {$staff->business_name} has been approved following your interview. "
-                    . "You can now log in at " . url('/login') . ".",
+                    .'You can now log in at '.url('/login').'.',
             ],
             'rejected' => [
                 'PocketFinds — Hub Staff Application Update',
@@ -1226,19 +1319,21 @@ class LogisticsController extends Controller
             'suspended' => [
                 'PocketFinds — Hub Staff Account Suspended',
                 "Your PocketFinds Hub Staff account for {$staff->business_name} has been suspended and you will not be able to log in until it's reactivated. "
-                    . "If you believe this is a mistake, please contact {$staff->business_name} or PocketFinds support.{$reasonLine}",
+                    ."If you believe this is a mistake, please contact {$staff->business_name} or PocketFinds support.{$reasonLine}",
             ],
             'activated' => [
                 'PocketFinds — Hub Staff Account Reactivated',
                 "Good news! Your PocketFinds Hub Staff account for {$staff->business_name} has been reactivated. "
-                    . "You can now log in again at " . url('/login') . ".",
+                    .'You can now log in again at '.url('/login').'.',
             ],
             default => [null, null],
         };
-        if (!$subject) return;
+        if (! $subject) {
+            return;
+        }
 
         try {
-            \Illuminate\Support\Facades\Mail::raw($body, fn ($m) => $m->to($staff->email)->subject($subject));
+            Mail::raw($body, fn ($m) => $m->to($staff->email)->subject($subject));
         } catch (\Exception $e) {
             // Status is already saved either way — a mail hiccup shouldn't block the action.
         }
@@ -1256,17 +1351,18 @@ class LogisticsController extends Controller
         abort_unless($staff->status === 'pending', 422, 'Only a pending application can be invited to interview.');
 
         $data = $request->validate([
-            'interview_date'     => 'required|date|after_or_equal:today',
-            'interview_time'     => 'required|date_format:H:i',
+            'interview_date' => 'required|date|after_or_equal:today',
+            'interview_time' => 'required|date_format:H:i',
             'interview_location' => 'required|string|max:255',
         ]);
 
         $staff->update([
-            'status'                 => 'interview',
+            'status' => 'interview',
             'interview_scheduled_at' => "{$data['interview_date']} {$data['interview_time']}",
-            'interview_location'     => $data['interview_location'],
+            'interview_location' => $data['interview_location'],
         ]);
         $this->notifyStaffStatus($staff, 'interview');
+
         return back()->with('success', 'Interview invitation sent — the applicant is on hold until you confirm after the interview.');
     }
 
@@ -1274,35 +1370,42 @@ class LogisticsController extends Controller
     public function confirmStaffApproval($id)
     {
         $staff = $this->staffMember($id);
-        abort_unless(in_array($staff->status, ['interview', 'pending'], true), 422, 'This application is not awaiting approval.');
+        abort_unless($staff->status === 'interview', 422, 'This application is not awaiting approval.');
         $staff->update(['status' => 'approved', 'status_reason' => null]);
         $this->notifyStaffStatus($staff, 'approved');
+
         return back()->with('success', 'Hub staff application approved — they can now log in.');
     }
 
     public function rejectStaff(Request $request, $id)
     {
-        $staff  = $this->staffMember($id);
+        $staff = $this->staffMember($id);
+        abort_unless(in_array($staff->status, ['pending', 'interview'], true), 422, 'Only an application awaiting review can be rejected.');
         $reason = $this->resolveStaffReason($request);
         $staff->update(['status' => 'rejected', 'status_reason' => $reason]);
         $this->notifyStaffStatus($staff, 'rejected', $reason);
+
         return back()->with('success', 'Hub staff application rejected.');
     }
 
     public function activateStaff($id)
     {
         $staff = $this->staffMember($id);
+        abort_unless($staff->status === 'suspended', 422, 'Only suspended personnel can be reactivated.');
         $staff->update(['status' => 'approved', 'status_reason' => null]);
         $this->notifyStaffStatus($staff, 'activated');
+
         return back()->with('success', 'Hub staff account reactivated.');
     }
 
     public function suspendStaff(Request $request, $id)
     {
-        $staff  = $this->staffMember($id);
+        $staff = $this->staffMember($id);
+        abort_unless($staff->status === 'approved', 422, 'Only approved personnel can be suspended.');
         $reason = $this->resolveStaffReason($request);
         $staff->update(['status' => 'suspended', 'status_reason' => $reason]);
         $this->notifyStaffStatus($staff, 'suspended', $reason);
+
         return back()->with('success', 'Hub staff account suspended.');
     }
 
@@ -1314,41 +1417,48 @@ class LogisticsController extends Controller
     private function resolveStaffReason(Request $request): ?string
     {
         $request->validate([
-            'reason_preset'  => 'required|string|max:150',
+            'reason_preset' => 'required|string|max:150',
             'reason_details' => $request->input('reason_preset') === 'other' ? 'required|string|max:1000' : 'nullable|string|max:1000',
         ]);
-        $preset  = $request->input('reason_preset');
+        $preset = $request->input('reason_preset');
         $details = trim((string) $request->input('reason_details'));
-        if ($preset === 'other') return $details;
+        if ($preset === 'other') {
+            return $details;
+        }
+
         return $details !== '' ? "{$preset} — {$details}" : $preset;
     }
 
     /** Hub management — view all company hubs, staff counts, and toggle hiring status. */
     public function hubs(Request $request)
     {
-        $counts  = $this->sidebarCounts();
+        $counts = $this->sidebarCounts();
         $company = auth()->user()->business_name;
 
-        $search       = trim($request->query('search', ''));
+        $search = trim($request->query('search', ''));
         $hiringFilter = $request->query('hiring', ''); // 'all', 'hiring', 'not_hiring'
 
-        $hubsQuery = \App\Models\LogisticsHub::where('company_name', $company);
+        $hubsQuery = LogisticsHub::where('company_name', $company)->withCount([
+            'staff', 'riders',
+            'staff as approved_staff_count' => fn ($q) => $q->where('business_name', $company)->where('is_admin', false)->where('status', 'approved'),
+            'riders as approved_rider_count' => fn ($q) => $q->where('business_name', $company)->where('is_admin', false)->where('is_logistics', false)->where('status', 'approved'),
+        ]);
 
         if ($search) {
             $hubsQuery->where(function ($q) use ($search) {
-                $q->whereRaw('LOWER(municipality) LIKE ?', ['%' . mb_strtolower($search) . '%'])
-                  ->orWhereRaw('LOWER(province) LIKE ?', ['%' . mb_strtolower($search) . '%']);
+                $q->whereRaw('LOWER(municipality) LIKE ?', ['%'.mb_strtolower($search).'%'])
+                    ->orWhereRaw('LOWER(province) LIKE ?', ['%'.mb_strtolower($search).'%']);
             });
         }
 
-        if ($hiringFilter === 'hiring') {
-            $hubsQuery->where('is_hiring', true);
-        } elseif ($hiringFilter === 'not_hiring') {
-            $hubsQuery->where('is_hiring', false);
-        }
-
-        $allHubs = $hubsQuery->orderBy('province')->orderBy('municipality')->get();
-
+        $companyHubs = $hubsQuery->orderBy('province')->orderBy('municipality')->get();
+        $companyHubs->each(function ($hub) {
+            $flow = app(HubHiring::class);
+            $hub->rider_hiring_state = $flow->availability($hub, 'rider', $hub->approved_rider_count);
+            $hub->staff_hiring_state = $flow->availability($hub, 'hub_staff', $hub->approved_staff_count);
+        });
+        $allHubs = $companyHubs->filter(fn ($hub) => ! in_array($hiringFilter, ['hiring', 'not_hiring'], true)
+            || ($hub->rider_hiring_state['eligible'] || $hub->staff_hiring_state['eligible']) === ($hiringFilter === 'hiring'));
         // Staff counts per hub
         $staffPerHub = User::where('account_type', 'logistics')
             ->where('business_name', $company)
@@ -1359,41 +1469,60 @@ class LogisticsController extends Controller
             ->pluck('count', 'logistics_hub_id');
 
         // Metrics for summary cards
-        $totalHubs         = \App\Models\LogisticsHub::where('company_name', $company)->count();
-        $regionalHubsCount = \App\Models\LogisticsHub::where('company_name', $company)->where('is_regional_hub', true)->count();
-        $hiringHubsCount   = \App\Models\LogisticsHub::where('company_name', $company)->where('is_hiring', true)->count();
+        $totalHubs = LogisticsHub::where('company_name', $company)->count();
+        $regionalHubsCount = LogisticsHub::where('company_name', $company)->where('is_regional_hub', true)->count();
+        $metricHubs = LogisticsHub::where('company_name', $company)->withCount(['staff as approved_staff_count' => fn ($q) => $q->where('business_name', $company)->where('is_admin', false)->where('status', 'approved'), 'riders as approved_rider_count' => fn ($q) => $q->where('business_name', $company)->where('is_admin', false)->where('is_logistics', false)->where('status', 'approved')])->get();
+        $flow = app(HubHiring::class);
+        $riderHiringCount = $metricHubs->filter(fn ($h) => $flow->availability($h, 'rider', $h->approved_rider_count)['eligible'])->count();
+        $staffHiringCount = $metricHubs->filter(fn ($h) => $flow->availability($h, 'hub_staff', $h->approved_staff_count)['eligible'])->count();
+        $hiringHubsCount = $metricHubs->filter(fn ($h) => $flow->availability($h, 'rider', $h->approved_rider_count)['eligible'] || $flow->availability($h, 'hub_staff', $h->approved_staff_count)['eligible'])->count();
         $notHiringHubsCount = $totalHubs - $hiringHubsCount;
+
+        $page = Paginator::resolveCurrentPage();
+        $hubPages = new LengthAwarePaginator($allHubs->forPage($page, 20)->values(), $allHubs->count(), 20, $page,
+            ['path' => $request->url(), 'query' => $request->query()]);
+        $allHubs = $hubPages->getCollection();
 
         // Group hubs by province
         $groupedHubs = $allHubs->groupBy('province');
 
         return view('logistics.hubs', array_merge($counts, compact(
             'groupedHubs', 'totalHubs', 'regionalHubsCount', 'hiringHubsCount', 'notHiringHubsCount',
-            'staffPerHub', 'search', 'hiringFilter'
+            'staffPerHub', 'search', 'hiringFilter', 'allHubs', 'riderHiringCount', 'staffHiringCount', 'hubPages'
         )));
     }
 
     public function toggleHubHiring(Request $request, $id)
     {
-        $company = auth()->user()->business_name;
-        $hub = \App\Models\LogisticsHub::where('company_name', $company)->findOrFail($id);
+        LogisticsHub::where('company_name', $request->user()->business_name)->findOrFail($id);
+        $data = $request->validate([
+            'role' => 'required|in:rider,hub_staff', 'is_hiring' => 'required|boolean',
+            'limit' => 'nullable|integer|min:0|max:100000',
+            'closes_at' => 'nullable|date_format:Y-m-d\\TH:i', 'revision' => 'required|integer|min:0',
+        ]);
+        DB::transaction(function () use ($request, $id, $data) {
+            $hub = LogisticsHub::where('company_name', $request->user()->business_name)->lockForUpdate()->findOrFail($id);
+            $actor = User::whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
+            abort_unless($actor->isLogisticsAdmin() && $actor->account_type === 'logistics' && $actor->is_logistics && ! $actor->is_admin
+                && $actor->status === 'approved' && $actor->business_name === $hub->company_name, 403);
+            if ((int) $hub->hiring_revision !== (int) $data['revision']) {
+                throw ValidationException::withMessages(['revision' => 'Hiring settings changed. Refresh before saving.']);
+            }
+            $prefix = app(HubHiring::class)->prefix($data['role']);
+            $values = [$prefix.'_hiring_open' => (bool) $data['is_hiring'],
+                $prefix.'_hire_limit' => array_key_exists('limit', $data) ? $data['limit'] : $hub->{$prefix.'_hire_limit'},
+                $prefix.'_hiring_closes_at' => ! array_key_exists('closes_at', $data) ? $hub->{$prefix.'_hiring_closes_at'}
+                    : (empty($data['closes_at']) ? null : Carbon::createFromFormat('Y-m-d\\TH:i', $data['closes_at'], config('app.timezone'))->startOfMinute())];
+            $changes = ['role' => $data['role'], 'before' => $hub->only(array_keys($values)), 'after' => $values];
+            foreach ($values as $key => $value) {
+                $hub->{$key} = $value;
+            }
+            $hub->hiring_revision++;
+            $hub->save();
+            $request->attributes->set('hiring_changes', $changes);
+        });
 
-        if ($request->has('is_hiring')) {
-            $hub->is_hiring = filter_var($request->input('is_hiring'), FILTER_VALIDATE_BOOLEAN);
-        } else {
-            $hub->is_hiring = !$hub->is_hiring;
-        }
-        $hub->save();
-
-        if ($request->expectsJson() || $request->ajax()) {
-            return response()->json([
-                'success'   => true,
-                'is_hiring' => $hub->is_hiring,
-                'message'   => "{$hub->municipality} hub hiring status updated to " . ($hub->is_hiring ? 'Hiring' : 'Not Hiring') . ".",
-            ]);
-        }
-
-        return back()->with('success', "{$hub->municipality} hub hiring status updated to " . ($hub->is_hiring ? 'Hiring' : 'Not Hiring') . ".");
+        return back()->with('success', 'Role hiring settings saved.');
     }
 
     /**
@@ -1403,22 +1532,24 @@ class LogisticsController extends Controller
      */
     public function fleet(Request $request)
     {
-        $counts  = $this->sidebarCounts();
+        $counts = $this->sidebarCounts();
         $company = auth()->user()->business_name;
 
-        $vehicles     = \App\Models\CompanyVehicle::with(['hub', 'submitter'])
-            ->where('company_name', $company)->latest()->get();
-        $platformCounts = $vehicles->countBy('platform_status');
-        $hubs         = \App\Models\LogisticsHub::where('company_name', $company)
+        $status = in_array($request->query('status'), ['pending', 'approved', 'rejected'], true) ? $request->query('status') : 'all';
+        $base = CompanyVehicle::where('company_name', $company);
+        $platformCounts = (clone $base)->selectRaw('platform_status, COUNT(*) as c')->groupBy('platform_status')->pluck('c', 'platform_status');
+        $vehicles = $base->with(['hub', 'submitter'])->when($status !== 'all', fn ($q) => $q->where('platform_status', $status))
+            ->latest()->orderByDesc('id')->paginate(20)->withQueryString();
+        $hubs = LogisticsHub::where('company_name', $company)
             ->orderBy('province')->orderBy('municipality')->get();
         $vehicleTypes = DB::table('vehicle_types')->orderBy('id')->get();
 
-        return view('logistics.fleet', array_merge($counts, compact('vehicles', 'platformCounts', 'hubs', 'vehicleTypes')));
+        return view('logistics.fleet', array_merge($counts, compact('vehicles', 'platformCounts', 'hubs', 'vehicleTypes', 'status')));
     }
 
-    private function fleetVehicle(int $id): \App\Models\CompanyVehicle
+    private function fleetVehicle(int $id): CompanyVehicle
     {
-        return \App\Models\CompanyVehicle::where('company_name', auth()->user()->business_name)->findOrFail($id);
+        return CompanyVehicle::where('company_name', auth()->user()->business_name)->findOrFail($id);
     }
 
     /** Logistics admin submits a vehicle — assigns it to one of their hubs, then waits for platform admin to approve. */
@@ -1428,24 +1559,24 @@ class LogisticsController extends Controller
         $company = auth()->user()->business_name;
 
         $data = $request->validate([
-            'logistics_hub_id' => ['required', 'integer', \Illuminate\Validation\Rule::exists('logistics_hubs', 'id')
+            'logistics_hub_id' => ['required', 'integer', Rule::exists('logistics_hubs', 'id')
                 ->where('company_name', $company)],
-            'vehicle_type'     => 'required|string|exists:vehicle_types,slug',
-            'brand'            => 'required|string|max:100',
-            'model'            => 'required|string|max:100',
-            'plate_number'     => 'required|string|max:20|unique:company_vehicles,plate_number',
+            'vehicle_type' => 'required|string|exists:vehicle_types,slug',
+            'brand' => 'required|string|max:100',
+            'model' => 'required|string|max:100',
+            'plate_number' => 'required|string|max:20|unique:company_vehicles,plate_number',
         ]);
 
-        \App\Models\CompanyVehicle::create([
-            'company_name'     => $company,
+        CompanyVehicle::create([
+            'company_name' => $company,
             'logistics_hub_id' => $data['logistics_hub_id'],
-            'vehicle_type'     => $data['vehicle_type'],
-            'brand'            => $data['brand'],
-            'model'            => $data['model'],
-            'plate_number'     => strtoupper($data['plate_number']),
-            'submitted_by'     => auth()->id(),
-            'platform_status'  => 'pending',
-            'status'           => 'pending',
+            'vehicle_type' => $data['vehicle_type'],
+            'brand' => $data['brand'],
+            'model' => $data['model'],
+            'plate_number' => strtoupper($data['plate_number']),
+            'submitted_by' => auth()->id(),
+            'platform_status' => 'pending',
+            'status' => 'pending',
         ]);
 
         return back()->with('success', 'Vehicle submitted to PocketFinds for review. It will be available for rider assignment once approved.');
@@ -1458,6 +1589,7 @@ class LogisticsController extends Controller
         $vehicle = $this->fleetVehicle($id);
         abort_unless($vehicle->platform_status === 'pending', 422, 'Only pending vehicles can be removed.');
         $vehicle->delete();
+
         return back()->with('success', 'Vehicle removed.');
     }
 
@@ -1466,10 +1598,10 @@ class LogisticsController extends Controller
     {
         abort_unless(auth()->user()->isHubStaff(), 403);
         $counts = $this->sidebarCounts();
-        $hub    = auth()->user()->logisticsHub;
+        $hub = auth()->user()->logisticsHub;
         abort_unless($hub, 422, 'Your account has no hub linked.');
 
-        $vehicles = \App\Models\CompanyVehicle::where('logistics_hub_id', $hub->id)->latest()->get();
+        $vehicles = CompanyVehicle::where('logistics_hub_id', $hub->id)->latest()->orderByDesc('id')->paginate(20)->withQueryString();
 
         return view('logistics.hub-vehicles', array_merge($counts, compact('hub', 'vehicles')));
     }
@@ -1478,65 +1610,75 @@ class LogisticsController extends Controller
     public function toggleVehicleAvailability($id)
     {
         abort_unless(auth()->user()->isHubStaff(), 403);
-        $hub     = auth()->user()->logisticsHub;
-        $vehicle = \App\Models\CompanyVehicle::where('logistics_hub_id', $hub?->id)
+        $hub = auth()->user()->logisticsHub;
+        $vehicle = CompanyVehicle::where('logistics_hub_id', $hub?->id)
             ->where('platform_status', 'approved')->findOrFail($id);
-        $vehicle->update(['is_available' => !$vehicle->is_available]);
+        $vehicle->update(['is_available' => ! $vehicle->is_available]);
         $msg = $vehicle->is_available
             ? "{$vehicle->brand} {$vehicle->model} marked available again."
             : "{$vehicle->brand} {$vehicle->model} marked as in maintenance — it won't be offered to new riders until it's back.";
+
         return back()->with('success', $msg);
     }
 
     /** Enrich a set of contacts with their latest message + unread count against this staff member. */
     private function withThreadPreview($users)
     {
-        $myId    = auth()->id();
+        $myId = auth()->id();
         $threads = Message::where('sender_id', $myId)->orWhere('receiver_id', $myId)
             ->latest('created_at')->get()
             ->groupBy(fn ($m) => $m->sender_id === $myId ? $m->receiver_id : $m->sender_id);
 
         return $users->map(function ($u) use ($threads, $myId) {
-            $thread          = $threads->get($u->id);
+            $thread = $threads->get($u->id);
             $u->last_message = $thread?->first();
             $u->unread_count = $thread ? $thread->where('receiver_id', $myId)->where('read', false)->count() : 0;
+
             return $u;
-        })->sortByDesc(fn ($u) => $u->last_message?->created_at ?? \Carbon\Carbon::createFromTimestamp(0))->values();
+        })->sortByDesc(fn ($u) => $u->last_message?->created_at ?? Carbon::createFromTimestamp(0))->values();
     }
 
     private function allowedContacts(): array
     {
         return [
-            'admins'   => $this->withThreadPreview(User::where('is_admin', true)->get()),
-            'couriers' => $this->withThreadPreview(User::where('account_type', 'rider')->where('status', 'approved')->get()),
-            'sellers'  => $this->withThreadPreview(User::where('account_type', 'seller')->where('status', 'approved')->get()),
+            'admins' => $this->withThreadPreview(User::where('is_admin', true)->get()),
+            'couriers' => $this->withThreadPreview(User::where('account_type', 'rider')->where('status', 'approved')->where('business_name', auth()->user()->business_name)->when(auth()->user()->isHubStaff(), fn ($q) => $q->where('logistics_hub_id', auth()->user()->logistics_hub_id))->get()),
+            'sellers' => $this->withThreadPreview(User::where('account_type', 'seller')->where('status', 'approved')->whereIn('id', Order::whereIn('id', $this->companyScope()->select('order_id'))->select('seller_id'))->get()),
         ];
     }
 
     protected function isAllowedContact(User $user): bool
     {
-        return $user->is_admin
-            || $user->account_type === 'rider'
-            || $user->account_type === 'seller';
+        if ($user->is_admin) {
+            return true;
+        }
+        if ($user->account_type === 'rider') {
+            return $user->status === 'approved' && $user->business_name === auth()->user()->business_name
+                && (! auth()->user()->isHubStaff() || (int) $user->logistics_hub_id === (int) auth()->user()->logistics_hub_id);
+        }
+
+        return $user->account_type === 'seller' && $user->status === 'approved' && $this->companyScope()->whereHas('order', fn ($q) => $q->where('seller_id', $user->id))->exists();
     }
 
     public function messages()
     {
-        $counts     = $this->sidebarCounts();
+        $counts = $this->sidebarCounts();
         $activeUser = null;
-        $messages   = collect();
+        $messages = collect();
+
         return view('logistics.messages', array_merge($counts, $this->allowedContacts(), compact('activeUser', 'messages')));
     }
 
     public function messagesThread($userId)
     {
-        $counts     = $this->sidebarCounts();
+        $counts = $this->sidebarCounts();
         $activeUser = User::findOrFail($userId);
-        abort_if(!$this->isAllowedContact($activeUser), 403);
+        abort_if(! $this->isAllowedContact($activeUser), 403);
         Message::where('sender_id', $activeUser->id)->where('receiver_id', auth()->id())->where('read', false)->update(['read' => true]);
-        $messages = Message::where(fn($q) => $q->where('sender_id', auth()->id())->where('receiver_id', $activeUser->id))
-            ->orWhere(fn($q) => $q->where('sender_id', $activeUser->id)->where('receiver_id', auth()->id()))
+        $messages = Message::where(fn ($q) => $q->where('sender_id', auth()->id())->where('receiver_id', $activeUser->id))
+            ->orWhere(fn ($q) => $q->where('sender_id', $activeUser->id)->where('receiver_id', auth()->id()))
             ->oldest()->get();
+
         return view('logistics.messages', array_merge($counts, $this->allowedContacts(), compact('activeUser', 'messages')));
     }
 
@@ -1544,12 +1686,13 @@ class LogisticsController extends Controller
     {
         $counts = $this->sidebarCounts();
         $companyName = auth()->user()->business_name;
-        $companyPolicy = $companyName ? \App\Models\LogisticsCompany::policyFor($companyName) : null;
+        $companyPolicy = $companyName ? LogisticsCompany::policyFor($companyName) : null;
+
         return view('logistics.account', array_merge($counts, [
-            'company'        => $companyName,
-            'companyPolicy'  => $companyPolicy,
+            'company' => $companyName,
+            'companyPolicy' => $companyPolicy,
             'pendingRequest' => $this->pendingAccountUpdateRequest(),
-            'lastRequest'    => $this->lastAccountUpdateRequest(),
+            'lastRequest' => $this->lastAccountUpdateRequest(),
         ]));
     }
 
@@ -1564,8 +1707,8 @@ class LogisticsController extends Controller
         abort_unless($companyName, 404);
         $data = $request->validate(['content' => 'required|string|max:20000']);
 
-        $policy = \App\Models\LogisticsCompany::policyFor($companyName)
-            ?? \App\Models\Policy::create(['type' => 'logistics_company_terms', 'company_name' => $companyName, 'title' => $companyName . ' — Terms & Conditions']);
+        $policy = LogisticsCompany::policyFor($companyName)
+            ?? Policy::create(['type' => 'logistics_company_terms', 'company_name' => $companyName, 'title' => $companyName.' — Terms & Conditions']);
         $policy->submitPending($data['content'], auth()->id());
 
         return back()->with('policy_success', 'Submitted — an admin will review it before it goes live.');
@@ -1579,23 +1722,23 @@ class LogisticsController extends Controller
     public function accountUpdate(Request $request)
     {
         $request->validate([
-            'given_names'      => 'required|string|max:255',
-            'last_name'        => 'required|string|max:255',
-            'middle_name'      => ['nullable', 'regex:/^[A-Za-z]$/'],
-            'contact_no'       => ['nullable', 'regex:/^09[0-9]{9}$/'],
-            'sex'              => 'nullable|in:male,female,other',
-            'profile_picture'  => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'given_names' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'middle_name' => ['nullable', 'regex:/^[A-Za-z]$/'],
+            'contact_no' => ['nullable', 'regex:/^09[0-9]{9}$/'],
+            'sex' => 'nullable|in:male,female,other',
+            'profile_picture' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ], [
             'middle_name.regex' => 'Middle name must be a single letter.',
-            'contact_no.regex'  => 'Contact number must start with 09 and be exactly 11 digits.',
+            'contact_no.regex' => 'Contact number must start with 09 and be exactly 11 digits.',
         ]);
 
         if ($request->hasFile('profile_picture')) {
             $user = auth()->user();
             if ($user->profile_picture) {
-                Storage::disk('profile_images')->delete($user->profile_picture);
+                app(MediaLifecycle::class)->deleteAfterCommit($user->profile_picture, 'profile_images');
             }
-            $user->update(['profile_picture' => $request->file('profile_picture')->store('avatars', 'profile_images')]);
+            $user->update(['profile_picture' => app(MediaLifecycle::class)->store($request->file('profile_picture'), 'avatars', 'profile_images')]);
         }
 
         return $this->submitAccountUpdateRequest(
@@ -1610,11 +1753,11 @@ class LogisticsController extends Controller
     public function accountAddressUpdate(Request $request)
     {
         $request->validate([
-            'province'     => 'required|string|max:255',
+            'province' => 'required|string|max:255',
             'municipality' => 'required|string|max:255',
-            'barangay'     => 'required|string|max:255',
-            'house_no'     => 'nullable|string|max:255',
-            'street'       => 'nullable|string|max:255',
+            'barangay' => 'required|string|max:255',
+            'house_no' => 'nullable|string|max:255',
+            'street' => 'nullable|string|max:255',
         ]);
 
         return $this->submitAccountUpdateRequest(
@@ -1629,12 +1772,13 @@ class LogisticsController extends Controller
     {
         $request->validate([
             'current_password' => 'required',
-            'password'         => 'required|min:8|confirmed',
+            'password' => 'required|min:8|confirmed',
         ]);
-        if (!Hash::check($request->current_password, auth()->user()->password)) {
+        if (! Hash::check($request->current_password, auth()->user()->password)) {
             return back()->withErrors(['current_password' => 'Current password is incorrect.']);
         }
         auth()->user()->update(['password' => Hash::make($request->password)]);
+
         return back()->with('password_success', 'Password updated.');
     }
 }

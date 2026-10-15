@@ -9,8 +9,8 @@
   <div class="card-head">
     <h2>Delivery Assignments</h2>
     <div style="display:flex;gap:8px">
-      <span class="stamp stamp-pending">{{ $shipments->where('shipping_status','sorted')->count() }} awaiting courier</span>
-      <span class="stamp stamp-active">{{ $shipments->whereIn('shipping_status',['assigned_to_rider','out_for_delivery'])->count() }} in progress</span>
+      <span class="stamp stamp-pending">{{ $assignmentCounts['sorted'] ?? 0 }} awaiting courier</span>
+      <span class="stamp stamp-active">{{ ($assignmentCounts['assigned_to_rider'] ?? 0) + ($assignmentCounts['out_for_delivery'] ?? 0) }} in progress</span>
     </div>
   </div>
   <div class="table-wrap">
@@ -53,7 +53,7 @@
                 <button class="btn btn-sm btn-primary">Assign</button>
               </form>
             @elseif($s->shipping_status === 'at_sorting_center' && $s->needsHubTransfer())
-              <span style="color:var(--muted);font-size:12.5px">At {{ $s->origin_hub }} — assign a hub-transfer rider on the Scan page</span>
+              <span style="color:var(--muted);font-size:12.5px">At {{ $s->origin_hub }} — awaiting Logistics Admin dispatch of the approved batch</span>
             @elseif($s->shipping_status === 'hub_transfer')
               @php($activeLeg = $s->activeHubLeg())
               <span style="color:var(--muted);font-size:12.5px">{{ optional($s->hubTransferRider)->given_names ?? 'A rider' }} en route {{ $activeLeg->from_hub ?? $s->origin_hub }} → {{ $activeLeg->to_hub ?? $s->destination_hub }}</span>
@@ -79,4 +79,5 @@
     </table>
   </div>
 </div>
+{{ $shipments->links() }}
 @endsection

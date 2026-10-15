@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Services\GcashLocks;
+use App\Services\GcashWorkflow;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class Order extends Model
 {
@@ -14,13 +17,49 @@ class Order extends Model
     // in-memory id after create() (casts the generated uuid down to (int) 0);
     // with it declared false, Eloquent skips fetching the id back at all. So
     // the id is generated here, same as Product/Review/Shipment.
-    protected $keyType      = 'string';
-    public    $incrementing = false;
+    protected $keyType = 'string';
+
+    public $incrementing = false;
 
     protected static function boot()
     {
         parent::boot();
         static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
+    }
+
+    public function save(array $options = [])
+    {
+        if (! $this->exists || ! $this->gcash_purchase_id) {
+            return parent::save($options);
+        }
+
+        return DB::transaction(function () use ($options) {
+            $locked = static::lockFresh($this->id);
+            $newHandoff = $this->isDirty('status') && in_array($this->status, ['confirmed', 'preparing', 'ready_for_pickup', 'picked_up']) && in_array($locked->status, ['placed', 'confirmed', 'preparing', 'ready_for_pickup']);
+            app(GcashWorkflow::class)->assertOrderOperation($locked, $newHandoff);
+
+            return parent::save($options);
+        }, 3);
+    }
+
+    protected static function booted(): void
+    {
+        static::updating(function ($order) {
+            if ($order->gcash_purchase_id && $order->isDirty('status') && in_array($order->status, ['confirmed', 'preparing', 'ready_for_pickup'])) {
+                $purchase = GcashPurchase::whereKey($order->gcash_purchase_id)->lockForUpdate()->firstOrFail();
+                if ($purchase->payment_state === 'manual_resolution') {
+                    throw ValidationException::withMessages(['gcash' => 'This prepaid purchase requires manual resolution. Cancel through the existing order workflow before releasing its stock.']);
+                }
+            }
+        });
+        static::saved(function ($order) {
+            if ($order->gcash_purchase_id && in_array($order->status, ['delivered', 'completed'])) {
+                $count = DB::table('gcash_stock_allocations')->where('purchase_id', $order->gcash_purchase_id)->where('state', 'transferred')->update(['state' => 'fulfilled', 'updated_at' => now()]);
+                if ($count) {
+                    DB::table('gcash_purchase_history')->insert(['purchase_id' => $order->gcash_purchase_id, 'actor_id' => auth()->id(), 'event' => 'allocation_fulfilled', 'before' => json_encode(['allocation' => 'transferred']), 'after' => json_encode(['allocation' => 'fulfilled', 'order_id' => $order->id, 'order_status' => $order->status]), 'reason' => 'The delivered order no longer depends on the listing.', 'created_at' => now()]);
+                }
+            }
+        });
     }
 
     /**
@@ -38,13 +77,14 @@ class Order extends Model
     const IN_TRANSIT_STATUSES = ['picked_up', 'at_sorting_center', 'hub_transfer', 'sorted', 'assigned_to_rider'];
 
     /** Buyer-facing groupings — buyers don't need the seller/logistics-level granularity. */
-    const BUYER_TO_SHIP_STATUSES     = ['placed', 'confirmed', 'preparing', 'ready_for_pickup'];
-    const BUYER_IN_TRANSIT_STATUSES  = ['picked_up', 'at_sorting_center', 'hub_transfer', 'sorted', 'assigned_to_rider'];
+    const BUYER_TO_SHIP_STATUSES = ['placed', 'confirmed', 'preparing', 'ready_for_pickup'];
+
+    const BUYER_IN_TRANSIT_STATUSES = ['picked_up', 'at_sorting_center', 'hub_transfer', 'sorted', 'assigned_to_rider'];
 
     protected $fillable = [
         'order_number', 'buyer_id', 'seller_id', 'status', 'items', 'subtotal',
         'shipping_amount', 'discount_amount', 'voucher_code', 'total', 'shipping_address',
-        'buyer_note', 'payment_method_id', 'payment_method',
+        'buyer_note', 'payment_method_id', 'payment_method', 'gcash_purchase_id',
         'cancellation_reason', 'cancellation_note',
     ];
 
@@ -66,7 +106,7 @@ class Order extends Model
     /** This order's row, locked for the rest of the surrounding DB::transaction — re-read fresh so status checks can't act on a stale copy. */
     public static function lockFresh(string $id): self
     {
-        return static::whereKey($id)->lockForUpdate()->firstOrFail();
+        return GcashLocks::order($id);
     }
 
     /**
@@ -76,6 +116,11 @@ class Order extends Model
      */
     public function restoreStock(): void
     {
+        if ($this->gcash_purchase_id) {
+            app(GcashWorkflow::class)->releaseOrder($this);
+
+            return;
+        }
         foreach ($this->items ?? [] as $item) {
             $product = Product::where('id', $item['product_id'] ?? null)->lockForUpdate()->first();
             $product?->deductStock(-(int) ($item['qty'] ?? 0), ($item['variation_group'] ?? null) ?: null, ($item['variation_value'] ?? null) ?: null);
@@ -92,7 +137,9 @@ class Order extends Model
 
     public static function notifyUser(?int $userId, string $title, string $message, string $type, ?string $orderId): void
     {
-        if (!$userId) return;
+        if (! $userId) {
+            return;
+        }
         DB::table('notifications')->insert([
             'id' => (string) Str::uuid(), 'user_id' => $userId, 'title' => $title, 'message' => $message,
             'notification_type' => $type, 'reference_id' => $orderId, 'is_read' => false, 'created_at' => now(),
@@ -106,16 +153,17 @@ class Order extends Model
      */
     public function cancelAndRestock(string $reason, ?string $note, ?int $actorId, array $allowedFrom = self::CANCELLABLE_STATUSES): bool
     {
-        if (!in_array($this->status, $allowedFrom, true)) {
+        if (! in_array($this->status, $allowedFrom, true)) {
             return false;
         }
-        $hadDeductedStock = $this->status !== 'placed';
+        $hadDeductedStock = $this->status !== 'placed' || $this->gcash_purchase_id;
 
         $this->update(['status' => 'cancelled', 'cancellation_reason' => $reason, 'cancellation_note' => $note]);
         if ($hadDeductedStock) {
             $this->restoreStock();
         }
         $this->logStatus('cancelled', $actorId, $reason);
+
         return true;
     }
 
@@ -129,16 +177,19 @@ class Order extends Model
         foreach ($ids as $id) {
             DB::transaction(function () use ($id, &$completed) {
                 $order = static::lockFresh($id);
-                if ($order->status !== 'delivered') return;
+                if ($order->status !== 'delivered') {
+                    return;
+                }
 
                 $order->update(['status' => 'completed']);
                 $order->shipment?->update(['delivered_at' => $order->shipment->delivered_at ?: now()]);
-                $order->logStatus('completed', null, 'Auto-completed: buyer did not confirm receipt within ' . self::AUTO_COMPLETE_DAYS . ' days of delivery.');
-                static::notifyUser($order->buyer_id, 'Order Completed', 'Order #' . $order->order_number . ' was automatically marked completed.', 'order_status', $order->id);
-                static::notifyUser($order->seller_id, 'Order Completed', 'Order #' . $order->order_number . ' was automatically marked completed — the buyer did not respond after delivery.', 'order_delivered', $order->id);
+                $order->logStatus('completed', null, 'Auto-completed: buyer did not confirm receipt within '.self::AUTO_COMPLETE_DAYS.' days of delivery.');
+                static::notifyUser($order->buyer_id, 'Order Completed', 'Order #'.$order->order_number.' was automatically marked completed.', 'order_status', $order->id);
+                static::notifyUser($order->seller_id, 'Order Completed', 'Order #'.$order->order_number.' was automatically marked completed — the buyer did not respond after delivery.', 'order_delivered', $order->id);
                 $completed++;
             });
         }
+
         return $completed;
     }
 
@@ -154,11 +205,30 @@ class Order extends Model
         }
     }
 
-    public function buyer() { return $this->belongsTo(User::class, 'buyer_id'); }
-    public function seller() { return $this->belongsTo(User::class, 'seller_id'); }
-    public function paymentMethod() { return $this->belongsTo(PaymentMethod::class); }
-    public function shipment() { return $this->hasOne(Shipment::class); }
-    public function review() { return $this->hasOne(Review::class); }
+    public function buyer()
+    {
+        return $this->belongsTo(User::class, 'buyer_id');
+    }
+
+    public function seller()
+    {
+        return $this->belongsTo(User::class, 'seller_id');
+    }
+
+    public function paymentMethod()
+    {
+        return $this->belongsTo(PaymentMethod::class);
+    }
+
+    public function shipment()
+    {
+        return $this->hasOne(Shipment::class);
+    }
+
+    public function review()
+    {
+        return $this->hasOne(Review::class);
+    }
 
     /**
      * This order's items, with each one's image guaranteed to be a real, working
@@ -175,11 +245,12 @@ class Order extends Model
 
         return collect($items)->map(function ($item) use ($products) {
             $img = $item['img'] ?? null;
-            if (!$img || (!str_starts_with($img, 'http') && !str_starts_with($img, '/storage/'))) {
+            if (! $img || (! str_starts_with($img, 'http') && ! str_starts_with($img, '/storage/'))) {
                 $product = $products->get($item['product_id'] ?? null);
                 $path = $product?->image ?: ($product?->images[0] ?? null);
-                $item['img'] = $path ? rtrim(config('filesystems.disks.public.url'), '/') . '/' . ltrim($path, '/') : null;
+                $item['img'] = $path ? rtrim(config('filesystems.disks.public.url'), '/').'/'.ltrim($path, '/') : null;
             }
+
             return $item;
         })->all();
     }

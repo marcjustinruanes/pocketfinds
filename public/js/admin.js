@@ -1,31 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-  /* ---- Sidebar toggle (mobile + desktop) ---- */
-  const sidebar = document.getElementById('sidebar');
-  const shell   = document.getElementById('appShell');
-  const COLLAPSED_KEY = 'sidebar_collapsed';
-
-  // restore state
-  if (localStorage.getItem(COLLAPSED_KEY) === '1') {
-    shell?.classList.add('collapsed');
-  }
-
-  document.querySelector('[data-sidebar-toggle]')?.addEventListener('click', () => {
-    if (window.innerWidth <= 860) {
-      sidebar?.classList.toggle('open');
-    } else {
-      const isCollapsed = shell?.classList.toggle('collapsed');
-      localStorage.setItem(COLLAPSED_KEY, isCollapsed ? '1' : '0');
-    }
-  });
-
-  document.addEventListener('click', (e) => {
-    if (window.innerWidth > 860) return;
-    if (sidebar?.classList.contains('open') && !sidebar.contains(e.target) && !e.target.closest('[data-sidebar-toggle]')) {
-      sidebar.classList.remove('open');
-    }
-  });
-
   /* ---- Dropdowns (notifications, etc.) ---- */
   document.querySelectorAll('[data-dropdown-toggle]').forEach(btn => {
     btn.addEventListener('click', (e) => {

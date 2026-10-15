@@ -11,7 +11,7 @@
 <div class="card" style="margin-bottom:16px">
   <div class="card-head">
     <h2>Pickup Requests</h2>
-    <span class="stamp stamp-pending">{{ $pickupRequests->count() }} awaiting a rider</span>
+    <span class="stamp stamp-pending">{{ $pickupRequests->total() }} awaiting a rider</span>
   </div>
   <div class="card-pad">
     @forelse($pickupRequests as $shipment)
@@ -37,13 +37,14 @@
     @empty
     <p style="color:var(--muted);font-size:13px;margin:0">No approved pickups waiting at this hub right now.</p>
     @endforelse
+    <div aria-label="Pickup request pages">{{ $pickupRequests->links() }}</div>
   </div>
 </div>
 
 <div class="card" style="margin-bottom:16px">
   <div class="card-head">
     <h2>Incoming Pickups</h2>
-    <span class="stamp stamp-active">{{ $incomingPickups->count() }} en route</span>
+    <span class="stamp stamp-active">{{ $incomingPickups->total() }} en route</span>
   </div>
   <div class="card-pad">
     @forelse($incomingPickups as $shipment)
@@ -58,19 +59,20 @@
     @empty
     <p style="color:var(--muted);font-size:13px;margin:0">Nothing on its way to this hub right now — scan a parcel in once its rider arrives.</p>
     @endforelse
+    <div aria-label="Pickup arrival pages">{{ $incomingPickups->links() }}</div>
   </div>
 </div>
 
 <div class="card" style="margin-bottom:16px">
   <div class="card-head">
     <h2>Ready to Request</h2>
-    <span class="stamp stamp-pending">{{ $requestable->flatten()->count() }} parcel(s)</span>
+    <span class="stamp stamp-pending">{{ $requestableCount }} parcel(s)</span>
   </div>
   <div class="card-pad">
     @forelse($requestable as $toHub => $legs)
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
       <div>
-        <strong>&rarr; {{ $toHub }}</strong>
+        <strong>&rarr; {{ $legs->first()->to_hub }}, {{ $legs->first()->to_province }}</strong>
         <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
           {{ $legs->count() }} parcel(s) —
           @foreach($legs as $leg)<span class="mono">#{{ optional($leg->shipment->order)->order_number ?? substr($leg->shipment_id, 0, 8) }}</span>@if(!$loop->last), @endif @endforeach
@@ -78,54 +80,57 @@
       </div>
       <form method="POST" action="{{ route('logistics.hub.request-transfer') }}">
         @csrf
-        <input type="hidden" name="to_hub" value="{{ $toHub }}">
+        <input type="hidden" name="to_hub" value="{{ $legs->first()->to_hub }}"><input type="hidden" name="to_province" value="{{ $legs->first()->to_province }}">
         <button type="submit" class="btn btn-sm btn-primary">Request Transfer</button>
       </form>
     </div>
     @empty
     <p style="color:var(--muted);font-size:13px;margin:0">Nothing waiting to move on right now.</p>
     @endforelse
+    {{ $requestablePages->links() }}
   </div>
 </div>
 
 <div class="card" style="margin-bottom:16px">
   <div class="card-head">
     <h2>Waiting on Admin Approval</h2>
-    <span class="stamp stamp-pending">{{ $pendingApproval->flatten()->count() }} parcel(s)</span>
+    <span class="stamp stamp-pending">{{ $pendingApprovalCount }} parcel(s)</span>
   </div>
   <div class="card-pad">
     @forelse($pendingApproval as $toHub => $legs)
     <div style="padding:10px 0;border-bottom:1px solid var(--border)">
-      <strong>&rarr; {{ $toHub }}</strong>
+      <strong>&rarr; {{ $legs->first()->to_hub }}, {{ $legs->first()->to_province }}</strong>
       <span style="color:var(--muted);font-size:11.5px">— {{ $legs->count() }} parcel(s), requested {{ optional($legs->first()->requested_at)?->diffForHumans() }}</span>
     </div>
     @empty
     <p style="color:var(--muted);font-size:13px;margin:0">No requests are pending approval.</p>
     @endforelse
+    {{ $pendingApprovalPages->links() }}
   </div>
 </div>
 
 <div class="card" style="margin-bottom:16px">
   <div class="card-head">
-    <h2>Approved — Ready to Assign a Rider</h2>
-    <span class="stamp stamp-active">{{ $readyToAssign->count() }} parcel(s)</span>
+    <h2>Approved ? Awaiting Logistics Admin Dispatch</h2>
+    <span class="stamp stamp-active">{{ $readyToAssign->total() }} parcel(s)</span>
   </div>
   <div class="card-pad">
     @forelse($readyToAssign as $leg)
     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
       <span><span class="mono">#{{ optional($leg->shipment->order)->order_number ?? substr($leg->shipment_id, 0, 8) }}</span> &rarr; {{ $leg->to_hub }}</span>
-      <a href="{{ route('logistics.scan') }}" class="btn btn-sm btn-outline">Assign on Scan Page</a>
+      <a href="{{ $leg->transfer_batch_id ? route('logistics.transfers.show', $leg->transfer_batch_id) : route('logistics.transfers') }}" class="btn btn-sm btn-outline">View transfer</a>
     </div>
     @empty
     <p style="color:var(--muted);font-size:13px;margin:0">Nothing approved yet.</p>
     @endforelse
+    <div aria-label="Transfer assignment pages">{{ $readyToAssign->links() }}</div>
   </div>
 </div>
 
 <div class="card">
   <div class="card-head">
     <h2>Incoming</h2>
-    <span class="stamp stamp-active">{{ $incoming->count() }} en route</span>
+    <span class="stamp stamp-active">{{ $incoming->total() }} en route</span>
   </div>
   <div class="card-pad">
     @forelse($incoming as $leg)
@@ -136,6 +141,7 @@
     @empty
     <p style="color:var(--muted);font-size:13px;margin:0">Nothing en route to this hub right now.</p>
     @endforelse
+    <div aria-label="Incoming transfer pages">{{ $incoming->links() }}</div>
   </div>
 </div>
 @endsection

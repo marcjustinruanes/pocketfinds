@@ -10,43 +10,49 @@
   </div>
 
   <div class="nav-groups">
-    <div class="nav-label">Overview</div>
-    <a href="{{ route('seller.dashboard') }}" class="nav-item {{ request()->routeIs('seller.dashboard') ? 'active' : '' }}">
+    @php($unreadNotifCount = \Illuminate\Support\Facades\DB::table('notifications')->where('user_id', auth()->id())->where('is_read', false)->count())
+<a @if(request()->routeIs('seller.dashboard')) aria-current="page" @endif href="{{ route('seller.dashboard') }}" class="nav-item {{ request()->routeIs('seller.dashboard') ? 'active' : '' }}">
       <span class="ic">@include('seller.partials.icon', ['name' => 'dashboard', 'size' => 16])</span> Dashboard
     </a>
-
-    <div class="nav-label">Orders</div>
-    @php($unreadNotifCount = \Illuminate\Support\Facades\DB::table('notifications')->where('user_id', auth()->id())->where('is_read', false)->count())
-    <a href="{{ route('seller.notifications') }}" class="nav-item {{ request()->routeIs('seller.notifications') ? 'active' : '' }}">
+<x-navigation-group id="seller-orders" label="Orders" :active="request()->routeIs('seller.notifications', 'seller.orders*', 'gcash.*')">
+<a @if(request()->routeIs('seller.notifications')) aria-current="page" @endif href="{{ route('seller.notifications') }}" class="nav-item {{ request()->routeIs('seller.notifications') ? 'active' : '' }}">
       <span class="ic">@include('seller.partials.icon', ['name' => 'bell', 'size' => 16])</span> Notifications
       @if($unreadNotifCount > 0)<span class="badge">{{ $unreadNotifCount }}</span>@endif
     </a>
-    <a href="{{ route('seller.orders') }}" class="nav-item {{ request()->routeIs('seller.orders') ? 'active' : '' }}">
+<a @if(request()->routeIs('seller.orders*')) aria-current="page" @endif href="{{ route('seller.orders') }}" class="nav-item {{ request()->routeIs('seller.orders*') ? 'active' : '' }}">
       <span class="ic">@include('seller.partials.icon', ['name' => 'orders', 'size' => 16])</span> Order Management
     </a>
-
-    <div class="nav-label">Store</div>
-    <a href="{{ route('seller.inventory') }}" class="nav-item {{ request()->routeIs('seller.inventory') ? 'active' : '' }}">
+@if(\App\Services\GcashInventory::installed())
+<a @if(request()->routeIs('gcash.*')) aria-current="page" @endif href="{{ route('gcash.index') }}" class="nav-item {{ request()->routeIs('gcash.*') ? 'active' : '' }}">
+      <span class="ic">@include('seller.partials.icon', ['name' => 'orders', 'size' => 16])</span> GCash payments
+    </a>
+@endif
+</x-navigation-group>
+<x-navigation-group id="seller-store" label="Store" :active="request()->routeIs('seller.inventory', 'seller.vouchers', 'seller.feedback')">
+<a @if(request()->routeIs('seller.inventory')) aria-current="page" @endif href="{{ route('seller.inventory') }}" class="nav-item {{ request()->routeIs('seller.inventory') ? 'active' : '' }}">
       <span class="ic">@include('seller.partials.icon', ['name' => 'inventory', 'size' => 16])</span> Inventory
     </a>
-    <a href="{{ route('seller.vouchers') }}" class="nav-item {{ request()->routeIs('seller.vouchers') ? 'active' : '' }}">
+<a @if(request()->routeIs('seller.vouchers')) aria-current="page" @endif href="{{ route('seller.vouchers') }}" class="nav-item {{ request()->routeIs('seller.vouchers') ? 'active' : '' }}">
       <span class="ic">@include('seller.partials.icon', ['name' => 'tag', 'size' => 16])</span> Vouchers
     </a>
-    <a href="{{ route('seller.feedback') }}" class="nav-item {{ request()->routeIs('seller.feedback') ? 'active' : '' }}">
+<a @if(request()->routeIs('seller.feedback')) aria-current="page" @endif href="{{ route('seller.feedback') }}" class="nav-item {{ request()->routeIs('seller.feedback') ? 'active' : '' }}">
       <span class="ic">@include('seller.partials.icon', ['name' => 'star', 'size' => 16])</span> Customer Feedback
     </a>
-    <a href="{{ route('seller.reports') }}" class="nav-item {{ request()->routeIs('seller.reports') ? 'active' : '' }}">
+</x-navigation-group>
+<x-navigation-group id="seller-tracking-reports" label="Tracking & Reports" :active="request()->routeIs('seller.reports')">
+<a @if(request()->routeIs('seller.reports')) aria-current="page" @endif href="{{ route('seller.reports') }}" class="nav-item {{ request()->routeIs('seller.reports') ? 'active' : '' }}">
       <span class="ic">@include('seller.partials.icon', ['name' => 'chart', 'size' => 16])</span> Reports
     </a>
-    <a href="{{ route('seller.announcements') }}" class="nav-item {{ request()->routeIs('seller.announcements') ? 'active' : '' }}">
-      <span class="ic">@include('seller.partials.icon', ['name' => 'megaphone', 'size' => 16])</span> Announcements
-    </a>
-
-    <div class="nav-label">Account</div>
-    <a href="{{ route('seller.messages') }}" class="nav-item {{ request()->routeIs('seller.messages') ? 'active' : '' }}">
+</x-navigation-group>
+<x-navigation-group id="seller-communications" label="Communications" :active="request()->routeIs('seller.messages*', 'seller.announcements*')">
+<a @if(request()->routeIs('seller.messages*')) aria-current="page" @endif href="{{ route('seller.messages') }}" class="nav-item {{ request()->routeIs('seller.messages*') ? 'active' : '' }}">
       <span class="ic">@include('seller.partials.icon', ['name' => 'mail', 'size' => 16])</span> Messages
     </a>
-    <a href="{{ route('seller.account') }}" class="nav-item {{ request()->routeIs('seller.account') ? 'active' : '' }}">
+<a @if(request()->routeIs('seller.announcements*')) aria-current="page" @endif href="{{ route('seller.announcements') }}" class="nav-item {{ request()->routeIs('seller.announcements*') ? 'active' : '' }}">
+      <span class="ic">@include('seller.partials.icon', ['name' => 'megaphone', 'size' => 16])</span> Announcements
+    </a>
+</x-navigation-group>
+<a @if(request()->routeIs('seller.account*')) aria-current="page" @endif href="{{ route('seller.account') }}" class="nav-item {{ request()->routeIs('seller.account*') ? 'active' : '' }}">
       <span class="ic">@include('seller.partials.icon', ['name' => 'user', 'size' => 16])</span> My Account
     </a>
   </div>

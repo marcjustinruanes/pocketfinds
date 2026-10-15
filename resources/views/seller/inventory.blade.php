@@ -5,6 +5,7 @@
 @php use Illuminate\Support\Facades\Storage; @endphp
 
 @section('content')
+@if($errors->has('product'))<div role="alert" style="padding:12px;border:1px solid #d77;margin-bottom:12px">{{ $errors->first('product') }}</div>@endif
 
 @if(!$seller->category_id)
   <div style="background:var(--warning-soft);border:1px solid var(--warning-line);color:var(--warning);padding:12px 16px;border-radius:9px;font-size:13px;margin-bottom:18px;display:flex;align-items:center;gap:10px">

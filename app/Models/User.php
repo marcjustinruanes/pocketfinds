@@ -2,13 +2,34 @@
 
 namespace App\Models;
 
+use App\Enums\Suffix;
+use App\Services\HubHiring;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    public function save(array $options = [])
+    {
+        if (Schema::hasTable('hiring_application_history')
+            && ($this->account_type === 'rider' || $this->logistics_role === 'hub_staff')) {
+            try {
+                return app(HubHiring::class)->persist($this, fn () => parent::save($options));
+            } catch (UniqueConstraintViolationException $e) {
+                throw ValidationException::withMessages(['email' => 'An account with these identifiers already exists. Refresh and try again.']);
+            }
+        }
+
+        return parent::save($options);
+    }
+
+    use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
         'account_type', 'auth_method', 'google_id', 'username',
@@ -32,15 +53,15 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at'           => 'datetime',
-            'password'                    => 'hashed',
-            'birthday'                    => 'date',
-            'suffix'                      => \App\Enums\Suffix::class,
-            'license_expiry'              => 'date',
-            'interview_scheduled_at'      => 'datetime',
-            'is_admin'                    => 'boolean',
-            'is_logistics'                => 'boolean',
-            'notify_new_requests'         => 'boolean',
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+            'birthday' => 'date',
+            'suffix' => Suffix::class,
+            'license_expiry' => 'date',
+            'interview_scheduled_at' => 'datetime',
+            'is_admin' => 'boolean',
+            'is_logistics' => 'boolean',
+            'notify_new_requests' => 'boolean',
             'notify_unassigned_shipments' => 'boolean',
         ];
     }
@@ -55,7 +76,7 @@ class User extends Authenticatable
      *  existing account) or 'hub_staff' (tied to one specific LogisticsHub). */
     public function isLogisticsAdmin(): bool
     {
-        return $this->is_logistics && $this->logistics_role !== 'hub_staff';
+        return $this->is_logistics && in_array($this->logistics_role, [null, 'admin'], true);
     }
 
     public function isHubStaff(): bool
@@ -93,11 +114,14 @@ class User extends Authenticatable
 
     public function shopPhotoUrl(): ?string
     {
-        if (!$this->profile_picture) return null;
+        if (! $this->profile_picture) {
+            return null;
+        }
         if (preg_match('/^category:(\d+)$/', $this->profile_picture, $matches)) {
             return route('guest.category-image', ['id' => (int) $matches[1]], false);
         }
-        return \Illuminate\Support\Facades\Storage::disk('profile_images')->url($this->profile_picture);
+
+        return Storage::disk('profile_images')->url($this->profile_picture);
     }
 
     /** This user's logistics company's own (admin-approved) Terms & Conditions, if it has submitted one. */

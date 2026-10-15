@@ -4,22 +4,18 @@
 @section('page-sub', "Approve/disapprove hub staff applications, activate or suspend accounts")
 
 @section('content')
+<a href="{{ route('logistics.accounts',['role'=>'hub_staff']) }}" class="btn btn-outline" style="margin-bottom:16px">Create or edit accounts and hub assignments</a>
 @if(session('success'))<div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('success') }}</div>@endif
 
 <div class="card">
   <div class="card-head">
-    <div><h2>Hub Staff Applications</h2><p>{{ $staff->count() }} total</p></div>
+    <div><h2>Hub Staff Applications</h2><p>{{ $staff->total() }} total</p></div>
   </div>
   <div class="card-pad">
-    {{-- Client-side filter (see the shared [data-tabs] handler in admin.js) — switching
-         tabs just shows/hides rows already on the page, no reload. --}}
-    <div data-tabs id="staffTabs">
-      <a class="tab active" data-tab="all">All <span class="tab-count">{{ $staff->count() }}</span></a>
-      <a class="tab" data-tab="pending">Pending <span class="tab-count">{{ $statusCounts['pending'] ?? 0 }}</span></a>
-      <a class="tab" data-tab="interview">Interview <span class="tab-count">{{ $statusCounts['interview'] ?? 0 }}</span></a>
-      <a class="tab" data-tab="approved">Approved <span class="tab-count">{{ $statusCounts['approved'] ?? 0 }}</span></a>
-      <a class="tab" data-tab="rejected">Rejected <span class="tab-count">{{ $statusCounts['rejected'] ?? 0 }}</span></a>
-      <a class="tab" data-tab="suspended">Suspended <span class="tab-count">{{ $statusCounts['suspended'] ?? 0 }}</span></a>
+    <div class="tabs" id="staffTabs">
+      @foreach(['all' => 'All', 'pending' => 'Pending', 'interview' => 'Interview', 'approved' => 'Approved', 'rejected' => 'Rejected', 'suspended' => 'Suspended'] as $key => $label)
+      <a class="tab {{ $status === $key ? 'active' : '' }}" href="{{ route('logistics.staff', ['status' => $key]) }}">{{ $label }} <span class="tab-count">{{ $key === 'all' ? $statusCounts->sum() : ($statusCounts[$key] ?? 0) }}</span></a>
+      @endforeach
     </div>
 
     <div class="table-wrap">
@@ -236,4 +232,5 @@
 
 @include('admin.partials.doc-lightbox')
 @include('admin.partials.reason-modals')
+{{ $staff->links() }}
 @endsection

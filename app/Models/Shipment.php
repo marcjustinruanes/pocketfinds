@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Services\GcashWorkflow;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -31,10 +33,12 @@ use Illuminate\Support\Str;
  */
 class Shipment extends Model
 {
-    protected $keyType      = 'string';
-    public    $incrementing = false;
+    protected $keyType = 'string';
+
+    public $incrementing = false;
 
     const CREATED_AT = 'created_at';
+
     const UPDATED_AT = 'updated_at';
 
     /** The full pipeline, in order. Kept here as the single source of truth for every leg. */
@@ -54,20 +58,20 @@ class Shipment extends Model
     ];
 
     protected $casts = [
-        'scheduled_pickup_at'        => 'datetime',
-        'pickup_approved_at'         => 'datetime',
+        'scheduled_pickup_at' => 'datetime',
+        'pickup_approved_at' => 'datetime',
         'seller_confirmed_pickup_at' => 'datetime',
-        'rider_confirmed_pickup_at'  => 'datetime',
-        'picked_up_at'         => 'datetime',
+        'rider_confirmed_pickup_at' => 'datetime',
+        'picked_up_at' => 'datetime',
         'at_sorting_center_at' => 'datetime',
-        'sorted_at'            => 'datetime',
-        'assigned_at'          => 'datetime',
-        'in_transit_at'        => 'datetime',
-        'out_for_delivery_at'  => 'datetime',
-        'delivered_at'         => 'datetime',
-        'delivery_failed_at'   => 'datetime',
-        'returned_at'          => 'datetime',
-        'hub_transfer_started_at'   => 'datetime',
+        'sorted_at' => 'datetime',
+        'assigned_at' => 'datetime',
+        'in_transit_at' => 'datetime',
+        'out_for_delivery_at' => 'datetime',
+        'delivered_at' => 'datetime',
+        'delivery_failed_at' => 'datetime',
+        'returned_at' => 'datetime',
+        'hub_transfer_started_at' => 'datetime',
         'hub_transfer_completed_at' => 'datetime',
     ];
 
@@ -77,13 +81,28 @@ class Shipment extends Model
         static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
     }
 
-    public function order()       { return $this->belongsTo(Order::class); }
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
+    }
+
     /** The delivery-leg rider (destination hub -> buyer). */
-    public function courier()     { return $this->belongsTo(User::class, 'courier_id'); }
+    public function courier()
+    {
+        return $this->belongsTo(User::class, 'courier_id');
+    }
+
     /** The pickup-leg rider (seller -> origin hub). */
-    public function pickupRider() { return $this->belongsTo(User::class, 'pickup_rider_id'); }
+    public function pickupRider()
+    {
+        return $this->belongsTo(User::class, 'pickup_rider_id');
+    }
+
     /** The hub-to-hub rider (origin hub -> destination hub) — null when both hubs are the same city. */
-    public function hubTransferRider() { return $this->belongsTo(User::class, 'hub_transfer_rider_id'); }
+    public function hubTransferRider()
+    {
+        return $this->belongsTo(User::class, 'hub_transfer_rider_id');
+    }
 
     /**
      * Once BOTH the rider (receiving the parcel) and the seller (handing it over) have
@@ -93,19 +112,39 @@ class Shipment extends Model
      * seller's side. Mirrors the delivery leg's own two-sided confirmation (rider marks
      * delivered, buyer confirms receipt).
      */
+    public function save(array $options = [])
+    {
+        $order = $this->order_id ? Order::find($this->order_id) : null;
+        if (! $this->exists || ! $order?->gcash_purchase_id) {
+            return parent::save($options);
+        }
+
+        return DB::transaction(function () use ($order, $options) {
+            $lockedOrder = Order::lockFresh($order->id);
+            $locked = static::whereKey($this->id)->lockForUpdate()->firstOrFail();
+            $pickupFields = ['shipping_status', 'pickup_approved_at', 'pickup_rider_id', 'rider_confirmed_pickup_at', 'seller_confirmed_pickup_at', 'scheduled_pickup_at'];
+            $newPickup = $locked->shipping_status === 'ready_for_pickup' && $this->isDirty($pickupFields) && ! in_array($this->shipping_status, ['cancelled', 'returned']);
+            app(GcashWorkflow::class)->assertOrderOperation($lockedOrder, $newPickup);
+
+            return parent::save($options);
+        }, 3);
+    }
+
     public function maybeAdvancePastPickupConfirmation(): bool
     {
         if ($this->shipping_status === 'ready_for_pickup' && $this->seller_confirmed_pickup_at && $this->rider_confirmed_pickup_at) {
             $this->update(['shipping_status' => 'picked_up', 'picked_up_at' => now()]);
+
             return true;
         }
+
         return false;
     }
 
     /** True only when this shipment actually needs a hub-to-hub relay leg. */
     public function needsHubTransfer(): bool
     {
-        if (!$this->origin_hub || !$this->destination_hub) {
+        if (! $this->origin_hub || ! $this->destination_hub) {
             return false;
         }
         $norm = fn ($value) => mb_strtolower(trim((string) $value));
@@ -117,7 +156,10 @@ class Shipment extends Model
     }
 
     /** Every hop of this shipment's hub-to-hub journey, in order — see ShipmentHubLeg. */
-    public function hubLegs() { return $this->hasMany(ShipmentHubLeg::class)->orderBy('sequence'); }
+    public function hubLegs()
+    {
+        return $this->hasMany(ShipmentHubLeg::class)->orderBy('sequence');
+    }
 
     /** The leg a rider is currently carrying, if any. */
     public function activeHubLeg(): ?ShipmentHubLeg
@@ -140,7 +182,13 @@ class Shipment extends Model
      */
     public function nextAssignableHubLeg(): ?ShipmentHubLeg
     {
-        return $this->hubLegs()->where('status', 'pending')->whereNotNull('approved_at')->first();
+        if ($this->activeHubLeg()) {
+            return null;
+        }
+        $next = $this->nextPendingHubLeg();
+
+        return $next && $next->requested_at && $next->approved_at
+            && (! $next->transfer_batch_id || $next->transferBatch?->status === 'approved') ? $next : null;
     }
 
     /**
@@ -150,7 +198,7 @@ class Shipment extends Model
      */
     public function buildHubLegs(): void
     {
-        if (!$this->needsHubTransfer() || $this->hubLegs()->exists()) {
+        if (! $this->needsHubTransfer() || $this->hubLegs()->exists()) {
             return;
         }
 
@@ -164,14 +212,29 @@ class Shipment extends Model
                 'sequence' => $index + 1,
                 'leg_type' => $leg['leg_type'],
                 'from_hub' => $leg['from_hub'],
-                'to_hub'   => $leg['to_hub'],
+                'to_hub' => $leg['to_hub'],
             ]);
         }
     }
 
     /** @deprecated alias for deliveryAssignment() — kept so existing views ($shipment->assignment) still work. */
-    public function assignment()          { return $this->hasOne(DeliveryAssignment::class)->where('leg', 'delivery'); }
-    public function pickupAssignment()    { return $this->hasOne(DeliveryAssignment::class)->where('leg', 'pickup'); }
-    public function deliveryAssignment()  { return $this->hasOne(DeliveryAssignment::class)->where('leg', 'delivery'); }
-    public function hubTransferAssignment() { return $this->hasOne(DeliveryAssignment::class)->where('leg', 'hub_transfer'); }
+    public function assignment()
+    {
+        return $this->hasOne(DeliveryAssignment::class)->where('leg', 'delivery');
+    }
+
+    public function pickupAssignment()
+    {
+        return $this->hasOne(DeliveryAssignment::class)->where('leg', 'pickup');
+    }
+
+    public function deliveryAssignment()
+    {
+        return $this->hasOne(DeliveryAssignment::class)->where('leg', 'delivery');
+    }
+
+    public function hubTransferAssignment()
+    {
+        return $this->hasOne(DeliveryAssignment::class)->where('leg', 'hub_transfer');
+    }
 }

@@ -10,7 +10,7 @@
   <div class="card-head">
     <div>
       <h2>Vehicles at {{ $hub->municipality }}, {{ $hub->province }}</h2>
-      <p>{{ $vehicles->count() }} vehicle{{ $vehicles->count() === 1 ? '' : 's' }} assigned to this hub</p>
+      <p>{{ $vehicles->total() }} vehicle{{ $vehicles->total() === 1 ? '' : 's' }} assigned to this hub</p>
     </div>
   </div>
   <div class="card-pad">
@@ -73,4 +73,5 @@
     </div>
   </div>
 </div>
+{{ $vehicles->links() }}
 @endsection

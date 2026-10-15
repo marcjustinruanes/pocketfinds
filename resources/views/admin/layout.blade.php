@@ -6,10 +6,11 @@
 <title>@yield('title', 'Admin') - Console</title>
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <link rel="stylesheet" href="/css/admin.css">
+<link rel="stylesheet" href="{{ asset('css/navigation.css') }}?v={{ filemtime(public_path('css/navigation.css')) }}">
 @stack('head')
 </head>
 <body class="admin">
-<div class="shell" id="appShell">
+<div class="shell" id="appShell" data-navigation-shell data-collapse-key="sidebar_collapsed">
   @include('admin.partials.sidebar')
   <div style="display:flex;flex-direction:column;min-width:0">
     @include('admin.partials.topbar')
@@ -44,5 +45,6 @@
 <div class="toast-stack" id="toastStack"></div>
 <script src="/js/admin.js"></script>
 @stack('scripts')
+<script src="{{ asset('js/navigation.js') }}?v={{ filemtime(public_path('js/navigation.js')) }}"></script>
 </body>
 </html>

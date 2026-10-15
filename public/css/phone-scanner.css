@@ -1,0 +1,8 @@
+.phone-connection { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); }
+.phone-connection h3 { margin: 0 0 6px; font-size: 15px; }
+.phone-connection p { font-size: 12px; line-height: 1.6; color: var(--muted); }
+#phonePairPanel { margin-top: 16px; }
+#phonePairQr { margin: 0 0 14px; width: fit-content; padding: 12px; background: white; }
+#phonePairLink { display: block; width: 100%; min-width: 0; padding: 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); color: var(--text); margin: 8px 0 14px; }
+#phonePairPanel .btn { margin: 4px 4px 4px 0; }
+.phone-connection [hidden] { display: none !important; }

@@ -1,0 +1,11 @@
+<dialog id="gcash-confirm" class="gcash-dialog" aria-labelledby="gcash-confirm-title" aria-describedby="gcash-confirm-description">
+ <h2 id="gcash-confirm-title">Review details</h2>
+ <p id="gcash-confirm-description"></p>
+ <div data-confirm-details></div>
+ <div class="gcash-actions"><button type="button" class="gcash-button gcash-button-secondary" data-cancel autofocus>Review Details</button><button type="button" class="gcash-button" data-confirm-submit>Confirm</button></div>
+</dialog>
+<dialog id="gcash-receipt" class="gcash-dialog gcash-dialog-wide" aria-labelledby="gcash-receipt-title">
+ <div class="gcash-hero-head"><div><h2 id="gcash-receipt-title">Private receipt review</h2><p><strong>{{ $purchaseTitle }}</strong></p></div><button type="button" class="gcash-button gcash-button-secondary" data-close-receipt autofocus>Close receipt</button></div>
+ <div class="gcash-viewer-grid"><div><div class="gcash-actions"><button type="button" class="gcash-button gcash-button-secondary" data-fit>Fit to screen</button><label>Zoom <input type="range" min="50" max="250" value="100" step="25" data-zoom></label></div><p data-viewer-status role="status"></p><p><a data-receipt-fallback target="_blank" rel="noopener" hidden>Open private receipt in a new tab</a></p><div class="gcash-receipt-canvas" tabindex="0" role="region" aria-label="Scrollable receipt preview"></div></div>
+ <aside><h3>Transaction details</h3><p>Expected amount: <strong>&#8369;{{ number_format($p->amount_due, 2) }}</strong></p><p>Buyer-entered amount: not collected. Check the receipt against the expected amount and your actual GCash account.</p><p>Recorded transaction reference: {{ $p->payment_reference ?: 'Not recorded until seller verification' }}</p><p>Status: {{ str_replace('_', ' ', $p->payment_state) }}</p><p data-receipt-date></p><p>Product: <strong>{{ $purchaseTitle }}</strong></p><details class="gcash-reference"><summary>Purchase reference</summary><p>{{ $p->id }}</p></details><p>{{ $buyer ? 'Seller' : 'Buyer' }}: {{ $other?->business_name ?: trim(($other?->given_names ?? '').' '.($other?->last_name ?? '')) }}</p><p class="gcash-notice">A receipt is evidence for manual review. It does not prove that funds were received.</p></aside></div>
+</dialog>

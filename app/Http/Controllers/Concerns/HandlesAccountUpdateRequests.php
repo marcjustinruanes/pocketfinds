@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Concerns;
 
 use App\Models\AccountUpdateRequest;
+use App\Services\MediaLifecycle;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -44,26 +45,29 @@ trait HandlesAccountUpdateRequests
         $documents = [];
         foreach ($fileKeys as $key => $disk) {
             if ($request->hasFile($key)) {
-                $documents[$key] = $request->file($key)->store($key . 's', $disk);
+                $documents[$key] = app(MediaLifecycle::class)->store($request->file($key), $key.'s', $disk);
             }
         }
 
-        if (!$changes && !$documents) {
+        if (! $changes && ! $documents) {
             return back()->with('update_request_error', 'Nothing to update.');
         }
 
         $existing = $this->pendingAccountUpdateRequest();
         if ($existing) {
+            foreach ($documents as $key => $path) {
+                app(MediaLifecycle::class)->deleteAfterCommit(($existing->requested_documents ?? [])[$key] ?? null, $fileKeys[$key]);
+            }
             $existing->update([
-                'requested_changes'   => array_merge($existing->requested_changes ?? [], $changes),
+                'requested_changes' => array_merge($existing->requested_changes ?? [], $changes),
                 'requested_documents' => array_merge($existing->requested_documents ?? [], $documents),
             ]);
         } else {
             AccountUpdateRequest::create([
-                'user_id'              => auth()->id(),
-                'requested_changes'    => $changes ?: null,
-                'requested_documents'  => $documents ?: null,
-                'status'               => 'pending',
+                'user_id' => auth()->id(),
+                'requested_changes' => $changes ?: null,
+                'requested_documents' => $documents ?: null,
+                'status' => 'pending',
             ]);
         }
 

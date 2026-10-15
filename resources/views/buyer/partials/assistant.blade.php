@@ -1,4 +1,5 @@
 @php($assistantGuest = $assistantGuest ?? false)
+@if($assistantGuest || (auth()->user()?->account_type === 'buyer' && !auth()->user()->is_admin))
 @php($assistantProduct = in_array(request()->route()?->getName(), ['guest.product', 'buyer.product'], true) ? request()->route('id') : null)
 <link rel="stylesheet" href="{{ asset('css/buyer-assistant.css') }}?v={{ filemtime(public_path('css/buyer-assistant.css')) }}">
 <div class="pf-assistant" data-endpoint="{{ route($assistantGuest ? 'guest.assistant.send' : 'buyer.assistant.send') }}" @unless($assistantGuest) data-conversations="{{ route('buyer.assistant.conversations') }}" @endunless data-support="{{ route('support.contact') }}" data-guest="{{ $assistantGuest ? 'true' : 'false' }}">
@@ -61,3 +62,5 @@
   </section>
 </div>
 <script src="{{ asset('js/buyer-assistant.js') }}?v={{ filemtime(public_path('js/buyer-assistant.js')) }}" defer></script>
+
+@endif

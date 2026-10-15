@@ -2,24 +2,29 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Concerns\HandlesMessaging;
 use App\Http\Controllers\Concerns\HandlesAccountUpdateRequests;
+use App\Http\Controllers\Concerns\HandlesMessaging;
 use App\Models\DeliveryAssignment;
 use App\Models\Message;
 use App\Models\Order;
 use App\Models\Shipment;
 use App\Models\ShipmentHubLeg;
 use App\Models\User;
+use App\Services\GcashLocks;
+use App\Services\GcashWorkflow;
+use App\Services\HubTransferWorkflow;
+use App\Services\LogisticsAccess;
+use App\Services\MediaLifecycle;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class RiderController extends Controller
 {
-    use HandlesMessaging;
     use HandlesAccountUpdateRequests;
+    use HandlesMessaging;
 
     /**
      * Forward moves a rider is allowed to make themselves on the DELIVERY leg (sorting
@@ -31,20 +36,21 @@ class RiderController extends Controller
 
     private const STAGE_TIMESTAMPS = [
         'out_for_delivery' => 'out_for_delivery_at',
-        'delivered'        => 'delivered_at',
+        'delivered' => 'delivered_at',
     ];
 
     private function sidebarCounts(): array
     {
         $riderId = auth()->id();
+
         return [
-            'pickupRequests'    => Shipment::where('shipping_status', 'ready_for_pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')->count(),
-            'myPickups'         => Shipment::where('pickup_rider_id', $riderId)->whereIn('shipping_status', ['ready_for_pickup', 'picked_up'])->count(),
-            'myHubTransfers'    => ShipmentHubLeg::where('rider_id', $riderId)->where('status', 'in_transit')->count(),
-            'deliveryRequests'  => Shipment::where('shipping_status', 'sorted')->whereNull('courier_id')->count(),
-            'activeDeliveries'  => Shipment::where('courier_id', $riderId)
+            'pickupRequests' => app(LogisticsAccess::class)->openParcelsForRider(auth()->user(), 'pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')->count(),
+            'myPickups' => Shipment::where('pickup_rider_id', $riderId)->whereIn('shipping_status', ['ready_for_pickup', 'picked_up'])->count(),
+            'myHubTransfers' => ShipmentHubLeg::where('rider_id', $riderId)->where('status', 'in_transit')->count(),
+            'deliveryRequests' => app(LogisticsAccess::class)->openParcelsForRider(auth()->user(), 'delivery')->whereNull('courier_id')->count(),
+            'activeDeliveries' => Shipment::where('courier_id', $riderId)
                 ->whereIn('shipping_status', ['assigned_to_rider', 'out_for_delivery'])->count(),
-            'unreadMessages'    => Message::where('receiver_id', $riderId)->where('read', false)->count(),
+            'unreadMessages' => Message::where('receiver_id', $riderId)->where('read', false)->count(),
         ];
     }
 
@@ -59,8 +65,8 @@ class RiderController extends Controller
 
     public function dashboard()
     {
-        $counts        = $this->sidebarCounts();
-        $pickupsOpen   = Shipment::with(['order.buyer', 'order.seller'])
+        $counts = $this->sidebarCounts();
+        $pickupsOpen = app(LogisticsAccess::class)->openParcelsForRider(auth()->user(), 'pickup')->with(['order.buyer', 'order.seller'])
             ->where('shipping_status', 'ready_for_pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')
             ->latest('created_at')->take(5)->get();
         // Named distinctly from sidebarCounts()'s 'myPickups' (an int badge count) — array_merge
@@ -68,10 +74,10 @@ class RiderController extends Controller
         $myPickupsList = Shipment::with(['order.buyer', 'order.seller'])
             ->where('pickup_rider_id', auth()->id())->where('shipping_status', 'ready_for_pickup')
             ->latest('updated_at')->get();
-        $deliveriesOpen = Shipment::with(['order.buyer', 'order.seller'])
+        $deliveriesOpen = app(LogisticsAccess::class)->openParcelsForRider(auth()->user(), 'delivery')->with(['order.buyer', 'order.seller'])
             ->where('shipping_status', 'sorted')->whereNull('courier_id')
             ->latest('created_at')->take(5)->get();
-        $active         = $this->myActiveShipments();
+        $active = $this->myActiveShipments();
         $completedToday = Shipment::where('courier_id', auth()->id())
             ->whereIn('shipping_status', ['delivered', 'completed'])
             ->whereDate('delivered_at', now()->toDateString())->count();
@@ -88,10 +94,11 @@ class RiderController extends Controller
     /** Open pickup requests — a seller's parcel, approved by Logistics, awaiting a rider to claim it. */
     public function pickupRequests()
     {
-        $counts    = $this->sidebarCounts();
-        $shipments = Shipment::with(['order.buyer', 'order.seller'])
+        $counts = $this->sidebarCounts();
+        $shipments = app(LogisticsAccess::class)->openParcelsForRider(auth()->user(), 'pickup')->with(['order.buyer', 'order.seller'])
             ->where('shipping_status', 'ready_for_pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')
             ->latest('created_at')->get();
+
         return view('rider.pickup-requests', array_merge($counts, compact('shipments')));
     }
 
@@ -105,11 +112,17 @@ class RiderController extends Controller
     public function acceptPickupRequest(Request $request, $id)
     {
         $riderId = auth()->id();
-        $claimed = Shipment::where('id', $id)
+        $shipment = app(LogisticsAccess::class)->openParcelsForRider(auth()->user(), 'pickup')->whereKey($id)->firstOrFail();
+        GcashLocks::shipment((string) $id);
+        if ($shipment->order) {
+            GcashLocks::order($shipment->order_id);
+            app(GcashWorkflow::class)->assertOrderOperation($shipment->order, true);
+        }
+        $claimed = app(LogisticsAccess::class)->openParcelsForRider(auth()->user(), 'pickup')->where('id', $id)
             ->where('shipping_status', 'ready_for_pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')
             ->update(['pickup_rider_id' => $riderId]);
 
-        if (!$claimed) {
+        if (! $claimed) {
             return back()->withErrors(['status' => 'This pickup request was already accepted by another rider.']);
         }
 
@@ -122,7 +135,7 @@ class RiderController extends Controller
         if ($shipment->order) {
             DB::table('notifications')->insert([
                 'id' => (string) Str::uuid(), 'user_id' => $shipment->order->seller_id,
-                'title' => 'Pickup Rider Assigned', 'message' => 'A rider accepted the pickup for order #' . $shipment->order->order_number . '. They\'re on their way.',
+                'title' => 'Pickup Rider Assigned', 'message' => 'A rider accepted the pickup for order #'.$shipment->order->order_number.'. They\'re on their way.',
                 'notification_type' => 'order_status', 'reference_id' => $shipment->order_id,
                 'is_read' => false, 'created_at' => now(),
             ]);
@@ -139,10 +152,11 @@ class RiderController extends Controller
      */
     public function myPickups()
     {
-        $counts    = $this->sidebarCounts();
+        $counts = $this->sidebarCounts();
         $shipments = Shipment::with(['order.buyer', 'order.seller'])
             ->where('pickup_rider_id', auth()->id())->whereIn('shipping_status', ['ready_for_pickup', 'picked_up'])
             ->latest('updated_at')->get();
+
         return view('rider.my-pickups', array_merge($counts, compact('shipments')));
     }
 
@@ -164,7 +178,7 @@ class RiderController extends Controller
         if ($shipment->order?->seller_id) {
             DB::table('notifications')->insert([
                 'id' => (string) Str::uuid(), 'user_id' => $shipment->order->seller_id,
-                'title' => 'Rider Confirmed Pickup', 'message' => 'The rider confirmed receiving order #' . $shipment->order->order_number . '. Please confirm the handover in your Seller account.',
+                'title' => 'Rider Confirmed Pickup', 'message' => 'The rider confirmed receiving order #'.$shipment->order->order_number.'. Please confirm the handover in your Seller account.',
                 'notification_type' => 'order_status', 'reference_id' => $shipment->order_id,
                 'is_read' => false, 'created_at' => now(),
             ]);
@@ -185,35 +199,19 @@ class RiderController extends Controller
     public function myHubTransfers()
     {
         $counts = $this->sidebarCounts();
-        $legs   = ShipmentHubLeg::with(['shipment.order'])
+        $legs = ShipmentHubLeg::with(['shipment.order'])
             ->where('rider_id', auth()->id())->where('status', 'in_transit')
             ->latest('started_at')->get();
+
         return view('rider.hub-transfers', array_merge($counts, compact('legs')));
     }
 
     /** Rider confirms they've physically picked up the parcel from the origin hub and are carrying it onward. */
     public function confirmHubTransferPickup($id)
     {
-        $leg = ShipmentHubLeg::with('shipment.order')->where('rider_id', auth()->id())->where('status', 'in_transit')->findOrFail($id);
-        abort_if($leg->rider_confirmed_pickup_at, 422, 'You already confirmed picking this up.');
+        app(HubTransferWorkflow::class)->confirmPickup(auth()->user(), $id);
 
-        $leg->update(['rider_confirmed_pickup_at' => now()]);
-
-        // Notify the destination hub's own staff — they're the ones who'll mark it received once it arrives.
-        $destinationStaff = User::where('account_type', 'logistics')->where('logistics_role', 'hub_staff')
-            ->where('business_name', $leg->shipment->logistics_company)
-            ->whereHas('logisticsHub', fn ($q) => $q->whereRaw('LOWER(municipality) = ?', [mb_strtolower(trim($leg->to_hub))]))
-            ->pluck('id');
-        foreach ($destinationStaff as $staffId) {
-            DB::table('notifications')->insert([
-                'id' => (string) Str::uuid(), 'user_id' => $staffId,
-                'title' => 'Hub Transfer On The Way', 'message' => "A rider picked up a parcel from {$leg->from_hub}, heading to {$leg->to_hub}.",
-                'notification_type' => 'hub_transfer_pickup_confirmed', 'reference_id' => $leg->shipment_id,
-                'is_read' => false, 'created_at' => now(),
-            ]);
-        }
-
-        return back()->with('success', "Pickup confirmed — heading to {$leg->to_hub}.");
+        return back()->with('success', 'Pickup confirmed; the destination hub can record arrival.');
     }
 
     // ── Delivery leg: sorting center -> buyer ─────────────────────────────────────────────
@@ -221,10 +219,11 @@ class RiderController extends Controller
     /** Open delivery requests — a parcel that's been sorted and is awaiting a rider to claim it. */
     public function requests()
     {
-        $counts    = $this->sidebarCounts();
-        $shipments = Shipment::with(['order.buyer', 'order.seller'])
+        $counts = $this->sidebarCounts();
+        $shipments = app(LogisticsAccess::class)->openParcelsForRider(auth()->user(), 'delivery')->with(['order.buyer', 'order.seller'])
             ->where('shipping_status', 'sorted')->whereNull('courier_id')
             ->latest('created_at')->get();
+
         return view('rider.requests', array_merge($counts, compact('shipments')));
     }
 
@@ -239,12 +238,12 @@ class RiderController extends Controller
     {
         $riderId = auth()->id();
 
-        $claimed = Shipment::where('id', $id)
+        $claimed = app(LogisticsAccess::class)->openParcelsForRider(auth()->user(), 'delivery')->where('id', $id)
             ->where('shipping_status', 'sorted')
             ->whereNull('courier_id')
             ->update(['courier_id' => $riderId, 'shipping_status' => 'assigned_to_rider', 'assigned_at' => now()]);
 
-        if (!$claimed) {
+        if (! $claimed) {
             return back()->withErrors(['status' => 'This delivery request was already accepted by another courier.']);
         }
 
@@ -269,19 +268,21 @@ class RiderController extends Controller
     /** "My Deliveries" — everything this rider has accepted but not yet finished, in flow order. */
     public function deliveries()
     {
-        $counts    = $this->sidebarCounts();
+        $counts = $this->sidebarCounts();
         $shipments = $this->myActiveShipments();
+
         return view('rider.deliveries', array_merge($counts, compact('shipments')));
     }
 
     /** Detail view for one shipment: seller/buyer info, order contents, and the next action button. */
     public function show($id)
     {
-        $counts   = $this->sidebarCounts();
+        $counts = $this->sidebarCounts();
         $shipment = Shipment::with(['order.buyer', 'order.seller'])
             ->where('courier_id', auth()->id())->findOrFail($id);
         $stageIndex = array_search($shipment->shipping_status, self::STAGE_ORDER, true);
-        $nextStage  = $stageIndex !== false ? (self::STAGE_ORDER[$stageIndex + 1] ?? null) : null;
+        $nextStage = $stageIndex !== false ? (self::STAGE_ORDER[$stageIndex + 1] ?? null) : null;
+
         return view('rider.show', array_merge($counts, compact('shipment', 'nextStage')));
     }
 
@@ -300,17 +301,18 @@ class RiderController extends Controller
         $from = $request->input('from');
 
         $outcome = DB::transaction(function () use ($id, $from) {
+            GcashLocks::shipment((string) $id);
             $shipment = Shipment::where('courier_id', auth()->id())->lockForUpdate()->findOrFail($id);
-            $order    = $shipment->order_id ? Order::lockFresh($shipment->order_id) : null;
+            $order = $shipment->order_id ? Order::lockFresh($shipment->order_id) : null;
 
             if ($from !== null && $from !== $shipment->shipping_status) {
                 return ['error' => 'This delivery was already updated — the page now shows its current stage.'];
             }
 
             $stageIndex = array_search($shipment->shipping_status, self::STAGE_ORDER, true);
-            $next       = $stageIndex !== false ? (self::STAGE_ORDER[$stageIndex + 1] ?? null) : null;
+            $next = $stageIndex !== false ? (self::STAGE_ORDER[$stageIndex + 1] ?? null) : null;
 
-            if (!$next) {
+            if (! $next) {
                 return ['error' => 'This delivery has no further action to take.'];
             }
 
@@ -321,7 +323,7 @@ class RiderController extends Controller
             $shipment->update($updates);
 
             DeliveryAssignment::where('shipment_id', $shipment->id)->where('leg', 'delivery')->update(array_filter([
-                'status'       => $next,
+                'status' => $next,
                 'delivered_at' => $next === 'delivered' ? now() : null,
             ]));
 
@@ -332,10 +334,10 @@ class RiderController extends Controller
             if ($order) {
                 $order->update(['status' => $next]);
 
-                Order::notifyUser($order->buyer_id, 'Order Update', 'Your order #' . $order->order_number . ' is now ' . str_replace('_', ' ', $next) . '.', 'order_status', $order->id);
+                Order::notifyUser($order->buyer_id, 'Order Update', 'Your order #'.$order->order_number.' is now '.str_replace('_', ' ', $next).'.', 'order_status', $order->id);
 
                 if ($next === 'delivered') {
-                    Order::notifyUser($order->seller_id, 'Courier Marked as Delivered', 'Order #' . $order->order_number . ' was marked delivered by the courier — awaiting the buyer\'s confirmation.', 'order_delivered', $order->id);
+                    Order::notifyUser($order->seller_id, 'Courier Marked as Delivered', 'Order #'.$order->order_number.' was marked delivered by the courier — awaiting the buyer\'s confirmation.', 'order_delivered', $order->id);
                 }
 
                 $order->logStatus($next, auth()->id());
@@ -350,19 +352,20 @@ class RiderController extends Controller
         $next = $outcome['next'];
 
         $labels = ['out_for_delivery' => 'Order marked out for delivery.', 'delivered' => 'Delivery completed. Great job!'];
+
         return back()->with('success', $labels[$next] ?? 'Updated.');
     }
 
     /** Rider reports a failed delivery attempt — "Reason Recorded" branch of the doc's flow. */
     public function markFailed(Request $request, $id)
     {
-        $data     = $request->validate(['reason' => 'required|string|max:500']);
+        $data = $request->validate(['reason' => 'required|string|max:500']);
         $shipment = Shipment::with('order')->where('courier_id', auth()->id())
             ->where('shipping_status', 'out_for_delivery')->findOrFail($id);
 
         $shipment->update([
-            'shipping_status'        => 'delivery_failed',
-            'delivery_failed_at'     => now(),
+            'shipping_status' => 'delivery_failed',
+            'delivery_failed_at' => now(),
             'delivery_failed_reason' => $data['reason'],
         ]);
         $shipment->order?->update(['status' => 'delivery_failed']);
@@ -376,7 +379,7 @@ class RiderController extends Controller
             DB::table('notifications')->insert([
                 'id' => (string) Str::uuid(), 'user_id' => $shipment->order->buyer_id,
                 'title' => 'Delivery Attempt Failed',
-                'message' => 'Your order #' . $shipment->order->order_number . ' delivery attempt failed: ' . $data['reason'],
+                'message' => 'Your order #'.$shipment->order->order_number.' delivery attempt failed: '.$data['reason'],
                 'notification_type' => 'delivery_failed', 'reference_id' => $shipment->order_id,
                 'is_read' => false, 'created_at' => now(),
             ]);
@@ -387,11 +390,12 @@ class RiderController extends Controller
 
     public function history()
     {
-        $counts    = $this->sidebarCounts();
+        $counts = $this->sidebarCounts();
         $shipments = Shipment::with(['order.buyer', 'order.seller'])
             ->where('courier_id', auth()->id())
             ->whereIn('shipping_status', ['delivered', 'completed', 'delivery_failed', 'returned'])
             ->latest('updated_at')->get();
+
         return view('rider.history', array_merge($counts, compact('shipments')));
     }
 
@@ -406,8 +410,8 @@ class RiderController extends Controller
             ->whereIn('shipping_status', ['delivered', 'completed'])
             ->latest('delivered_at')->get();
 
-        $total       = $completed->sum(fn ($s) => (float) ($s->order?->shipping_amount ?? 0));
-        $thisMonth   = $completed->filter(fn ($s) => $s->delivered_at && $s->delivered_at->isCurrentMonth())
+        $total = $completed->sum(fn ($s) => (float) ($s->order?->shipping_amount ?? 0));
+        $thisMonth = $completed->filter(fn ($s) => $s->delivered_at && $s->delivered_at->isCurrentMonth())
             ->sum(fn ($s) => (float) ($s->order?->shipping_amount ?? 0));
         $deliveryCount = $completed->count();
 
@@ -417,33 +421,35 @@ class RiderController extends Controller
     /** Everyone this rider is allowed to chat with: admins, logistics staff, and the buyer/seller on any of their shipments. */
     private function withThreadPreview($users)
     {
-        $myId    = auth()->id();
+        $myId = auth()->id();
         $threads = Message::where('sender_id', $myId)->orWhere('receiver_id', $myId)
             ->latest('created_at')->get()
             ->groupBy(fn ($m) => $m->sender_id === $myId ? $m->receiver_id : $m->sender_id);
 
         return $users->map(function ($u) use ($threads, $myId) {
-            $thread          = $threads->get($u->id);
+            $thread = $threads->get($u->id);
             $u->last_message = $thread?->first();
             $u->unread_count = $thread ? $thread->where('receiver_id', $myId)->where('read', false)->count() : 0;
+
             return $u;
-        })->sortByDesc(fn ($u) => $u->last_message?->created_at ?? \Carbon\Carbon::createFromTimestamp(0))->values();
+        })->sortByDesc(fn ($u) => $u->last_message?->created_at ?? Carbon::createFromTimestamp(0))->values();
     }
 
     private function shipmentContactIds(): array
     {
         $orderIds = Shipment::where('courier_id', auth()->id())->orWhere('pickup_rider_id', auth()->id())
             ->pluck('order_id')->filter();
-        $orders   = Order::whereIn('id', $orderIds)->get(['buyer_id', 'seller_id']);
+        $orders = Order::whereIn('id', $orderIds)->get(['buyer_id', 'seller_id']);
+
         return $orders->flatMap(fn ($o) => [$o->buyer_id, $o->seller_id])->filter()->unique()->values()->all();
     }
 
     private function allowedContacts(): array
     {
         return [
-            'admins'     => $this->withThreadPreview(User::where('is_admin', true)->get()),
-            'logistics'  => $this->withThreadPreview(User::where('is_logistics', true)->get()),
-            'contacts'   => $this->withThreadPreview(User::whereIn('id', $this->shipmentContactIds())->get()),
+            'admins' => $this->withThreadPreview(User::where('is_admin', true)->get()),
+            'logistics' => $this->withThreadPreview(User::where('is_logistics', true)->get()),
+            'contacts' => $this->withThreadPreview(User::whereIn('id', $this->shipmentContactIds())->get()),
         ];
     }
 
@@ -456,30 +462,33 @@ class RiderController extends Controller
 
     public function messages()
     {
-        $counts     = $this->sidebarCounts();
+        $counts = $this->sidebarCounts();
         $activeUser = null;
-        $messages   = collect();
+        $messages = collect();
+
         return view('rider.messages', array_merge($counts, $this->allowedContacts(), compact('activeUser', 'messages')));
     }
 
     public function messagesThread($userId)
     {
-        $counts     = $this->sidebarCounts();
+        $counts = $this->sidebarCounts();
         $activeUser = User::findOrFail($userId);
-        abort_if(!$this->isAllowedContact($activeUser), 403);
+        abort_if(! $this->isAllowedContact($activeUser), 403);
         Message::where('sender_id', $activeUser->id)->where('receiver_id', auth()->id())->where('read', false)->update(['read' => true]);
-        $messages = Message::where(fn($q) => $q->where('sender_id', auth()->id())->where('receiver_id', $activeUser->id))
-            ->orWhere(fn($q) => $q->where('sender_id', $activeUser->id)->where('receiver_id', auth()->id()))
+        $messages = Message::where(fn ($q) => $q->where('sender_id', auth()->id())->where('receiver_id', $activeUser->id))
+            ->orWhere(fn ($q) => $q->where('sender_id', $activeUser->id)->where('receiver_id', auth()->id()))
             ->oldest()->get();
+
         return view('rider.messages', array_merge($counts, $this->allowedContacts(), compact('activeUser', 'messages')));
     }
 
     public function account()
     {
         $counts = $this->sidebarCounts();
+
         return view('rider.account', array_merge($counts, [
             'pendingRequest' => $this->pendingAccountUpdateRequest(),
-            'lastRequest'    => $this->lastAccountUpdateRequest(),
+            'lastRequest' => $this->lastAccountUpdateRequest(),
         ]));
     }
 
@@ -491,23 +500,23 @@ class RiderController extends Controller
     public function accountUpdate(Request $request)
     {
         $request->validate([
-            'given_names'      => 'required|string|max:255',
-            'last_name'        => 'required|string|max:255',
-            'middle_name'      => ['nullable', 'regex:/^[A-Za-z]$/'],
-            'contact_no'       => ['nullable', 'regex:/^09[0-9]{9}$/'],
-            'sex'              => 'nullable|in:male,female,other',
-            'profile_picture'  => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'given_names' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'middle_name' => ['nullable', 'regex:/^[A-Za-z]$/'],
+            'contact_no' => ['nullable', 'regex:/^09[0-9]{9}$/'],
+            'sex' => 'nullable|in:male,female,other',
+            'profile_picture' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ], [
             'middle_name.regex' => 'Middle name must be a single letter.',
-            'contact_no.regex'  => 'Contact number must start with 09 and be exactly 11 digits.',
+            'contact_no.regex' => 'Contact number must start with 09 and be exactly 11 digits.',
         ]);
 
         if ($request->hasFile('profile_picture')) {
             $user = auth()->user();
             if ($user->profile_picture) {
-                Storage::disk('profile_images')->delete($user->profile_picture);
+                app(MediaLifecycle::class)->deleteAfterCommit($user->profile_picture, 'profile_images');
             }
-            $user->update(['profile_picture' => $request->file('profile_picture')->store('avatars', 'profile_images')]);
+            $user->update(['profile_picture' => app(MediaLifecycle::class)->store($request->file('profile_picture'), 'avatars', 'profile_images')]);
         }
 
         return $this->submitAccountUpdateRequest(
@@ -522,11 +531,11 @@ class RiderController extends Controller
     public function accountAddressUpdate(Request $request)
     {
         $request->validate([
-            'province'     => 'required|string|max:255',
+            'province' => 'required|string|max:255',
             'municipality' => 'required|string|max:255',
-            'barangay'     => 'required|string|max:255',
-            'house_no'     => 'nullable|string|max:255',
-            'street'       => 'nullable|string|max:255',
+            'barangay' => 'required|string|max:255',
+            'house_no' => 'nullable|string|max:255',
+            'street' => 'nullable|string|max:255',
         ]);
 
         return $this->submitAccountUpdateRequest(
@@ -541,12 +550,13 @@ class RiderController extends Controller
     {
         $request->validate([
             'current_password' => 'required',
-            'password'         => 'required|min:8|confirmed',
+            'password' => 'required|min:8|confirmed',
         ]);
-        if (!Hash::check($request->current_password, auth()->user()->password)) {
+        if (! Hash::check($request->current_password, auth()->user()->password)) {
             return back()->withErrors(['current_password' => 'Current password is incorrect.']);
         }
         auth()->user()->update(['password' => Hash::make($request->password)]);
+
         return back()->with('password_success', 'Password updated.');
     }
 }

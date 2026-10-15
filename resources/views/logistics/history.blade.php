@@ -1,11 +1,12 @@
 @extends('logistics.layout')
 @section('title', 'Delivery History')
 @section('page-title', 'Delivery History')
-@section('page-sub', 'Completed delivery records')
+@section('page-sub', 'Completed, failed, returned, and cancelled delivery records')
 
 @section('content')
+@include('logistics.partials.filters')
 <div class="card">
-  <div class="card-head"><h2>Completed Deliveries</h2><span class="stamp stamp-approved">{{ $shipments->count() }} records</span></div>
+  <div class="card-head"><h2>Delivery Records</h2><span class="stamp stamp-approved">{{ $shipments->total() }} records</span></div>
   <div class="table-wrap">
     <table class="dtable">
       <thead>
@@ -44,4 +45,5 @@
     </table>
   </div>
 </div>
+<div class="logistics-pagination">{{ $shipments->links() }}</div>
 @endsection

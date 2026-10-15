@@ -6,6 +6,7 @@ use App\Models\Complaint;
 use App\Models\Message;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\MediaLifecycle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -21,41 +22,48 @@ trait HandlesMessaging
 
     private function formatStaffMessage(Message $m): array
     {
+        $reply = $m->replyTo;
+        if ($reply && ! (($reply->sender_id == $m->sender_id && $reply->receiver_id == $m->receiver_id)
+            || ($reply->sender_id == $m->receiver_id && $reply->receiver_id == $m->sender_id))) {
+            $reply = null;
+        }
+        $m->setRelation('replyTo', $reply);
+
         return [
-            'id'              => $m->id,
-            'sender_id'       => $m->sender_id,
-            'body'            => $m->body,
-            'product_id'      => $m->product_id,
-            'product_name'    => $m->product?->name,
-            'product_price'   => $m->product?->price,
-            'product_img'     => $m->product?->image
-                ? (rtrim(config('filesystems.disks.public.url'), '/') . '/' . ltrim($m->product->image, '/'))
+            'id' => $m->id,
+            'sender_id' => $m->sender_id,
+            'body' => $m->body,
+            'product_id' => $m->product_id,
+            'product_name' => $m->product?->name,
+            'product_price' => $m->product?->price,
+            'product_img' => $m->product?->image
+                ? (rtrim(config('filesystems.disks.public.url'), '/').'/'.ltrim($m->product->image, '/'))
                 : null,
-            'reply_to_id'     => $m->reply_to_id,
-            'reply_to'        => $m->replyTo ? [
-                'id'   => $m->replyTo->id,
+            'reply_to_id' => $reply?->id,
+            'reply_to' => $m->replyTo ? [
+                'id' => $m->replyTo->id,
                 'name' => $m->replyTo->sender?->given_names ?? 'them',
                 'text' => Str::limit($m->replyTo->body ?: ($m->replyTo->product_id ? '🛍️ Product' : '📎 Attachment'), 60),
             ] : null,
-            'reactions'       => $m->reactions ?: (object) [],
+            'reactions' => $m->reactions ?: (object) [],
             'attachment_path' => $m->attachment_path ? route('message.media', ['path' => $m->attachment_path]) : null,
             'attachment_name' => $m->attachment_name,
             'attachment_type' => $m->attachment_type,
             'attachment_mime' => $m->attachment_mime,
             'attachment_size' => $m->attachment_size,
-            'read'            => $m->read,
-            'created_at'      => $m->created_at->format('g:i A'),
+            'read' => $m->read,
+            'created_at' => $m->created_at->format('g:i A'),
         ];
     }
 
     private function addStaffAttachment(array &$msg, $file): void
     {
-        $mime                    = $file->getMimeType();
-        $msg['attachment_path']  = $file->store('message_attachments', 'messages');
-        $msg['attachment_name']  = $file->getClientOriginalName();
-        $msg['attachment_mime']  = $mime;
-        $msg['attachment_size']  = $file->getSize();
-        $msg['attachment_type']  = str_starts_with($mime, 'image/')
+        $mime = $file->getMimeType();
+        $msg['attachment_path'] = app(MediaLifecycle::class)->store($file, 'message_attachments', 'messages');
+        $msg['attachment_name'] = $file->getClientOriginalName();
+        $msg['attachment_mime'] = $mime;
+        $msg['attachment_size'] = $file->getSize();
+        $msg['attachment_type'] = str_starts_with($mime, 'image/')
             ? 'image'
             : (str_starts_with($mime, 'video/') ? 'video' : 'document');
     }
@@ -63,16 +71,24 @@ trait HandlesMessaging
     public function messagesSend(Request $request)
     {
         $data = $request->validate([
-            'receiver_id'   => ['required', 'integer', 'exists:users,id'],
-            'body'          => ['nullable', 'string', 'max:2000'],
-            'product_id'    => ['nullable', 'string', 'exists:products,id'],
-            'reply_to_id'   => ['nullable', 'integer', 'exists:messages,id'],
-            'attachments'   => ['nullable', 'array', 'max:5'],
+            'receiver_id' => ['required', 'integer', 'exists:users,id'],
+            'body' => ['nullable', 'string', 'max:2000'],
+            'product_id' => ['nullable', 'string', 'exists:products,id'],
+            'reply_to_id' => ['nullable', 'integer', 'exists:messages,id'],
+            'attachments' => ['nullable', 'array', 'max:5'],
             'attachments.*' => ['file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi,pdf,doc,docx,xls,xlsx'],
         ]);
 
         $receiver = User::findOrFail($data['receiver_id']);
         abort_unless($this->isAllowedContact($receiver), 403);
+
+        if (filled($data['reply_to_id'] ?? null)) {
+            $inThread = Message::whereKey($data['reply_to_id'])->where(function ($query) use ($receiver) {
+                $query->where(fn ($q) => $q->where('sender_id', auth()->id())->where('receiver_id', $receiver->id))
+                    ->orWhere(fn ($q) => $q->where('sender_id', $receiver->id)->where('receiver_id', auth()->id()));
+            })->exists();
+            abort_unless($inThread, 422, 'Reply to a message in this conversation.');
+        }
 
         $files = $request->file('attachments', []);
         abort_unless(filled($data['body'] ?? null) || $files || filled($data['product_id'] ?? null), 422, 'Send a message, product, image, or file.');
@@ -82,10 +98,18 @@ trait HandlesMessaging
         $messages = [];
         foreach ($files ?: [null] as $index => $file) {
             $msg = ['sender_id' => auth()->id(), 'receiver_id' => $receiver->id, 'read' => false];
-            if ($index === 0 && filled($data['body'] ?? null)) $msg['body'] = $data['body'];
-            if ($index === 0 && $product) $msg['product_id'] = $product->id;
-            if ($index === 0 && filled($data['reply_to_id'] ?? null)) $msg['reply_to_id'] = $data['reply_to_id'];
-            if ($file) $this->addStaffAttachment($msg, $file);
+            if ($index === 0 && filled($data['body'] ?? null)) {
+                $msg['body'] = $data['body'];
+            }
+            if ($index === 0 && $product) {
+                $msg['product_id'] = $product->id;
+            }
+            if ($index === 0 && filled($data['reply_to_id'] ?? null)) {
+                $msg['reply_to_id'] = $data['reply_to_id'];
+            }
+            if ($file) {
+                $this->addStaffAttachment($msg, $file);
+            }
             $saved = Message::create($msg);
             $saved->load(['product', 'replyTo.sender']);
             $messages[] = $this->formatStaffMessage($saved);
@@ -96,7 +120,7 @@ trait HandlesMessaging
 
     public function messagesPoll(Request $request)
     {
-        $data     = $request->validate(['receiver_id' => ['required', 'integer']]);
+        $data = $request->validate(['receiver_id' => ['required', 'integer']]);
         $receiver = User::findOrFail($data['receiver_id']);
         abort_unless($this->isAllowedContact($receiver), 403);
 
@@ -117,10 +141,10 @@ trait HandlesMessaging
     public function reportMessage(Request $request)
     {
         $data = $request->validate([
-            'message_id'  => ['required', 'integer'],
-            'reason'      => ['required', 'string', 'max:120'],
+            'message_id' => ['required', 'integer'],
+            'reason' => ['required', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:3000'],
-            'evidence'    => ['nullable', 'file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi'],
+            'evidence' => ['nullable', 'file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi'],
         ]);
         $message = Message::with(['sender', 'receiver'])->whereKey($data['message_id'])
             ->where(fn ($q) => $q->where('sender_id', auth()->id())->orWhere('receiver_id', auth()->id()))
@@ -129,18 +153,18 @@ trait HandlesMessaging
         $reportedOn = $message->sender_id === auth()->id() ? $message->receiver : $message->sender;
 
         $evidence = $request->file('evidence');
-        $values   = [
+        $values = [
             'id' => (string) Str::uuid(), 'order_id' => null, 'complainant_id' => auth()->id(),
-            'respondent_id'  => $reportedOn?->id,
+            'respondent_id' => $reportedOn?->id,
             'complaint_type' => $data['reason'], 'subject' => 'Reported chat message',
-            'description'    => $data['description'] ?? null, 'status' => 'open',
-            'message_id'     => $message->id,
-            'shop_name'      => $reportedOn ? trim(($reportedOn->given_names ?? '') . ' ' . ($reportedOn->last_name ?? '')) : null,
-            'message_body'   => $message->body,
-            'message_type'   => $message->attachment_type ?: ($message->body ? 'text' : 'message'),
+            'description' => $data['description'] ?? null, 'status' => 'open',
+            'message_id' => $message->id,
+            'shop_name' => $reportedOn ? trim(($reportedOn->given_names ?? '').' '.($reportedOn->last_name ?? '')) : null,
+            'message_body' => $message->body,
+            'message_type' => $message->attachment_type ?: ($message->body ? 'text' : 'message'),
         ];
         if ($evidence) {
-            $values['evidence_path'] = $evidence->store('report_evidence', 'public');
+            $values['evidence_path'] = app(MediaLifecycle::class)->store($evidence, 'report_evidence', 'public');
             $values['evidence_name'] = $evidence->getClientOriginalName();
             $values['evidence_mime'] = $evidence->getMimeType();
             $values['evidence_type'] = str_starts_with($values['evidence_mime'], 'video/') ? 'video' : 'image';

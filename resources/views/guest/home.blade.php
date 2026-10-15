@@ -55,6 +55,7 @@ if ((window.pocketfindsReloadAtHero || (!window.location.hash && !window.locatio
 <link rel="stylesheet" href="{{ asset('css/deal-gallery.css') }}?v={{ filemtime(public_path('css/deal-gallery.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/guest-catalog.css') }}?v={{ filemtime(public_path('css/guest-catalog.css')) }}">
 @if($buyerMode)<link rel="stylesheet" href="{{ asset('css/buyer-storefront.css') }}?v={{ filemtime(public_path('css/buyer-storefront.css')) }}">@endif
+@if($buyerMode)<link rel="stylesheet" href="{{ asset('css/navigation.css') }}?v={{ filemtime(public_path('css/navigation.css')) }}">@endif
 </head>
 <body class="marketplace {{ $buyerMode ? 'buyer-storefront' : '' }}">
 
@@ -370,6 +371,7 @@ if ((window.pocketfindsReloadAtHero || (!window.location.hash && !window.locatio
 <script src="{{ asset('js/marketplace.js') }}?v={{ @filemtime(public_path('js/marketplace.js')) ?: 1 }}"></script>
 @if($buyerMode)
 @include('buyer.partials.assistant')
+<script src="{{ asset('js/navigation.js') }}?v={{ filemtime(public_path('js/navigation.js')) }}"></script>
 <script src="{{ asset('js/buyer-storefront.js') }}?v={{ filemtime(public_path('js/buyer-storefront.js')) }}"></script>
 @else
 @include('buyer.partials.assistant', ['assistantGuest' => true])

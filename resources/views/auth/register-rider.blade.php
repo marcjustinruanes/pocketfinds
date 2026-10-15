@@ -1150,7 +1150,7 @@ function updateSelectedHubPreview() {
                 <div class="selected-hub-header">
                     <span class="selected-hub-name">${hub.municipality} Hub</span>
                     <span class="hub-badge ${hub.is_hiring ? 'hub-badge-hiring' : 'hub-badge-not-hiring'}">
-                        ${hub.is_hiring ? (isDirectMatch ? 'Actively Hiring' : 'Hiring') : 'Not Hiring'}
+                        ${hub.is_hiring ? (isDirectMatch ? 'Actively Hiring' : 'Hiring') : (hub.hiring_status || 'Not Hiring')}
                     </span>
                     ${hub.is_regional_hub ? '<span class="hub-badge hub-badge-regional"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Regional</span>' : ''}
                 </div>
@@ -1242,7 +1242,7 @@ function renderModalHubList(searchTerm) {
             <div style="flex-shrink:0">
                 ${h.is_hiring
                     ? '<span class="hub-badge hub-badge-hiring"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Hiring</span>'
-                    : '<span class="hub-badge hub-badge-not-hiring">Not Hiring</span>'
+                    : `<span class="hub-badge hub-badge-not-hiring">${h.hiring_status || 'Not Hiring'}</span>`
                 }
             </div>
         </div>`;

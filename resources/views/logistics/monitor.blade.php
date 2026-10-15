@@ -64,4 +64,5 @@
     </table>
   </div>
 </div>
+{{ $shipments->links() }}
 @endsection

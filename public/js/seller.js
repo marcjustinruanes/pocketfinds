@@ -1,6 +1,3 @@
-// Sidebar toggle
-const sidebar = document.getElementById('sidebar');
-const shell   = document.getElementById('appShell');
 document.querySelectorAll('[data-dropdown-toggle]').forEach(button => {
     button.addEventListener('click', event => {
         event.stopPropagation();
@@ -11,12 +8,6 @@ document.querySelectorAll('[data-dropdown-toggle]').forEach(button => {
 });
 document.addEventListener('click', event => {
     if (!event.target.closest('.dropdown')) document.querySelectorAll('.dropdown-panel.open').forEach(panel => panel.classList.remove('open'));
-});
-document.querySelectorAll('[data-sidebar-toggle]').forEach(btn => {
-    btn.addEventListener('click', () => {
-        sidebar.classList.toggle('open');
-        shell.classList.toggle('collapsed');
-    });
 });
 
 // Logout modal

@@ -1,0 +1,14 @@
+.navigation-group { margin: 6px 0; }
+.navigation-group-toggle { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 12px; border: 0; border-radius: 8px; background: transparent; color: inherit; font: inherit; font-size: 12px; font-weight: 700; text-align: left; cursor: pointer; }
+.navigation-group-toggle:hover { background: rgba(128,128,128,.12); }
+.navigation-group-toggle:focus-visible, .nav-item:focus-visible { outline: 2px solid #ff8fc3; outline-offset: -2px; }
+.navigation-group-items { padding-left: 8px; }
+.navigation-group-items[hidden] { display: none !important; }
+.navigation-chevron { flex-shrink: 0; transition: transform .15s ease; }
+.navigation-group-toggle[aria-expanded="true"] .navigation-chevron { transform: rotate(180deg); }
+.sidebar .nav-item { white-space: normal; }
+.pf-buyer-dropdown .navigation-group-toggle { font-weight: 700; justify-content: space-between; }
+.pf-buyer-dropdown a[aria-current="page"] { background: #fff1f7; color: #b72f73; font-weight: 700; }
+.pf-buyer-account-navigation { max-height: min(75vh, 650px); overflow-y: auto; }
+
+@media (max-width: 860px) { .shell[data-navigation-shell].collapsed { grid-template-columns: 1fr; } }

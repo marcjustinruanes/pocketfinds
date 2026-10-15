@@ -2,21 +2,28 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AccountUpdateRequest;
 use App\Http\Controllers\Concerns\HandlesAccountUpdateRequests;
-use App\Models\Product;
-use App\Models\User;
-use App\Models\Message;
-use App\Models\Complaint;
-use App\Models\Order;
-use App\Models\Review;
-use App\Models\Shipment;
-use App\Models\Voucher;
 use App\Models\Announcement;
+use App\Models\Complaint;
+use App\Models\GcashPurchase;
+use App\Models\LogisticsHub;
+use App\Models\Message;
+use App\Models\Order;
+use App\Models\Product;
+use App\Models\Review;
+use App\Models\Setting;
+use App\Models\Shipment;
+use App\Models\User;
+use App\Models\Voucher;
+use App\Services\GcashWorkflow;
+use App\Services\MediaLifecycle;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 
@@ -34,9 +41,9 @@ class SellerController extends Controller
         $avgRating = round((float) Review::where('seller_id', $sellerId)->avg('rating'), 1);
         $recentOrders = Order::with('buyer')->where('seller_id', $sellerId)->latest()->limit(5)->get();
         $pipelineCounts = [
-            'new'        => (clone $orders)->where('status', 'placed')->count(),
-            'prepare'    => (clone $orders)->whereIn('status', ['confirmed', 'preparing'])->count(),
-            'shipments'  => (clone $orders)->whereIn('status', ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'hub_transfer', 'sorted', 'assigned_to_rider', 'out_for_delivery'])->count(),
+            'new' => (clone $orders)->where('status', 'placed')->count(),
+            'prepare' => (clone $orders)->whereIn('status', ['confirmed', 'preparing'])->count(),
+            'shipments' => (clone $orders)->whereIn('status', ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'hub_transfer', 'sorted', 'assigned_to_rider', 'out_for_delivery'])->count(),
             'deliveries' => (clone $orders)->whereIn('status', ['delivered', 'completed'])->count(),
         ];
         $chartStart = now()->startOfDay()->subDays(6);
@@ -44,6 +51,7 @@ class SellerController extends Controller
             ->get(['total', 'created_at'])->groupBy(fn ($order) => $order->created_at->format('Y-m-d'));
         $salesChart = collect(range(0, 6))->map(function ($days) use ($chartStart, $salesByDay) {
             $date = $chartStart->copy()->addDays($days);
+
             return ['label' => $date->format('D'), 'amount' => (float) $salesByDay->get($date->format('Y-m-d'), collect())->sum('total')];
         });
         $chartMax = max(1, $salesChart->max('amount'));
@@ -51,6 +59,7 @@ class SellerController extends Controller
 
         return view('seller.dashboard', compact('totalSales', 'newOrders', 'productsListed', 'avgRating', 'recentOrders', 'pipelineCounts', 'salesChart', 'chartMax', 'lowStock'));
     }
+
     public function orders(Request $request)
     {
         Order::autoCompleteDeliveredThrottled();
@@ -83,6 +92,7 @@ class SellerController extends Controller
         // move an order from a stage it's no longer at.
         DB::transaction(function () use ($order, $from, $to) {
             $locked = Order::lockFresh($order->id);
+            app(GcashWorkflow::class)->assertOrderOperation($locked, in_array($locked->status, ['placed', 'confirmed', 'preparing', 'ready_for_pickup']));
             abort_unless($locked->status === $from, 422, "This order is not at the \"{$from}\" stage.");
 
             $locked->update(['status' => $to]);
@@ -99,41 +109,55 @@ class SellerController extends Controller
     public function confirmOrder(Order $order)
     {
         abort_unless($order->seller_id === auth()->id(), 403);
+        if ($order->gcash_purchase_id) {
+            app(GcashWorkflow::class)->eligible(auth()->user(), 'seller');
+        }
 
         try {
             DB::transaction(function () use ($order) {
                 // Locked + re-read first: a double-click must not deduct stock twice, and
                 // a buyer cancelling at the same instant must not be overwritten.
                 $locked = Order::lockFresh($order->id);
+                app(GcashWorkflow::class)->assertOrderOperation($locked, in_array($locked->status, ['placed', 'confirmed', 'preparing', 'ready_for_pickup']));
                 abort_unless($locked->status === 'placed', 422, 'This order is not at the "placed" stage.');
 
-                $products = [];
-                foreach ($locked->items ?? [] as $item) {
-                    $product = $products[$item['product_id']]
-                        ?? Product::where('id', $item['product_id'])->lockForUpdate()->first();
-                    if (!$product) {
-                        throw new \RuntimeException("\"{$item['name']}\" is no longer available.");
+                if ($locked->gcash_purchase_id) {
+                    app(GcashWorkflow::class)->eligible(auth()->user(), 'seller');
+                    $purchase = GcashPurchase::whereKey($locked->gcash_purchase_id)->lockForUpdate()->firstOrFail();
+                    abort_unless($purchase->payment_state === 'order_placed' && $purchase->reservation_state === 'transferred', 422, 'GCash payment requires manual resolution.');
+                } else {
+                    $products = [];
+                    foreach ($locked->items ?? [] as $item) {
+                        $product = $products[$item['product_id']]
+                            ?? Product::where('id', $item['product_id'])->lockForUpdate()->first();
+                        if (! $product) {
+                            throw new \RuntimeException("\"{$item['name']}\" is no longer available.");
+                        }
+                        $products[$item['product_id']] = $product;
+                        $available = $product->availableStock($item['variation_group'] ?: null, $item['variation_value'] ?: null);
+                        if ($available < (int) $item['qty']) {
+                            throw new \RuntimeException($available > 0
+                                ? "Only {$available} of \"{$item['name']}\" left in stock — you can cancel this order instead."
+                                : "\"{$item['name']}\" is now out of stock — you can cancel this order instead.");
+                        }
                     }
-                    $products[$item['product_id']] = $product;
-                    $available = $product->availableStock($item['variation_group'] ?: null, $item['variation_value'] ?: null);
-                    if ($available < (int) $item['qty']) {
-                        throw new \RuntimeException($available > 0
-                            ? "Only {$available} of \"{$item['name']}\" left in stock — you can cancel this order instead."
-                            : "\"{$item['name']}\" is now out of stock — you can cancel this order instead.");
+
+                    foreach ($locked->items ?? [] as $item) {
+                        $products[$item['product_id']]->deductStock(
+                            (int) $item['qty'],
+                            $item['variation_group'] ?: null,
+                            $item['variation_value'] ?: null
+                        );
                     }
-                }
 
-                foreach ($locked->items ?? [] as $item) {
-                    $products[$item['product_id']]->deductStock(
-                        (int) $item['qty'],
-                        $item['variation_group'] ?: null,
-                        $item['variation_value'] ?: null
-                    );
                 }
-
                 $locked->update(['status' => 'confirmed']);
                 $locked->logStatus('confirmed', auth()->id());
             });
+        } catch (QueryException $e) {
+            Log::warning('Order confirmation database operation failed', ['exception_type' => $e::class]);
+
+            return back()->with('error', 'Unable to confirm this order right now. Please try again.');
         } catch (\RuntimeException $e) {
             return back()->with('error', $e->getMessage());
         }
@@ -145,6 +169,7 @@ class SellerController extends Controller
     public function startPreparing(Order $order)
     {
         $this->advanceOrderStage($order, 'confirmed', 'preparing');
+
         return back()->with('order_success', 'Order marked as preparing.');
     }
 
@@ -163,12 +188,12 @@ class SellerController extends Controller
 
         $seller = auth()->user();
         $buyerMunicipality = $order->shipping_address['municipality'] ?? null;
-        $buyerProvince     = $order->shipping_address['province'] ?? null;
-        $eligible = \App\Models\LogisticsHub::companiesServicing($seller->municipality, $buyerMunicipality, $seller->province, $buyerProvince);
+        $buyerProvince = $order->shipping_address['province'] ?? null;
+        $eligible = LogisticsHub::companiesServicing($seller->municipality, $buyerMunicipality, $seller->province, $buyerProvince);
 
         $data = $request->validate([
             'logistics_company' => ['required', 'string', function ($attribute, $value, $fail) use ($eligible) {
-                if (!$eligible->contains($value)) {
+                if (! $eligible->contains($value)) {
                     $fail('Choose a logistics company that covers both your location and the buyer\'s location.');
                 }
             }],
@@ -179,20 +204,21 @@ class SellerController extends Controller
         // has already restocked) can't be overwritten into a shipped, cancelled order.
         DB::transaction(function () use ($order, $data, $seller, $buyerMunicipality, $buyerProvince) {
             $locked = Order::lockFresh($order->id);
+            app(GcashWorkflow::class)->assertOrderOperation($locked, in_array($locked->status, ['placed', 'confirmed', 'preparing', 'ready_for_pickup']));
             abort_unless($locked->status === 'preparing', 422, 'This order is not awaiting preparation.');
 
-            if (!$locked->shipment) {
+            if (! $locked->shipment) {
                 // pickup_approved_at stays null until the company's admin confirms the handoff
                 // (LogisticsController::approveRequest()) — until then this is invisible to
                 // every pickup rider, even though its status is already 'ready_for_pickup'.
                 Shipment::create([
-                    'order_id'             => $locked->id,
-                    'tracking_number'      => 'PF-SHIP-' . now()->format('ymd') . '-' . strtoupper(Str::random(6)),
-                    'shipping_status'      => 'ready_for_pickup',
-                    'logistics_company'    => $data['logistics_company'],
-                    'origin_hub'           => $seller->municipality,
-                    'origin_province'      => $seller->province,
-                    'destination_hub'      => $buyerMunicipality,
+                    'order_id' => $locked->id,
+                    'tracking_number' => 'PF-SHIP-'.now()->format('ymd').'-'.strtoupper(Str::random(6)),
+                    'shipping_status' => 'ready_for_pickup',
+                    'logistics_company' => $data['logistics_company'],
+                    'origin_hub' => $seller->municipality,
+                    'origin_province' => $seller->province,
+                    'destination_hub' => $buyerMunicipality,
                     'destination_province' => $buyerProvince,
                 ]);
             }
@@ -200,7 +226,7 @@ class SellerController extends Controller
             $locked->logStatus('ready_for_pickup', auth()->id());
         });
 
-        return back()->with('order_success', 'Order handed off to ' . $data['logistics_company'] . ' for courier pickup.');
+        return back()->with('order_success', 'Order handed off to '.$data['logistics_company'].' for courier pickup.');
     }
 
     /**
@@ -216,7 +242,8 @@ class SellerController extends Controller
 
         DB::transaction(function () use ($order) {
             // Order and shipment locked together so a double-click can't confirm twice.
-            $locked   = Order::lockFresh($order->id);
+            $locked = Order::lockFresh($order->id);
+            app(GcashWorkflow::class)->assertOrderOperation($locked, in_array($locked->status, ['placed', 'confirmed', 'preparing', 'ready_for_pickup']));
             $shipment = Shipment::where('order_id', $locked->id)->lockForUpdate()->first();
 
             abort_unless($shipment && $shipment->shipping_status === 'ready_for_pickup', 422, 'No pickup rider has accepted this order yet.');
@@ -230,7 +257,7 @@ class SellerController extends Controller
             $locked->update(['status' => 'picked_up']);
             $locked->logStatus('picked_up', auth()->id());
 
-            Order::notifyUser($shipment->pickup_rider_id, 'Pickup Confirmed', 'The seller confirmed you picked up order #' . $locked->order_number . '. Bring it to the sorting center.', 'order_status', $locked->id);
+            Order::notifyUser($shipment->pickup_rider_id, 'Pickup Confirmed', 'The seller confirmed you picked up order #'.$locked->order_number.'. Bring it to the sorting center.', 'order_status', $locked->id);
         });
 
         return back()->with('order_success', 'Pickup confirmed.');
@@ -247,19 +274,21 @@ class SellerController extends Controller
 
         $data = $request->validate([
             'cancellation_reason' => ['required', 'string', 'in:Out of stock,Unable to fulfil this order,Cannot deliver to the buyer location,Buyer requested cancellation,Other'],
-            'cancellation_note'   => ['nullable', 'string', 'max:500'],
+            'cancellation_note' => ['nullable', 'string', 'max:500'],
         ]);
 
         $cancelled = DB::transaction(function () use ($order, $data) {
             $locked = Order::lockFresh($order->id);
-            $ok = $locked->cancelAndRestock('Cancelled by seller: ' . $data['cancellation_reason'], $data['cancellation_note'] ?? null, auth()->id());
+            app(GcashWorkflow::class)->assertOrderOperation($locked);
+            $ok = $locked->cancelAndRestock('Cancelled by seller: '.$data['cancellation_reason'], $data['cancellation_note'] ?? null, auth()->id());
             if ($ok) {
-                Order::notifyUser($locked->buyer_id, 'Order Cancelled', 'Your order #' . $locked->order_number . ' was cancelled by the seller: ' . $data['cancellation_reason'] . '.', 'order_status', $locked->id);
+                Order::notifyUser($locked->buyer_id, 'Order Cancelled', 'Your order #'.$locked->order_number.' was cancelled by the seller: '.$data['cancellation_reason'].'.', 'order_status', $locked->id);
             }
+
             return $ok;
         });
 
-        if (!$cancelled) {
+        if (! $cancelled) {
             return back()->with('error', 'This order can no longer be cancelled — it has already been handed to a courier.');
         }
 
@@ -285,9 +314,13 @@ class SellerController extends Controller
         $data = $request->validate([
             'scheduled_pickup_at' => 'required|date|after:now',
         ]);
-        $order->shipment->update(['scheduled_pickup_at' => $data['scheduled_pickup_at']]);
+        DB::transaction(function () use ($order, $data) {
+            $locked = Order::lockFresh($order->id);
+            app(GcashWorkflow::class)->assertOrderOperation($locked, $locked->status === 'ready_for_pickup');
+            $locked->shipment->update(['scheduled_pickup_at' => $data['scheduled_pickup_at']]);
+        }, 3);
 
-        return back()->with('order_success', 'Courier pickup scheduled for ' . \Illuminate\Support\Carbon::parse($data['scheduled_pickup_at'])->format('M d, Y g:i A') . '.');
+        return back()->with('order_success', 'Courier pickup scheduled for '.Carbon::parse($data['scheduled_pickup_at'])->format('M d, Y g:i A').'.');
     }
 
     public function feedback()
@@ -300,6 +333,7 @@ class SellerController extends Controller
             $star => $total ? round($reviews->where('rating', $star)->count() / $total * 100) : 0,
         ]);
         $needsResponse = $reviews->whereNull('seller_reply')->count();
+
         return view('seller.feedback', compact('reviews', 'total', 'avgRating', 'breakdown', 'needsResponse'));
     }
 
@@ -310,14 +344,14 @@ class SellerController extends Controller
         $review->update(['seller_reply' => $data['seller_reply']]);
 
         DB::table('notifications')->insert([
-            'id'                => (string) Str::uuid(),
-            'user_id'           => $review->buyer_id,
-            'title'             => 'Seller Replied to Your Review',
-            'message'           => auth()->user()->business_name . ' replied to your review' . ($review->product ? ' for "' . $review->product->name . '"' : '') . '.',
+            'id' => (string) Str::uuid(),
+            'user_id' => $review->buyer_id,
+            'title' => 'Seller Replied to Your Review',
+            'message' => auth()->user()->business_name.' replied to your review'.($review->product ? ' for "'.$review->product->name.'"' : '').'.',
             'notification_type' => 'review_reply',
-            'reference_id'      => $review->id,
-            'is_read'           => false,
-            'created_at'        => now(),
+            'reference_id' => $review->id,
+            'is_read' => false,
+            'created_at' => now(),
         ]);
 
         return back()->with('review_success', 'Reply posted.');
@@ -326,22 +360,24 @@ class SellerController extends Controller
     public function reports(Request $request)
     {
         $sellerId = auth()->id();
-        $from = $request->filled('from') ? \Illuminate\Support\Carbon::parse($request->query('from'))->startOfDay() : now()->startOfMonth();
-        $to   = $request->filled('to') ? \Illuminate\Support\Carbon::parse($request->query('to'))->endOfDay() : now()->endOfDay();
+        $from = $request->filled('from') ? Carbon::parse($request->query('from'))->startOfDay() : now()->startOfMonth();
+        $to = $request->filled('to') ? Carbon::parse($request->query('to'))->endOfDay() : now()->endOfDay();
 
         $completed = Order::where('seller_id', $sellerId)->where('status', 'completed')
             ->whereBetween('updated_at', [$from, $to])->get();
 
-        $totalRevenue   = (float) $completed->sum('total');
-        $commission     = round($totalRevenue * \App\Models\Setting::current()->commissionFraction(), 2);
-        $shippingFees   = (float) $completed->sum('shipping_amount');
-        $discounts      = (float) $completed->sum('discount_amount');
-        $netProfit      = $totalRevenue - $commission;
+        $totalRevenue = (float) $completed->sum('total');
+        $commission = round($totalRevenue * Setting::current()->commissionFraction(), 2);
+        $shippingFees = (float) $completed->sum('shipping_amount');
+        $discounts = (float) $completed->sum('discount_amount');
+        $netProfit = $totalRevenue - $commission;
         $ordersCompleted = $completed->count();
-        $avgOrderValue  = $ordersCompleted ? $totalRevenue / $ordersCompleted : 0;
+        $avgOrderValue = $ordersCompleted ? $totalRevenue / $ordersCompleted : 0;
 
         $days = collect();
-        for ($d = $from->copy(); $d->lte($to) && $days->count() < 60; $d->addDay()) $days->push($d->format('Y-m-d'));
+        for ($d = $from->copy(); $d->lte($to) && $days->count() < 60; $d->addDay()) {
+            $days->push($d->format('Y-m-d'));
+        }
         $byDay = $completed->groupBy(fn ($o) => $o->updated_at->format('Y-m-d'));
         $revenueChart = $days->map(fn ($day) => (float) $byDay->get($day, collect())->sum('total'));
         $chartMax = max(1, $revenueChart->max() ?: 1);
@@ -378,6 +414,7 @@ class SellerController extends Controller
             'satisfaction' => $satisfaction ? round($satisfaction, 1) : null,
         ]);
     }
+
     public function messages(Request $request)
     {
         $buyer = null;
@@ -393,10 +430,10 @@ class SellerController extends Controller
         $buyerOrders = collect();
         $autoAttachOrder = null;
         if ($buyer) {
-            $messages = Message::with(['product', 'order'])
-                ->where(function($q) use ($buyer) {
+            $messages = Message::with(['product', 'order', 'gcashPurchase'])
+                ->where(function ($q) use ($buyer) {
                     $q->where('sender_id', auth()->id())->where('receiver_id', $buyer->id);
-                })->orWhere(function($q) use ($buyer) {
+                })->orWhere(function ($q) use ($buyer) {
                     $q->where('sender_id', $buyer->id)->where('receiver_id', auth()->id());
                 })
                 ->orderBy('created_at')
@@ -420,13 +457,13 @@ class SellerController extends Controller
 
         $sellerProducts = Product::where('seller_id', auth()->id())->where('status', 'active')->orderBy('name')->get();
 
-        $conversations = Message::with(['sender','receiver','product'])
+        $conversations = Message::with(['sender', 'receiver', 'product', 'gcashPurchase'])
             ->where('sender_id', auth()->id())
             ->orWhere('receiver_id', auth()->id())
             ->orderByDesc('created_at')
             ->get()
-            ->groupBy(fn($m) => $m->sender_id === auth()->id() ? $m->receiver_id : $m->sender_id)
-            ->map(fn($msgs) => $msgs->first());
+            ->groupBy(fn ($m) => $m->sender_id === auth()->id() ? $m->receiver_id : $m->sender_id)
+            ->map(fn ($msgs) => $msgs->first());
 
         return view('seller.messages', compact('buyer', 'admin', 'messages', 'conversations', 'sellerProducts', 'buyerOrders', 'autoAttachOrder'));
     }
@@ -443,7 +480,7 @@ class SellerController extends Controller
             ->where('read', false)
             ->update(['read' => true]);
 
-        $messages = Message::with(['product', 'order'])
+        $messages = Message::with(['product', 'order', 'gcashPurchase'])
             ->where(function ($query) use ($buyer) {
                 $query->where('sender_id', auth()->id())->where('receiver_id', $buyer->id);
             })->orWhere(function ($query) use ($buyer) {
@@ -474,13 +511,14 @@ class SellerController extends Controller
             'message_body' => $message->body, 'message_type' => $message->attachment_type ?: ($message->body ? 'text' : 'message'),
         ];
         if ($evidence) {
-            $values['evidence_path'] = $evidence->store('report_evidence', 'public');
+            $values['evidence_path'] = app(MediaLifecycle::class)->store($evidence, 'report_evidence', 'public');
             $values['evidence_name'] = $evidence->getClientOriginalName();
             $values['evidence_mime'] = $evidence->getMimeType();
             $values['evidence_type'] = str_starts_with($values['evidence_mime'], 'video/') ? 'video' : 'image';
             $values['evidence_size'] = $evidence->getSize();
         }
         Complaint::create($values);
+
         return response()->json(['ok' => true, 'message' => 'Report sent to admin.']);
     }
 
@@ -488,19 +526,21 @@ class SellerController extends Controller
     {
         $data = $request->validate([
             'receiver_id' => ['required', 'integer'],
-            'body'        => ['nullable', 'string', 'max:2000'],
-            'product_id'  => ['nullable', 'string'],
-            'order_id'    => ['nullable', 'string'],
-            'attachments'   => ['nullable', 'array', 'max:5'],
+            'body' => ['nullable', 'string', 'max:2000'],
+            'product_id' => ['nullable', 'string'],
+            'order_id' => ['nullable', 'string'],
+            'attachments' => ['nullable', 'array', 'max:5'],
             'attachments.*' => ['file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi'],
-            'attachment'    => ['nullable', 'file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi'],
+            'attachment' => ['nullable', 'file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi'],
         ]);
 
         User::whereKey($data['receiver_id'])
             ->where(fn ($q) => $q->where('account_type', 'buyer')->orWhere('is_admin', true))
             ->firstOrFail();
         $files = $request->file('attachments', []);
-        if ($request->hasFile('attachment')) $files[] = $request->file('attachment');
+        if ($request->hasFile('attachment')) {
+            $files[] = $request->file('attachment');
+        }
         abort_unless(filled($data['body'] ?? null) || $files || filled($data['product_id'] ?? null) || filled($data['order_id'] ?? null), 422, 'Send a message, product, order, image, or video.');
 
         $product = null;
@@ -516,11 +556,20 @@ class SellerController extends Controller
         $messages = [];
         foreach ($files ?: [null] as $index => $file) {
             $msg = ['sender_id' => auth()->id(), 'receiver_id' => $data['receiver_id'], 'read' => false];
-            if ($index === 0 && filled($data['body'] ?? null)) $msg['body'] = $data['body'];
-            if ($index === 0 && $product) $msg['product_id'] = $product->id;
-            if ($index === 0 && $order) $msg['order_id'] = $order->id;
-            if ($file) $this->addAttachment($msg, $file);
-            $saved = Message::create($msg); $saved->load(['product', 'order']);
+            if ($index === 0 && filled($data['body'] ?? null)) {
+                $msg['body'] = $data['body'];
+            }
+            if ($index === 0 && $product) {
+                $msg['product_id'] = $product->id;
+            }
+            if ($index === 0 && $order) {
+                $msg['order_id'] = $order->id;
+            }
+            if ($file) {
+                $this->addAttachment($msg, $file);
+            }
+            $saved = Message::create($msg);
+            $saved->load(['product', 'order']);
             $messages[] = $this->formatMessage($saved);
         }
 
@@ -531,7 +580,7 @@ class SellerController extends Controller
     {
         $mime = $file->getMimeType();
         $extension = strtolower($file->getClientOriginalExtension());
-        $msg['attachment_path'] = $file->store('message_attachments', 'messages');
+        $msg['attachment_path'] = app(MediaLifecycle::class)->store($file, 'message_attachments', 'messages');
         $msg['attachment_name'] = $file->getClientOriginalName();
         $msg['attachment_mime'] = $mime;
         $msg['attachment_size'] = $file->getSize();
@@ -540,111 +589,112 @@ class SellerController extends Controller
             : (str_starts_with($mime, 'video/') || in_array($extension, ['mp4', 'mov', 'avi'], true) ? 'video' : 'document');
     }
 
-    private function formatMessage(\App\Models\Message $m): array
+    private function formatMessage(Message $m): array
     {
         return [
-            'id'              => $m->id,
-            'sender_id'       => $m->sender_id,
-            'body'            => $m->body,
-            'product_id'      => $m->product_id,
-            'product_name'    => $m->product?->name,
-            'product_price'   => $m->product?->price,
-            'product_img'     => $m->product?->image ? (rtrim(config('filesystems.disks.public.url'), '/') . '/' . ltrim($m->product->image, '/')) : null,
-            'product_url'     => $m->product_id ? route('buyer.product', $m->product_id) : null,
-            'order_id'        => $m->order_id,
-            'order_number'    => $m->order?->order_number,
-            'order_status'    => $m->order ? str_replace('_', ' ', ucfirst($m->order->status)) : null,
-            'order_total'     => $m->order?->total,
-            'order_url'       => $m->order_id ? route('seller.orders') : null,
+            'id' => $m->id,
+            'sender_id' => $m->sender_id,
+            'body' => $m->displayBody(),
+            'product_id' => $m->product_id,
+            'product_name' => $m->product?->name,
+            'product_price' => $m->product?->price,
+            'product_img' => $m->product?->image ? (rtrim(config('filesystems.disks.public.url'), '/').'/'.ltrim($m->product->image, '/')) : null,
+            'product_url' => $m->product_id ? route('buyer.product', $m->product_id) : null,
+            'order_id' => $m->order_id,
+            'order_number' => $m->order?->order_number,
+            'order_status' => $m->order ? str_replace('_', ' ', ucfirst($m->order->status)) : null,
+            'order_total' => $m->order?->total,
+            'order_url' => $m->order_id ? route('seller.orders') : null,
             'attachment_path' => $m->attachment_path ? route('message.media', ['path' => $m->attachment_path]) : null,
             'attachment_name' => $m->attachment_name,
             'attachment_type' => $m->attachment_type,
             'attachment_mime' => $m->attachment_mime,
             'attachment_size' => $m->attachment_size,
-            'read'            => $m->read,
-            'created_at'      => $m->created_at->format('g:i A'),
+            'read' => $m->read,
+            'created_at' => $m->created_at->format('g:i A'),
         ];
     }
 
     public function inventory()
     {
-        $products   = Product::with(['category'])
+        $products = Product::with(['category'])
             ->where('seller_id', auth()->id())
             ->latest()
             ->get();
         $categories = DB::table('categories')->orderBy('name')->get();
-        $seller     = auth()->user();
+        $seller = auth()->user();
+
         return view('seller.inventory', compact('products', 'categories', 'seller'));
     }
 
     public function storeProduct(Request $request)
     {
         $request->validate([
-            'name'                => 'required|string|max:255',
-            'images'              => 'nullable|array|max:9',
-            'images.*'            => 'image|mimes:jpg,jpeg,png,webp|max:4096',
-            'video'               => 'nullable|file|mimes:mp4,mov,avi,webm|max:51200',
-            'price'               => 'required|numeric|min:0',
-            'discount_price'      => 'nullable|numeric|min:0|lt:price',
-            'description'         => 'nullable|string',
-            'sku'                 => 'nullable|string|max:100',
-            'stock'               => 'nullable|integer|min:0',
-            'restock_date'        => 'nullable|date|after_or_equal:today',
-            'variations'          => 'nullable|string',
-            'details'             => 'nullable|string',
-            'variation_images'    => 'nullable|array',
-            'variation_images.*'  => 'image|mimes:jpg,jpeg,png,webp|max:4096',
-            'weight_grams'        => 'required|numeric|min:1',
-            'weight_grams_max'    => 'nullable|numeric|gte:weight_grams',
-            'length_cm'           => 'nullable|numeric|min:0',
-            'width_cm'            => 'nullable|numeric|min:0',
-            'height_cm'           => 'nullable|numeric|min:0',
-            'condition'           => 'required|in:new,used',
+            'name' => 'required|string|max:255',
+            'images' => 'nullable|array|max:9',
+            'images.*' => 'image|mimes:jpg,jpeg,png,webp|max:4096',
+            'video' => 'nullable|file|mimes:mp4,mov,avi,webm|max:51200',
+            'price' => 'required|numeric|min:0',
+            'discount_price' => 'nullable|numeric|min:0|lt:price',
+            'description' => 'nullable|string',
+            'sku' => 'nullable|string|max:100',
+            'stock' => 'nullable|integer|min:0',
+            'restock_date' => 'nullable|date|after_or_equal:today',
+            'variations' => 'nullable|string',
+            'details' => 'nullable|string',
+            'variation_images' => 'nullable|array',
+            'variation_images.*' => 'image|mimes:jpg,jpeg,png,webp|max:4096',
+            'weight_grams' => 'required|numeric|min:1',
+            'weight_grams_max' => 'nullable|numeric|gte:weight_grams',
+            'length_cm' => 'nullable|numeric|min:0',
+            'width_cm' => 'nullable|numeric|min:0',
+            'height_cm' => 'nullable|numeric|min:0',
+            'condition' => 'required|in:new,used',
         ], [
             'discount_price.lt' => 'Discount price must be lower than the regular price.',
         ]);
 
         $seller = auth()->user();
 
-        if (!$seller->category_id) {
+        if (! $seller->category_id) {
             return back()->withErrors(['images' => 'Please set your shop category in Account settings before adding products.']);
         }
 
-        $imagePaths = collect($request->file('images', []))->map(fn ($file) => $file->store('product_images', 'public'))->values();
+        $imagePaths = collect($request->file('images', []))->map(fn ($file) => app(MediaLifecycle::class)->store($file, 'product_images', 'public'))->values();
         $variations = $request->filled('variations') ? json_decode($request->variations, true) : null;
-        $details    = $request->filled('details') ? json_decode($request->details, true) : null;
+        $details = $request->filled('details') ? json_decode($request->details, true) : null;
 
         $firstVariationImage = $this->applyVariationImagesAndPrices($variations, $request->file('variation_images', []));
 
-        if ($imagePaths->isEmpty() && !$firstVariationImage) {
+        if ($imagePaths->isEmpty() && ! $firstVariationImage) {
             return back()->withErrors(['images' => 'Add at least one product photo (either general photos or a photo on a variation option).']);
         }
 
         $coverImages = $imagePaths->isNotEmpty() ? $imagePaths->all() : [$firstVariationImage];
-        $videoPath   = $request->hasFile('video') ? $request->file('video')->store('product_videos', 'public') : null;
+        $videoPath = $request->hasFile('video') ? app(MediaLifecycle::class)->store($request->file('video'), 'product_videos', 'public') : null;
 
         Product::create([
-            'seller_id'    => $seller->id,
-            'category_id'  => $seller->category_id,
-            'name'         => $request->name,
-            'image'        => $coverImages[0],
-            'images'       => $coverImages,
-            'video'        => $videoPath,
-            'price'        => $request->price,
+            'seller_id' => $seller->id,
+            'category_id' => $seller->category_id,
+            'name' => $request->name,
+            'image' => $coverImages[0],
+            'images' => $coverImages,
+            'video' => $videoPath,
+            'price' => $request->price,
             'discount_price' => $request->discount_price ?: null,
-            'description'  => $request->description,
-            'sku'          => $request->sku,
-            'stock'        => $variations ? collect($variations)->sum(fn ($v) => collect($v['options'] ?? [])->sum('stock')) : (int) $request->input('stock', 0),
+            'description' => $request->description,
+            'sku' => $request->sku,
+            'stock' => $variations ? collect($variations)->sum(fn ($v) => collect($v['options'] ?? [])->sum('stock')) : (int) $request->input('stock', 0),
             'restock_date' => $request->restock_date ?: null,
-            'variations'   => $variations,
-            'details'      => $details,
-            'status'       => 'pending',
+            'variations' => $variations,
+            'details' => $details,
+            'status' => 'pending',
             'weight_grams' => (int) $request->weight_grams,
             'weight_grams_max' => $request->weight_grams_max ?: null,
-            'length_cm'    => $request->length_cm ?: null,
-            'width_cm'     => $request->width_cm ?: null,
-            'height_cm'    => $request->height_cm ?: null,
-            'condition'    => $request->condition,
+            'length_cm' => $request->length_cm ?: null,
+            'width_cm' => $request->width_cm ?: null,
+            'height_cm' => $request->height_cm ?: null,
+            'condition' => $request->condition,
         ]);
 
         $this->notifyAdminsProductPending($seller, $request->name, 'submitted a new product');
@@ -657,29 +707,29 @@ class SellerController extends Controller
         abort_if($product->seller_id !== auth()->id(), 403);
 
         $request->validate([
-            'name'                => 'required|string|max:255',
-            'images'              => 'nullable|array|max:9',
-            'images.*'            => 'image|mimes:jpg,jpeg,png,webp|max:4096',
-            'existing_images'     => 'nullable|array',
-            'existing_images.*'   => 'string',
-            'video'               => 'nullable|file|mimes:mp4,mov,avi,webm|max:51200',
-            'keep_video'          => 'nullable|boolean',
-            'price'               => 'required|numeric|min:0',
-            'discount_price'      => 'nullable|numeric|min:0|lt:price',
-            'description'         => 'nullable|string',
-            'sku'                 => 'nullable|string|max:100',
-            'stock'               => 'nullable|integer|min:0',
-            'restock_date'        => 'nullable|date|after_or_equal:today',
-            'variations'          => 'nullable|string',
-            'details'             => 'nullable|string',
-            'variation_images'    => 'nullable|array',
-            'variation_images.*'  => 'image|mimes:jpg,jpeg,png,webp|max:4096',
-            'weight_grams'        => 'required|numeric|min:1',
-            'weight_grams_max'    => 'nullable|numeric|gte:weight_grams',
-            'length_cm'           => 'nullable|numeric|min:0',
-            'width_cm'            => 'nullable|numeric|min:0',
-            'height_cm'           => 'nullable|numeric|min:0',
-            'condition'           => 'required|in:new,used',
+            'name' => 'required|string|max:255',
+            'images' => 'nullable|array|max:9',
+            'images.*' => 'image|mimes:jpg,jpeg,png,webp|max:4096',
+            'existing_images' => 'nullable|array',
+            'existing_images.*' => 'string',
+            'video' => 'nullable|file|mimes:mp4,mov,avi,webm|max:51200',
+            'keep_video' => 'nullable|boolean',
+            'price' => 'required|numeric|min:0',
+            'discount_price' => 'nullable|numeric|min:0|lt:price',
+            'description' => 'nullable|string',
+            'sku' => 'nullable|string|max:100',
+            'stock' => 'nullable|integer|min:0',
+            'restock_date' => 'nullable|date|after_or_equal:today',
+            'variations' => 'nullable|string',
+            'details' => 'nullable|string',
+            'variation_images' => 'nullable|array',
+            'variation_images.*' => 'image|mimes:jpg,jpeg,png,webp|max:4096',
+            'weight_grams' => 'required|numeric|min:1',
+            'weight_grams_max' => 'nullable|numeric|gte:weight_grams',
+            'length_cm' => 'nullable|numeric|min:0',
+            'width_cm' => 'nullable|numeric|min:0',
+            'height_cm' => 'nullable|numeric|min:0',
+            'condition' => 'required|in:new,used',
         ], [
             'discount_price.lt' => 'Discount price must be lower than the regular price.',
         ]);
@@ -687,45 +737,47 @@ class SellerController extends Controller
         $seller = auth()->user();
 
         $keptImages = collect($request->input('existing_images', []));
-        $newImages  = collect($request->file('images', []))->map(fn ($file) => $file->store('product_images', 'public'));
+        $newImages = collect($request->file('images', []))->map(fn ($file) => app(MediaLifecycle::class)->store($file, 'product_images', 'public'));
         $variations = $request->filled('variations') ? json_decode($request->variations, true) : null;
-        $details    = $request->filled('details') ? json_decode($request->details, true) : null;
+        $details = $request->filled('details') ? json_decode($request->details, true) : null;
 
         // Each option keeps its previously-uploaded photo (sent back as
         // `existing_image`) unless the seller picked a new one for it.
         $firstVariationImage = $this->applyVariationImagesAndPrices($variations, $request->file('variation_images', []));
 
         $coverImages = $keptImages->merge($newImages)->values();
-        if ($coverImages->isEmpty() && !$firstVariationImage) {
+        if ($coverImages->isEmpty() && ! $firstVariationImage) {
             return back()->withErrors(['images' => 'Add at least one product photo (either general photos or a photo on a variation option).']);
         }
-        if ($coverImages->isEmpty()) $coverImages = collect([$firstVariationImage]);
+        if ($coverImages->isEmpty()) {
+            $coverImages = collect([$firstVariationImage]);
+        }
 
         $videoPath = $request->hasFile('video')
-            ? $request->file('video')->store('product_videos', 'public')
+            ? app(MediaLifecycle::class)->store($request->file('video'), 'product_videos', 'public')
             : ($request->boolean('keep_video') ? $product->video : null);
 
         $product->update([
-            'name'         => $request->name,
-            'image'        => $coverImages->first(),
-            'images'       => $coverImages->all(),
-            'video'        => $videoPath,
-            'price'        => $request->price,
+            'name' => $request->name,
+            'image' => $coverImages->first(),
+            'images' => $coverImages->all(),
+            'video' => $videoPath,
+            'price' => $request->price,
             'discount_price' => $request->discount_price ?: null,
-            'description'  => $request->description,
-            'sku'          => $request->sku,
-            'stock'        => $variations ? collect($variations)->sum(fn ($v) => collect($v['options'] ?? [])->sum('stock')) : (int) $request->input('stock', 0),
+            'description' => $request->description,
+            'sku' => $request->sku,
+            'stock' => $variations ? collect($variations)->sum(fn ($v) => collect($v['options'] ?? [])->sum('stock')) : (int) $request->input('stock', 0),
             'restock_date' => $request->restock_date ?: null,
-            'variations'   => $variations,
-            'details'      => $details,
-            'status'       => 'pending',
+            'variations' => $variations,
+            'details' => $details,
+            'status' => 'pending',
             'rejection_note' => null,
             'weight_grams' => (int) $request->weight_grams,
             'weight_grams_max' => $request->weight_grams_max ?: null,
-            'length_cm'    => $request->length_cm ?: null,
-            'width_cm'     => $request->width_cm ?: null,
-            'height_cm'    => $request->height_cm ?: null,
-            'condition'    => $request->condition,
+            'length_cm' => $request->length_cm ?: null,
+            'width_cm' => $request->width_cm ?: null,
+            'height_cm' => $request->height_cm ?: null,
+            'condition' => $request->condition,
         ]);
 
         $this->notifyAdminsProductPending($seller, $request->name, 'updated a product, awaiting re-review');
@@ -743,22 +795,24 @@ class SellerController extends Controller
     private function applyVariationImagesAndPrices(?array &$variations, array $variationImages): ?string
     {
         $firstImage = null;
-        if (!$variations) return null;
+        if (! $variations) {
+            return null;
+        }
 
         foreach ($variations as &$variation) {
             foreach ($variation['options'] as &$option) {
                 $key = $option['image_key'] ?? null;
                 unset($option['image_key']);
                 if ($key && isset($variationImages[$key])) {
-                    $path = $variationImages[$key]->store('product_images', 'public');
+                    $path = app(MediaLifecycle::class)->store($variationImages[$key], 'product_images', 'public');
                     $option['image'] = $path;
-                } elseif (!empty($option['existing_image'])) {
+                } elseif (! empty($option['existing_image'])) {
                     $option['image'] = $option['existing_image'];
                 }
                 unset($option['existing_image']);
                 $firstImage ??= $option['image'] ?? null;
 
-                if (isset($option['price']) && (!is_numeric($option['price']) || $option['price'] < 0)) {
+                if (isset($option['price']) && (! is_numeric($option['price']) || $option['price'] < 0)) {
                     unset($option['price']);
                 } elseif (isset($option['price'])) {
                     $option['price'] = round((float) $option['price'], 2);
@@ -775,13 +829,13 @@ class SellerController extends Controller
         $admins = User::where('is_admin', true)->get();
         foreach ($admins as $admin) {
             DB::table('notifications')->insert([
-                'id'                => (string) Str::uuid(),
-                'user_id'           => $admin->id,
-                'title'             => 'Product Pending Review',
-                'message'           => $seller->given_names . ' ' . $seller->last_name . ' ' . $verb . ': ' . $productName,
+                'id' => (string) Str::uuid(),
+                'user_id' => $admin->id,
+                'title' => 'Product Pending Review',
+                'message' => $seller->given_names.' '.$seller->last_name.' '.$verb.': '.$productName,
                 'notification_type' => 'product_pending',
-                'is_read'           => false,
-                'created_at'        => now(),
+                'is_read' => false,
+                'created_at' => now(),
             ]);
         }
     }
@@ -790,6 +844,7 @@ class SellerController extends Controller
     {
         abort_if($product->seller_id !== auth()->id(), 403);
         $product->delete();
+
         return back()->with('product_success', 'Product removed.');
     }
 
@@ -799,9 +854,10 @@ class SellerController extends Controller
         abort_if($product->seller_id !== auth()->id(), 403);
         $archiving = $request->boolean('archived');
         abort_if($archiving && $product->status !== 'active', 422, 'Only active products can be archived.');
-        abort_if(!$archiving && $product->status !== 'archived', 422, 'Only archived products can be unarchived.');
+        abort_if(! $archiving && $product->status !== 'archived', 422, 'Only archived products can be unarchived.');
 
         $product->update(['status' => $archiving ? 'archived' : 'active']);
+
         return back()->with('product_success', $archiving ? 'Product archived.' : 'Product restored to active.');
     }
 
@@ -820,18 +876,20 @@ class SellerController extends Controller
 
         DB::transaction(function () use ($request, $product) {
             $locked = Product::whereKey($product->id)->lockForUpdate()->firstOrFail();
+            abort_unless(in_array($locked->status, ['active', 'archived']), 422, 'Only approved products can be restocked.');
 
             if (empty($locked->variations)) {
                 $data = $request->validate(['qty' => 'required|integer|min:1']);
                 $locked->deductStock(-$data['qty']);
+
                 return;
             }
 
             $data = $request->validate([
-                'additions'         => 'required|array|min:1',
+                'additions' => 'required|array|min:1',
                 'additions.*.group' => 'required|string',
                 'additions.*.value' => 'required|string',
-                'additions.*.qty'   => 'nullable|integer|min:0',
+                'additions.*.qty' => 'nullable|integer|min:0',
             ]);
             foreach ($data['additions'] as $addition) {
                 $qty = (int) ($addition['qty'] ?? 0);
@@ -850,6 +908,7 @@ class SellerController extends Controller
             ->where('user_id', auth()->id())
             ->orderByDesc('created_at')
             ->get();
+
         return view('seller.notifications', compact('notifications'));
     }
 
@@ -858,6 +917,7 @@ class SellerController extends Controller
         DB::table('notifications')
             ->where('user_id', auth()->id())
             ->update(['is_read' => true]);
+
         return back();
     }
 
@@ -870,6 +930,7 @@ class SellerController extends Controller
         DB::table('notifications')->where('id', $id)->update(['is_read' => true]);
 
         return match ($notification->notification_type) {
+            'gcash_purchase' => redirect()->route('gcash.show', $notification->reference_id),
             'product_pending', 'product_approved', 'product_rejected' => redirect()->route('seller.inventory'),
             'doc_approved', 'doc_rejected' => redirect()->route('seller.account'),
             'order_delivered', 'new_order' => redirect()->route('seller.orders'),
@@ -907,14 +968,14 @@ class SellerController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:255',
-            'body'  => 'required|string|max:5000',
+            'body' => 'required|string|max:5000',
         ]);
 
         $announcement = Announcement::create([
-            'title'      => $request->title,
-            'body'       => $request->body,
-            'audience'   => 'buyer',
-            'is_active'  => true,
+            'title' => $request->title,
+            'body' => $request->body,
+            'audience' => 'buyer',
+            'is_active' => true,
             'created_by' => auth()->id(),
         ]);
         $announcement->notifyAudience();
@@ -927,21 +988,22 @@ class SellerController extends Controller
         abort_if($announcement->created_by !== auth()->id(), 403);
         DB::table('notifications')->where('notification_type', 'announcement')->where('reference_id', $announcement->id)->delete();
         $announcement->delete();
+
         return back()->with('success', 'Announcement deleted.');
     }
 
     public function account()
     {
         $pendingRequest = $this->pendingAccountUpdateRequest();
-        $lastRequest    = $this->lastAccountUpdateRequest();
+        $lastRequest = $this->lastAccountUpdateRequest();
 
         return view('seller.account', [
-            'seller'          => auth()->user(),
-            'idTypes'        => DB::table('id_types')->orderBy('id')->get(),
-            'categories'     => DB::table('categories')->orderBy('name')->get(),
-            'sexes'          => User::whereNotNull('sex')->distinct()->orderBy('sex')->pluck('sex'),
+            'seller' => auth()->user(),
+            'idTypes' => DB::table('id_types')->orderBy('id')->get(),
+            'categories' => DB::table('categories')->orderBy('name')->get(),
+            'sexes' => User::whereNotNull('sex')->distinct()->orderBy('sex')->pluck('sex'),
             'pendingRequest' => $pendingRequest,
-            'lastRequest'    => $lastRequest,
+            'lastRequest' => $lastRequest,
         ]);
     }
 
@@ -950,11 +1012,11 @@ class SellerController extends Controller
     {
         $request->validate([
             'given_names' => 'required|string|max:255',
-            'last_name'   => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
-            'contact_no'  => 'nullable|string|max:11',
-            'sex'         => 'required|in:male,female',
-            'birthday'    => 'nullable|date',
+            'contact_no' => 'nullable|string|max:11',
+            'sex' => 'required|in:male,female',
+            'birthday' => 'nullable|date',
         ]);
 
         return $this->submitAccountUpdateRequest(
@@ -969,11 +1031,11 @@ class SellerController extends Controller
     public function updateAddress(Request $request)
     {
         $request->validate([
-            'province'     => 'required|string|max:255',
+            'province' => 'required|string|max:255',
             'municipality' => 'required|string|max:255',
-            'barangay'     => 'required|string|max:255',
-            'house_no'     => 'nullable|string|max:255',
-            'street'       => 'nullable|string|max:255',
+            'barangay' => 'required|string|max:255',
+            'house_no' => 'nullable|string|max:255',
+            'street' => 'nullable|string|max:255',
         ]);
 
         return $this->submitAccountUpdateRequest(
@@ -989,9 +1051,9 @@ class SellerController extends Controller
     {
         $request->validate([
             'business_name' => 'nullable|string|max:255',
-            'username'      => 'nullable|string|max:255|unique:users,username,' . auth()->id(),
-            'category_id'   => 'nullable|integer|exists:categories,id',
-            'shipping_fee'  => 'nullable|numeric|min:0|max:99999.99',
+            'username' => 'nullable|string|max:255|unique:users,username,'.auth()->id(),
+            'category_id' => 'nullable|integer|exists:categories,id',
+            'shipping_fee' => 'nullable|numeric|min:0|max:99999.99',
         ]);
 
         return $this->submitAccountUpdateRequest(
@@ -1008,34 +1070,30 @@ class SellerController extends Controller
             'profile_picture' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048|dimensions:max_width=4000,max_height=4000',
         ]);
         $seller = $request->user();
-        $disk = \Illuminate\Support\Facades\Storage::disk('profile_images');
         $oldPhoto = $seller->profile_picture;
-        $newPhoto = $request->file('profile_picture')->store('shop-photos', 'profile_images');
-        try {
-            $seller->update(['profile_picture' => $newPhoto]);
-        } catch (\Throwable $exception) {
-            $disk->delete($newPhoto);
-            throw $exception;
-        }
-        if ($oldPhoto && $oldPhoto !== $newPhoto && !str_starts_with($oldPhoto, 'category:')) $disk->delete($oldPhoto);
+        $newPhoto = app(MediaLifecycle::class)->store($request->file('profile_picture'), 'shop-photos', 'profile_images');
+        $seller->update(['profile_picture' => $newPhoto]);
+        app(MediaLifecycle::class)->deleteAfterCommit($oldPhoto, 'profile_images');
+
         return back()->with('shop_photo_success', 'Shop picture updated.');
     }
 
     public function vouchers()
     {
         $vouchers = Voucher::where('seller_id', auth()->id())->latest('created_at')->get();
+
         return view('seller.vouchers', compact('vouchers'));
     }
 
     public function storeVoucher(Request $request)
     {
         $data = $request->validate([
-            'code'            => 'required|string|max:30|alpha_dash',
-            'type'            => 'required|in:amount,free_shipping',
+            'code' => 'required|string|max:30|alpha_dash',
+            'type' => 'required|in:amount,free_shipping',
             'discount_amount' => 'required_if:type,amount|nullable|numeric|min:1|max:99999.99',
-            'minimum_spend'   => 'nullable|numeric|min:0|max:99999.99',
-            'usage_limit'     => 'nullable|integer|min:1',
-            'expires_at'      => 'nullable|date|after:today',
+            'minimum_spend' => 'nullable|numeric|min:0|max:99999.99',
+            'usage_limit' => 'nullable|integer|min:1',
+            'expires_at' => 'nullable|date|after:today',
         ]);
         $data['code'] = strtoupper($data['code']);
         if ($data['type'] === 'free_shipping') {
@@ -1048,6 +1106,7 @@ class SellerController extends Controller
         }
 
         Voucher::create(array_merge($data, ['seller_id' => auth()->id()]));
+
         return back()->with('voucher_success', 'Voucher created.');
     }
 
@@ -1058,6 +1117,7 @@ class SellerController extends Controller
             'is_active' => 'required|boolean',
         ]);
         $voucher->update($data);
+
         return back()->with('voucher_success', $data['is_active'] ? 'Voucher activated.' : 'Voucher deactivated.');
     }
 
@@ -1065,6 +1125,7 @@ class SellerController extends Controller
     {
         abort_unless($voucher->seller_id === auth()->id(), 403);
         $voucher->delete();
+
         return back()->with('voucher_success', 'Voucher deleted.');
     }
 
@@ -1072,8 +1133,8 @@ class SellerController extends Controller
     public function updateDocuments(Request $request)
     {
         $request->validate([
-            'id_type_id'           => 'nullable|integer|exists:id_types,id',
-            'id_file'              => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'id_type_id' => 'nullable|integer|exists:id_types,id',
+            'id_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'business_permit_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
 
@@ -1089,14 +1150,15 @@ class SellerController extends Controller
     {
         $request->validate([
             'current_password' => 'required',
-            'password'         => ['required', 'confirmed', Password::min(8)],
+            'password' => ['required', 'confirmed', Password::min(8)],
         ]);
 
-        if (!Hash::check($request->current_password, auth()->user()->password)) {
+        if (! Hash::check($request->current_password, auth()->user()->password)) {
             return back()->withErrors(['current_password' => 'Current password is incorrect.']);
         }
 
         auth()->user()->update(['password' => $request->password]);
+
         return back()->with('password_success', 'Password updated successfully.');
     }
 
@@ -1105,6 +1167,7 @@ class SellerController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
         return redirect()->route('login');
     }
 }

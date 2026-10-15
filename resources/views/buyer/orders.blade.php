@@ -44,7 +44,6 @@
 </div>
 
 @if(session('success'))<div class="auth-success" style="margin-bottom:16px">{{ session('success') }}</div>@endif
-@if(session('error'))<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('error') }}</div>@endif
 @if(session('error'))<div class="auth-error" style="margin-bottom:16px">{{ session('error') }}</div>@endif
 @forelse($orders as $order)
 <div class="order-card shopee-order-card" data-order-search="{{ strtolower($order->order_number . ' ' . ($order->seller?->business_name ?? '') . ' ' . collect($order->items ?? [])->pluck('name')->join(' ')) }}">
@@ -121,34 +120,34 @@
   </div>
 </div>
 @endif
-<div class="order-details-modal" id="orderDetails{{ $order->id }}" aria-hidden="true">
+<div class="order-details-modal" data-order-summary id="orderDetails{{ $order->id }}" aria-hidden="true">
   <div class="order-details-dialog" role="dialog" aria-modal="true" aria-labelledby="orderDetailsTitle{{ $order->id }}">
-    <div class="order-details-head"><div><span class="order-kicker">Order details</span><h3 id="orderDetailsTitle{{ $order->id }}">{{ $order->order_number }}</h3></div><button type="button" class="modal-close order-details-close" aria-label="Close order details">&times;</button></div>
+    <div class="order-details-head"><div><span class="order-kicker">Order details</span><h3 id="orderDetailsTitle{{ $order->id }}">{{ ($order->items[0]['name'] ?? 'Your order').(count($order->items ?? []) > 1 ? ' + '.(count($order->items) - 1).' more' : '') }}</h3><p class="order-reference">Order reference: <span data-order-reference>{{ $order->order_number }}</span> <button type="button" class="order-copy-reference" aria-label="Copy order reference">Copy</button></p></div><button type="button" class="modal-close order-details-close" aria-label="Close order details">&times;</button></div>
+    <div class="order-details-body" tabindex="0" role="region" aria-label="Scrollable order information">
     @php
-      $trackingSteps = [
-        ['Order placed', $order->created_at?->format('M d, Y · h:i A') ?? '—'],
-        ['Order confirmed', 'The seller received your order.'],
-        ['Preparing to ship', 'The seller is packing your items.'],
-        ['Package in transit', $order->shipment?->tracking_number ? 'Tracking: ' . $order->shipment->tracking_number : 'Your package is on its way.'],
-        ['Out for delivery', 'Your package is arriving soon.'],
-        ['Delivered', 'Order completed.'],
-      ];
-      $currentStep = match($order->status) {
-        'confirmed' => 2,
-        'preparing', 'ready_for_pickup' => 3,
-        'picked_up', 'at_sorting_center', 'hub_transfer', 'sorted', 'assigned_to_rider' => 4,
-        'out_for_delivery' => 5, 'delivered' => 6, 'completed' => 7,
-        'delivery_failed', 'returned' => 5, // stalled mid-delivery — shown as "current" at the delivery step
-        'cancelled' => 1,
-        default => 1, // placed
-      };
+      $timeline = \App\Support\OrderTimeline::forOrder($order, $orderHistory->get($order->id, collect()));
+      $addressPart = fn ($part) => filled($part) && $part !== 'Not provided';
+      $addressLine1 = collect([$order->shipping_address['house_no'] ?? null, $order->shipping_address['street'] ?? null])->filter($addressPart)->join(', ');
+      $addressLine2 = collect([$order->shipping_address['barangay'] ?? null, $order->shipping_address['municipality'] ?? null, $order->shipping_address['province'] ?? null])->filter($addressPart)->join(', ');
     @endphp
-    <div class="order-tracking"><span class="order-kicker">Delivery tracking</span><div class="tracking-steps">@foreach($trackingSteps as $step => [$label, $copy])<div class="tracking-step {{ $step + 1 < $currentStep ? 'is-done' : ($step + 1 === $currentStep ? 'is-current' : '') }}"><span class="tracking-dot">{{ $step + 1 < $currentStep ? '✓' : $step + 1 }}</span><div><strong>{{ $label }}</strong><small>{{ $step + 1 === $currentStep ? $copy : $copy }}</small></div></div>@endforeach</div></div>
+    <div class="order-current-status {{ $timeline['stopped'] ? 'is-interrupted' : '' }}"><strong>{{ ucwords(str_replace('_', ' ', $order->status)) }}</strong><p>{{ $timeline['explanation'] }}</p></div>
+    <details class="order-tracking"><summary>Delivery progress <span>{{ ucwords(str_replace('_', ' ', $order->status)) }}</span></summary>
+     <ol class="tracking-steps" aria-label="Recorded delivery progress">
+      @foreach($timeline['rows'] as $step)
+       <li class="tracking-step is-{{ $step['state'] }}" @if($step['state'] === 'current') aria-current="step" @endif>
+        <span class="tracking-dot" aria-hidden="true">{{ $step['state'] === 'completed' ? '✓' : $loop->iteration }}</span>
+        <div><strong>{{ $step['title'] }}</strong><span class="tracking-state">{{ $step['label'] }}</span>
+         @if($step['timestamp'])<time datetime="{{ $step['timestamp']->toIso8601String() }}">{{ $step['timestamp']->format('M j, Y g:i A') }} {{ config('app.timezone') }}</time>@endif
+        </div>
+       </li>
+      @endforeach
+     </ol>
+    </details>
     <div class="order-details-list">@foreach($order->items as $item)<div class="order-item"><span>{{ $item['name'] ?: 'Product not provided' }} @if(($item['variation_value'] ?? $item['color'] ?? '') || ($item['size'] ?? ''))<small>{{ collect([$item['variation_group'] ?? null, $item['variation_value'] ?? $item['color'] ?? null, $item['size'] ?? null])->filter()->unique()->join(': ') }}</small>@endif</span><strong>{{ $item['qty'] }} × ₱{{ number_format($item['price'], 2) }}</strong></div>@endforeach</div>
     <div class="order-detail-info-grid">
       <div><span>Order status</span><strong>{{ ucwords(str_replace('_', ' ', $order->status)) }}</strong></div>
       <div><span>Payment method</span><strong>{{ $order->paymentMethod?->name ?: $order->payment_method ?: 'Payment not provided' }}</strong></div>
-      <div class="order-address-info"><span>Delivery address</span><strong>{{ collect([$order->shipping_address['house_no'] ?? null, $order->shipping_address['street'] ?? null, $order->shipping_address['barangay'] ?? null, $order->shipping_address['municipality'] ?? null, $order->shipping_address['province'] ?? null])->filter(fn($part) => $part && $part !== 'Not provided')->join(', ') ?: 'Address not provided' }}</strong></div>
+      <div class="order-address-info"><span>Delivery address</span><address>@if($addressLine1){{ $addressLine1 }}<br>@endif{{ $addressLine2 ?: ($addressLine1 ? '' : 'Address not provided') }}</address></div>
       @if($order->buyer_note)<div class="order-address-info"><span>Message for seller</span><strong>{{ $order->buyer_note }}</strong></div>@endif
     </div>
     <div class="order-price-breakdown">
@@ -157,22 +156,35 @@
       @if((float)$order->discount_amount > 0)<div><span>Voucher discount</span><strong class="discount">−₱{{ number_format($order->discount_amount, 2) }}</strong></div>@endif
       <div class="total"><span>Order total</span><strong>₱{{ number_format($order->total, 2) }}</strong></div>
     </div>
-    @if(in_array($order->status, ['placed', 'confirmed', 'preparing'], true))
+    @if(in_array($order->status, \App\Models\Order::CANCELLABLE_STATUSES, true))
       <div class="order-modal-actions"><button type="button" class="btn btn-danger order-cancel-open">Cancel Order</button></div>
       <div class="order-cancel-panel" hidden>
-        <form method="POST" action="{{ route('buyer.orders.cancel', $order) }}">
+        <form class="order-cancel-form" data-confirm-dialog="cancelConfirm{{ $order->id }}" method="POST" action="{{ route('buyer.orders.cancel', $order) }}">
           @csrf @method('PATCH')
-          <strong>Why are you cancelling?</strong>
-          <select name="cancellation_reason" required><option value="" selected disabled>Select a reason</option><option>Changed my mind</option><option>Found a better price</option><option>Ordered by mistake</option><option>Payment issue</option><option>Other</option></select>
-          <textarea name="cancellation_note" rows="3" maxlength="500" placeholder="Add a note (optional)"></textarea>
-          <div class="order-modal-actions"><button type="button" class="btn btn-outline order-cancel-back">Keep Order</button><button type="submit" class="btn btn-danger">Confirm Cancellation</button></div>
+          <label for="cancelReason{{ $order->id }}"><strong>Why are you cancelling?</strong></label>
+          <select id="cancelReason{{ $order->id }}" name="cancellation_reason" required><option value="" selected disabled>Select a reason</option><option>Changed my mind</option><option>Found a better price</option><option>Ordered by mistake</option><option>Payment issue</option><option>Other</option></select>
+          <textarea aria-label="Cancellation note (optional)" name="cancellation_note" rows="3" maxlength="500" placeholder="Add a note (optional)"></textarea>
+          <p class="order-cancel-feedback" role="alert" tabindex="-1"></p><div class="order-modal-actions"><button type="button" class="btn btn-outline order-cancel-back">Keep Order</button><button type="submit" class="btn btn-danger">Review Cancellation</button></div>
         </form>
       </div>
     @elseif($order->status === 'cancelled')
       <div class="order-cancelled-note">Cancelled: {{ $order->cancellation_reason ?: 'Reason not provided' }}</div>
     @endif
+    </div><div class="order-details-footer"><button type="button" class="btn btn-primary order-details-close">Done</button></div>
   </div>
 </div>
+@if(in_array($order->status, \App\Models\Order::CANCELLABLE_STATUSES, true))
+<dialog class="order-cancel-confirm" id="cancelConfirm{{ $order->id }}" aria-labelledby="cancelTitle{{ $order->id }}" aria-describedby="cancelConsequences{{ $order->id }}">
+ <h3 id="cancelTitle{{ $order->id }}">Cancel this order?</h3>
+ <p><strong>{{ ($order->items[0]['name'] ?? 'Your order').(count($order->items ?? []) > 1 ? ' + '.(count($order->items) - 1).' more' : '') }}</strong></p>
+ <p class="order-reference">{{ $order->order_number }}</p>
+ <p id="cancelConsequences{{ $order->id }}">Cancellation stops fulfillment of this order. Stock adjustments will follow the existing order rules.
+ @if($order->gcash_purchase_id) Your GCash payment is not automatically refunded. Contact the seller to reconcile any money already received. @endif</p>
+ <p>Order total: <strong>₱{{ number_format($order->total, 2) }}</strong></p>
+ <p data-cancel-reason></p>
+ <div class="order-modal-actions"><button type="button" class="btn btn-outline" data-keep-order autofocus>Keep Order</button><button type="button" class="btn btn-danger" data-confirm-cancellation>Confirm Cancellation</button></div>
+</dialog>
+@endif
 @empty
 <div class="card"><div class="card-pad"><div class="empty"><div class="ic">@include('buyer.partials.icon', ['name' => 'package', 'size' => 28])</div><h3>No orders yet</h3><p>Orders with status "{{ str_replace('_', ' ', ucfirst($tab)) }}" will appear here.</p>@if($tab === 'to_ship')<a href="{{ route('buyer.browse') }}" class="btn btn-primary" style="margin-top:14px">Start Shopping</a>@endif</div></div></div>
 @endforelse
@@ -180,24 +192,6 @@
 @endsection
 
 @push('head')
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  const orderSearch = document.getElementById('orderSearch');
-  orderSearch?.addEventListener('input', () => {
-    const query = orderSearch.value.trim().toLowerCase();
-    document.querySelectorAll('[data-order-search]').forEach(card => card.hidden = query && !card.dataset.orderSearch.includes(query));
-  });
-  document.querySelectorAll('[data-order-details]').forEach(button => {
-    const modal = document.getElementById(button.dataset.orderDetails);
-    const close = () => { modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true'); };
-    button.addEventListener('click', () => { modal.classList.add('open'); modal.setAttribute('aria-hidden', 'false'); });
-    modal.querySelector('.order-details-close').addEventListener('click', close);
-    modal.addEventListener('click', event => { if (event.target === modal) close(); });
-    const cancelOpen = modal.querySelector('.order-cancel-open');
-    const cancelPanel = modal.querySelector('.order-cancel-panel');
-    cancelOpen?.addEventListener('click', () => { cancelPanel.hidden = false; cancelOpen.hidden = true; });
-    modal.querySelector('.order-cancel-back')?.addEventListener('click', () => { cancelPanel.hidden = true; cancelOpen.hidden = false; });
-  });
-});
-</script>
+<link rel="stylesheet" href="{{ asset('css/order-details.css') }}?v={{ filemtime(public_path('css/order-details.css')) }}">
+<script src="{{ asset('js/order-details.js') }}?v={{ filemtime(public_path('js/order-details.js')) }}" defer></script>
 @endpush

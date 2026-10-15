@@ -1,0 +1,52 @@
+.logistics-dashboard { display: grid; gap: 24px; min-width: 0; }
+.logistics-dashboard .card { margin: 0; min-width: 0; }
+.dashboard-welcome { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 28px; border: 1px solid var(--border); border-radius: 16px; background: linear-gradient(110deg, var(--surface), var(--pink-soft)); }
+.dashboard-eyebrow { display: block; margin-bottom: 8px; color: var(--pink-dark); font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+.dashboard-welcome h2 { margin: 0; font-size: clamp(22px, 2vw, 30px); line-height: 1.2; overflow-wrap: anywhere; }
+.dashboard-welcome p { margin: 10px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.dashboard-actions { display: flex; flex-wrap: wrap; gap: 10px; flex-shrink: 0; }
+.dashboard-actions svg, .dashboard-resource-icon svg, .dashboard-stage-icon svg, .dashboard-metric-icon svg { width: 18px; height: 18px; }
+.dashboard-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.dashboard-metric { padding: 22px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.dashboard-metric-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 12px; font-weight: 600; }
+.dashboard-metric-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--pink-soft); color: var(--pink-dark); flex-shrink: 0; }
+.dashboard-metric > strong { display: block; margin-top: 14px; font-size: clamp(26px, 3vw, 36px); line-height: 1.15; font-variant-numeric: tabular-nums; }
+.dashboard-metric p { margin: 8px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.dashboard-metric-info .dashboard-metric-icon { background: var(--info-soft); color: var(--info); }
+.dashboard-metric-success .dashboard-metric-icon { background: var(--success-soft); color: var(--success); }
+.dashboard-metric-danger .dashboard-metric-icon { background: var(--danger-soft); color: var(--danger); }
+.logistics-dashboard .card-head { flex-wrap: wrap; gap: 12px; padding: 20px 22px; }
+.dashboard-caption { margin: 5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.dashboard-pipeline-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 8px 12px 16px; gap: 6px; }
+.dashboard-stage { display: grid; align-content: start; gap: 8px; padding: 16px 12px; border-radius: 10px; color: var(--text); text-decoration: none; transition: background .15s ease; }
+.dashboard-stage:hover { background: var(--pink-soft); }
+.dashboard-stage-icon { color: var(--pink-dark); }
+.dashboard-stage > strong { font-size: 26px; font-variant-numeric: tabular-nums; }
+.dashboard-stage-label { font-size: 12px; font-weight: 600; line-height: 1.5; }
+.dashboard-stage .dashboard-caption { margin: 0; }
+.dashboard-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 300px; align-items: start; gap: 24px; }
+.dashboard-resources { display: grid; gap: 12px; }
+.dashboard-section-heading h2 { margin: 0 0 4px; font-size: 17px; }
+.dashboard-resource { display: flex; align-items: center; gap: 12px; padding: 17px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); text-decoration: none; }
+.dashboard-resource:hover { border-color: var(--pink-dark); }
+.dashboard-resource-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--pink-soft); color: var(--pink-dark); flex-shrink: 0; }
+.dashboard-resource > span:nth-child(2) { flex: 1; min-width: 0; }
+.dashboard-resource strong { display: block; font-size: 12px; }
+.dashboard-resource > span:nth-child(2) > span { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.dashboard-exceptions { padding: 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.dashboard-exceptions > div { display: flex; align-items: center; gap: 10px; }
+.dashboard-exceptions svg { width: 18px; height: 18px; color: var(--danger); }
+.dashboard-exceptions strong { font-size: 22px; }
+.dashboard-exceptions p { margin: 7px 0 12px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.dashboard-exceptions a { font-size: 12px; font-weight: 600; color: var(--pink-dark); }
+.dashboard-tracking { font-weight: 600; }
+.dashboard-date { white-space: nowrap; color: var(--muted); font-size: 11px; }
+.dashboard-empty p { margin-top: 6px; color: var(--muted); font-size: 12px; }
+.dashboard-empty-icon { display: grid; place-items: center; margin: 0 auto 12px; width: 44px; height: 44px; border-radius: 12px; color: var(--pink-dark); background: var(--pink-soft); }
+.dashboard-empty-icon svg { width: 22px; height: 22px; }
+.logistics-dashboard .table-wrap { max-width: 100%; }
+.dashboard-stage:focus-visible, .dashboard-resource:focus-visible, .dashboard-exceptions a:focus-visible { outline: 2px solid var(--pink-dark); outline-offset: 3px; }
+@media (max-width: 1200px) { .dashboard-workspace { grid-template-columns: minmax(0, 1fr); } .dashboard-resources { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dashboard-section-heading { grid-column: 1 / -1; } }
+@media (max-width: 1000px) { .dashboard-welcome { align-items: flex-start; flex-direction: column; } .dashboard-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dashboard-pipeline-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .logistics-dashboard { gap: 18px; } .dashboard-welcome { padding: 20px; } .dashboard-actions { width: 100%; } .dashboard-actions .btn { flex: 1; justify-content: center; } .dashboard-summary { gap: 10px; } .dashboard-metric { padding: 15px; } .dashboard-metric-head { align-items: flex-start; } .dashboard-metric-icon { width: 28px; height: 28px; } .dashboard-pipeline-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dashboard-resources { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .dashboard-stage { transition: none; } }

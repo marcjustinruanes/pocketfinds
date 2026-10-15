@@ -2,12 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Suffix;
 use App\Models\Category;
+use App\Models\CompanyVehicle;
+use App\Models\LogisticsCompany;
+use App\Models\LogisticsHub;
 use App\Models\User;
+use App\Services\HubHiring;
+use App\Services\MediaLifecycle;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Enum;
+use Illuminate\Validation\ValidationException;
 
 class RegisterController extends Controller
 {
@@ -15,6 +28,7 @@ class RegisterController extends Controller
     public function method(Request $request)
     {
         $type = in_array($request->query('type'), ['buyer', 'seller', 'rider', 'logistics', 'logistics-staff'], true) ? $request->query('type') : 'buyer';
+
         return view('auth.register-method', ['type' => $type]);
     }
 
@@ -22,20 +36,20 @@ class RegisterController extends Controller
     {
         $email = $request->input('email', '');
 
-        if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        if (! $email || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return response()->json(['success' => false, 'message' => 'Enter a valid email address.']);
         }
 
-        if (!preg_match('/@gmail\.com$/i', $email)) {
+        if (! preg_match('/@gmail\.com$/i', $email)) {
             return response()->json(['success' => false, 'message' => 'Only Gmail addresses are accepted.']);
         }
 
-        if (\App\Models\User::where('email', $email)->where('status', '!=', 'rejected')->exists()) {
+        if (User::where('email', $email)->where('status', '!=', 'rejected')->exists()) {
             return response()->json(['success' => false, 'message' => 'This email is already registered. Try signing in instead.']);
         }
 
         $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $key = 'otp_' . md5($email);
+        $key = 'otp_'.md5($email);
 
         Cache::put($key, $otp, now()->addMinutes(10));
 
@@ -46,6 +60,7 @@ class RegisterController extends Controller
             );
         } catch (\Exception $e) {
             Cache::forget($key);
+
             return response()->json(['success' => false, 'message' => 'Could not send the code. Check the email address and try again.']);
         }
 
@@ -56,17 +71,18 @@ class RegisterController extends Controller
     {
         $request->validate([
             'email' => 'required|email',
-            'otp'   => 'required|string|size:6',
+            'otp' => 'required|string|size:6',
         ]);
 
-        $key    = 'otp_' . md5($request->email);
+        $key = 'otp_'.md5($request->email);
         $stored = Cache::get($key);
 
-        if (!$stored || $stored !== $request->otp) {
+        if (! $stored || $stored !== $request->otp) {
             return response()->json(['success' => false, 'message' => 'Invalid or expired code.']);
         }
 
         Cache::forget($key);
+
         return response()->json(['success' => true]);
     }
 
@@ -80,20 +96,20 @@ class RegisterController extends Controller
                 'message' => 'Username must be at least 8 characters.',
             ]);
         }
-        $exists   = User::where('username', $username)->where('status', '!=', 'rejected')->exists();
+        $exists = User::where('username', $username)->where('status', '!=', 'rejected')->exists();
 
         $suggestions = [];
         if ($exists) {
             $base = preg_replace('/\d+$/', '', $username);
             for ($i = 1; count($suggestions) < 3; $i++) {
-                $candidate = $base . $i;
-                if (!User::where('username', $candidate)->where('status', '!=', 'rejected')->exists()) {
+                $candidate = $base.$i;
+                if (! User::where('username', $candidate)->where('status', '!=', 'rejected')->exists()) {
                     $suggestions[] = $candidate;
                 }
             }
         }
 
-        return response()->json(['available' => !$exists, 'suggestions' => $suggestions]);
+        return response()->json(['available' => ! $exists, 'suggestions' => $suggestions]);
     }
 
     public function checkBusinessName(Request $request)
@@ -104,7 +120,8 @@ class RegisterController extends Controller
         }
 
         $exists = User::whereRaw('LOWER(business_name) = ?', [mb_strtolower($businessName)])->where('status', '!=', 'rejected')->exists();
-        return response()->json(['available' => !$exists]);
+
+        return response()->json(['available' => ! $exists]);
     }
 
     /** A driver's license belongs to one person — block a second rider account reusing it. */
@@ -116,7 +133,8 @@ class RegisterController extends Controller
         }
 
         $exists = User::whereRaw('LOWER(license_number) = ?', [mb_strtolower($licenseNumber)])->where('status', '!=', 'rejected')->exists();
-        return response()->json(['available' => !$exists]);
+
+        return response()->json(['available' => ! $exists]);
     }
 
     /** A plate number belongs to one vehicle — block a second rider account reusing it. */
@@ -128,7 +146,8 @@ class RegisterController extends Controller
         }
 
         $exists = User::whereRaw('LOWER(plate_number) = ?', [mb_strtolower($plateNumber)])->where('status', '!=', 'rejected')->exists();
-        return response()->json(['available' => !$exists]);
+
+        return response()->json(['available' => ! $exists]);
     }
 
     public function categories()
@@ -137,11 +156,11 @@ class RegisterController extends Controller
     }
 
     /** Store registration documents on the configured local disk. */
-    private function storeWithRetry(\Illuminate\Http\UploadedFile $file, string $path, string $disk = 'public', int $attempts = 3): string
+    private function storeWithRetry(UploadedFile $file, string $path, string $disk = 'public', int $attempts = 3): string
     {
         for ($attempt = 1; $attempt <= $attempts; $attempt++) {
             try {
-                return $file->store($path, $disk);
+                return app(MediaLifecycle::class)->store($file, $path, $disk);
             } catch (\Throwable $e) {
                 if ($attempt === $attempts) {
                     throw $e;
@@ -153,15 +172,15 @@ class RegisterController extends Controller
 
     public function store(Request $request)
     {
-        $isSeller    = $request->input('account_type') === 'seller';
-        $isRider     = $request->input('account_type') === 'rider';
+        $isSeller = $request->input('account_type') === 'seller';
+        $isRider = $request->input('account_type') === 'rider';
         $isLogistics = $request->input('account_type') === 'logistics';
         // A logistics registration either founds a brand new company (the default,
         // unchanged flow) or joins one that already exists as hub staff — same
         // account_type either way (is_logistics is the real gate), distinguished only
         // by this one internal field so nothing else in the app needs to know about it.
-        $isLogisticsJoin  = $isLogistics && $request->input('logistics_mode') === 'join';
-        $isLogisticsFound = $isLogistics && !$isLogisticsJoin;
+        $isLogisticsJoin = $isLogistics && $request->input('logistics_mode') === 'join';
+        $isLogisticsFound = $isLogistics && ! $isLogisticsJoin;
 
         // Letters, spaces, and the punctuation real names use (hyphen, apostrophe,
         // period for suffixes like "Jr.") — no digits or other symbols. Mirrors the
@@ -169,47 +188,47 @@ class RegisterController extends Controller
         $nameRegex = "/^[\\p{L}\\s'.\\-]+$/u";
 
         $rules = [
-            'last_name'    => ['required', 'string', 'max:100', 'regex:' . $nameRegex],
-            'given_names'  => ['required', 'string', 'max:100', 'regex:' . $nameRegex],
-            'middle_name'  => ['nullable', 'string', 'max:50', 'regex:' . $nameRegex],
-            'suffix'         => ['nullable', new \Illuminate\Validation\Rules\Enum(\App\Enums\Suffix::class)],
-            'sex'            => 'required|in:male,female',
-            'birthday'       => 'required|date|before_or_equal:' . now()->subYears(16)->toDateString(),
-            'age'            => 'sometimes|integer|min:0',
-            'email'          => ['required', 'email', 'regex:/@gmail\.com$/i',
-                                 \Illuminate\Validation\Rule::unique('users', 'email')->where(fn ($q) => $q->where('status', '!=', 'rejected'))],
-            'contact_no'     => 'required|regex:/^09\d{9}$/',
-            'province'       => 'required|string',
-            'municipality'   => 'required|string',
-            'barangay'       => 'required|string',
-            'house_no'       => 'nullable|string|max:50',
-            'street'         => 'nullable|string|max:100',
-            'username'       => ['required', 'string', 'min:8', 'max:30', 'alpha_dash',
-                                 \Illuminate\Validation\Rule::unique('users', 'username')->where(fn ($q) => $q->where('status', '!=', 'rejected'))],
+            'last_name' => ['required', 'string', 'max:100', 'regex:'.$nameRegex],
+            'given_names' => ['required', 'string', 'max:100', 'regex:'.$nameRegex],
+            'middle_name' => ['nullable', 'string', 'max:50', 'regex:'.$nameRegex],
+            'suffix' => ['nullable', new Enum(Suffix::class)],
+            'sex' => 'required|in:male,female',
+            'birthday' => 'required|date|before_or_equal:'.now()->subYears(16)->toDateString(),
+            'age' => 'sometimes|integer|min:0',
+            'email' => ['required', 'email', 'regex:/@gmail\.com$/i',
+                Rule::unique('users', 'email')->where(fn ($q) => $q->where('status', '!=', 'rejected'))],
+            'contact_no' => 'required|regex:/^09\d{9}$/',
+            'province' => 'required|string',
+            'municipality' => 'required|string',
+            'barangay' => 'required|string',
+            'house_no' => 'nullable|string|max:50',
+            'street' => 'nullable|string|max:100',
+            'username' => ['required', 'string', 'min:8', 'max:30', 'alpha_dash',
+                Rule::unique('users', 'username')->where(fn ($q) => $q->where('status', '!=', 'rejected'))],
             // Google sign-ups still set a password, so the account can also
             // be logged into with a username/password later without Google.
-            'password'       => 'required|string|min:8|confirmed',
+            'password' => 'required|string|min:8|confirmed',
             // Riders don't upload a separate government ID — their driver's
             // license (required below) already serves as identification.
-            'id_file'        => $isRider ? 'sometimes|nullable' : 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'id_type_id'     => $isRider ? 'sometimes|nullable' : 'required|integer|exists:id_types,id',
-            'selfie_file'    => 'required|file|mimes:jpg,jpeg,png|max:5120',
-            'account_type'   => 'required|in:buyer,rider,seller,logistics',
-            'auth_method'    => 'required|in:manual,google',
-            'google_id'      => 'nullable|string',
-            'category_ids'   => $isSeller ? 'array|max:1' : 'sometimes|nullable',
+            'id_file' => $isRider ? 'sometimes|nullable' : 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'id_type_id' => $isRider ? 'sometimes|nullable' : 'required|integer|exists:id_types,id',
+            'selfie_file' => 'required|file|mimes:jpg,jpeg,png|max:5120',
+            'account_type' => 'required|in:buyer,rider,seller,logistics',
+            'auth_method' => 'required|in:manual,google',
+            'google_id' => 'nullable|string',
+            'category_ids' => $isSeller ? 'array|max:1' : 'sometimes|nullable',
             // Only sellers actually pick a category — every other role's form (hub staff
             // included) carries a leftover empty category_ids[] field that would otherwise
             // fail this as "not an integer".
             'category_ids.*' => $isSeller ? 'integer|exists:categories,id' : 'sometimes',
             'category_other' => 'nullable|string|max:100',
-            'business_name'        => 'sometimes|nullable',
+            'business_name' => 'sometimes|nullable',
             'business_permit_file' => 'sometimes|nullable',
         ];
 
         if ($isRider) {
-            $rules['resume_file']       = 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120';
-            $rules['vehicle_type']      = 'required|exists:vehicle_types,slug';
+            $rules['resume_file'] = 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:5120';
+            $rules['vehicle_type'] = 'required|exists:vehicle_types,slug';
             $rules['vehicle_ownership'] = 'required|in:own,company';
             // Case-insensitive uniqueness (a closure, not plain unique:, so it matches the
             // same LOWER() comparison the live /register/check-license endpoint uses —
@@ -220,18 +239,18 @@ class RegisterController extends Controller
                     $fail("This driver's license number is already registered to another account.");
                 }
             }];
-            $rules['license_expiry']    = 'required|date';
-            $rules['license_file']      = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120';
+            $rules['license_expiry'] = 'required|date';
+            $rules['license_file'] = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120';
             if ($request->input('vehicle_ownership') === 'own') {
                 $rules['vehicle_brand'] = 'required|string|max:100';
                 $rules['vehicle_model'] = 'required|string|max:100';
-                $rules['plate_number']  = ['required', 'string', 'max:20', function ($attribute, $value, $fail) {
+                $rules['plate_number'] = ['required', 'string', 'max:20', function ($attribute, $value, $fail) {
                     if (User::whereRaw('LOWER(plate_number) = ?', [mb_strtolower(trim($value))])->where('status', '!=', 'rejected')->exists()) {
                         $fail('This plate number is already registered to another account.');
                     }
                 }];
-                $rules['or_file']       = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120';
-                $rules['cr_file']       = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120';
+                $rules['or_file'] = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120';
+                $rules['cr_file'] = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120';
             }
         }
 
@@ -241,8 +260,8 @@ class RegisterController extends Controller
         // A rider, or logistics staff "joining" a company, instead pick one that already
         // exists and got admin-approved.
         if ($isSeller || $isLogisticsFound) {
-            $rules['business_name']        = ['required', 'string', 'max:150',
-                                               \Illuminate\Validation\Rule::unique('users', 'business_name')->where(fn ($q) => $q->where('status', '!=', 'rejected'))];
+            $rules['business_name'] = ['required', 'string', 'max:150',
+                Rule::unique('users', 'business_name')->where(fn ($q) => $q->where('status', '!=', 'rejected'))];
             $rules['business_permit_file'] = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120';
             if ($isLogisticsFound) {
                 $rules['company_logo'] = 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048';
@@ -253,7 +272,7 @@ class RegisterController extends Controller
             }
         } elseif ($isRider || $isLogisticsJoin) {
             $rules['business_name'] = ['required', 'string', function ($attribute, $value, $fail) {
-                if (!\App\Models\LogisticsCompany::approved()->pluck('business_name')->contains($value)) {
+                if (! LogisticsCompany::approved()->pluck('business_name')->contains($value)) {
                     $fail('Please choose a valid company from the list.');
                 }
             }];
@@ -262,17 +281,17 @@ class RegisterController extends Controller
             }
         }
 
-        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), $rules, [
+        $validator = Validator::make($request->all(), $rules, [
             'birthday.before_or_equal' => 'You must be at least 16 years old to register.',
-            'last_name.regex'          => 'Last name can only contain letters.',
-            'given_names.regex'        => 'Given names can only contain letters.',
-            'middle_name.regex'        => 'Middle name can only contain letters.',
+            'last_name.regex' => 'Last name can only contain letters.',
+            'given_names.regex' => 'Given names can only contain letters.',
+            'middle_name.regex' => 'Middle name can only contain letters.',
         ]);
 
         $validator->after(function ($validator) use ($request, $isSeller, $isRider, $isLogisticsFound, $isLogisticsJoin) {
             if ($isLogisticsFound) {
                 $hubAreas = json_decode($request->input('hub_areas', '[]'), true);
-                if (!is_array($hubAreas) || count($hubAreas) < 1) {
+                if (! is_array($hubAreas) || count($hubAreas) < 1) {
                     $validator->errors()->add('hub_areas', 'Add at least one province and municipality your company covers.');
                 } else {
                     foreach ($hubAreas as $area) {
@@ -289,28 +308,46 @@ class RegisterController extends Controller
             $hub = null;
             if (($isLogisticsJoin || $isRider) && $request->filled('business_name')) {
                 if ($request->filled('logistics_hub_id')) {
-                    $hub = \App\Models\LogisticsHub::where('company_name', $request->business_name)
+                    $hub = LogisticsHub::where('company_name', $request->business_name)
+                        ->where('is_operational', true)
                         ->where('id', $request->logistics_hub_id)
                         ->first();
-                    if (!$hub) {
+                    if (! $hub) {
                         $validator->errors()->add('logistics_hub_id', 'Please choose a valid hub from the selected company.');
-                    } elseif (!$hub->is_hiring) {
-                        $validator->errors()->add('logistics_hub_id', "The {$hub->municipality} hub is currently not hiring. Please select another available hub nearby.");
+                    } elseif (! $hub->is_hiring) {
+                        if (! Schema::hasColumn('logistics_hubs', 'rider_hiring_open')) {
+                            $validator->errors()->add('logistics_hub_id', "The {$hub->municipality} hub is currently not hiring.");
+                        }
                     }
                 } elseif ($isLogisticsJoin && $request->filled('province') && $request->filled('municipality')) {
                     // Hub staff only: riders always submit an explicit logistics_hub_id from
                     // the picker, so this address-fallback path is specific to that flow.
-                    $hub = \App\Models\LogisticsHub::where('company_name', $request->business_name)
+                    $hub = LogisticsHub::where('company_name', $request->business_name)
+                        ->where('is_operational', true)
                         ->whereRaw('LOWER(province) = ?', [mb_strtolower(trim($request->province))])
                         ->whereRaw('LOWER(municipality) = ?', [mb_strtolower(trim($request->municipality))])
                         ->first();
-                    if (!$hub) {
+                    if (! $hub) {
                         $validator->errors()->add('municipality', "{$request->business_name} doesn't have a hub in {$request->municipality}, {$request->province} yet — ask them to add it as a coverage area first, or choose a nearby available hub.");
-                    } elseif (!$hub->is_hiring) {
-                        $validator->errors()->add('municipality', "The {$request->business_name} hub in {$request->municipality} is currently not hiring. Please select an available hub nearby.");
+                    } elseif (! $hub->is_hiring) {
+                        if (! Schema::hasColumn('logistics_hubs', 'rider_hiring_open')) {
+                            $validator->errors()->add('municipality', 'This hub is currently not hiring.');
+                        }
                     }
                 } elseif ($isRider) {
                     $validator->errors()->add('logistics_hub_id', 'Please choose a hub.');
+                }
+            }
+
+            if ($hub && ($isRider || $isLogisticsJoin)) {
+                try {
+                    app(HubHiring::class)->assertIntake($hub, $isRider ? 'rider' : 'hub_staff');
+                } catch (ValidationException $e) {
+                    foreach ($e->errors() as $key => $messages) {
+                        foreach ($messages as $message) {
+                            $validator->errors()->add($key, $message);
+                        }
+                    }
                 }
             }
 
@@ -319,8 +356,8 @@ class RegisterController extends Controller
             // client-side disable in register-rider.blade.php, enforced here too so a
             // crafted request can't bypass it.
             if ($isRider && $hub && $request->input('vehicle_ownership') === 'company' && $request->filled('vehicle_type')
-                && !\App\Models\CompanyVehicle::typeAvailableAtHub($hub->id, $request->vehicle_type)) {
-                $validator->errors()->add('vehicle_type', "The {$hub->municipality} hub doesn't currently have an available " . str_replace('_', ' ', $request->vehicle_type) . ' for company-provided riders. Please select another vehicle type, or bring your own.');
+                && ! CompanyVehicle::typeAvailableAtHub($hub->id, $request->vehicle_type)) {
+                $validator->errors()->add('vehicle_type', "The {$hub->municipality} hub doesn't currently have an available ".str_replace('_', ' ', $request->vehicle_type).' for company-provided riders. Please select another vehicle type, or bring your own.');
             }
 
             // Same-person check: only flag a duplicate when the ENTIRE identity matches —
@@ -362,49 +399,50 @@ class RegisterController extends Controller
         // Riders skip the generic ID upload (their license covers it) — everyone
         // else must provide one, guaranteed by the validation rules above.
         try {
-            $idPath     = $request->hasFile('id_file') ? $this->storeWithRetry($request->file('id_file'), 'id_files') : null;
+            $idPath = ! $isRider && $request->hasFile('id_file') ? $this->storeWithRetry($request->file('id_file'), 'id_files') : null;
             $selfiePath = $this->storeWithRetry($request->file('selfie_file'), 'selfie_files');
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'message' => 'We couldn\'t upload your documents due to a network issue. Please check your connection and try again.'], 502);
         }
 
         $userData = [
-            'account_type'   => $request->account_type,
-            'auth_method'    => $request->auth_method,
-            'google_id'      => $request->google_id,
-            'username'       => $request->username,
-            'last_name'    => $request->last_name,
-            'given_names'  => $request->given_names,
-            'middle_name'  => $request->middle_name,
-            'suffix'         => $request->suffix ?: null,
-            'sex'            => $request->sex,
-            'birthday'       => $request->birthday,
-            'age'            => $request->age,
-            'email'          => $request->email,
-            'contact_no'     => $request->contact_no,
-            'province'       => $request->province,
-            'municipality'   => $request->municipality,
-            'barangay'       => $request->barangay,
-            'house_no'       => $request->house_no,
-            'street'         => $request->street,
-            'password'       => $request->password,
-            'id_file'        => $idPath,
-            'id_type_id'     => $request->id_type_id,
-            'selfie_file'    => $selfiePath,
-            'status'         => 'pending',
-            'category_id'    => $isSeller ? ($request->input('category_ids')[0] ?? null) : null,
+            'account_type' => $request->account_type,
+            'auth_method' => $request->auth_method,
+            'google_id' => $request->google_id,
+            'username' => $request->username,
+            'last_name' => $request->last_name,
+            'given_names' => $request->given_names,
+            'middle_name' => $request->middle_name,
+            'suffix' => $request->suffix ?: null,
+            'sex' => $request->sex,
+            'birthday' => $request->birthday,
+            'age' => $request->age,
+            'email' => $request->email,
+            'contact_no' => $request->contact_no,
+            'province' => $request->province,
+            'municipality' => $request->municipality,
+            'barangay' => $request->barangay,
+            'house_no' => $request->house_no,
+            'street' => $request->street,
+            'password' => $request->password,
+            'id_file' => $idPath,
+            'id_type_id' => $request->id_type_id,
+            'selfie_file' => $selfiePath,
+            'status' => 'pending',
+            'category_id' => $isSeller ? ($request->input('category_ids')[0] ?? null) : null,
             'category_other' => $isSeller ? $request->category_other : null,
-            'business_name'  => ($isSeller || $isRider || $isLogistics) ? $request->business_name : null,
+            'business_name' => ($isSeller || $isRider || $isLogistics) ? $request->business_name : null,
             // Logistics staff go through the same public, admin-approved registration as
             // everyone else — is_logistics is what LogisticsMiddleware and login actually
             // gate on, account_type is kept in sync purely for display/UI consistency.
-            'is_logistics'    => $isLogistics,
-            'logistics_role'  => $isLogistics ? ($isLogisticsJoin ? 'hub_staff' : 'admin') : null,
+            'is_logistics' => $isLogistics,
+            'logistics_role' => $isLogistics ? ($isLogisticsJoin ? 'hub_staff' : 'admin') : null,
             // Hub assignment: use explicitly selected hub or match by address
             'logistics_hub_id' => $isLogisticsJoin
                 ? ($request->filled('logistics_hub_id')
                     ? (int) $request->logistics_hub_id
-                    : optional(\App\Models\LogisticsHub::where('company_name', $request->business_name)
+                    : optional(LogisticsHub::where('company_name', $request->business_name)
+                        ->where('is_operational', true)
                         ->whereRaw('LOWER(province) = ?', [mb_strtolower(trim($request->province))])
                         ->whereRaw('LOWER(municipality) = ?', [mb_strtolower(trim($request->municipality))])
                         ->first())->id)
@@ -419,29 +457,29 @@ class RegisterController extends Controller
                 }
             }
 
-            if ($request->hasFile('resume_file')) {
+            if (($isRider || $isLogisticsJoin) && $request->hasFile('resume_file')) {
                 $userData['resume_file'] = $this->storeWithRetry($request->file('resume_file'), 'resume_files');
             }
 
             if ($isRider) {
                 // Already validated above to exist, belong to this company, and be hiring.
-                $userData['logistics_hub_id']  = (int) $request->logistics_hub_id;
-                $userData['vehicle_type']      = $request->vehicle_type;
+                $userData['logistics_hub_id'] = (int) $request->logistics_hub_id;
+                $userData['vehicle_type'] = $request->vehicle_type;
                 $userData['vehicle_ownership'] = $request->vehicle_ownership;
-                $userData['license_number']    = $request->license_number;
-                $userData['license_expiry']    = $request->license_expiry;
-                $userData['license_file']      = $this->storeWithRetry($request->file('license_file'), 'license_files');
+                $userData['license_number'] = $request->license_number;
+                $userData['license_expiry'] = $request->license_expiry;
+                $userData['license_file'] = $this->storeWithRetry($request->file('license_file'), 'license_files');
 
                 // No separate ID step for riders — mirror the license into the generic
                 // id_file/id_type_id columns so admin document review, which reads those
                 // columns for every account type, still has something to show.
-                $userData['id_file']    = $userData['license_file'];
+                $userData['id_file'] = $userData['license_file'];
                 $userData['id_type_id'] = DB::table('id_types')->where('name', "Driver's License")->value('id');
 
                 if ($request->input('vehicle_ownership') === 'own') {
                     $userData['vehicle_brand'] = $request->vehicle_brand;
                     $userData['vehicle_model'] = $request->vehicle_model;
-                    $userData['plate_number']  = $request->plate_number;
+                    $userData['plate_number'] = $request->plate_number;
                     if ($request->hasFile('or_file')) {
                         $userData['or_file'] = $this->storeWithRetry($request->file('or_file'), 'vehicle_docs');
                     }
@@ -454,16 +492,14 @@ class RegisterController extends Controller
             return response()->json(['success' => false, 'message' => 'We couldn\'t upload your documents due to a network issue. Please check your connection and try again.'], 502);
         }
 
-        // If this email or username belonged to a previously rejected account, remove that
-        // stale row first — it's effectively a fresh application, not a second account.
-        User::where('status', 'rejected')
-            ->where(function ($q) use ($request) {
-                $q->where('email', $request->email)
-                  ->orWhere('username', $request->username);
-            })
-            ->delete();
-
-        User::create($userData);
+        // Reuse a safely matched rejected account and preserve its attempt history.
+        try {
+            app(HubHiring::class)->register($userData, $isRider ? 'rider' : ($isLogisticsJoin ? 'hub_staff' : null));
+        } catch (ValidationException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage(), 'errors' => $e->errors()], 422);
+        } catch (UniqueConstraintViolationException $e) {
+            return response()->json(['success' => false, 'message' => 'An account already exists. Refresh and try again.', 'errors' => ['email' => ['An account already exists.']]], 422);
+        }
 
         if ($isLogisticsFound) {
             $hubAreas = json_decode($request->input('hub_areas', '[]'), true) ?: [];
@@ -474,10 +510,12 @@ class RegisterController extends Controller
             foreach ($hubAreas as $area) {
                 $province = trim($area['province'] ?? '');
                 $municipality = trim($area['municipality'] ?? '');
-                if ($province === '' || $municipality === '') continue;
-                $key = mb_strtolower($province) . '|' . mb_strtolower($municipality);
-                if (!isset($deduped[$key])) {
-                    $deduped[$key] = ['province' => $province, 'municipality' => $municipality, 'is_regional' => !empty($area['is_regional'])];
+                if ($province === '' || $municipality === '') {
+                    continue;
+                }
+                $key = mb_strtolower($province).'|'.mb_strtolower($municipality);
+                if (! isset($deduped[$key])) {
+                    $deduped[$key] = ['province' => $province, 'municipality' => $municipality, 'is_regional' => ! empty($area['is_regional'])];
                 }
             }
 
@@ -488,7 +526,7 @@ class RegisterController extends Controller
             $regionalPerProvince = [];
             foreach ($deduped as $row) {
                 $provinceKey = mb_strtolower($row['province']);
-                if ($row['is_regional'] && !isset($regionalPerProvince[$provinceKey])) {
+                if ($row['is_regional'] && ! isset($regionalPerProvince[$provinceKey])) {
                     $regionalPerProvince[$provinceKey] = mb_strtolower($row['municipality']);
                 }
             }
@@ -498,10 +536,10 @@ class RegisterController extends Controller
             }
 
             foreach ($deduped as $row) {
-                \App\Models\LogisticsHub::create([
-                    'company_name'    => $request->business_name,
-                    'province'        => $row['province'],
-                    'municipality'    => $row['municipality'],
+                LogisticsHub::create([
+                    'company_name' => $request->business_name,
+                    'province' => $row['province'],
+                    'municipality' => $row['municipality'],
                     'is_regional_hub' => $regionalPerProvince[mb_strtolower($row['province'])] === mb_strtolower($row['municipality']),
                 ]);
             }

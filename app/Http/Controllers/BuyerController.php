@@ -4,35 +4,46 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\FetchesProducts;
 use App\Http\Controllers\Concerns\HandlesAccountUpdateRequests;
-use App\Models\Product;
-use App\Models\User;
-use App\Models\Message;
-use App\Models\Complaint;
-use App\Models\PaymentMethod;
-use App\Models\Order;
-use App\Models\Review;
-use App\Models\Voucher;
-use App\Models\BuyerPaymentAccount;
-use App\Models\BuyerAddress;
-use App\Models\CartItem;
-use App\Models\ShopFollow;
+use App\Http\Controllers\Concerns\LoadsStorefront;
 use App\Models\Announcement;
+use App\Models\BuyerAddress;
+use App\Models\BuyerPaymentAccount;
+use App\Models\CartItem;
+use App\Models\Category;
+use App\Models\Complaint;
+use App\Models\GcashPurchase;
+use App\Models\Message;
+use App\Models\Order;
+use App\Models\PaymentMethod;
+use App\Models\Product;
+use App\Models\Review;
+use App\Models\ShopFollow;
+use App\Models\User;
+use App\Models\Voucher;
+use App\Services\GcashInventory;
+use App\Services\GcashLocks;
+use App\Services\GcashWorkflow;
+use App\Services\MediaLifecycle;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class BuyerController extends Controller
 {
     use FetchesProducts;
-    use \App\Http\Controllers\Concerns\LoadsStorefront;
     use HandlesAccountUpdateRequests;
+    use LoadsStorefront;
 
     public function dashboard(Request $request)
     {
-        $buyerId    = auth()->id();
+        $buyerId = auth()->id();
         $storefront = $this->storefrontData($request);
 
         // 'to_ship'/'in_transit' are never literal status values — they're the
@@ -42,15 +53,15 @@ class BuyerController extends Controller
         // uses, so a tile's count always matches what clicking it shows.
         $ordersBase = Order::where('buyer_id', $buyerId);
         $statusCounts = [
-            'to_ship'          => (clone $ordersBase)->whereIn('status', Order::BUYER_TO_SHIP_STATUSES)->count(),
-            'in_transit'       => (clone $ordersBase)->whereIn('status', Order::BUYER_IN_TRANSIT_STATUSES)->count(),
+            'to_ship' => (clone $ordersBase)->whereIn('status', Order::BUYER_TO_SHIP_STATUSES)->count(),
+            'in_transit' => (clone $ordersBase)->whereIn('status', Order::BUYER_IN_TRANSIT_STATUSES)->count(),
             'out_for_delivery' => (clone $ordersBase)->where('status', 'out_for_delivery')->count(),
-            'completed'        => (clone $ordersBase)->where('status', 'completed')->count(),
+            'completed' => (clone $ordersBase)->where('status', 'completed')->count(),
         ];
-        $activeOrders    = $statusCounts['to_ship'] + $statusCounts['in_transit'] + $statusCounts['out_for_delivery'];
+        $activeOrders = $statusCounts['to_ship'] + $statusCounts['in_transit'] + $statusCounts['out_for_delivery'];
         $completedOrders = $statusCounts['completed'];
-        $cartCount       = (int) CartItem::where('buyer_id', $buyerId)->sum('qty');
-        $unreadMessages  = Message::where('receiver_id', $buyerId)->where('read', false)->count();
+        $cartCount = (int) CartItem::where('buyer_id', $buyerId)->sum('qty');
+        $unreadMessages = Message::where('receiver_id', $buyerId)->where('read', false)->count();
 
         $recentOrders = Order::with('seller')
             ->where('buyer_id', $buyerId)
@@ -70,22 +81,23 @@ class BuyerController extends Controller
 
     public function browse(Request $request)
     {
-        $categories = \App\Models\Category::orderBy('name')->get(['id', 'name']);
-        $products   = $this->dbProducts(
+        $categories = Category::orderBy('name')->get(['id', 'name']);
+        $products = $this->dbProducts(
             0,
             $request->filled('category') ? (int) $request->input('category') : null,
             $request->filled('q') ? $request->input('q') : null,
             $request->input('sort')
         );
+
         return view('buyer.browse', compact('products', 'categories'));
     }
 
     public function product($id)
     {
         $p = Product::with(['seller', 'category'])->where('id', $id)->where('status', 'active')->sellerApproved()->firstOrFail();
-        $product      = $this->mapProduct($p);
-        $sellerOnline = Cache::has('seller-online-' . $p->seller_id);
-        $shopProducts = Product::with(['seller','category'])->where('seller_id', $p->seller_id)->where('status','active')->sellerApproved()->where('id','!=',$id)->limit(6)->get()->map(fn($r) => $this->mapProduct($r))->all();
+        $product = $this->mapProduct($p);
+        $sellerOnline = Cache::has('seller-online-'.$p->seller_id);
+        $shopProducts = Product::with(['seller', 'category'])->where('seller_id', $p->seller_id)->where('status', 'active')->sellerApproved()->where('id', '!=', $id)->limit(6)->get()->map(fn ($r) => $this->mapProduct($r))->all();
         $titleTerms = collect(preg_split('/[^\\pL\\pN]+/u', $p->name))
             ->filter(fn ($term) => mb_strlen($term) > 2)
             ->unique()
@@ -101,34 +113,36 @@ class BuyerController extends Controller
             ->when($titleTerms->isNotEmpty(), function ($query) use ($titleTerms) {
                 $query->where(function ($matches) use ($titleTerms) {
                     foreach ($titleTerms as $term) {
-                        $matches->orWhereLike('name', '%' . $term . '%');
+                        $matches->orWhereLike('name', '%'.$term.'%');
                     }
                 });
             }, fn ($query) => $query->whereRaw('1 = 0'))
             ->limit(8)
             ->get()
-            ->map(fn($r) => $this->mapProduct($r))
+            ->map(fn ($r) => $this->mapProduct($r))
             ->all();
         $shop = null;
+
         return view('buyer.product', compact('product', 'shop', 'related', 'shopProducts', 'sellerOnline'));
     }
 
     public function shop($slug)
     {
         $seller = User::where('username', $slug)->where('account_type', 'seller')->firstOrFail();
-        $items  = Product::with(['seller','category'])->where('seller_id', $seller->id)->where('status','active')->sellerApproved()->get()->map(fn($p) => $this->mapProduct($p))->all();
-        $shop   = [
-            'name'         => $seller->business_name ?? ($seller->given_names . ' ' . $seller->last_name),
-            'initial'      => strtoupper(substr($seller->given_names, 0, 1)),
-            'photo'        => $seller->shopPhotoUrl(),
-            'rating'       => 0,
-            'products'     => count($items),
-            'sales'        => '0',
-            'joined'       => $seller->created_at->format('M Y'),
-            'desc'         => '',
-            'followers'    => $seller->followers()->count(),
+        $items = Product::with(['seller', 'category'])->where('seller_id', $seller->id)->where('status', 'active')->sellerApproved()->get()->map(fn ($p) => $this->mapProduct($p))->all();
+        $shop = [
+            'name' => $seller->business_name ?? ($seller->given_names.' '.$seller->last_name),
+            'initial' => strtoupper(substr($seller->given_names, 0, 1)),
+            'photo' => $seller->shopPhotoUrl(),
+            'rating' => 0,
+            'products' => count($items),
+            'sales' => '0',
+            'joined' => $seller->created_at->format('M Y'),
+            'desc' => '',
+            'followers' => $seller->followers()->count(),
             'is_following' => ShopFollow::where('buyer_id', auth()->id())->where('seller_id', $seller->id)->exists(),
         ];
+
         return view('buyer.shop', compact('shop', 'items', 'slug'));
     }
 
@@ -172,7 +186,7 @@ class BuyerController extends Controller
             ]);
         });
         $groups = $items->groupBy('seller_slug');
-        $paymentMethods = PaymentMethod::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get()->groupBy('type');
+        $paymentMethods = PaymentMethod::forBuyerCheckout()->orderBy('sort_order')->orderBy('name')->get()->groupBy(fn ($method) => $method->buyerCheckoutKind() === 'cod' ? 'cod' : 'ewallet');
 
         // Real, seller-configured shipping fee per shop in the cart (defaults
         // to free when a seller hasn't set one).
@@ -189,17 +203,19 @@ class BuyerController extends Controller
         $otherVouchers = collect();
         foreach ($groups as $slug => $shopItems) {
             $seller = $sellers->get($slug);
-            if (!$seller) continue;
+            if (! $seller) {
+                continue;
+            }
             $shopSubtotal = $shopItems->sum(fn ($item) => $item['price'] * $item['qty']);
             foreach ($vouchersBySeller->get($seller->id, collect()) as $voucher) {
                 $entry = ['voucher' => $voucher, 'shop' => $slug, 'shop_name' => $shopItems->first()['seller']];
                 if ($voucher->isUsable() && $shopSubtotal >= $voucher->minimum_spend) {
                     $usableVouchers->push($entry);
                 } else {
-                    $entry['reason'] = !$voucher->is_active ? 'Inactive'
+                    $entry['reason'] = ! $voucher->is_active ? 'Inactive'
                         : ($voucher->expires_at && $voucher->expires_at->isPast() ? 'Expired'
                         : ($voucher->usage_limit !== null && $voucher->used_count >= $voucher->usage_limit ? 'Usage limit reached'
-                        : 'Spend ₱' . number_format(max(0, $voucher->minimum_spend - $shopSubtotal), 2) . ' more to unlock'));
+                        : 'Spend ₱'.number_format(max(0, $voucher->minimum_spend - $shopSubtotal), 2).' more to unlock'));
                     $otherVouchers->push($entry);
                 }
             }
@@ -211,7 +227,7 @@ class BuyerController extends Controller
         $paymentAccounts = BuyerPaymentAccount::where('buyer_id', auth()->id())->get();
         $verifiedLookup = [];
         foreach ($paymentAccounts as $account) {
-            $key = $account->type === 'bank' ? 'bank:' . strtolower($account->bank_name ?? '') : $account->type;
+            $key = $account->type === 'bank' ? 'bank:'.strtolower($account->bank_name ?? '') : $account->type;
             $verifiedLookup[$key] = true;
         }
 
@@ -227,39 +243,39 @@ class BuyerController extends Controller
     public function storeAddress(Request $request)
     {
         $data = $request->validate([
-            'label'          => ['nullable', 'string', 'max:50'],
+            'label' => ['nullable', 'string', 'max:50'],
             'recipient_name' => ['required', 'string', 'max:150'],
-            'contact_no'     => ['nullable', 'regex:/^09\d{9}$/'],
-            'province'       => ['required', 'string', 'max:150'],
-            'municipality'   => ['required', 'string', 'max:150'],
-            'barangay'       => ['required', 'string', 'max:150'],
-            'house_no'       => ['nullable', 'string', 'max:100'],
-            'street'         => ['nullable', 'string', 'max:150'],
+            'contact_no' => ['nullable', 'string', 'regex:/\A09[0-9]{9}\z/'],
+            'province' => ['required', 'string', 'max:150'],
+            'municipality' => ['required', 'string', 'max:150'],
+            'barangay' => ['required', 'string', 'max:150'],
+            'house_no' => ['nullable', 'string', 'max:100'],
+            'street' => ['nullable', 'string', 'max:150'],
         ], [
             'contact_no.regex' => 'Contact number must start with 09 and be exactly 11 digits.',
         ]);
 
         // The very first address a buyer ever saves becomes their default automatically.
-        $isFirst = !BuyerAddress::where('buyer_id', auth()->id())->exists();
+        $isFirst = ! BuyerAddress::where('buyer_id', auth()->id())->exists();
         $address = BuyerAddress::create(array_merge($data, [
-            'buyer_id'   => auth()->id(),
+            'buyer_id' => auth()->id(),
             'is_default' => $isFirst,
         ]));
 
         return response()->json([
             'success' => true,
             'address' => [
-                'id'            => $address->id,
-                'label'         => $address->label,
+                'id' => $address->id,
+                'label' => $address->label,
                 'recipient_name' => $address->recipient_name,
-                'contact_no'    => $address->contact_no,
-                'full_address'  => $address->full_address,
-                'is_default'    => $address->is_default,
+                'contact_no' => $address->contact_no,
+                'full_address' => $address->full_address,
+                'is_default' => $address->is_default,
             ],
         ]);
     }
 
-    public function destroyAddress(BuyerAddress $address)
+    public function destroyAddress(Request $request, BuyerAddress $address)
     {
         abort_unless($address->buyer_id === auth()->id(), 403);
 
@@ -268,10 +284,17 @@ class BuyerController extends Controller
         // It only ever changes when a profile/address update request they submit
         // gets approved by an admin (see AccountUpdateRequest::apply()).
         if ($address->is_default) {
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Your default address cannot be removed. Submit an account update request to change it.'], 422);
+            }
             return back()->with('error', 'Your default address is set from your account address. To change it, submit an account update request and wait for admin approval.');
         }
 
         $address->delete();
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true]);
+        }
 
         return back()->with('success', 'Address removed.');
     }
@@ -279,13 +302,13 @@ class BuyerController extends Controller
     public function cartAdd(Request $request)
     {
         $data = $request->validate([
-            'product_id'      => ['required'],
+            'product_id' => ['required'],
             'variation_group' => ['nullable', 'string', 'max:150'],
             'variation_value' => ['nullable', 'string', 'max:150'],
-            'qty'             => ['required', 'integer', 'min:1', 'max:99'],
+            'qty' => ['required', 'integer', 'min:1', 'max:99'],
         ]);
 
-        $p    = Product::with(['seller','category'])->where('id', $data['product_id'])->where('status','active')->sellerApproved()->firstOrFail();
+        $p = Product::with(['seller', 'category'])->where('id', $data['product_id'])->where('status', 'active')->sellerApproved()->firstOrFail();
         $prod = $this->mapProduct($p);
 
         // A selected option carries its own authoritative price/stock — never
@@ -298,16 +321,20 @@ class BuyerController extends Controller
         $variationGroup = '';
         $available = (int) $p->stock;
 
-        if (!empty($p->variations)) {
-            abort_unless(!empty($data['variation_group']) && !empty($data['variation_value']), 422, 'Select an available variation first.');
+        if (! empty($p->variations)) {
+            abort_unless(! empty($data['variation_group']) && ! empty($data['variation_value']), 422, 'Select an available variation first.');
             $option = $this->findVariationOption($p, $data['variation_group'], $data['variation_value']);
             abort_unless($option, 422, 'Selected option is no longer available.');
             $available = (int) ($option['stock'] ?? 0);
             abort_if($available <= 0, 422, 'Selected option is out of stock.');
-            if (isset($option['price'])) $price = (float) $option['price'];
+            if (isset($option['price'])) {
+                $price = (float) $option['price'];
+            }
             // The chosen option's own photo (e.g. a specific color) beats the
             // product's generic cover image whenever the seller set one.
-            if (!empty($option['image'])) $img = $this->productImageUrl($option['image']);
+            if (! empty($option['image'])) {
+                $img = $this->productImageUrl($option['image']);
+            }
             $variationValue = $data['variation_value'];
             $variationGroup = $data['variation_group'];
         } else {
@@ -324,16 +351,16 @@ class BuyerController extends Controller
             $existing->update(['qty' => min(99, $existing->qty + $data['qty'])]);
         } else {
             CartItem::create([
-                'buyer_id'        => $buyerId,
-                'product_id'      => $p->id,
-                'name'            => $p->name,
-                'price'           => $price,
+                'buyer_id' => $buyerId,
+                'product_id' => $p->id,
+                'name' => $p->name,
+                'price' => $price,
                 'variation_value' => $variationValue,
                 'variation_group' => $variationGroup,
-                'qty'             => $data['qty'],
-                'img'             => $img,
-                'seller'          => $prod['seller'],
-                'seller_slug'     => $prod['seller_slug'],
+                'qty' => $data['qty'],
+                'img' => $img,
+                'seller' => $prod['seller'],
+                'seller_slug' => $prod['seller_slug'],
             ]);
         }
 
@@ -344,11 +371,16 @@ class BuyerController extends Controller
     private function findVariationOption(Product $p, string $group, string $value): ?array
     {
         foreach ($p->variations ?? [] as $variation) {
-            if (($variation['name'] ?? null) !== $group) continue;
+            if (($variation['name'] ?? null) !== $group) {
+                continue;
+            }
             foreach ($variation['options'] ?? [] as $option) {
-                if (($option['value'] ?? null) === $value) return $option;
+                if (($option['value'] ?? null) === $value) {
+                    return $option;
+                }
             }
         }
+
         return null;
     }
 
@@ -356,7 +388,7 @@ class BuyerController extends Controller
     {
         $data = $request->validate(['qty' => ['required', 'integer', 'min:1', 'max:99']]);
         $item = CartItem::where('buyer_id', auth()->id())->where('id', $key)->first();
-        if (!$item) {
+        if (! $item) {
             return redirect()->route('buyer.cart')->with('error', 'This item is no longer in your cart.');
         }
 
@@ -369,6 +401,7 @@ class BuyerController extends Controller
         }
 
         $item->update(['qty' => $data['qty']]);
+
         return redirect()->route('buyer.cart');
     }
 
@@ -384,11 +417,11 @@ class BuyerController extends Controller
         // of the cart, so every failure below bounces back with a flash
         // message instead, same as every other buyer-facing form.
         $item = CartItem::where('buyer_id', auth()->id())->where('id', $key)->first();
-        if (!$item) {
+        if (! $item) {
             return redirect()->route('buyer.cart')->with('error', 'This item is no longer in your cart.');
         }
         $product = Product::find($item->product_id);
-        if (!$product) {
+        if (! $product) {
             return back()->with('error', 'This product is no longer available.');
         }
 
@@ -399,17 +432,17 @@ class BuyerController extends Controller
         // selected option below carries its own (e.g. switching color).
         $img = $this->mapProduct($product)['img'];
 
-        if (!empty($product->variations)) {
+        if (! empty($product->variations)) {
             // Same "pick exactly one option, from any of the product's
             // variation groups" model as adding to cart — re-resolve the
             // option authoritatively so switching to a different group
             // (and possibly a different price) can never use a stale price.
             $groupName = $data['variation_group'] ?? '';
-            if (!$groupName || $newValue === '') {
+            if (! $groupName || $newValue === '') {
                 return back()->with('error', 'Select an option first.');
             }
             $option = $this->findVariationOption($product, $groupName, $newValue);
-            if (!$option) {
+            if (! $option) {
                 return back()->with('error', 'Selected option is no longer available.');
             }
             $optionStock = (int) ($option['stock'] ?? 0);
@@ -420,8 +453,12 @@ class BuyerController extends Controller
                 return back()->with('error', "Only {$optionStock} item(s) available for this option.");
             }
             $stockLimit = $optionStock;
-            if (isset($option['price'])) $price = (float) $option['price'];
-            if (!empty($option['image'])) $img = $this->productImageUrl($option['image']);
+            if (isset($option['price'])) {
+                $price = (float) $option['price'];
+            }
+            if (! empty($option['image'])) {
+                $img = $this->productImageUrl($option['image']);
+            }
         } else {
             $available = $product->total_stock;
             if ($available <= 0) {
@@ -456,7 +493,10 @@ class BuyerController extends Controller
     public function cartRemove(string $key)
     {
         $item = CartItem::where('buyer_id', auth()->id())->where('id', urldecode($key))->first();
-        if ($item) $item->delete();
+        if ($item) {
+            $item->delete();
+        }
+
         return redirect()->route('buyer.cart');
     }
 
@@ -471,10 +511,13 @@ class BuyerController extends Controller
         $orders = $baseQuery->with(['seller', 'paymentMethod', 'shipment.courier', 'shipment.pickupRider', 'review'])
             ->when($tab === 'to_ship', fn ($query) => $query->whereIn('status', Order::BUYER_TO_SHIP_STATUSES))
             ->when($tab === 'in_transit', fn ($query) => $query->whereIn('status', Order::BUYER_IN_TRANSIT_STATUSES))
-            ->when(!in_array($tab, ['all', 'to_ship', 'in_transit'], true), fn ($query) => $query->where('status', $tab))
+            ->when(! in_array($tab, ['all', 'to_ship', 'in_transit'], true), fn ($query) => $query->where('status', $tab))
             ->latest()
             ->get();
-        return view('buyer.orders', compact('orders', 'tab', 'orderCounts'));
+
+        $orderHistory = DB::table('order_status_history')->whereIn('order_id', $orders->modelKeys())->orderBy('created_at')->get(['order_id', 'status', 'created_at'])->groupBy('order_id');
+
+        return view('buyer.orders', compact('orders', 'tab', 'orderCounts', 'orderHistory'));
     }
 
     public function storeReview(Request $request, Order $order)
@@ -488,18 +531,18 @@ class BuyerController extends Controller
         }
 
         $data = $request->validate([
-            'rating'  => ['required', 'integer', 'min:1', 'max:5'],
+            'rating' => ['required', 'integer', 'min:1', 'max:5'],
             'comment' => ['nullable', 'string', 'max:1000'],
         ]);
         $firstItem = collect($order->items ?? [])->first() ?? [];
 
         Review::create([
-            'order_id'   => $order->id,
-            'buyer_id'   => auth()->id(),
-            'seller_id'  => $order->seller_id,
+            'order_id' => $order->id,
+            'buyer_id' => auth()->id(),
+            'seller_id' => $order->seller_id,
             'product_id' => $firstItem['product_id'] ?? null,
-            'rating'     => $data['rating'],
-            'comment'    => $data['comment'] ?? null,
+            'rating' => $data['rating'],
+            'comment' => $data['comment'] ?? null,
         ]);
 
         return back()->with('success', 'Thanks for rating your order!');
@@ -508,7 +551,11 @@ class BuyerController extends Controller
     public function cancelOrder(Request $request, Order $order)
     {
         abort_unless($order->buyer_id === auth()->id(), 403);
-        if (!in_array($order->status, Order::CANCELLABLE_STATUSES, true)) {
+        if (! in_array($order->status, Order::CANCELLABLE_STATUSES, true)) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'This order can no longer be cancelled. Refresh to see its current status.'], 422);
+            }
+
             return back()->with('error', 'This order can no longer be cancelled.');
         }
 
@@ -524,13 +571,24 @@ class BuyerController extends Controller
             $locked = Order::lockFresh($order->id);
             $ok = $locked->cancelAndRestock($data['cancellation_reason'], $data['cancellation_note'] ?? null, auth()->id());
             if ($ok) {
-                Order::notifyUser($locked->seller_id, 'Order Cancelled', 'Order #' . $locked->order_number . ' was cancelled by the buyer: ' . $data['cancellation_reason'] . '.', 'order_status', $locked->id);
+                Order::notifyUser($locked->seller_id, 'Order Cancelled', 'Order #'.$locked->order_number.' was cancelled by the buyer: '.$data['cancellation_reason'].'.', 'order_status', $locked->id);
             }
+
             return $ok;
         });
 
-        if (!$cancelled) {
+        if (! $cancelled) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'This order can no longer be cancelled. Refresh to see its current status.'], 422);
+            }
+
             return back()->with('error', 'This order can no longer be cancelled.');
+        }
+
+        if ($request->expectsJson()) {
+            $request->session()->flash('success', 'Order cancelled successfully.');
+
+            return response()->json(['cancelled' => true, 'message' => 'Order cancelled successfully.', 'redirect' => route('buyer.orders', ['tab' => 'cancelled'])]);
         }
 
         return redirect()->route('buyer.orders', ['tab' => 'cancelled'])->with('success', 'Order cancelled successfully.');
@@ -553,15 +611,16 @@ class BuyerController extends Controller
                 return false;
             }
             $locked->update(['status' => 'completed']);
-            if ($locked->shipment && !$locked->shipment->delivered_at) {
+            if ($locked->shipment && ! $locked->shipment->delivered_at) {
                 $locked->shipment->update(['delivered_at' => now()]);
             }
             $locked->logStatus('completed', auth()->id(), 'Buyer confirmed receipt.');
-            Order::notifyUser($locked->seller_id, 'Order Delivered', 'Order #' . $locked->order_number . ' has been delivered to the customer.', 'order_delivered', $locked->id);
+            Order::notifyUser($locked->seller_id, 'Order Delivered', 'Order #'.$locked->order_number.' has been delivered to the customer.', 'order_delivered', $locked->id);
+
             return true;
         });
 
-        if (!$confirmed) {
+        if (! $confirmed) {
             return back()->with('error', 'This order cannot be confirmed as received yet.');
         }
 
@@ -577,7 +636,11 @@ class BuyerController extends Controller
         $skipped = 0;
         foreach ($order->items ?? [] as $item) {
             $product = Product::where('id', $item['product_id'] ?? null)->where('status', 'active')->sellerApproved()->first();
-            if (!$product) { $skipped++; continue; }
+            if (! $product) {
+                $skipped++;
+
+                continue;
+            }
 
             $prod = $this->mapProduct($product);
             $price = (float) $prod['price'];
@@ -589,18 +652,26 @@ class BuyerController extends Controller
             $available = (int) $product->stock;
             $img = $prod['img'];
 
-            if (!empty($product->variations) && $value !== '') {
+            if (! empty($product->variations) && $value !== '') {
                 $group = collect($product->variations)->first(fn ($v) => collect($v['options'] ?? [])->contains(fn ($o) => ($o['value'] ?? null) === $value));
                 if ($group) {
                     $option = collect($group['options'])->first(fn ($o) => ($o['value'] ?? null) === $value);
                     $available = (int) ($option['stock'] ?? 0);
-                    if (isset($option['price'])) $price = (float) $option['price'];
-                    if (!empty($option['image'])) $img = $this->productImageUrl($option['image']);
+                    if (isset($option['price'])) {
+                        $price = (float) $option['price'];
+                    }
+                    if (! empty($option['image'])) {
+                        $img = $this->productImageUrl($option['image']);
+                    }
                     $variationGroup = $group['name'];
                 }
             }
 
-            if ($available <= 0) { $skipped++; continue; }
+            if ($available <= 0) {
+                $skipped++;
+
+                continue;
+            }
             $qty = min((int) ($item['qty'] ?? 1), $available, 99);
 
             $existing = CartItem::where('buyer_id', auth()->id())->where('product_id', $product->id)
@@ -637,22 +708,47 @@ class BuyerController extends Controller
             'payment_method' => ['required', 'integer', 'exists:payment_methods,id'],
             'delivery_address_id' => ['nullable', 'integer'],
         ]);
+        $buyer = auth()->user();
+        $installed = GcashInventory::installed();
+        $retry = $installed && Str::isUuid((string) $request->input('checkout_id'))
+            && GcashPurchase::where('buyer_id', $buyer->id)->where('checkout_id', $request->checkout_id)->exists();
+        $paymentMethod = PaymentMethod::findOrFail($data['payment_method']);
+        $kind = $paymentMethod->buyerCheckoutKind();
+        if (! $retry && $kind === null) {
+            throw ValidationException::withMessages(['payment_method' => 'Choose an active Cash on Delivery or GCash payment method.']);
+        }
+        if ($retry || $kind === 'gcash') {
+            if (! $installed) {
+                throw ValidationException::withMessages(['payment_method' => 'GCash prepayment is unavailable until its schema is installed.']);
+            }
+            $request->validate(['checkout_id' => 'required|uuid']);
+            $purchases = app(GcashWorkflow::class)->create($buyer, $data['items'], $paymentMethod->id, $request->checkout_id, $data['voucher_code'] ?? null, $data['delivery_address_id'] ?? null, $data['buyer_note'] ?? null);
+            if (collect($purchases)->contains(fn ($p) => $p->fresh()->reservation_state === 'initializing')) {
+                return redirect()->route('gcash.index')->with('error', 'Your purchase was committed and stock allocated, but activation is pending. Retry the same checkout or open its purchase page; do not start another payment.');
+            }
+            if (count($purchases) === 1) {
+                $seller = User::findOrFail($purchases[0]->seller_id);
+
+                return redirect()->route('buyer.messages', ['seller' => $seller->username, 'purchase' => $purchases[0]->id])->with('success', 'Stock reserved for 15 minutes. Ask the seller for GCash instructions.');
+            }
+
+            return redirect()->route('gcash.index')->with('success', 'A separate payment purchase was reserved for each seller.');
+        }
         $cart = CartItem::where('buyer_id', auth()->id())->get()->keyBy('id')->map->toArray()->all();
         $selected = collect($data['items'])->filter(fn ($key) => array_key_exists($key, $cart));
         if ($selected->isEmpty()) {
             return back()->with('error', 'Select at least one cart item.');
         }
         $items = $selected->map(fn ($key) => array_merge($cart[$key], ['key' => $key]))->values();
-        $buyer = auth()->user();
 
         // A saved address the buyer picked wins; falls back to their profile
         // address so checkout still works for a buyer who's never saved one.
-        $deliveryAddress = !empty($data['delivery_address_id'])
+        $deliveryAddress = ! empty($data['delivery_address_id'])
             ? BuyerAddress::where('id', $data['delivery_address_id'])->where('buyer_id', auth()->id())->first()
             : null;
         // A chosen address that no longer exists must not silently fall back to the
         // profile address — the buyer would ship to somewhere they didn't pick.
-        if (!empty($data['delivery_address_id']) && !$deliveryAddress) {
+        if (! empty($data['delivery_address_id']) && ! $deliveryAddress) {
             return back()->with('error', 'That delivery address is no longer available — please choose another one.');
         }
         $address = $deliveryAddress
@@ -662,119 +758,135 @@ class BuyerController extends Controller
         if ($problem = $this->deliveryAddressProblem($address)) {
             return back()->with('error', $problem);
         }
-        $paymentMethod = PaymentMethod::findOrFail($data['payment_method']);
-        $voucherCode = !empty($data['voucher_code']) ? strtoupper($data['voucher_code']) : null;
 
-        // Everything in the cart is re-checked against the live product before an order
-        // exists: it must still be listed by an approved seller (the cart only checked
-        // this when the item was added), and its price must still be the one the buyer saw.
-        $priceChanges = [];
-        foreach ($items as $item) {
-            $product = Product::where('id', $item['product_id'])->where('status', 'active')->sellerApproved()->first();
-            if (!$product) {
-                return back()->with('error', "\"{$item['name']}\" is no longer available — remove it from your cart to continue.");
+        return DB::transaction(function () use ($items, $data, $address, $paymentMethod, $buyer) {
+            // Use the same product/user-before-method order as GCash, before any commerce writes.
+            $sellerIds = Product::whereIn('id', $items->pluck('product_id'))->pluck('seller_id')->all();
+            $userIds = array_unique(array_merge([$buyer->id], $sellerIds));
+            $lockedProducts = GcashLocks::resources($items->all(), $userIds);
+            abort_if($lockedProducts->contains(fn ($product) => ! in_array($product->seller_id, $userIds)), 409, 'The cart seller changed. Refresh before retrying.');
+            $paymentMethod = PaymentMethod::whereKey($paymentMethod->id)->lockForUpdate()->firstOrFail();
+            if ($paymentMethod->buyerCheckoutKind() !== 'cod') {
+                throw ValidationException::withMessages(['payment_method' => 'The payment method changed. Choose an active Cash on Delivery method.']);
             }
-            $currentPrice = $this->currentUnitPrice($product, $item['variation_group'] ?: null, $item['variation_value'] ?: null);
-            if ($currentPrice === null) {
-                return back()->with('error', "The option you picked for \"{$item['name']}\" is no longer available — update it in your cart.");
-            }
-            if (abs($currentPrice - (float) $item['price']) > 0.004) {
-                CartItem::where('buyer_id', auth()->id())->where('id', $item['key'])->update(['price' => $currentPrice]);
-                $priceChanges[] = "\"{$item['name']}\" is now ₱" . number_format($currentPrice, 2) . ' (was ₱' . number_format((float) $item['price'], 2) . ')';
-            }
-        }
-        if ($priceChanges) {
-            return back()->with('error', 'Prices changed since you added these items: ' . implode('; ', $priceChanges) . '. Your cart now shows the current prices — review it and check out again.');
-        }
+            $voucherCode = ! empty($data['voucher_code']) ? strtoupper($data['voucher_code']) : null;
 
-        // Validate the voucher against the shops actually in this checkout
-        // *before* creating anything — an invalid code should reject the
-        // whole attempt, not silently go through without the discount.
-        if ($voucherCode && !$this->resolveVoucherForItems($items, $voucherCode)) {
-            return back()->withErrors(['voucher_code' => "That voucher code doesn't apply to your order."])->withInput();
-        }
-
-        $created = [];
-
-        try {
-            DB::transaction(function () use ($items, $data, $address, $paymentMethod, $voucherCode, $buyer, &$created) {
-            foreach ($items->groupBy('seller_slug') as $sellerSlug => $sellerItems) {
-                $seller = User::where('username', $sellerSlug)->where('account_type', 'seller')->first();
-                if (!$seller) {
-                    throw new \RuntimeException('Some items in your order are from a shop that is no longer available. Remove them from your cart and try again.');
+            // Everything in the cart is re-checked against the live product before an order
+            // exists: it must still be listed by an approved seller (the cart only checked
+            // this when the item was added), and its price must still be the one the buyer saw.
+            $priceChanges = [];
+            foreach ($items as $item) {
+                $product = Product::where('id', $item['product_id'])->where('status', 'active')->sellerApproved()->first();
+                if (! $product) {
+                    return back()->with('error', "\"{$item['name']}\" is no longer available — remove it from your cart to continue.");
                 }
+                $currentPrice = $this->currentUnitPrice($product, $item['variation_group'] ?: null, $item['variation_value'] ?: null);
+                if ($currentPrice === null) {
+                    return back()->with('error', "The option you picked for \"{$item['name']}\" is no longer available — update it in your cart.");
+                }
+                if (abs($currentPrice - (float) $item['price']) > 0.004) {
+                    CartItem::where('buyer_id', auth()->id())->where('id', $item['key'])->update(['price' => $currentPrice]);
+                    $priceChanges[] = "\"{$item['name']}\" is now ₱".number_format($currentPrice, 2).' (was ₱'.number_format((float) $item['price'], 2).')';
+                }
+            }
+            if ($priceChanges) {
+                return back()->with('error', 'Prices changed since you added these items: '.implode('; ', $priceChanges).'. Your cart now shows the current prices — review it and check out again.');
+            }
 
-                // A courtesy check only — placing an order never touches stock, so
-                // this doesn't lock anything. Stock only actually leaves inventory
-                // once the seller confirms the order (see SellerController::confirmOrder()),
-                // which means several buyers can "place" against the same limited
-                // stock and it's the seller who decides who gets confirmed.
-                foreach ($sellerItems as $item) {
-                    $product = Product::where('id', $item['product_id'])->where('status', 'active')->sellerApproved()->first();
-                    if (!$product) {
-                        throw new \RuntimeException("\"{$item['name']}\" is no longer available.");
+            // Validate the voucher against the shops actually in this checkout
+            // *before* creating anything — an invalid code should reject the
+            // whole attempt, not silently go through without the discount.
+            if ($voucherCode && ! $this->resolveVoucherForItems($items, $voucherCode)) {
+                return back()->withErrors(['voucher_code' => "That voucher code doesn't apply to your order."])->withInput();
+            }
+
+            $created = [];
+
+            try {
+                DB::transaction(function () use ($items, $data, $address, $paymentMethod, $voucherCode, $buyer, &$created) {
+                    foreach ($items->groupBy('seller_slug') as $sellerSlug => $sellerItems) {
+                        $seller = User::where('username', $sellerSlug)->where('account_type', 'seller')->first();
+                        if (! $seller) {
+                            throw new \RuntimeException('Some items in your order are from a shop that is no longer available. Remove them from your cart and try again.');
+                        }
+
+                        // A courtesy check only — placing an order never touches stock, so
+                        // this doesn't lock anything. Stock only actually leaves inventory
+                        // once the seller confirms the order (see SellerController::confirmOrder()),
+                        // which means several buyers can "place" against the same limited
+                        // stock and it's the seller who decides who gets confirmed.
+                        foreach ($sellerItems as $item) {
+                            $product = Product::where('id', $item['product_id'])->where('status', 'active')->sellerApproved()->first();
+                            if (! $product) {
+                                throw new \RuntimeException("\"{$item['name']}\" is no longer available.");
+                            }
+                            $available = $product->availableStock($item['variation_group'] ?: null, $item['variation_value'] ?: null);
+                            if ($available < (int) $item['qty']) {
+                                throw new \RuntimeException($available > 0
+                                    ? "Only {$available} of \"{$item['name']}\" left in stock."
+                                    : "\"{$item['name']}\" just sold out.");
+                            }
+                        }
+
+                        $subtotal = $sellerItems->sum(fn ($item) => $item['price'] * $item['qty']);
+                        $shipping = (float) ($seller->shipping_fee ?? 0);
+
+                        // A voucher only ever belongs to one shop — apply it to that
+                        // shop's order when the code matches and the cart qualifies.
+                        $discount = 0;
+                        $appliedVoucher = null;
+                        if ($voucherCode) {
+                            // Locked so two simultaneous checkouts can't both slip under the usage limit.
+                            $voucher = Voucher::where('seller_id', $seller->id)->where('code', $voucherCode)->lockForUpdate()->first();
+                            if ($voucher && $voucher->isUsable() && $subtotal >= $voucher->minimum_spend) {
+                                $discount = $voucher->isFreeShipping()
+                                    ? $shipping
+                                    : min((float) $voucher->discount_amount, $subtotal);
+                                $appliedVoucher = $voucher;
+                            }
+                        }
+
+                        $order = Order::create([
+                            'order_number' => 'PF-'.now()->format('YmdHis').'-'.strtoupper(Str::random(5)),
+                            'buyer_id' => auth()->id(), 'seller_id' => $seller->id, 'status' => 'placed',
+                            'items' => $sellerItems->all(), 'subtotal' => $subtotal,
+                            'shipping_amount' => $shipping, 'discount_amount' => $discount,
+                            'voucher_code' => $appliedVoucher?->code,
+                            'total' => max(0, $subtotal + $shipping - $discount), 'shipping_address' => $address,
+                            'buyer_note' => $data['buyer_note'] ?? null,
+                            'payment_method' => $paymentMethod->name,
+                            'payment_method_id' => $data['payment_method'] ?? null,
+                        ]);
+                        $created[] = $order;
+                        $order->logStatus('placed', auth()->id());
+
+                        DB::table('notifications')->insert([
+                            'id' => (string) Str::uuid(),
+                            'user_id' => $seller->id,
+                            'title' => 'New Order',
+                            'message' => 'New order '.$order->order_number.' from '.trim($buyer->given_names.' '.$buyer->last_name).' totaling ₱'.number_format($order->total, 2).'.',
+                            'notification_type' => 'new_order',
+                            'reference_id' => $order->id,
+                            'is_read' => false,
+                            'created_at' => now(),
+                        ]);
+                        if ($appliedVoucher) {
+                            $appliedVoucher->increment('used_count');
+                        }
+                        CartItem::where('buyer_id', auth()->id())->whereIn('id', $sellerItems->pluck('key'))->delete();
                     }
-                    $available = $product->availableStock($item['variation_group'] ?: null, $item['variation_value'] ?: null);
-                    if ($available < (int) $item['qty']) {
-                        throw new \RuntimeException($available > 0
-                            ? "Only {$available} of \"{$item['name']}\" left in stock."
-                            : "\"{$item['name']}\" just sold out.");
-                    }
-                }
+                });
+            } catch (QueryException $e) {
+                Log::warning('Checkout database operation failed', ['exception_type' => $e::class]);
 
-                $subtotal = $sellerItems->sum(fn ($item) => $item['price'] * $item['qty']);
-                $shipping = (float) ($seller->shipping_fee ?? 0);
-
-                // A voucher only ever belongs to one shop — apply it to that
-                // shop's order when the code matches and the cart qualifies.
-                $discount = 0;
-                $appliedVoucher = null;
-                if ($voucherCode) {
-                    // Locked so two simultaneous checkouts can't both slip under the usage limit.
-                    $voucher = Voucher::where('seller_id', $seller->id)->where('code', $voucherCode)->lockForUpdate()->first();
-                    if ($voucher && $voucher->isUsable() && $subtotal >= $voucher->minimum_spend) {
-                        $discount = $voucher->isFreeShipping()
-                            ? $shipping
-                            : min((float) $voucher->discount_amount, $subtotal);
-                        $appliedVoucher = $voucher;
-                    }
-                }
-
-                $order = Order::create([
-                    'order_number' => 'PF-' . now()->format('YmdHis') . '-' . strtoupper(Str::random(5)),
-                    'buyer_id' => auth()->id(), 'seller_id' => $seller->id, 'status' => 'placed',
-                    'items' => $sellerItems->all(), 'subtotal' => $subtotal,
-                    'shipping_amount' => $shipping, 'discount_amount' => $discount,
-                    'voucher_code' => $appliedVoucher?->code,
-                    'total' => max(0, $subtotal + $shipping - $discount), 'shipping_address' => $address,
-                    'buyer_note' => $data['buyer_note'] ?? null,
-                    'payment_method' => $paymentMethod->name,
-                    'payment_method_id' => $data['payment_method'] ?? null,
-                ]);
-                $created[] = $order;
-                $order->logStatus('placed', auth()->id());
-
-                DB::table('notifications')->insert([
-                    'id' => (string) Str::uuid(),
-                    'user_id' => $seller->id,
-                    'title' => 'New Order',
-                    'message' => 'New order ' . $order->order_number . ' from ' . trim($buyer->given_names . ' ' . $buyer->last_name) . ' totaling ₱' . number_format($order->total, 2) . '.',
-                    'notification_type' => 'new_order',
-                    'reference_id' => $order->id,
-                    'is_read' => false,
-                    'created_at' => now(),
-                ]);
-                if ($appliedVoucher) {
-                    $appliedVoucher->increment('used_count');
-                }
-                CartItem::where('buyer_id', auth()->id())->whereIn('id', $sellerItems->pluck('key'))->delete();
+                return back()->with('error', 'Unable to submit your order right now. Please try again.');
+            } catch (\RuntimeException $e) {
+                return back()->with('error', $e->getMessage());
             }
-            });
-        } catch (\RuntimeException $e) {
-            return back()->with('error', $e->getMessage());
-        }
 
-        return redirect()->route('buyer.orders', ['tab' => 'placed'])->with('success', 'Order submitted successfully.');
+            return redirect()->route('buyer.orders', ['tab' => 'placed'])->with('success', 'Order submitted successfully.');
+        });
+
     }
 
     /**
@@ -784,7 +896,7 @@ class BuyerController extends Controller
      */
     private function deliveryAddressProblem(array $address): ?string
     {
-        $missing = fn ($value) => !filled($value) || strcasecmp(trim((string) $value), 'Not provided') === 0;
+        $missing = fn ($value) => ! filled($value) || strcasecmp(trim((string) $value), 'Not provided') === 0;
 
         if ($missing($address['barangay'] ?? null) || $missing($address['municipality'] ?? null) || $missing($address['province'] ?? null)) {
             return 'Your delivery address is missing its barangay, city/municipality or province — please complete it before checking out.';
@@ -792,6 +904,7 @@ class BuyerController extends Controller
         if ($missing($address['street'] ?? null) && $missing($address['house_no'] ?? null)) {
             return 'Please add your house number or street to your delivery address so the rider can find you.';
         }
+
         return null;
     }
 
@@ -801,12 +914,19 @@ class BuyerController extends Controller
         $hasDiscount = $product->discount_price !== null && (float) $product->discount_price < (float) $product->price;
         $price = (float) ($hasDiscount ? $product->discount_price : $product->price);
 
-        if (!empty($product->variations)) {
-            if (!$group || !$value) return null;
+        if (! empty($product->variations)) {
+            if (! $group || ! $value) {
+                return null;
+            }
             $option = $this->findVariationOption($product, $group, $value);
-            if (!$option) return null;
-            if (isset($option['price'])) $price = (float) $option['price'];
+            if (! $option) {
+                return null;
+            }
+            if (isset($option['price'])) {
+                $price = (float) $option['price'];
+            }
         }
+
         return $price;
     }
 
@@ -817,13 +937,16 @@ class BuyerController extends Controller
         $sellersInCart = User::whereIn('username', $sellerSlugs)->pluck('id', 'username');
         foreach ($items->groupBy('seller_slug') as $sellerSlug => $sellerItems) {
             $sellerId = $sellersInCart->get($sellerSlug);
-            if (!$sellerId) continue;
+            if (! $sellerId) {
+                continue;
+            }
             $subtotal = $sellerItems->sum(fn ($item) => $item['price'] * $item['qty']);
             $voucher = Voucher::where('seller_id', $sellerId)->where('code', $code)->first();
             if ($voucher && $voucher->isUsable() && $subtotal >= $voucher->minimum_spend) {
                 return true;
             }
         }
+
         return false;
     }
 
@@ -831,8 +954,8 @@ class BuyerController extends Controller
     public function previewVoucher(Request $request)
     {
         $data = $request->validate([
-            'code'    => ['required', 'string', 'max:30'],
-            'items'   => ['required', 'array', 'min:1'],
+            'code' => ['required', 'string', 'max:30'],
+            'items' => ['required', 'array', 'min:1'],
             'items.*' => ['string'],
         ]);
         $cart = CartItem::where('buyer_id', auth()->id())->get()->keyBy('id')->map->toArray()->all();
@@ -847,19 +970,23 @@ class BuyerController extends Controller
         $sellers = User::whereIn('username', $sellerSlugs)->get()->keyBy('username');
         foreach ($items->groupBy('seller_slug') as $sellerSlug => $sellerItems) {
             $seller = $sellers->get($sellerSlug);
-            if (!$seller) continue;
+            if (! $seller) {
+                continue;
+            }
             $subtotal = $sellerItems->sum(fn ($item) => $item['price'] * $item['qty']);
             $voucher = Voucher::where('seller_id', $seller->id)->where('code', $code)->first();
             if ($voucher && $voucher->isUsable() && $subtotal >= $voucher->minimum_spend) {
                 $freeShipping = $voucher->isFreeShipping();
+
                 return response()->json([
-                    'applies'       => true,
+                    'applies' => true,
                     'free_shipping' => $freeShipping,
-                    'discount'      => $freeShipping ? (float) ($seller->shipping_fee ?? 0) : min((float) $voucher->discount_amount, $subtotal),
-                    'shop'          => $sellerSlug,
+                    'discount' => $freeShipping ? (float) ($seller->shipping_fee ?? 0) : min((float) $voucher->discount_amount, $subtotal),
+                    'shop' => $sellerSlug,
                 ]);
             }
         }
+
         return response()->json(['applies' => false, 'message' => "That code doesn't apply to your selected items."]);
     }
 
@@ -880,9 +1007,9 @@ class BuyerController extends Controller
                 $productVariation = [
                     'group' => $request->query('variation_group'),
                     'value' => $request->query('variation_value'),
-                    'label' => $request->query('variation_group') . ': ' . $option['value'],
+                    'label' => $request->query('variation_group').': '.$option['value'],
                     'price' => (float) ($option['price'] ?? $product->price),
-                    'image' => !empty($option['image']) ? (rtrim(config('filesystems.disks.public.url'), '/') . '/' . ltrim($option['image'], '/')) : null,
+                    'image' => ! empty($option['image']) ? (rtrim(config('filesystems.disks.public.url'), '/').'/'.ltrim($option['image'], '/')) : null,
                 ];
             }
         }
@@ -891,15 +1018,17 @@ class BuyerController extends Controller
         $sellerOnline = false;
         if ($request->filled('seller')) {
             $seller = User::where('username', $request->query('seller'))->where('account_type', 'seller')->first();
-            if ($seller) $sellerOnline = Cache::has('seller-online-' . $seller->id);
+            if ($seller) {
+                $sellerOnline = Cache::has('seller-online-'.$seller->id);
+            }
         }
 
         $messages = [];
         if ($seller) {
-            $messages = Message::with(['product', 'order'])
-                ->where(function($q) use ($seller) {
+            $messages = Message::with(['product', 'order', 'gcashPurchase'])
+                ->where(function ($q) use ($seller) {
                     $q->where('sender_id', auth()->id())->where('receiver_id', $seller->id);
-                })->orWhere(function($q) use ($seller) {
+                })->orWhere(function ($q) use ($seller) {
                     $q->where('sender_id', $seller->id)->where('receiver_id', auth()->id());
                 })
                 ->orderBy('created_at')
@@ -928,13 +1057,13 @@ class BuyerController extends Controller
             : null;
 
         // All conversations this buyer has
-        $conversations = Message::with(['sender','receiver','product'])
+        $conversations = Message::with(['sender', 'receiver', 'product', 'gcashPurchase'])
             ->where('sender_id', auth()->id())
             ->orWhere('receiver_id', auth()->id())
             ->orderByDesc('created_at')
             ->get()
-            ->groupBy(fn($m) => $m->sender_id === auth()->id() ? $m->receiver_id : $m->sender_id)
-            ->map(fn($msgs) => $msgs->first());
+            ->groupBy(fn ($m) => $m->sender_id === auth()->id() ? $m->receiver_id : $m->sender_id)
+            ->map(fn ($msgs) => $msgs->first());
 
         $data = compact('product', 'productVariation', 'seller', 'sellerOnline', 'messages', 'conversations', 'sellerProducts', 'sellerOrders', 'autoAttachOrder');
 
@@ -955,7 +1084,7 @@ class BuyerController extends Controller
             ->where('read', false)
             ->update(['read' => true]);
 
-        $messages = Message::with(['product', 'order'])
+        $messages = Message::with(['product', 'order', 'gcashPurchase'])
             ->where(function ($query) use ($seller) {
                 $query->where('sender_id', auth()->id())->where('receiver_id', $seller->id);
             })->orWhere(function ($query) use ($seller) {
@@ -987,26 +1116,27 @@ class BuyerController extends Controller
             'message_body' => $message->body, 'message_type' => $message->attachment_type ?: ($message->body ? 'text' : 'message'),
         ];
         if ($evidence) {
-            $values['evidence_path'] = $evidence->store('report_evidence', 'public');
+            $values['evidence_path'] = app(MediaLifecycle::class)->store($evidence, 'report_evidence', 'public');
             $values['evidence_name'] = $evidence->getClientOriginalName();
             $values['evidence_mime'] = $evidence->getMimeType();
             $values['evidence_type'] = str_starts_with($values['evidence_mime'], 'video/') ? 'video' : 'image';
             $values['evidence_size'] = $evidence->getSize();
         }
         Complaint::create($values);
+
         return response()->json(['ok' => true, 'message' => 'Report sent to admin.']);
     }
 
     public function reportProduct(Request $request)
     {
         $data = $request->validate([
-            'product_id'  => ['required', 'string'],
-            'reason'      => ['required', 'string', 'max:120'],
+            'product_id' => ['required', 'string'],
+            'reason' => ['required', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:3000'],
-            'evidence'    => ['nullable', 'file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi'],
+            'evidence' => ['nullable', 'file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi'],
         ]);
         $product = Product::with('seller')->where('id', $data['product_id'])->where('status', 'active')->firstOrFail();
-        $sellerName = $product->seller->business_name ?? trim($product->seller->given_names . ' ' . $product->seller->last_name);
+        $sellerName = $product->seller->business_name ?? trim($product->seller->given_names.' '.$product->seller->last_name);
 
         $evidence = $request->file('evidence');
         $values = [
@@ -1018,33 +1148,36 @@ class BuyerController extends Controller
             'message_body' => $product->name, 'message_type' => 'product',
         ];
         if ($evidence) {
-            $values['evidence_path'] = $evidence->store('report_evidence', 'public');
+            $values['evidence_path'] = app(MediaLifecycle::class)->store($evidence, 'report_evidence', 'public');
             $values['evidence_name'] = $evidence->getClientOriginalName();
             $values['evidence_mime'] = $evidence->getMimeType();
             $values['evidence_type'] = str_starts_with($values['evidence_mime'], 'video/') ? 'video' : 'image';
             $values['evidence_size'] = $evidence->getSize();
         }
         Complaint::create($values);
+
         return response()->json(['ok' => true, 'message' => 'Report sent to admin.']);
     }
 
     public function messagesSend(Request $request)
     {
         $data = $request->validate([
-            'receiver_id'      => ['required', 'integer'],
-            'body'             => ['nullable', 'string', 'max:2000'],
-            'product_id'       => ['nullable', 'string'],
-            'order_id'         => ['nullable', 'string'],
-            'variation_group'  => ['nullable', 'string', 'max:150'],
-            'variation_value'  => ['nullable', 'string', 'max:150'],
-            'attachments'   => ['nullable', 'array', 'max:5'],
+            'receiver_id' => ['required', 'integer'],
+            'body' => ['nullable', 'string', 'max:2000'],
+            'product_id' => ['nullable', 'string'],
+            'order_id' => ['nullable', 'string'],
+            'variation_group' => ['nullable', 'string', 'max:150'],
+            'variation_value' => ['nullable', 'string', 'max:150'],
+            'attachments' => ['nullable', 'array', 'max:5'],
             'attachments.*' => ['file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi'],
-            'attachment'    => ['nullable', 'file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi'],
+            'attachment' => ['nullable', 'file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi'],
         ]);
 
         $receiver = User::whereKey($data['receiver_id'])->where('account_type', 'seller')->firstOrFail();
         $files = $request->file('attachments', []);
-        if ($request->hasFile('attachment')) $files[] = $request->file('attachment');
+        if ($request->hasFile('attachment')) {
+            $files[] = $request->file('attachment');
+        }
         abort_unless(filled($data['body'] ?? null) || $files || filled($data['product_id'] ?? null) || filled($data['order_id'] ?? null), 422, 'Send a message, product, order, image, or video.');
 
         $product = null;
@@ -1064,7 +1197,7 @@ class BuyerController extends Controller
             $option = $this->findVariationOption($product, $data['variation_group'], $data['variation_value']);
             if ($option) {
                 $variationSnapshot = [
-                    'variation_label' => $data['variation_group'] . ': ' . $option['value'],
+                    'variation_label' => $data['variation_group'].': '.$option['value'],
                     'variation_price' => (float) ($option['price'] ?? $product->price),
                     'variation_image' => $option['image'] ?? null,
                 ];
@@ -1074,14 +1207,23 @@ class BuyerController extends Controller
         $messages = [];
         foreach ($files ?: [null] as $index => $file) {
             $msg = ['sender_id' => auth()->id(), 'receiver_id' => $data['receiver_id'], 'read' => false];
-            if ($index === 0 && filled($data['body'] ?? null)) $msg['body'] = $data['body'];
+            if ($index === 0 && filled($data['body'] ?? null)) {
+                $msg['body'] = $data['body'];
+            }
             if ($index === 0 && $product) {
                 $msg['product_id'] = $product->id;
-                if ($variationSnapshot) $msg = array_merge($msg, $variationSnapshot);
+                if ($variationSnapshot) {
+                    $msg = array_merge($msg, $variationSnapshot);
+                }
             }
-            if ($index === 0 && $order) $msg['order_id'] = $order->id;
-            if ($file) $this->addAttachment($msg, $file);
-            $saved = Message::create($msg); $saved->load(['product', 'order']);
+            if ($index === 0 && $order) {
+                $msg['order_id'] = $order->id;
+            }
+            if ($file) {
+                $this->addAttachment($msg, $file);
+            }
+            $saved = Message::create($msg);
+            $saved->load(['product', 'order']);
             $messages[] = $this->formatMessage($saved);
         }
 
@@ -1092,7 +1234,7 @@ class BuyerController extends Controller
     {
         $mime = $file->getMimeType();
         $extension = strtolower($file->getClientOriginalExtension());
-        $msg['attachment_path'] = $file->store('message_attachments', 'messages');
+        $msg['attachment_path'] = app(MediaLifecycle::class)->store($file, 'message_attachments', 'messages');
         $msg['attachment_name'] = $file->getClientOriginalName();
         $msg['attachment_mime'] = $mime;
         $msg['attachment_size'] = $file->getSize();
@@ -1101,33 +1243,34 @@ class BuyerController extends Controller
             : (str_starts_with($mime, 'video/') || in_array($extension, ['mp4', 'mov', 'avi'], true) ? 'video' : 'document');
     }
 
-    private function formatMessage(\App\Models\Message $m): array
+    private function formatMessage(Message $m): array
     {
         return [
-            'id'              => $m->id,
-            'sender_id'       => $m->sender_id,
-            'body'            => $m->body,
-            'product_id'      => $m->product_id,
-            'product_name'    => $m->variation_label ?: $m->product?->name,
-            'product_price'   => $m->variation_price ?? $m->product?->price,
-            'product_img'     => $m->variation_image
-                ? (rtrim(config('filesystems.disks.public.url'), '/') . '/' . ltrim($m->variation_image, '/'))
-                : ($m->product?->image ? (rtrim(config('filesystems.disks.public.url'), '/') . '/' . ltrim($m->product->image, '/')) : null),
-            'product_url'     => $m->product_id ? route('buyer.product', $m->product_id) : null,
-            'order_id'        => $m->order_id,
-            'order_number'    => $m->order?->order_number,
-            'order_status'    => $m->order ? str_replace('_', ' ', ucfirst($m->order->status)) : null,
-            'order_total'     => $m->order?->total,
-            'order_url'       => $m->order_id ? route('buyer.orders') : null,
+            'id' => $m->id,
+            'sender_id' => $m->sender_id,
+            'body' => $m->displayBody(),
+            'product_id' => $m->product_id,
+            'product_name' => $m->variation_label ?: $m->product?->name,
+            'product_price' => $m->variation_price ?? $m->product?->price,
+            'product_img' => $m->variation_image
+                ? (rtrim(config('filesystems.disks.public.url'), '/').'/'.ltrim($m->variation_image, '/'))
+                : ($m->product?->image ? (rtrim(config('filesystems.disks.public.url'), '/').'/'.ltrim($m->product->image, '/')) : null),
+            'product_url' => $m->product_id ? route('buyer.product', $m->product_id) : null,
+            'order_id' => $m->order_id,
+            'order_number' => $m->order?->order_number,
+            'order_status' => $m->order ? str_replace('_', ' ', ucfirst($m->order->status)) : null,
+            'order_total' => $m->order?->total,
+            'order_url' => $m->order_id ? route('buyer.orders') : null,
             'attachment_path' => $m->attachment_path ? route('message.media', ['path' => $m->attachment_path]) : null,
             'attachment_name' => $m->attachment_name,
             'attachment_type' => $m->attachment_type,
             'attachment_mime' => $m->attachment_mime,
             'attachment_size' => $m->attachment_size,
-            'read'            => $m->read,
-            'created_at'      => $m->created_at->format('g:i A'),
+            'read' => $m->read,
+            'created_at' => $m->created_at->format('g:i A'),
         ];
     }
+
     /** Mark one notification read and send the buyer to whatever it's about. */
     public function openNotification(string $id)
     {
@@ -1137,10 +1280,11 @@ class BuyerController extends Controller
         DB::table('notifications')->where('id', $id)->update(['is_read' => true]);
 
         return match ($notification->notification_type) {
-            'order_status'  => redirect()->route('buyer.orders'),
-            'review_reply'  => redirect()->route('buyer.orders'),
-            'announcement'  => redirect()->route('buyer.announcements.show', $notification->reference_id),
-            default         => redirect()->route('buyer.dashboard'),
+            'gcash_purchase' => redirect()->route('gcash.show', $notification->reference_id),
+            'order_status' => redirect()->route('buyer.orders'),
+            'review_reply' => redirect()->route('buyer.orders'),
+            'announcement' => redirect()->route('buyer.announcements.show', $notification->reference_id),
+            default => redirect()->route('buyer.dashboard'),
         };
     }
 
@@ -1193,9 +1337,10 @@ class BuyerController extends Controller
         $paymentAccounts = BuyerPaymentAccount::where('buyer_id', auth()->id())->latest('created_at')->get();
         BuyerAddress::ensureDefaultFor(auth()->user());
         $addresses = BuyerAddress::where('buyer_id', auth()->id())->orderByDesc('is_default')->latest()->get();
+
         return view('buyer.account', array_merge(compact('paymentAccounts', 'addresses'), [
             'pendingRequest' => $this->pendingAccountUpdateRequest(),
-            'lastRequest'    => $this->lastAccountUpdateRequest(),
+            'lastRequest' => $this->lastAccountUpdateRequest(),
         ]));
     }
 
@@ -1204,8 +1349,8 @@ class BuyerController extends Controller
     {
         $request->validate([
             'given_names' => 'required|string|max:255',
-            'last_name'   => 'required|string|max:255',
-            'contact_no'  => ['nullable', 'regex:/^09[0-9]{9}$/'],
+            'last_name' => 'required|string|max:255',
+            'contact_no' => ['nullable', 'regex:/^09[0-9]{9}$/'],
         ], [
             'contact_no.regex' => 'Contact number must start with 09 and be exactly 11 digits.',
         ]);
@@ -1222,11 +1367,11 @@ class BuyerController extends Controller
     public function updateAddress(Request $request)
     {
         $request->validate([
-            'province'     => 'required|string|max:255',
+            'province' => 'required|string|max:255',
             'municipality' => 'required|string|max:255',
-            'barangay'     => 'required|string|max:255',
-            'house_no'     => 'nullable|string|max:255',
-            'street'       => 'nullable|string|max:255',
+            'barangay' => 'required|string|max:255',
+            'house_no' => 'nullable|string|max:255',
+            'street' => 'nullable|string|max:255',
         ]);
 
         return $this->submitAccountUpdateRequest(
@@ -1241,10 +1386,11 @@ class BuyerController extends Controller
     public function passwordUpdate(Request $request)
     {
         $request->validate(['current_password' => 'required', 'password' => 'required|min:8|confirmed']);
-        if (!Hash::check($request->current_password, auth()->user()->password)) {
+        if (! Hash::check($request->current_password, auth()->user()->password)) {
             return back()->withErrors(['current_password' => 'Current password is incorrect.']);
         }
         auth()->user()->update(['password' => Hash::make($request->password)]);
+
         return back()->with('password_success', 'Password updated.');
     }
 
@@ -1252,44 +1398,45 @@ class BuyerController extends Controller
     public function sendPaymentAccountCode(Request $request)
     {
         $data = $request->validate([
-            'type'           => 'required|in:gcash,paymaya,bank',
-            'account_name'   => 'required|string|max:150',
+            'type' => 'required|in:gcash,paymaya,bank',
+            'account_name' => 'required|string|max:150',
             'account_number' => 'required|string|max:50',
-            'bank_name'      => 'required_if:type,bank|nullable|string|max:150',
+            'bank_name' => 'required_if:type,bank|nullable|string|max:150',
         ]);
 
         $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $key = 'payment_otp_' . auth()->id();
+        $key = 'payment_otp_'.auth()->id();
         Cache::put($key, ['otp' => $otp, 'data' => $data], now()->addMinutes(10));
 
         $typeLabel = ['gcash' => 'GCash', 'paymaya' => 'PayMaya', 'bank' => 'bank'][$data['type']];
         try {
-            \Illuminate\Support\Facades\Mail::raw(
+            Mail::raw(
                 "Your PocketFinds verification code is: {$otp}\n\nThis code confirms you want to add this {$typeLabel} account to your PocketFinds profile. It expires in 10 minutes.",
                 fn ($m) => $m->to(auth()->user()->email)->subject('PocketFinds — Payment Account Verification')
             );
         } catch (\Exception $e) {
             Cache::forget($key);
+
             return response()->json(['success' => false, 'message' => 'Could not send the code. Please try again.']);
         }
 
-        return response()->json(['success' => true, 'message' => 'Code sent to ' . auth()->user()->email]);
+        return response()->json(['success' => true, 'message' => 'Code sent to '.auth()->user()->email]);
     }
 
     public function verifyPaymentAccountCode(Request $request)
     {
         $request->validate(['otp' => 'required|string|size:6']);
 
-        $key = 'payment_otp_' . auth()->id();
+        $key = 'payment_otp_'.auth()->id();
         $stored = Cache::get($key);
 
-        if (!$stored || $stored['otp'] !== $request->otp) {
+        if (! $stored || $stored['otp'] !== $request->otp) {
             return response()->json(['success' => false, 'message' => 'Invalid or expired code.']);
         }
 
         $account = BuyerPaymentAccount::create(array_merge($stored['data'], [
-            'buyer_id'    => auth()->id(),
-            'verified'    => true,
+            'buyer_id' => auth()->id(),
+            'verified' => true,
             'verified_at' => now(),
         ]));
         Cache::forget($key);
@@ -1307,6 +1454,7 @@ class BuyerController extends Controller
     {
         abort_unless($account->buyer_id === auth()->id(), 403);
         $account->delete();
+
         return back()->with('success', 'Payment account removed.');
     }
 
@@ -1315,6 +1463,7 @@ class BuyerController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
         return redirect()->route('login');
     }
 }

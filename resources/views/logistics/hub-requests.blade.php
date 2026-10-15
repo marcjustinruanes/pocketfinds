@@ -10,10 +10,10 @@
 <div class="card" style="margin-bottom:16px">
   <div class="card-head">
     <h2>Not Yet Requested</h2>
-    <span class="stamp stamp-pending">{{ $notYetRequested->count() }} batch(es)</span>
+    <span class="stamp stamp-pending">{{ $notYetRequestedPages->total() }} batch(es)</span>
   </div>
   <div class="card-pad" style="padding-bottom:4px">
-    <p style="margin:0 0 4px;font-size:12.5px;color:var(--muted)">Waiting on the origin hub's own staff to request these — you can push any of them through yourself instead, same or different province.</p>
+    <p style="margin:0 0 4px;font-size:12.5px;color:var(--muted)">Waiting on the origin hub's own staff to request these — you can create a pending request yourself, then approve it separately.</p>
   </div>
   <div class="table-wrap">
     <table class="dtable">
@@ -22,17 +22,17 @@
       </thead>
       <tbody>
         @forelse($notYetRequested as $key => $legs)
-        @php([$fromHub, $toHub] = explode('|', $key, 2))
+        @php([$fromHub, $fromProvince, $toHub, $toProvince] = explode('|', $key, 4))
         @php($first = $legs->first())
         <tr>
-          <td><strong>{{ $fromHub }}</strong> &rarr; <strong>{{ $toHub }}</strong><br><span style="color:var(--muted);font-size:11px">{{ ucfirst($first->leg_type) }} leg</span></td>
+          <td><strong>{{ $fromHub }}, {{ $fromProvince }}</strong> &rarr; <strong>{{ $toHub }}, {{ $toProvince }}</strong><br><span style="color:var(--muted);font-size:11px">{{ ucfirst($first->leg_type) }} leg</span></td>
           <td class="mono">{{ $legs->count() }} parcel(s)</td>
           <td>
             <form method="POST" action="{{ route('logistics.hub-requests.admin-request') }}">
               @csrf @method('PATCH')
-              <input type="hidden" name="from_hub" value="{{ $fromHub }}">
-              <input type="hidden" name="to_hub" value="{{ $toHub }}">
-              <button class="btn btn-sm btn-primary">Request &amp; Approve</button>
+              <input type="hidden" name="from_hub" value="{{ $fromHub }}"><input type="hidden" name="from_province" value="{{ $fromProvince }}">
+              <input type="hidden" name="to_hub" value="{{ $toHub }}"><input type="hidden" name="to_province" value="{{ $toProvince }}">
+              <button class="btn btn-sm btn-primary">Request approval</button>
             </form>
           </td>
         </tr>
@@ -42,10 +42,11 @@
       </tbody>
     </table>
   </div>
+  {{ $notYetRequestedPages->links() }}
 </div>
 
 <div class="card">
-  <div class="card-head"><h2>Pending Requests</h2><span class="stamp stamp-pending">{{ $pendingTransferRequests->count() }} batch(es)</span></div>
+  <div class="card-head"><h2>Pending Requests</h2><span class="stamp stamp-pending">{{ $pendingTransferPages->total() }} batch(es)</span></div>
   <div class="table-wrap">
     <table class="dtable">
       <thead>
@@ -59,10 +60,10 @@
       </thead>
       <tbody>
         @forelse($pendingTransferRequests as $key => $legs)
-        @php([$fromHub, $toHub] = explode('|', $key, 2))
+        @php([$fromHub, $fromProvince, $toHub, $toProvince] = explode('|', $key, 4))
         @php($first = $legs->first())
         <tr>
-          <td><strong>{{ $fromHub }}</strong> &rarr; <strong>{{ $toHub }}</strong><br><span style="color:var(--muted);font-size:11px">{{ ucfirst($first->leg_type) }} leg</span></td>
+          <td><strong>{{ $fromHub }}, {{ $fromProvince }}</strong> &rarr; <strong>{{ $toHub }}, {{ $toProvince }}</strong><br><span style="color:var(--muted);font-size:11px">{{ ucfirst($first->leg_type) }} leg</span></td>
           <td class="mono">{{ $legs->count() }} parcel(s)</td>
           <td>{{ optional($first->requestedBy)->given_names }} {{ optional($first->requestedBy)->last_name }}</td>
           <td class="mono">{{ optional($first->requested_at)?->format('M d, Y H:i') }}</td>
@@ -70,15 +71,15 @@
             <div class="row-actions">
               <form method="POST" action="{{ route('logistics.hub-requests.approve') }}">
                 @csrf @method('PATCH')
-                <input type="hidden" name="from_hub" value="{{ $fromHub }}">
-                <input type="hidden" name="to_hub" value="{{ $toHub }}">
+                <input type="hidden" name="from_hub" value="{{ $fromHub }}"><input type="hidden" name="from_province" value="{{ $fromProvince }}">
+                <input type="hidden" name="to_hub" value="{{ $toHub }}"><input type="hidden" name="to_province" value="{{ $toProvince }}">
                 <button class="btn btn-sm btn-success">Approve All</button>
               </form>
-              <form method="POST" action="{{ route('logistics.hub-requests.reject') }}" onsubmit="return confirm('Send these back to the hub to re-request?')">
+              <form method="POST" action="{{ route('logistics.hub-requests.reject') }}" onsubmit="return confirm('Reject these requests and allow a fresh request?')">
                 @csrf @method('PATCH')
-                <input type="hidden" name="from_hub" value="{{ $fromHub }}">
-                <input type="hidden" name="to_hub" value="{{ $toHub }}">
-                <button class="btn btn-sm btn-outline">Send Back</button>
+                <input type="hidden" name="from_hub" value="{{ $fromHub }}"><input type="hidden" name="from_province" value="{{ $fromProvince }}">
+                <input type="hidden" name="to_hub" value="{{ $toHub }}"><input type="hidden" name="to_province" value="{{ $toProvince }}">
+                <label>Rejection reason<input name="reason" maxlength="1000" required></label><button class="btn btn-sm btn-outline">Reject request</button>
               </form>
             </div>
           </td>
@@ -98,5 +99,6 @@
       </tbody>
     </table>
   </div>
+  {{ $pendingTransferPages->links() }}
 </div>
 @endsection

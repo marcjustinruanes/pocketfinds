@@ -1,24 +1,37 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\RegisterController;
-use App\Http\Controllers\SocialAuthController;
+use App\Http\Controllers\AdminAssistantController;
 use App\Http\Controllers\AdminController;
-use App\Http\Controllers\LogisticsController;
-use App\Http\Controllers\RiderController;
+use App\Http\Controllers\BuyerAssistantController;
 use App\Http\Controllers\BuyerController;
+use App\Http\Controllers\BuyerConversationController;
+use App\Http\Controllers\FaqController;
+use App\Http\Controllers\GcashPurchaseController;
+use App\Http\Controllers\GuestAssistantController;
 use App\Http\Controllers\GuestController;
+use App\Http\Controllers\HubTransferController;
+use App\Http\Controllers\LogisticsController;
+use App\Http\Controllers\LogisticsManagementController;
+use App\Http\Controllers\PhoneScannerController;
+use App\Http\Controllers\RegisterController;
+use App\Http\Controllers\RiderController;
 use App\Http\Controllers\SellerController;
+use App\Http\Controllers\SocialAuthController;
 use App\Http\Controllers\SupportController;
-use App\Models\Message;
+use App\Models\CompanyVehicle;
 use App\Models\Complaint;
+use App\Models\LogisticsCompany;
+use App\Models\LogisticsHub;
+use App\Models\Message;
 use App\Models\Policy;
+use App\Services\HubHiring;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
 Route::get('/', [GuestController::class, 'home']);
-Route::get('/assistant', [\App\Http\Controllers\GuestAssistantController::class, 'history'])->middleware('throttle:30,1')->name('guest.assistant.history');
-Route::post('/assistant', [\App\Http\Controllers\GuestAssistantController::class, 'send'])->middleware('throttle:6,1')->name('guest.assistant.send');
-Route::delete('/assistant', [\App\Http\Controllers\GuestAssistantController::class, 'clear'])->middleware('throttle:10,1')->name('guest.assistant.clear');
+Route::get('/assistant', [GuestAssistantController::class, 'history'])->middleware('throttle:30,1')->name('guest.assistant.history');
+Route::post('/assistant', [GuestAssistantController::class, 'send'])->middleware('throttle:6,1')->name('guest.assistant.send');
+Route::delete('/assistant', [GuestAssistantController::class, 'clear'])->middleware('throttle:10,1')->name('guest.assistant.clear');
 Route::get('/categories/{id}/image', [GuestController::class, 'categoryImage'])->whereNumber('id')->name('guest.category-image');
 Route::get('/product/{id}', [GuestController::class, 'product'])->name('guest.product');
 Route::get('/shop/{slug}', [GuestController::class, 'shop'])->name('guest.shop');
@@ -34,6 +47,7 @@ Route::middleware('web', 'auth')->get('/message-media/{path}', function (string 
 
     // Stream private local attachments only after checking conversation membership.
     abort_unless(Storage::disk('messages')->exists($message->attachment_path), 404);
+
     return response()->file(Storage::disk('messages')->path($message->attachment_path));
 })->where('path', '.*')->name('message.media');
 
@@ -41,17 +55,18 @@ Route::middleware('web', 'auth')->get('/report-evidence/{path}', function (strin
     $complaint = Complaint::where('evidence_path', $path)->firstOrFail();
     abort_unless(auth()->user()->is_admin || auth()->id() === $complaint->complainant_id || auth()->id() === $complaint->respondent_id, 403);
     abort_unless(Storage::disk('public')->exists($complaint->evidence_path), 404);
+
     return response()->file(Storage::disk('public')->path($complaint->evidence_path));
 })->where('path', '.*')->name('report.evidence');
 
 Route::middleware('web')->group(function () {
-    Route::get('/login', fn() => view('auth.login'))->name('login');
+    Route::get('/login', fn () => view('auth.login'))->name('login');
     Route::post('/login', [AdminController::class, 'loginPost'])->name('login.post');
-    Route::get('/register/type', fn() => view('auth.account-type'))->name('register.type');
+    Route::get('/register/type', fn () => view('auth.account-type'))->name('register.type');
     // Rider/Logistics ("delivery team") are internal/operational roles kept off the main
     // customer role picker above — reached only via its own explicit "join the delivery
     // team" link, not listed alongside Buyer/Seller.
-    Route::get('/register/delivery-team', fn() => view('auth.delivery-type'))->name('register.delivery-team');
+    Route::get('/register/delivery-team', fn () => view('auth.delivery-type'))->name('register.delivery-team');
     Route::get('/register/method', [RegisterController::class, 'method'])->name('register.method');
 
     // Every role (buyer, seller, rider, logistics) gets its own dedicated registration
@@ -59,20 +74,21 @@ Route::middleware('web')->group(function () {
     // Terms & Conditions vary by role — each has its own admin-editable document.
     $registerView = function (string $view, string $accountType) {
         $isGoogleSignup = request()->boolean('google') && session()->has('google_email') && session('google_email');
-        if (!$isGoogleSignup) {
+        if (! $isGoogleSignup) {
             session()->forget(['google_id', 'google_name', 'google_email', 'google_avatar']);
         }
+
         return view($view, [
             'isGoogleSignup' => $isGoogleSignup,
-            'googleId'       => $isGoogleSignup ? session('google_id') : null,
-            'googleEmail'    => $isGoogleSignup ? session('google_email') : null,
-            'terms'          => Policy::where('type', 'terms_and_conditions')->where('account_type', $accountType)->first(),
+            'googleId' => $isGoogleSignup ? session('google_id') : null,
+            'googleEmail' => $isGoogleSignup ? session('google_email') : null,
+            'terms' => Policy::where('type', 'terms_and_conditions')->where('account_type', $accountType)->first(),
             // Riders and hub staff join an existing logistics company — they pick from
             // the approved company list and see that company's own T&C.
             // Logistics company registration always founds a new company, so it only
             // needs the platform-wide T&C (fetched above via account_type='logistics').
             'logisticsCompanies' => in_array($accountType, ['rider', 'logistics-staff'], true)
-                ? \App\Models\LogisticsCompany::approved()
+                ? LogisticsCompany::approved()
                 : null,
             'companyPolicies' => in_array($accountType, ['rider', 'logistics-staff'], true)
                 ? Policy::where('type', 'logistics_company_terms')->get()->keyBy('company_name')
@@ -81,15 +97,27 @@ Route::middleware('web')->group(function () {
             // hub-staff registration show its match live, client-side, without a round
             // trip. Small dataset (one row per municipality a company covers).
             'companyHubs' => in_array($accountType, ['logistics-staff', 'rider'], true)
-                ? \App\Models\LogisticsHub::orderBy('province')->orderBy('municipality')
-                    ->get(['id', 'company_name', 'province', 'municipality', 'is_regional_hub', 'is_hiring'])
+                ? LogisticsHub::orderBy('province')->orderBy('municipality')
+                    ->where('is_operational', true)
+                    ->select(['id', 'company_name', 'province', 'municipality', 'is_regional_hub', 'is_hiring', 'is_operational',
+                        'rider_hiring_open', 'staff_hiring_open', 'rider_hire_limit', 'staff_hire_limit', 'rider_hiring_closes_at', 'staff_hiring_closes_at'])
+                    ->withCount([
+                        'riders as approved_rider_count' => fn ($q) => $q->whereColumn('users.business_name', 'logistics_hubs.company_name')->where('status', 'approved')->where('is_admin', false)->where('is_logistics', false),
+                        'staff as approved_staff_count' => fn ($q) => $q->whereColumn('users.business_name', 'logistics_hubs.company_name')->where('status', 'approved')->where('is_admin', false),
+                    ])
+                    ->get()
+                    ->each(function ($hub) use ($accountType) {
+                        $state = app(HubHiring::class)->availability($hub, $accountType === 'rider' ? 'rider' : 'hub_staff', $accountType === 'rider' ? $hub->approved_rider_count : $hub->approved_staff_count);
+                        $hub->is_hiring = $state['eligible'];
+                        $hub->hiring_status = $state['status'];
+                    })
                     // Riders picking "Company Vehicle" need to know, per hub, which vehicle
                     // types that hub actually has an approved+available unit of — used to
                     // disable a vehicle-type card that hub simply can't provide right now.
                     // One query for every hub's available types, not one query PER hub (this
                     // page loads every approved company's hubs, so that was a real N+1).
                     ->when($accountType === 'rider', function ($hubs) {
-                        $availableTypesByHub = \App\Models\CompanyVehicle::whereIn('logistics_hub_id', $hubs->pluck('id'))
+                        $availableTypesByHub = CompanyVehicle::whereIn('logistics_hub_id', $hubs->pluck('id'))
                             ->riderVisible()->get(['logistics_hub_id', 'vehicle_type'])
                             ->groupBy('logistics_hub_id')
                             ->map(fn ($vehicles) => $vehicles->pluck('vehicle_type')->unique()->values()->all());
@@ -117,7 +145,7 @@ Route::middleware('web')->group(function () {
     Route::get('/register/check-business-name', [RegisterController::class, 'checkBusinessName'])->name('register.check-business-name');
     Route::get('/register/check-license', [RegisterController::class, 'checkLicenseNumber'])->name('register.check-license');
     Route::get('/register/check-plate', [RegisterController::class, 'checkPlateNumber'])->name('register.check-plate');
-    Route::get('/password/reset', fn() => view('auth.login'))->name('password.request');
+    Route::get('/password/reset', fn () => view('auth.login'))->name('password.request');
     Route::get('/auth/google/redirect', [SocialAuthController::class, 'redirectToGoogle'])->name('google.redirect');
     Route::get('/auth/google/login', [SocialAuthController::class, 'redirectToGoogleLogin'])->name('google.login');
     Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleCallback'])->name('google.callback');
@@ -125,16 +153,16 @@ Route::middleware('web')->group(function () {
 
 // Buyer routes
 Route::prefix('buyer')->name('buyer.')->middleware(['web', 'buyer'])->group(function () {
-    Route::get('/faqs', [\App\Http\Controllers\FaqController::class, 'buyer'])->name('faqs');
-    Route::get('/assistant/conversations', [\App\Http\Controllers\BuyerConversationController::class, 'index'])->middleware('throttle:60,1')->name('assistant.conversations');
-    Route::post('/assistant/conversations', [\App\Http\Controllers\BuyerConversationController::class, 'create'])->middleware('throttle:20,1');
-    Route::get('/assistant/conversations/{conversation}', [\App\Http\Controllers\BuyerConversationController::class, 'show'])->middleware('throttle:60,1');
-    Route::patch('/assistant/conversations/{conversation}', [\App\Http\Controllers\BuyerConversationController::class, 'update'])->middleware('throttle:30,1');
-    Route::delete('/assistant/conversations/{conversation}', [\App\Http\Controllers\BuyerConversationController::class, 'delete'])->middleware('throttle:20,1');
-    Route::post('/assistant/conversations/{conversation}/messages', [\App\Http\Controllers\BuyerConversationController::class, 'send'])->middleware('throttle:10,1');
-    Route::get('/assistant', [\App\Http\Controllers\BuyerAssistantController::class, 'history'])->middleware('throttle:30,1')->name('assistant.history');
-    Route::post('/assistant', [\App\Http\Controllers\BuyerAssistantController::class, 'send'])->middleware('throttle:10,1')->name('assistant.send');
-    Route::delete('/assistant', [\App\Http\Controllers\BuyerAssistantController::class, 'clear'])->middleware('throttle:10,1')->name('assistant.clear');
+    Route::get('/faqs', [FaqController::class, 'buyer'])->name('faqs');
+    Route::get('/assistant/conversations', [BuyerConversationController::class, 'index'])->middleware('throttle:60,1')->name('assistant.conversations');
+    Route::post('/assistant/conversations', [BuyerConversationController::class, 'create'])->middleware('throttle:20,1');
+    Route::get('/assistant/conversations/{conversation}', [BuyerConversationController::class, 'show'])->middleware('throttle:60,1');
+    Route::patch('/assistant/conversations/{conversation}', [BuyerConversationController::class, 'update'])->middleware('throttle:30,1');
+    Route::delete('/assistant/conversations/{conversation}', [BuyerConversationController::class, 'delete'])->middleware('throttle:20,1');
+    Route::post('/assistant/conversations/{conversation}/messages', [BuyerConversationController::class, 'send'])->middleware('throttle:10,1');
+    Route::get('/assistant', [BuyerAssistantController::class, 'history'])->middleware('throttle:30,1')->name('assistant.history');
+    Route::post('/assistant', [BuyerAssistantController::class, 'send'])->middleware('throttle:10,1')->name('assistant.send');
+    Route::delete('/assistant', [BuyerAssistantController::class, 'clear'])->middleware('throttle:10,1')->name('assistant.clear');
     Route::get('/dashboard', [BuyerController::class, 'dashboard'])->name('dashboard');
     Route::get('/browse', [BuyerController::class, 'browse'])->name('browse');
     Route::get('/product/{id}', [BuyerController::class, 'product'])->name('product');
@@ -174,15 +202,15 @@ Route::prefix('buyer')->name('buyer.')->middleware(['web', 'buyer'])->group(func
 
 // Seller routes
 Route::prefix('seller')->name('seller.')->middleware(['web', 'seller'])->group(function () {
-    Route::get('/dashboard',     [SellerController::class, 'dashboard'])->name('dashboard');
-    Route::get('/orders',        [SellerController::class, 'orders'])->name('orders');
+    Route::get('/dashboard', [SellerController::class, 'dashboard'])->name('dashboard');
+    Route::get('/orders', [SellerController::class, 'orders'])->name('orders');
     Route::patch('/orders/{order}/confirm', [SellerController::class, 'confirmOrder'])->name('orders.confirm');
     Route::patch('/orders/{order}/cancel', [SellerController::class, 'cancelOrder'])->name('orders.cancel');
     Route::patch('/orders/{order}/preparing', [SellerController::class, 'startPreparing'])->name('orders.preparing');
     Route::patch('/orders/{order}/ready', [SellerController::class, 'readyForPickup'])->name('orders.ready');
     Route::patch('/orders/{order}/confirm-pickup', [SellerController::class, 'confirmPickup'])->name('orders.confirm-pickup');
-    Route::get('/inventory',     [SellerController::class, 'inventory'])->name('inventory');
-    Route::post('/inventory',     [SellerController::class, 'storeProduct'])->name('inventory.store');
+    Route::get('/inventory', [SellerController::class, 'inventory'])->name('inventory');
+    Route::post('/inventory', [SellerController::class, 'storeProduct'])->name('inventory.store');
     Route::patch('/inventory/{product}', [SellerController::class, 'updateProduct'])->name('inventory.update');
     Route::delete('/inventory/{product}', [SellerController::class, 'destroyProduct'])->name('inventory.destroy');
     Route::patch('/inventory/{product}/archive', [SellerController::class, 'archiveProduct'])->name('inventory.archive');
@@ -190,10 +218,10 @@ Route::prefix('seller')->name('seller.')->middleware(['web', 'seller'])->group(f
     Route::get('/notifications', [SellerController::class, 'notifications'])->name('notifications');
     Route::get('/orders/{order}/waybill', [SellerController::class, 'waybill'])->name('orders.waybill');
     Route::patch('/orders/{order}/schedule-pickup', [SellerController::class, 'schedulePickup'])->name('orders.schedule-pickup');
-    Route::get('/feedback',      [SellerController::class, 'feedback'])->name('feedback');
+    Route::get('/feedback', [SellerController::class, 'feedback'])->name('feedback');
     Route::post('/feedback/{review}/reply', [SellerController::class, 'replyReview'])->name('reviews.reply');
-    Route::get('/reports',       [SellerController::class, 'reports'])->name('reports');
-    Route::get('/messages',      [SellerController::class, 'messages'])->name('messages');
+    Route::get('/reports', [SellerController::class, 'reports'])->name('reports');
+    Route::get('/messages', [SellerController::class, 'messages'])->name('messages');
     Route::get('/messages/poll', [SellerController::class, 'messagesPoll'])->name('messages.poll');
     Route::post('/messages/report', [SellerController::class, 'reportMessage'])->name('messages.report');
     Route::post('/messages/send', [SellerController::class, 'messagesSend'])->name('messages.send');
@@ -202,33 +230,33 @@ Route::prefix('seller')->name('seller.')->middleware(['web', 'seller'])->group(f
     Route::get('/announcements', [SellerController::class, 'announcements'])->name('announcements');
     Route::post('/announcements', [SellerController::class, 'storeAnnouncement'])->name('announcements.store');
     Route::delete('/announcements/{announcement}', [SellerController::class, 'destroyAnnouncement'])->name('announcements.destroy');
-    Route::get('/account',       [SellerController::class, 'account'])->name('account');
-    Route::post('/account/profile',  [SellerController::class, 'updateProfile'])->name('account.profile');
-    Route::post('/account/address',  [SellerController::class, 'updateAddress'])->name('account.address');
-    Route::post('/account/shop',     [SellerController::class, 'updateShop'])->name('account.shop');
+    Route::get('/account', [SellerController::class, 'account'])->name('account');
+    Route::post('/account/profile', [SellerController::class, 'updateProfile'])->name('account.profile');
+    Route::post('/account/address', [SellerController::class, 'updateAddress'])->name('account.address');
+    Route::post('/account/shop', [SellerController::class, 'updateShop'])->name('account.shop');
     Route::post('/account/shop-photo', [SellerController::class, 'updateShopPhoto'])->name('account.shop-photo');
-    Route::get('/vouchers',      [SellerController::class, 'vouchers'])->name('vouchers');
-    Route::post('/vouchers',     [SellerController::class, 'storeVoucher'])->name('vouchers.store');
+    Route::get('/vouchers', [SellerController::class, 'vouchers'])->name('vouchers');
+    Route::post('/vouchers', [SellerController::class, 'storeVoucher'])->name('vouchers.store');
     Route::patch('/vouchers/{voucher}', [SellerController::class, 'updateVoucher'])->name('vouchers.update');
     Route::delete('/vouchers/{voucher}', [SellerController::class, 'destroyVoucher'])->name('vouchers.destroy');
     Route::post('/account/documents', [SellerController::class, 'updateDocuments'])->name('account.documents');
     Route::post('/account/password', [SellerController::class, 'updatePassword'])->name('account.password');
-    Route::post('/logout',       [SellerController::class, 'logout'])->name('logout');
+    Route::post('/logout', [SellerController::class, 'logout'])->name('logout');
 });
 
 // Admin routes
 Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
     Route::get('/faqs', [AdminController::class, 'faqs'])->name('faqs');
-    Route::post('/faqs', [\App\Http\Controllers\FaqController::class, 'save'])->middleware('throttle:30,1')->name('faqs.store');
-    Route::put('/faqs/{faq}', [\App\Http\Controllers\FaqController::class, 'save'])->middleware('throttle:30,1')->name('faqs.update');
-    Route::delete('/faqs/{faq}', [\App\Http\Controllers\FaqController::class, 'delete'])->middleware('throttle:30,1')->name('faqs.delete');
+    Route::post('/faqs', [FaqController::class, 'save'])->middleware('throttle:30,1')->name('faqs.store');
+    Route::put('/faqs/{faq}', [FaqController::class, 'save'])->middleware('throttle:30,1')->name('faqs.update');
+    Route::delete('/faqs/{faq}', [FaqController::class, 'delete'])->middleware('throttle:30,1')->name('faqs.delete');
     Route::get('/ai', [AdminController::class, 'aiWorkspace'])->name('ai');
-    Route::get('/ai/export', [\App\Http\Controllers\AdminAssistantController::class, 'export'])->middleware('throttle:10,1')->name('ai.export');
+    Route::get('/ai/export', [AdminAssistantController::class, 'export'])->middleware('throttle:10,1')->name('ai.export');
     Route::get('/ai/orders/{order}', [AdminController::class, 'aiOrderReview'])->name('ai.order');
-    Route::get('/ai/products/{product}/photo', [\App\Http\Controllers\AdminAssistantController::class, 'photo'])->name('ai.photo');
-    Route::post('/ai/analyze', [\App\Http\Controllers\AdminAssistantController::class, 'analyze'])->middleware('throttle:6,1')->name('ai.analyze');
-    Route::delete('/ai/chat', [\App\Http\Controllers\AdminAssistantController::class, 'clear'])->name('ai.clear');
-    Route::post('/ai/prepare-draft', [\App\Http\Controllers\AdminAssistantController::class, 'prepareDraft'])->name('ai.prepare-draft');
+    Route::get('/ai/products/{product}/photo', [AdminAssistantController::class, 'photo'])->name('ai.photo');
+    Route::post('/ai/analyze', [AdminAssistantController::class, 'analyze'])->middleware('throttle:6,1')->name('ai.analyze');
+    Route::delete('/ai/chat', [AdminAssistantController::class, 'clear'])->name('ai.clear');
+    Route::post('/ai/prepare-draft', [AdminAssistantController::class, 'prepareDraft'])->name('ai.prepare-draft');
     Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/registrations', [AdminController::class, 'registrations'])->name('registrations');
@@ -281,20 +309,44 @@ Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
 });
 
 // Logistics routes
-Route::prefix('logistics')->name('logistics.')->middleware('logistics')->group(function () {
+Route::prefix('logistics')->name('logistics.')->middleware(['logistics', 'logistics.activity'])->group(function () {
     Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [LogisticsController::class, 'dashboard'])->name('dashboard');
+    Route::get('/transfers', [HubTransferController::class, 'index'])->name('transfers');
+    Route::post('/transfers', [HubTransferController::class, 'store'])->name('transfers.store');
+    Route::get('/transfers/request', [HubTransferController::class, 'create'])->name('transfers.create');
+    Route::get('/transfers/{id}', [HubTransferController::class, 'show'])->name('transfers.show');
+    Route::patch('/transfers/{id}/cancel', [HubTransferController::class, 'cancel'])->name('transfers.cancel');
+    Route::patch('/transfers/{id}/receive', [HubTransferController::class, 'receive'])->name('transfers.receive');
+    Route::post('/transfers/{id}/discrepancy', [HubTransferController::class, 'discrepancy'])->name('transfers.discrepancy');
+    Route::middleware('logistics.admin')->group(function () {
+        Route::patch('/transfers/{id}/approve', [HubTransferController::class, 'approve'])->name('transfers.approve');
+        Route::patch('/transfers/{id}/reject', [HubTransferController::class, 'reject'])->name('transfers.reject');
+        Route::patch('/transfers/{id}/dispatch', [HubTransferController::class, 'dispatch'])->name('transfers.dispatch');
+    });
     Route::get('/assignments', [LogisticsController::class, 'assignments'])->name('assignments');
     Route::patch('/assignments/{id}/assign', [LogisticsController::class, 'assignCourier'])->name('assignments.assign');
-    Route::patch('/assignments/{id}/assign-hub-transfer', [LogisticsController::class, 'assignHubTransferRider'])->name('assignments.assign-hub-transfer');
+    Route::patch('/assignments/{id}/assign-hub-transfer', [LogisticsController::class, 'assignHubTransferRider'])->middleware('logistics.admin')->name('assignments.assign-hub-transfer');
     Route::get('/scan', [LogisticsController::class, 'scan'])->name('scan');
     Route::post('/scan/lookup', [LogisticsController::class, 'scanLookup'])->name('scan.lookup');
+    // Short-lived phone relay: lookup input only, never shipment/status writes.
+    Route::withoutMiddleware('logistics.activity')->group(function () {
+        Route::post('/scan/phone-sessions', [PhoneScannerController::class, 'create'])->middleware('throttle:10,1,phone-create:')->name('scan.phone-sessions');
+        Route::get('/scan/phone/{token}', [PhoneScannerController::class, 'phone'])->where('token', '[A-Za-z0-9]{64}')->name('scan.phone');
+        Route::get('/scan/phone/{token}/events', [PhoneScannerController::class, 'poll'])->where('token', '[A-Za-z0-9]{64}')->middleware('throttle:60,1,phone-poll:')->name('scan.phone.events');
+        Route::post('/scan/phone/{token}/codes', [PhoneScannerController::class, 'send'])->where('token', '[A-Za-z0-9]{64}')->middleware('throttle:60,1,phone-codes:')->name('scan.phone.codes');
+        Route::post('/scan/phone/{token}/ack', [PhoneScannerController::class, 'acknowledge'])->where('token', '[A-Za-z0-9]{64}')->middleware('throttle:60,1,phone-ack:')->name('scan.phone.ack');
+        Route::delete('/scan/phone/{token}', [PhoneScannerController::class, 'disconnect'])->where('token', '[A-Za-z0-9]{64}')->name('scan.phone.disconnect');
+    });
+
     Route::patch('/scan/{id}/receive', [LogisticsController::class, 'receiveAtSortingCenter'])->name('scan.receive');
     Route::patch('/scan/{id}/complete-hub-transfer', [LogisticsController::class, 'completeHubTransfer'])->name('scan.complete-hub-transfer');
     Route::post('/hub/request-transfer', [LogisticsController::class, 'requestHubTransfer'])->name('hub.request-transfer');
     Route::get('/monitor', [LogisticsController::class, 'monitor'])->name('monitor');
     Route::patch('/status/{id}', [LogisticsController::class, 'updateStatus'])->name('status.update');
-    Route::get('/issues', [LogisticsController::class, 'issues'])->name('issues');
+    Route::get('/issues', [LogisticsManagementController::class, 'issues'])->name('issues');
+    Route::post('/issues', [LogisticsManagementController::class, 'storeIssue'])->name('issues.store');
+    Route::patch('/issues/{id}', [LogisticsManagementController::class, 'updateIssue'])->name('issues.update');
     Route::get('/history', [LogisticsController::class, 'history'])->name('history');
     Route::get('/messages', [LogisticsController::class, 'messages'])->name('messages');
     Route::get('/messages/poll', [LogisticsController::class, 'messagesPoll'])->name('messages.poll');
@@ -316,6 +368,18 @@ Route::prefix('logistics')->name('logistics.')->middleware('logistics')->group(f
         Route::patch('/hub-requests/reject', [LogisticsController::class, 'rejectHubTransferRequest'])->name('hub-requests.reject');
         Route::patch('/hub-requests/admin-request', [LogisticsController::class, 'adminRequestHubTransfer'])->name('hub-requests.admin-request');
         Route::get('/reports', [LogisticsController::class, 'reports'])->name('reports');
+        Route::get('/reports/export', [LogisticsController::class, 'exportReport'])->name('reports.export');
+        Route::get('/accounts', [LogisticsManagementController::class, 'accounts'])->name('accounts');
+        Route::post('/accounts', [LogisticsManagementController::class, 'storeAccount'])->name('accounts.store');
+        Route::post('/riders/accounts', [LogisticsManagementController::class, 'storeRiderAccount'])->name('riders.accounts.store');
+        Route::post('/staff/accounts', [LogisticsManagementController::class, 'storeStaffAccount'])->name('staff.accounts.store');
+        Route::get('/accounts/{id}/edit', [LogisticsManagementController::class, 'editAccount'])->name('accounts.edit');
+        Route::patch('/accounts/{id}', [LogisticsManagementController::class, 'updateAccount'])->name('accounts.update');
+        Route::get('/activity', [LogisticsManagementController::class, 'activity'])->name('activity');
+        Route::post('/hubs', [LogisticsManagementController::class, 'storeHub'])->name('hubs.store');
+        Route::get('/hub-locations/{level}/{code?}', [LogisticsManagementController::class, 'hubLocations'])->name('hubs.locations');
+        Route::patch('/hubs/{id}', [LogisticsManagementController::class, 'updateHub'])->name('hubs.update');
+        Route::patch('/vehicles/{id}', [LogisticsManagementController::class, 'updateVehicle'])->name('vehicles.update');
         Route::get('/riders', [LogisticsController::class, 'riders'])->name('riders');
         Route::patch('/riders/{id}/approve', [LogisticsController::class, 'approveRider'])->name('riders.approve');
         Route::patch('/riders/{id}/reject', [LogisticsController::class, 'rejectRider'])->name('riders.reject');
@@ -353,7 +417,7 @@ Route::prefix('logistics')->name('logistics.')->middleware('logistics')->group(f
 });
 
 // Rider (courier) routes
-Route::prefix('rider')->name('rider.')->middleware('rider')->group(function () {
+Route::prefix('rider')->name('rider.')->middleware(['rider', 'logistics.activity'])->group(function () {
     Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [RiderController::class, 'dashboard'])->name('dashboard');
     Route::get('/pickup-requests', [RiderController::class, 'pickupRequests'])->name('pickup-requests');
@@ -379,4 +443,16 @@ Route::prefix('rider')->name('rider.')->middleware('rider')->group(function () {
     Route::post('/account/update', [RiderController::class, 'accountUpdate'])->name('account.update');
     Route::post('/account/address', [RiderController::class, 'accountAddressUpdate'])->name('account.address');
     Route::post('/account/password', [RiderController::class, 'passwordUpdate'])->name('account.password');
+});
+
+// GCash endpoints: services enforce approved Buyer/Seller ownership independently of generic role middleware.
+Route::middleware(['web', 'auth', 'throttle:60,1'])->prefix('gcash-purchases')->name('gcash.')->group(function () {
+    Route::get('/', [GcashPurchaseController::class, 'index'])->name('index');
+    Route::post('/cart-prices', [GcashPurchaseController::class, 'refreshPrices'])->name('refreshPrices');
+    Route::post('/', [GcashPurchaseController::class, 'create'])->name('create');
+    Route::get('/{id}', [GcashPurchaseController::class, 'show'])->name('show');
+    foreach (['instructions', 'proof', 'reportPaid', 'decide', 'resolve', 'place', 'abandon', 'requestResolution'] as $action) {
+        Route::post('/{id}/'.$action, [GcashPurchaseController::class, $action])->name($action);
+    }
+    Route::get('/{id}/proofs/{proof}', [GcashPurchaseController::class, 'receipt'])->name('receipt');
 });

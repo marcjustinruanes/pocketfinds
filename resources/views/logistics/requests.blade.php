@@ -5,7 +5,7 @@
 
 @section('content')
 <div class="card">
-  <div class="card-head"><h2>Pending Requests</h2><span class="stamp stamp-pending">{{ $shipments->count() }} pending</span></div>
+  <div class="card-head"><h2>Pending Requests</h2><span class="stamp stamp-pending">{{ $shipments->total() }} pending</span></div>
   <div class="table-wrap">
     <table class="dtable">
       <thead>
@@ -55,4 +55,5 @@
     </table>
   </div>
 </div>
+{{ $shipments->links() }}
 @endsection

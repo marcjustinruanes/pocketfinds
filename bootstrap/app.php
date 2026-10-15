@@ -1,5 +1,13 @@
 <?php
 
+use App\Http\Middleware\AdminMiddleware;
+use App\Http\Middleware\BuyerMiddleware;
+use App\Http\Middleware\LogisticsActivity;
+use App\Http\Middleware\LogisticsAdminMiddleware;
+use App\Http\Middleware\LogisticsMiddleware;
+use App\Http\Middleware\MediaConsistency;
+use App\Http\Middleware\RiderMiddleware;
+use App\Http\Middleware\SellerMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -8,6 +16,7 @@ use Illuminate\Http\Request;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
@@ -17,14 +26,18 @@ return Application::configure(basePath: dirname(__DIR__))
         // throws off secure-cookie handling and can desync the session cookie
         // from what the server stored (the actual cause of the 419s).
         $middleware->trustProxies(at: '*');
+        $middleware->appendToGroup('web', MediaConsistency::class);
+        // Keep the GCash number literal: surrounding spaces must be rejected.
+        $middleware->trimStrings(except: [fn (Request $request) => $request->is('gcash-purchases/*/instructions')]);
 
         $middleware->alias([
-            'admin'      => \App\Http\Middleware\AdminMiddleware::class,
-            'logistics'  => \App\Http\Middleware\LogisticsMiddleware::class,
-            'logistics.admin' => \App\Http\Middleware\LogisticsAdminMiddleware::class,
-            'buyer'      => \App\Http\Middleware\BuyerMiddleware::class,
-            'seller'     => \App\Http\Middleware\SellerMiddleware::class,
-            'rider'      => \App\Http\Middleware\RiderMiddleware::class,
+            'admin' => AdminMiddleware::class,
+            'logistics' => LogisticsMiddleware::class,
+            'logistics.activity' => LogisticsActivity::class,
+            'logistics.admin' => LogisticsAdminMiddleware::class,
+            'buyer' => BuyerMiddleware::class,
+            'seller' => SellerMiddleware::class,
+            'rider' => RiderMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
