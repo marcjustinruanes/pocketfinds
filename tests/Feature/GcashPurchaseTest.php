@@ -90,6 +90,27 @@ class GcashPurchaseTest extends TestCase
         }
     }
 
+    public function test_vacation_store_cannot_start_new_gcash_reservations(): void
+    {
+        $this->seller->update(['is_on_vacation' => true]);
+        $this->invalid(fn () => $this->draft());
+        $this->assertDatabaseCount('gcash_purchases', 0);
+        $this->assertSame(10, $this->product->fresh()->stock);
+    }
+
+    public function test_vacation_blocks_placing_paid_purchase_but_does_not_break_existing_order_retry(): void
+    {
+        $purchase = $this->verified();
+        $this->seller->update(['is_on_vacation' => true]);
+        $this->invalid(fn () => $this->flow->place($this->buyer, $purchase->id, $purchase->revision));
+        $this->assertDatabaseCount('orders', 0);
+        $this->seller->update(['is_on_vacation' => false]);
+        $order = $this->flow->place($this->buyer, $purchase->id, $purchase->revision);
+        $this->seller->update(['is_on_vacation' => true]);
+        $this->assertSame($order->id, $this->flow->place($this->buyer, $purchase->id, $purchase->revision)->id);
+        $this->assertDatabaseCount('orders', 1);
+    }
+
     public function test_reservation_snapshot_server_total_deadline_and_checkout_retry(): void
     {
         $nonce = (string) Str::uuid();
@@ -925,12 +946,12 @@ class GcashPurchaseTest extends TestCase
     {
         $saved = \App\Models\BuyerAddress::create([
             'buyer_id' => $this->buyer->id, 'label' => 'Fictional work',
-            'recipient_name' => 'Test Recipient', 'province' => 'Test Province',
+            'recipient_name' => 'Test Recipient', 'region' => 'NCR', 'street' => 'Test Street', 'province' => 'Test Province',
             'municipality' => 'Test City', 'barangay' => 'Test Barangay', 'is_default' => false,
         ]);
         $default = \App\Models\BuyerAddress::create([
             'buyer_id' => $this->buyer->id, 'label' => 'Fictional home',
-            'recipient_name' => 'Test Recipient', 'province' => 'Test Province',
+            'recipient_name' => 'Test Recipient', 'region' => 'NCR', 'street' => 'Test Street', 'province' => 'Test Province',
             'municipality' => 'Test City', 'barangay' => 'Test Barangay', 'is_default' => true,
         ]);
         $foreign = $this->person('buyer');
@@ -945,14 +966,15 @@ class GcashPurchaseTest extends TestCase
 
     public function test_delivery_address_mobile_number_requires_eleven_ascii_digits_starting_with_09(): void
     {
-        $payload = ['label' => 'Fictional', 'recipient_name' => 'Test Recipient', 'province' => 'Test Province', 'municipality' => 'Test City', 'barangay' => 'Test Barangay'];
-        foreach (['0912345678', '091234567890', '08123456789', '09abc456789', '09123-45678', '+639123456789', '０９１２３４５６７８９'] as $number) {
+        $payload = ['label' => 'Fictional', 'recipient_name' => 'Test Recipient', 'region' => 'NCR', 'street' => 'Test Street', 'province' => 'Test Province', 'municipality' => 'Test City', 'barangay' => 'Test Barangay'];
+        foreach (['0912345678', '091234567890', '08123456789', '09abc456789', '09123-45678', '０９１２３４５６７８９'] as $number) {
             $this->actingAs($this->buyer)->postJson(route('buyer.addresses.store'), $payload + ['contact_no' => $number])->assertUnprocessable()->assertJsonValidationErrors('contact_no');
         }
         $this->postJson(route('buyer.addresses.store'), $payload + ['contact_no' => '09123456789'])->assertOk()->assertJsonPath('address.contact_no', '09123456789');
         $this->assertDatabaseHas('buyer_addresses', ['buyer_id' => $this->buyer->id, 'contact_no' => '09123456789']);
-        // The format rule does not change the existing optional-field policy.
-        $this->postJson(route('buyer.addresses.store'), $payload + ['contact_no' => ''])->assertOk();
+        // Workbook requires a phone; both Philippine formats are accepted.
+        $this->postJson(route('buyer.addresses.store'), $payload + ['contact_no' => ''])->assertUnprocessable()->assertJsonValidationErrors('contact_no');
+        $this->postJson(route('buyer.addresses.store'), $payload + ['contact_no' => '+639123456789'])->assertOk()->assertJsonPath('address.contact_no', '09123456789');
     }
 
     public function test_unchanged_normal_cart_with_legacy_empty_options_is_removed_once(): void

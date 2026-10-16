@@ -22,7 +22,7 @@ class GeminiFaqTest extends TestCase
 
     private function user(bool $admin = false): User
     {
-        return (new User(['account_type' => 'buyer', 'is_admin' => $admin]))->forceFill(['id' => 1]);
+        return (new User(['account_type' => 'buyer', 'is_admin' => $admin, 'status' => 'approved']))->forceFill(['id' => 1]);
     }
 
     private function faq(string $audience = 'buyer', bool $published = true): SupportFaq

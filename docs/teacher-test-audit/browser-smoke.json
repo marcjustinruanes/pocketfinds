@@ -1,0 +1,93 @@
+[
+  {
+    "role": "buyer",
+    "route": "dashboard",
+    "status": 200,
+    "url": "http://127.0.0.1:8020/buyer/dashboard",
+    "errors": []
+  },
+  {
+    "role": "buyer",
+    "route": "account",
+    "status": 200,
+    "url": "http://127.0.0.1:8020/buyer/account",
+    "errors": []
+  },
+  {
+    "role": "buyer",
+    "route": "cart",
+    "status": 200,
+    "url": "http://127.0.0.1:8020/buyer/cart",
+    "errors": []
+  },
+  {
+    "role": "buyer",
+    "route": "orders",
+    "status": 200,
+    "url": "http://127.0.0.1:8020/buyer/orders",
+    "errors": []
+  },
+  {
+    "role": "seller",
+    "route": "dashboard",
+    "status": 200,
+    "url": "http://127.0.0.1:8020/seller/dashboard",
+    "errors": []
+  },
+  {
+    "role": "seller",
+    "route": "inventory",
+    "status": 200,
+    "url": "http://127.0.0.1:8020/seller/inventory",
+    "errors": []
+  },
+  {
+    "role": "seller",
+    "route": "vouchers",
+    "status": 200,
+    "url": "http://127.0.0.1:8020/seller/vouchers",
+    "errors": []
+  },
+  {
+    "role": "seller",
+    "route": "orders",
+    "status": 200,
+    "url": "http://127.0.0.1:8020/seller/orders",
+    "errors": []
+  },
+  {
+    "role": "seller",
+    "route": "account",
+    "status": 200,
+    "url": "http://127.0.0.1:8020/seller/account",
+    "errors": []
+  },
+  {
+    "role": "rider",
+    "route": "dashboard",
+    "status": 200,
+    "url": "http://127.0.0.1:8020/rider/dashboard",
+    "errors": []
+  },
+  {
+    "role": "rider",
+    "route": "account",
+    "status": 200,
+    "url": "http://127.0.0.1:8020/rider/account",
+    "errors": []
+  },
+  {
+    "role": "logistics",
+    "route": "dashboard",
+    "status": 200,
+    "url": "http://127.0.0.1:8020/logistics/dashboard",
+    "errors": []
+  },
+  {
+    "role": "logistics",
+    "route": "account",
+    "status": 200,
+    "url": "http://127.0.0.1:8020/logistics/account",
+    "errors": []
+  }
+]

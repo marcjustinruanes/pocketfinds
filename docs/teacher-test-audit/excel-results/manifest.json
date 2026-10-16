@@ -1,0 +1,58 @@
+[
+  {
+    "original": "Blackbox_Test_Cases_Account_Creation-Buyer.xlsx",
+    "original_sha256": "c4d87357c6e50588cf3b1e5685e921cae1acce7a13ba25e1540e35a73e410a03",
+    "result": "Blackbox_Test_Cases_Account_Creation-Buyer_Results.xlsx",
+    "result_sha256": "2dc644f115cc7caa44d03bc6607707999d7cef5519bb51e960449274be20558c",
+    "cases": 30
+  },
+  {
+    "original": "Blackbox_Test_Cases_Account_Creation-Logistics.xlsx",
+    "original_sha256": "c092c8f82b3f80a0de7ca15a46b4f50523501aeefa908fdeaff2cfb49f3a1aab",
+    "result": "Blackbox_Test_Cases_Account_Creation-Logistics_Results.xlsx",
+    "result_sha256": "520de9d639984ec87ae60630bff1c831ea4808b6a48c41d52a4d52f056942308",
+    "cases": 44
+  },
+  {
+    "original": "Blackbox_Test_Cases_Account_Creation-Rider.xlsx",
+    "original_sha256": "01627627895c4260d85fee7ed549fdbf9f1b6f70ce450e3ed89b8bb1486655e4",
+    "result": "Blackbox_Test_Cases_Account_Creation-Rider_Results.xlsx",
+    "result_sha256": "73965212b8c7d478ea48f54074a106a963f83ed053e05e26a4a18951dbe4a840",
+    "cases": 32
+  },
+  {
+    "original": "Blackbox_Test_Cases_Account_Creation-Seller1.xlsx",
+    "original_sha256": "c74ec66e90e69551493322c8a7273df3df9fde49e0739fe61d90d81ee6afd132",
+    "result": "Blackbox_Test_Cases_Account_Creation-Seller1_Results.xlsx",
+    "result_sha256": "3d758df0aaac2dc5e5d903217553c7d7bfda1236662cc9ef8c8c2a07fed50e7d",
+    "cases": 44
+  },
+  {
+    "original": "Blackbox_Test_Cases_Buyer_Modules-1.xlsx",
+    "original_sha256": "4c89ff71236756cb065b85116eaac0fa2ae0e9a094f320b1a1b7119e1d51871f",
+    "result": "Blackbox_Test_Cases_Buyer_Modules-1_Results.xlsx",
+    "result_sha256": "3c8d71c2981adbabb3b1517b9a9e344add7cff128c56b33915c092fecc04931c",
+    "cases": 110
+  },
+  {
+    "original": "Blackbox_Test_Cases_Logistics_Modules-1.xlsx",
+    "original_sha256": "0615000a6d58f8b3e5b6690fffb08e498f6095ecd51158715486ee286570c84f",
+    "result": "Blackbox_Test_Cases_Logistics_Modules-1_Results.xlsx",
+    "result_sha256": "797efd3784cc81dda5c63e8840d6b1d4734fa5630e72149cb0827a716c7ee143",
+    "cases": 44
+  },
+  {
+    "original": "Blackbox_Test_Cases_Rider_Modules-1.xlsx",
+    "original_sha256": "fd19a6ba3c3753821b9f850a850e5d3d9bea8bcc04bf7b1c7ac91997b3711ed9",
+    "result": "Blackbox_Test_Cases_Rider_Modules-1_Results.xlsx",
+    "result_sha256": "10ec61fc414da06101c7bd2d6dc43794534c0dfcb08235489fdf516096c89a84",
+    "cases": 41
+  },
+  {
+    "original": "Blackbox_Test_Cases_Seller_Modules-1.xlsx",
+    "original_sha256": "5ee7704ec5cbfb104f8941d35224c6829c68f0d70992f1dbda96c5a731251cdc",
+    "result": "Blackbox_Test_Cases_Seller_Modules-1_Results.xlsx",
+    "result_sha256": "4b391fc8741835bb958912ef9c60704127a1b4ca2f9bffe5a25584872aa3fb44",
+    "cases": 124
+  }
+]

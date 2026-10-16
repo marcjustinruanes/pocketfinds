@@ -60,11 +60,15 @@ class FulfillmentWorkflowTest extends TestCase
         return $data + ['id_type_id' => 1, 'id_file' => $this->image('id.png')];
     }
 
-    public function test_public_rider_and_staff_registration_store_documents_and_preserve_pending_roles(): void
+    public function test_public_rider_registration_is_denied_and_staff_application_stays_pending(): void
     {
         $this->user('logistics', 'company_admin');
         $hub = $this->hub();
         foreach (['rider', 'logistics'] as $role) {
+            if ($role === 'rider') {
+                $this->postJson(route('register.store'), $this->registration($role, $hub))->assertForbidden();
+                continue;
+            }
             $this->postJson(route('register.store'), $this->registration($role, $hub))->assertOk()->assertJsonPath('success', true);
             $registered = User::where('username', 'fixture_'.$role)->firstOrFail();
             $this->assertSame('pending', $registered->status);
@@ -77,7 +81,7 @@ class FulfillmentWorkflowTest extends TestCase
                 Storage::disk('public')->assertExists([$registered->license_file, $registered->or_file, $registered->cr_file]);
             }
         }
-        $this->assertCount(8, Storage::disk('public')->allFiles());
+        $this->assertCount(3, Storage::disk('public')->allFiles());
         Mail::assertNothingSent();
     }
 
@@ -86,9 +90,9 @@ class FulfillmentWorkflowTest extends TestCase
         $this->user('logistics', 'company_admin');
         $hub = $this->hub();
         DB::unprepared("CREATE TRIGGER reject_registration BEFORE INSERT ON users WHEN NEW.username LIKE 'fixture_%' BEGIN SELECT RAISE(ABORT, 'fixture failure'); END");
-        $this->postJson(route('register.store'), $this->registration('rider', $hub))->assertStatus(500);
+        $this->postJson(route('register.store'), $this->registration('logistics', $hub))->assertStatus(500);
         $this->assertCount(0, Storage::disk('public')->allFiles());
-        $this->assertFalse(User::where('username', 'fixture_rider')->exists());
+        $this->assertFalse(User::where('username', 'fixture_logistics')->exists());
         $hub->update(['is_operational' => false]);
         $this->postJson(route('register.store'), $this->registration('logistics', $hub))->assertUnprocessable();
         $this->assertCount(0, Storage::disk('public')->allFiles());
@@ -112,7 +116,7 @@ class FulfillmentWorkflowTest extends TestCase
         $order = Order::firstOrFail();
         $this->assertSame('placed', $order->status);
         $this->assertEquals(220, $order->total);
-        $this->assertSame(10, $product->fresh()->total_stock);
+        $this->assertSame(8, $product->fresh()->total_stock);
         $this->assertFalse(CartItem::whereKey($item->id)->exists());
         $this->actingAs($buyer)->patchJson(route('seller.orders.confirm', $order))->assertForbidden();
         $this->actingAs($seller)->patch(route('seller.orders.confirm', $order))->assertRedirect();
@@ -150,7 +154,7 @@ class FulfillmentWorkflowTest extends TestCase
         DB::unprepared("CREATE TRIGGER reject_history BEFORE INSERT ON order_status_history BEGIN SELECT RAISE(ABORT, 'private database detail'); END");
         $this->actingAs($seller)->patch(route('seller.orders.confirm', $order))->assertRedirect()->assertSessionHas('error', 'Unable to confirm this order right now. Please try again.');
         $this->assertSame('placed', $order->fresh()->status);
-        $this->assertSame(10, $product->fresh()->total_stock);
+        $this->assertSame(8, $product->fresh()->total_stock);
         $this->assertSame(1, DB::table('order_status_history')->count());
     }
 

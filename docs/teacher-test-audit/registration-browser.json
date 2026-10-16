@@ -1,0 +1,38 @@
+[
+  {
+    "case": "TC-BUY-020",
+    "status": "PASS",
+    "evidence": "Both password controls have type=password in Chrome.",
+    "origin": "http://127.0.0.1:8020"
+  },
+  {
+    "cases": [
+      "TC-BUY-001",
+      "TC-BUY-005",
+      "TC-BUY-021",
+      "TC-BUY-023",
+      "TC-BUY-029"
+    ],
+    "status": "BROWSER WORKFLOW VERIFIED",
+    "evidence": "Registered a fictional buyer, captured OTP in local mail log, verified and signed in. External email delivery unverified.",
+    "origin": "http://127.0.0.1:8020"
+  },
+  {
+    "case": "TC-SEL-018",
+    "status": "PASS",
+    "evidence": "Password controls have type=password in Chrome.",
+    "origin": "http://127.0.0.1:8020"
+  },
+  {
+    "case": "TC-SEL-023",
+    "status": "BROWSER CONDITIONAL FIELDS VERIFIED",
+    "evidence": "Individual, sole-proprietorship and corporation document controls change correctly.",
+    "origin": "http://127.0.0.1:8020"
+  },
+  {
+    "case": "TC-LOG-018",
+    "status": "PASS",
+    "evidence": "Password controls have type=password in Chrome.",
+    "origin": "http://127.0.0.1:8020"
+  }
+]

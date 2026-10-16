@@ -1,0 +1,47 @@
+[
+  {
+    "cases": [
+      "BUY-WISH-001"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: saved P-02 once, wishlist showed one entry; removal persisted after reload and product heart returned to unsaved.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:18:51.889Z"
+  },
+  {
+    "cases": [
+      "BUY-WISH-002"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: two immediate heart clicks created at most one entry; refreshed product heart, persisted row count and wishlist state agree.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:18:51.889Z"
+  },
+  {
+    "cases": [
+      "BUY-WISH-003"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: seller set saved P-02 stock to zero and deleted another saved listing through actual routes; wishlist retained both snapshots, showed Sold out / Unavailable and disabled purchase without a page error.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:18:51.889Z"
+  },
+  {
+    "cases": [
+      "BUY-WISH-004"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: Follow changed count N→N+1 and added store to Following; Unfollow restored N and removed the store from Following.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:18:51.889Z"
+  },
+  {
+    "cases": [
+      "BUY-WISH-005"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: guest wishlist and Follow both navigated to login; direct saved-page access also required login; persisted wishlist/follow rows and counts unchanged.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:18:51.889Z"
+  }
+]

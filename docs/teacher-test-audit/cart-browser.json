@@ -1,0 +1,48 @@
+[
+  {
+    "cases": [
+      "SEL-PROD-011"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: seller archived/reactivated P-02; inactive search/category/store and URL blocked, cart disabled; reactivation restored every surface with unchanged price/stock/images.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:54:02.783Z"
+  },
+  {
+    "cases": [
+      "BUY-CART-006",
+      "SEL-PROD-013"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: seller changed P-02 from 450 to 420 through product edit; refreshed cart line/subtotal and confirmed COD order all use 420, with exactly one order.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:54:02.783Z"
+  },
+  {
+    "cases": [
+      "BUY-CART-007"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: zero-stock product and deleted product saved in the cart are both visibly unavailable and disabled; deleted saved cart line is disabled; available lamp completed COD checkout.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:54:02.783Z"
+  },
+  {
+    "cases": [
+      "SEL-INV-009"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: exactly 0 and 99,999 saved via stock form; -1, 100,000, 2.5 and alphabetic typing show native validation and preserve stock; direct requests for each invalid value also return field-specific 422 without changes.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:54:02.783Z"
+  },
+  {
+    "cases": [
+      "SEL-INV-010"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: stock 3 against saved quantity 5 shows Only 3 left and blocks selection/checkout; forged checkout creates no order or stock movement; editing quantity down to 3 enables selection and checkout.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:54:02.783Z"
+  }
+]

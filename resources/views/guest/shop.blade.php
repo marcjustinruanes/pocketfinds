@@ -23,15 +23,16 @@
 </a>
 
 {{-- Shop hero --}}
+@if($shop['banner'] ?? null)<img class="store-banner" src="{{ $shop['banner'] }}" alt="{{ $shop['name'] }} banner" style="display:block;width:100%;max-height:280px;object-fit:cover;margin-bottom:16px;border-radius:12px">@endif
 <div class="gs-hero">
   <div class="gs-avatar">@if(!empty($shop['photo']))<img src="{{ $shop['photo'] }}" alt="{{ $shop['name'] }}" style="width:100%;height:100%;object-fit:contain;background:#fff;border-radius:inherit">@else{{ $shop['initial'] }}@endif</div>
   <div class="gs-info">
     <div class="gs-name-row">
       <h1 class="gs-name">{{ $shop['name'] }}</h1>
-      <button type="button" class="gs-follow-btn" data-protected>
+      <a class="gs-follow-btn" href="{{ route('login') }}">
         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Follow
-      </button>
+      </a>
     </div>
     <div class="gs-rating-row">
       @for($i=1;$i<=5;$i++)
@@ -55,6 +56,7 @@
   <h2>All Products</h2>
   <span class="gs-products-count">{{ count($items) }} item{{ count($items)!==1?'s':'' }}</span>
 </div>
+@include('components.store-category-navigation')
 
 
 <div class="gs-product-grid">

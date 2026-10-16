@@ -44,7 +44,9 @@ class GcashInventory
         if ($quantity > 0 && $product->availableStock($group, $value) < $quantity) {
             throw ValidationException::withMessages(['items' => 'Insufficient stock for this purchase.']);
         }
-        if (! empty($product->variations)) {
+        if (!empty($product->variant_axes)) {
+            if (!$product->combinationOption($group)) throw ValidationException::withMessages(['items' => 'The allocated variant no longer exists.']);
+        } elseif (! empty($product->variations)) {
             $matches = 0;
             foreach ($product->variations as $g) {
                 foreach ($g['options'] ?? [] as $o) {

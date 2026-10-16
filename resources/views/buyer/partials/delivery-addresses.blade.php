@@ -12,10 +12,16 @@
         {{ $addr->recipient_name }}{{ $addr->contact_no ? ' · ' . $addr->contact_no : '' }}<br>
         <span style="color:var(--muted)">{{ $addr->full_address }}</span>
         @if($addr->is_default)
-          <br><span style="color:var(--muted);font-size:11px">Set from your account address — change it via an account update request</span>
+          <br><span style="color:var(--muted);font-size:11px">Selected automatically at checkout</span>
         @endif
       </span>
+      <button type="button" class="btn btn-outline" data-edit-address="{{ $addr->id }}" style="font-size:11px;padding:4px 8px">Edit</button>
       @unless($addr->is_default)
+        <form method="POST" action="{{ route('buyer.addresses.default', $addr) }}">
+          @csrf
+          @method('PATCH')
+          <button type="submit" class="btn btn-outline" style="font-size:11px;padding:4px 8px">Set default</button>
+        </form>
         <button type="button" class="icon-btn" data-delete-address="{{ $addr->id }}" aria-label="Remove {{ $addr->label ?: 'saved' }} address" title="Remove address" style="width:24px;height:24px;flex:none">
           @include('buyer.partials.icon', ['name' => 'trash', 'size' => 12])
         </button>
@@ -57,16 +63,17 @@
       <div><h3 id="addAddressTitle">Add delivery address</h3><p id="addAddressDescription">Save an address to use at checkout. Fields marked * are required.</p></div>
       <button class="modal-close" type="button" data-modal-close aria-label="Close address form">✕</button>
     </div>
-    <form id="addAddressForm">
+    <form id="addAddressForm" data-store-url="{{ route('buyer.addresses.store') }}">
     <div class="modal-body"><div class="address-form-grid">
       <div class="form-row"><label for="addrLabel">Label <span style="color:var(--muted);font-weight:400">(optional)</span></label><input class="auth-input" id="addrLabel" placeholder="e.g. Home, Work" maxlength="50"></div>
       <div class="form-row"><label for="addrRecipientName">Recipient name *</label><input class="auth-input" id="addrRecipientName" maxlength="150" autocomplete="name" required></div>
-      <div class="form-row address-form-wide"><label for="addrContactNo">Mobile number (optional)</label><input class="auth-input" id="addrContactNo" type="tel" placeholder="09XXXXXXXXX" maxlength="11" inputmode="numeric" pattern="09[0-9]{9}" autocomplete="tel-national" aria-describedby="addrContactHint"><p class="address-hint" id="addrContactHint">Use an 11-digit mobile number starting with 09.</p></div>
+      <div class="form-row address-form-wide"><label for="addrContactNo">Mobile number *</label><input class="auth-input" id="addrContactNo" type="tel" placeholder="09XXXXXXXXX or +639XXXXXXXXX" maxlength="13" pattern="(09[0-9]{9}|\+639[0-9]{9})" autocomplete="tel" required aria-describedby="addrContactHint"><p class="address-hint" id="addrContactHint">Use 09XXXXXXXXX or +639XXXXXXXXX.</p></div>
+      <div class="form-row address-form-wide"><label for="addrRegion">Region *</label><select class="select" id="addrRegion" required><option value="" disabled selected>Select region</option></select></div>
       <div class="form-row"><label for="addrProvince">Province *</label><select class="select" id="addrProvince" required><option value="" disabled selected>Loading provinces…</option></select></div>
       <div class="form-row"><label for="addrMunicipality">City / municipality *</label><select class="select" id="addrMunicipality" disabled required><option value="" disabled selected>Select province first</option></select></div>
       <div class="form-row address-form-wide"><label for="addrBarangay">Barangay *</label><select class="select" id="addrBarangay" disabled required><option value="" disabled selected>Select municipality first</option></select></div>
         <div class="form-row"><label for="addrHouseNo">House No. / Unit</label><input class="auth-input" id="addrHouseNo" maxlength="100"></div>
-        <div class="form-row"><label for="addrStreet">Street</label><input class="auth-input" id="addrStreet" maxlength="150"></div>
+        <div class="form-row"><label for="addrStreet">Street *</label><input class="auth-input" id="addrStreet" maxlength="150" required></div>
       </div>
       <button type="button" class="btn btn-outline" id="retryAddressLocations" hidden>Retry loading provinces</button>
       <p id="addAddressError" class="address-error" role="alert" style="display:none"></p>
@@ -86,174 +93,4 @@
   </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  // ---- Delivery Address ----
-  const PSGC = 'https://psgc.gitlab.io/api';
-  const addrProvince = document.getElementById('addrProvince');
-  const addrMunicipality = document.getElementById('addrMunicipality');
-  const addrBarangay = document.getElementById('addrBarangay');
-  const addrContactNo = document.getElementById('addrContactNo');
-  addrContactNo.addEventListener('input', () => {
-    addrContactNo.value = addrContactNo.value.replace(/[^0-9]/g, '').slice(0, 11);
-    const number = addrContactNo.value;
-    const message = number && !number.startsWith('09') && number.length >= 2
-      ? 'Mobile number must start with 09.'
-      : number && number.length !== 11 ? 'Enter exactly 11 digits starting with 09.' : '';
-    addrContactNo.setCustomValidity(message);
-    document.getElementById('addrContactHint').textContent = message || 'Use an 11-digit mobile number starting with 09.';
-    addrContactNo.setAttribute('aria-invalid', message ? 'true' : 'false');
-  });
-  const addModal = document.getElementById('addAddressModal');
-  const removeModal = document.getElementById('removeAddressModal');
-  let returnFocus = null, pendingAddressButton = null;
-  const closeAddressModal = modal => {
-    modal.classList.remove('open');
-    modal.setAttribute('aria-hidden', 'true');
-    returnFocus?.focus();
-  };
-  document.addEventListener('click', event => {
-    const opener = event.target.closest('[data-modal-open="addAddressModal"]');
-    if (opener) {
-      returnFocus = opener;
-      addModal.setAttribute('aria-hidden', 'false');
-      document.getElementById('addrLabel').focus();
-      if (!addrProvince.dataset.loaded) loadProvinces();
-    }
-    const modal = event.target.closest('.address-modal');
-    if (modal && (event.target === modal || event.target.closest('[data-modal-close]'))) closeAddressModal(modal);
-  });
-  [addModal, removeModal].forEach(modal => modal.addEventListener('keydown', event => {
-    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeAddressModal(modal); }
-    if (event.key !== 'Tab') return;
-    const controls = [...modal.querySelectorAll('button,input,select')].filter(el => !el.disabled && el.getClientRects().length);
-    const first = controls[0], last = controls[controls.length - 1];
-    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
-    if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
-  }));
-
-  async function fetchAddrJSON(url) {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Network error');
-    return res.json();
-  }
-  function populateAddrSelect(sel, items, placeholder) {
-    sel.innerHTML = `<option value="" disabled selected>${placeholder}</option>`;
-    [...items].sort((a, b) => a.name.localeCompare(b.name)).forEach(item => {
-      const o = document.createElement('option');
-      o.value = item.name; o.dataset.code = item.code; o.textContent = item.name;
-      sel.appendChild(o);
-    });
-    sel.disabled = false;
-  }
-
-  function loadProvinces() {
-    if (addrProvince.dataset.loading) return;
-    addrProvince.dataset.loading = 'true';
-    const retry = document.getElementById('retryAddressLocations');
-    retry.hidden = true;
-    addrProvince.disabled = true;
-    fetchAddrJSON(`${PSGC}/provinces/`)
-      .then(data => { populateAddrSelect(addrProvince, data, 'Select province'); addrProvince.dataset.loaded = 'true'; })
-      .catch(() => { addrProvince.innerHTML = '<option value="" disabled selected>Could not load provinces</option>'; retry.hidden = false; })
-      .finally(() => { delete addrProvince.dataset.loading; });
-  }
-  document.getElementById('retryAddressLocations').addEventListener('click', loadProvinces);
-  if (addrProvince) {
-
-    addrProvince.addEventListener('change', function () {
-      addrMunicipality.innerHTML = '<option value="" disabled selected>Loading…</option>';
-      addrMunicipality.disabled = true;
-      addrBarangay.innerHTML = '<option value="" disabled selected>Select municipality first</option>';
-      addrBarangay.disabled = true;
-      const code = this.options[this.selectedIndex]?.dataset.code ?? this.value;
-      fetchAddrJSON(`${PSGC}/provinces/${code}/cities-municipalities/`)
-        .then(data => populateAddrSelect(addrMunicipality, data, 'Select city / municipality'))
-        .catch(() => { addrMunicipality.innerHTML = '<option value="" disabled selected>Failed to load</option>'; addrMunicipality.disabled = false; });
-    });
-
-    addrMunicipality.addEventListener('change', function () {
-      addrBarangay.innerHTML = '<option value="" disabled selected>Loading…</option>';
-      addrBarangay.disabled = true;
-      const code = this.options[this.selectedIndex]?.dataset.code ?? this.value;
-      fetchAddrJSON(`${PSGC}/cities-municipalities/${code}/barangays/`)
-        .then(data => populateAddrSelect(addrBarangay, data, 'Select barangay'))
-        .catch(() => { addrBarangay.innerHTML = '<option value="" disabled selected>Failed to load</option>'; addrBarangay.disabled = false; });
-    });
-  }
-
-  document.getElementById('addAddressForm')?.addEventListener('submit', event => {
-    event.preventDefault();
-    if (document.getElementById('saveAddressBtn').disabled) return;
-    const errorEl = document.getElementById('addAddressError');
-    errorEl.style.display = 'none';
-    const payload = {
-      label: document.getElementById('addrLabel').value.trim(),
-      recipient_name: document.getElementById('addrRecipientName').value.trim(),
-      contact_no: document.getElementById('addrContactNo').value.trim(),
-      province: addrProvince.value,
-      municipality: addrMunicipality.value,
-      barangay: addrBarangay.value,
-      house_no: document.getElementById('addrHouseNo').value.trim(),
-      street: document.getElementById('addrStreet').value.trim(),
-    };
-    if (!payload.recipient_name || !payload.province || !payload.municipality || !payload.barangay) {
-      errorEl.textContent = 'Recipient name, province, municipality, and barangay are required.';
-      errorEl.style.display = 'block';
-      return;
-    }
-    const btn = document.getElementById('saveAddressBtn');
-    btn.disabled = true; btn.textContent = 'Saving…';
-    fetch('{{ route('buyer.addresses.store') }}', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
-      body: JSON.stringify(payload),
-    })
-    .then(r => r.json())
-    .then(data => {
-      btn.disabled = false; btn.textContent = 'Save address';
-      if (data.success) {
-        window.location.reload();
-      } else {
-        errorEl.textContent = Object.values(data.errors || {}).flat().join(' ') || data.message || 'Could not save this address.';
-        errorEl.style.display = 'block';
-      }
-    })
-    .catch(() => { btn.disabled = false; btn.textContent = 'Save address'; errorEl.textContent = 'Network error. Try again.'; errorEl.style.display = 'block'; });
-  });
-
-  document.querySelectorAll('[data-delete-address]').forEach(btn => {
-    btn.addEventListener('click', (event) => {
-      event.preventDefault();
-      if (document.getElementById('confirmRemoveAddressBtn').disabled) return;
-      pendingAddressButton = btn;
-      returnFocus = btn;
-      document.getElementById('removeAddressError').hidden = true;
-      removeModal.classList.add('open');
-      removeModal.setAttribute('aria-hidden', 'false');
-      document.getElementById('keepAddressBtn').focus();
-    });
-  });
-  document.getElementById('confirmRemoveAddressBtn').addEventListener('click', async event => {
-    const button = event.currentTarget, error = document.getElementById('removeAddressError');
-    if (!pendingAddressButton || button.disabled) return;
-    button.disabled = true;
-    button.textContent = 'Removing…';
-    error.hidden = true;
-    try {
-      const response = await fetch(`/buyer/addresses/${pendingAddressButton.dataset.deleteAddress}`, {
-        method: 'DELETE',
-        headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
-      });
-      const data = await response.json();
-      if (!response.ok || !data.success) throw new Error(data.message || 'Could not remove this address.');
-      window.location.reload();
-    } catch (failure) {
-      error.textContent = failure.message || 'Could not remove this address. Please try again.';
-      error.hidden = false;
-      button.disabled = false;
-      button.textContent = 'Yes, remove';
-    }
-  });
-});
-</script>
+<script src="{{ asset('js/buyer-addresses.js') }}" defer></script>

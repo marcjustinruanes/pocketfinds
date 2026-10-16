@@ -177,7 +177,7 @@ class HubHiringTest extends TestCase
         $changes = json_decode(DB::table('logistics_activity_logs')->value('hiring_changes'), true);
         $this->assertSame('rider', $changes['role']);
         $this->assertFalse($changes['after']['rider_hiring_open']);
-        $this->postJson('/register', $this->application('rider'))->assertUnprocessable()->assertJsonValidationErrors('logistics_hub_id');
+        $this->postJson('/register', $this->application('rider'))->assertForbidden();
         $this->postJson('/register', $this->application('hub_staff'))->assertOk();
     }
 
@@ -185,7 +185,7 @@ class HubHiringTest extends TestCase
     {
         $this->settings('hub_staff', ['is_hiring' => false, 'limit' => 0])->assertRedirect();
         $this->postJson('/register', $this->application('hub_staff'))->assertUnprocessable();
-        $this->postJson('/register', $this->application('rider'))->assertOk();
+        $this->postJson('/register', $this->application('rider'))->assertForbidden();
         $this->assertNull($this->hub->fresh()->rider_hire_limit);
     }
 
@@ -209,13 +209,14 @@ class HubHiringTest extends TestCase
         $this->settings('rider', ['closes_at' => '2026-10-14T12:01'])->assertRedirect();
         $this->assertSame('Scheduled to close', app(HubHiring::class)->availability($this->hub->fresh(), 'rider')['status']);
         $this->travel(1)->minutes();
-        $this->postJson('/register', $this->application('rider'))->assertUnprocessable();
+        $this->postJson('/register', $this->application('rider'))->assertForbidden();
         $this->assertTrue(app(HubHiring::class)->availability($this->hub->fresh(), 'hub_staff')['eligible']);
         $this->settings('rider')->assertRedirect();
         $this->assertNull($this->hub->fresh()->rider_hiring_closes_at);
         $this->hub->update(['is_operational' => false]);
         foreach (['rider', 'hub_staff'] as $role) {
-            $this->postJson('/register', $this->application($role))->assertUnprocessable();
+            $response = $this->postJson('/register', $this->application($role));
+            $role === 'rider' ? $response->assertForbidden() : $response->assertUnprocessable();
         }
     }
 
@@ -229,9 +230,9 @@ class HubHiringTest extends TestCase
         $this->person('rider', 'approved', $other);
         $this->assertSame(0, app(HubHiring::class)->availability($this->hub, 'rider')['count']);
         $this->settings('rider', ['limit' => 0])->assertRedirect();
-        $this->postJson('/register', $this->application('rider'))->assertUnprocessable();
+        $this->postJson('/register', $this->application('rider'))->assertForbidden();
         $this->settings('rider')->assertRedirect();
-        $this->postJson('/register', $this->application('rider'))->assertOk();
+        $this->postJson('/register', $this->application('rider'))->assertForbidden();
     }
 
     public function test_full_limits_protect_company_and_platform_approval_and_reactivation(): void
@@ -290,16 +291,16 @@ class HubHiringTest extends TestCase
 
     public function test_reapplication_preserves_account_id_rejection_and_attempt_history(): void
     {
-        $this->postJson('/register', $this->application('rider'))->assertOk();
-        $rider = User::where('username', 'applicant_rider')->firstOrFail();
+        $this->postJson('/register', $this->application('hub_staff'))->assertOk();
+        $rider = User::where('username', 'applicant_hub_staff')->firstOrFail();
         $rider->update(['status' => 'rejected', 'status_reason' => 'Original rejection']);
         $oldEvent = DB::table('hiring_application_history')->where('user_id', $rider->id)->orderByDesc('id')->first();
-        $this->postJson('/register', $this->application('rider'))->assertOk();
-        $this->assertSame($rider->id, User::where('username', 'applicant_rider')->firstOrFail()->id);
+        $this->postJson('/register', $this->application('hub_staff'))->assertOk();
+        $this->assertSame($rider->id, User::where('username', 'applicant_hub_staff')->firstOrFail()->id);
         $this->assertDatabaseHas('hiring_application_history', ['id' => $oldEvent->id, 'status' => 'rejected', 'reason' => 'Original rejection']);
         $latest = DB::table('hiring_application_history')->where('user_id', $rider->id)->orderByDesc('id')->first();
         $this->assertNotSame($oldEvent->attempt_id, $latest->attempt_id);
-        $this->postJson('/register', $this->application('rider'))->assertUnprocessable();
+        $this->postJson('/register', $this->application('hub_staff'))->assertUnprocessable();
         $this->actingAs($this->admin)->get('/logistics/accounts/'.$rider->id.'/edit')->assertOk()->assertSee('Original rejection');
         $foreign = $this->person('logistics_admin', 'approved', LogisticsHub::create(['company_name' => 'Beta', 'province' => 'Laguna', 'municipality' => 'Pila', 'is_operational' => true]));
         $this->actingAs($foreign)->get('/logistics/accounts/'.$rider->id.'/edit')->assertNotFound();
@@ -308,19 +309,23 @@ class HubHiringTest extends TestCase
     public function test_history_failure_rolls_back_account_and_uploaded_files(): void
     {
         DB::unprepared("CREATE TRIGGER reject_history BEFORE INSERT ON hiring_application_history BEGIN SELECT RAISE(ABORT, 'fixture failure'); END");
-        $this->postJson('/register', $this->application('rider'))->assertStatus(500);
-        $this->assertDatabaseMissing('users', ['username' => 'applicant_rider']);
+        $this->postJson('/register', $this->application('hub_staff'))->assertStatus(500);
+        $this->assertDatabaseMissing('users', ['username' => 'applicant_hub_staff']);
         $this->assertSame([], Storage::disk('public')->allFiles());
     }
 
     public function test_management_creation_status_changes_and_moves_enforce_capacity(): void
     {
+        (require database_path('migrations/2026_10_16_000001_add_account_verification.php'))->up();
         $data = ['role' => 'rider', 'username' => 'managed_rider', 'email' => 'managed@gmail.com', 'given_names' => 'Managed', 'last_name' => 'Rider',
             'sex' => 'male', 'birthday' => '2000-01-01', 'contact_no' => '09123456789', 'barangay' => 'Central', 'password' => 'FixturePassword123',
             'password_confirmation' => 'FixturePassword123', 'status' => 'approved', 'logistics_hub_id' => $this->hub->id, 'vehicle_type' => 'two_wheels', 'vehicle_ownership' => 'own'];
+        $data += ['license_number' => 'N01-23-456789', 'license_expiry' => '2030-01-01', 'plate_number' => 'MANAGED',
+            'license_file' => UploadedFile::fake()->image('license.jpg'), 'or_cr_file' => UploadedFile::fake()->image('or-cr.jpg')];
+        unset($data['password'], $data['password_confirmation']);
         $this->settings('rider', ['limit' => 0])->assertRedirect();
         $this->postJson('/logistics/riders/accounts', $data)->assertUnprocessable();
-        $data['status'] = 'pending';
+        unset($data['status']);
         $this->settings('rider', ['limit' => 1])->assertRedirect();
         $this->post('/logistics/riders/accounts', $data)->assertRedirect();
         $user = User::where('username', 'managed_rider')->firstOrFail();
@@ -332,13 +337,14 @@ class HubHiringTest extends TestCase
         $editing['password'] = $editing['password_confirmation'] = 'ReplacementPassword123';
         $events = DB::table('hiring_application_history')->where('user_id', $user->id)->count();
         $this->patch('/logistics/accounts/'.$user->id, $editing)->assertRedirect();
-        $this->assertSame('pending', $user->fresh()->status);
+        $this->assertSame('pending_activation', $user->fresh()->status);
         $this->assertTrue(Hash::check('ReplacementPassword123', $user->fresh()->password));
         $this->assertSame($events, DB::table('hiring_application_history')->where('user_id', $user->id)->count());
         $this->settings('rider', ['limit' => 1])->assertRedirect();
         $this->patchJson('/logistics/accounts/'.$user->id, $data)->assertUnprocessable();
         $user->update(['id_file' => 'id.png', 'id_type_id' => 1, 'selfie_file' => 'selfie.png', 'license_file' => 'license.png', 'license_number' => 'managed-license', 'license_expiry' => '2030-01-01', 'vehicle_brand' => 'Test', 'vehicle_model' => 'Test', 'plate_number' => 'MANAGED', 'or_file' => 'or.png', 'cr_file' => 'cr.png']);
-        $this->patch('/logistics/riders/'.$user->id.'/approve')->assertRedirect();
+        $mail = Mail::sent(\App\Mail\RiderActivation::class)->last();
+        $this->postJson(route('rider.activation.submit', ['user' => $user->id, 'token' => $mail->token]), ['password' => 'Rider@2026', 'password_confirmation' => 'Rider@2026'])->assertOk();
         unset($data['status']);
         $other = LogisticsHub::create(['company_name' => 'Alpha', 'province' => 'Laguna', 'municipality' => 'Pila', 'is_operational' => true]);
         $other->rider_hire_limit = 0;
@@ -360,10 +366,10 @@ class HubHiringTest extends TestCase
         $foreign = LogisticsHub::create(['company_name' => 'Beta', 'province' => 'Laguna', 'municipality' => 'Pila', 'is_operational' => true]);
         $rider = $this->application('rider');
         $rider['logistics_hub_id'] = $foreign->id;
-        $this->postJson('/register', $rider)->assertUnprocessable()->assertJsonValidationErrors('logistics_hub_id');
+        $this->postJson('/register', $rider)->assertForbidden();
         $rider['logistics_hub_id'] = $this->hub->id;
         $rider['vehicle_ownership'] = 'company';
-        $this->postJson('/register', $rider)->assertUnprocessable()->assertJsonValidationErrors('vehicle_type');
+        $this->postJson('/register', $rider)->assertForbidden();
     }
 
     public function test_final_intake_check_rejects_a_hub_closed_after_preliminary_validation(): void
@@ -384,7 +390,10 @@ class HubHiringTest extends TestCase
 
     public function test_shared_registration_preserves_rejected_buyer_records_without_hiring_restrictions(): void
     {
+        (require database_path('migrations/2026_10_16_000001_add_account_verification.php'))->up();
         $data = $this->application('hub_staff');
+        $data['password'] = $data['password_confirmation'] = 'FixturePassword@123';
+        $data['terms'] = 1;
         $data['account_type'] = 'buyer';
         $this->settings('hub_staff', ['is_hiring' => false, 'limit' => 0])->assertRedirect();
         $this->postJson('/register', $data)->assertOk();

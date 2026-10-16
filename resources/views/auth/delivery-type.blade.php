@@ -133,18 +133,7 @@
                 </div>
 
                 <div class="role-grid">
-                    {{-- Rider --}}
-                    <button class="role-card" type="button" data-account-type="rider" data-target="{{ url('/register/method') }}">
-                        <span class="role-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h-5l-3 6h11l-3-6z"/><path d="M12 6V3M15 6l2-3"/></svg>
-                        </span>
-                        <span class="role-copy">
-                            <span class="role-name">Rider / Courier</span>
-                            <span class="role-desc">Pick up and deliver orders, manage your routes and earnings.</span>
-                        </span>
-                        <span class="role-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
-                    </button>
-
+                    <p class="role-desc">Riders receive an activation invitation from their logistics company.</p>
                     {{-- Logistics Company --}}
                     <button class="role-card" type="button" data-account-type="logistics" data-target="{{ url('/register/method') }}">
                         <span class="role-icon">

@@ -1,0 +1,12 @@
+{
+  "attempted_at": "2026-10-16T09:11:17+00:00",
+  "reference": "PF-AUDIT-20261016-091117-64E44E",
+  "subject": "PocketFinds external email test PF-AUDIT-20261016-091117-64E44E",
+  "recipient_sha256": "f2e5cd8ff50bf7fc97fa7c5086e1849440de987f90c00a3b286aac5e76dcdf17",
+  "smtp_accepted": true,
+  "delivery_verified": false,
+  "message_id": "5e481ef87980545067137e2a247360f6@gmail.com",
+  "needed": "Recipient has not received the matching reference. Check spam/all mail and sender delivery status; delivery remains unverified despite SMTP acceptance.",
+  "recipient_confirmation": "Not received yet",
+  "confirmation_recorded_at": "2026-10-16T09:18:07.352743+00:00"
+}

@@ -1,0 +1,79 @@
+[
+  {
+    "cases": [
+      "SEL-SCAT-001"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: created Bags and assigned Abaca Tote; management count one; store category HTTP 200 contains only that product.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:49:10.947Z"
+  },
+  {
+    "cases": [
+      "SEL-SCAT-002",
+      "SEL-SCAT-003"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: empty/space/duplicate-case/trimmed duplicate names rejected without writes; direct 51-character request rejected; one- and fifty-character names saved exactly.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:49:10.948Z"
+  },
+  {
+    "cases": [
+      "SEL-SCAT-004"
+    ],
+    "status": "PASS",
+    "evidence": "Two independent Chrome seller sessions: Seller 2 created Bags while Seller 1 retained exactly its own Bags unchanged.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:49:10.948Z"
+  },
+  {
+    "cases": [
+      "SEL-SCAT-005",
+      "SEL-SCAT-006"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: duplicate rename blocked; renamed Kitchen, moved to first, refreshed and confirmed store navigation first with product membership unchanged.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:49:10.948Z"
+  },
+  {
+    "cases": [
+      "SEL-SCAT-007",
+      "SEL-SCAT-008"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: hidden category absent from navigation and direct category URL 404; product still visible and product URL 200; showing category restores original position and product.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:49:10.948Z"
+  },
+  {
+    "cases": [
+      "SEL-SCAT-011",
+      "SEL-SCAT-012"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: level-2 child saved, level-3 unavailable/rejected; product assigned to three categories and fourth rejected; product displayed once in each accepted category; platform category unchanged.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:49:10.948Z"
+  },
+  {
+    "cases": [
+      "SEL-SCAT-013"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: moved Abaca Tote from Bags into Kitchen; platform category ID unchanged and product still listed under its platform category; seller denied access to platform-category creation.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:49:10.948Z"
+  },
+  {
+    "cases": [
+      "SEL-SCAT-009",
+      "SEL-SCAT-010"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: deletion warning showed product count; Cancel kept category; confirmed single and parent deletion retained active products, removed children/memberships, and both products appeared in Uncategorized.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:49:10.948Z"
+  }
+]

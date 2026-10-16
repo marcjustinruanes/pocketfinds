@@ -24,15 +24,19 @@ use App\Services\GcashInventory;
 use App\Services\GcashLocks;
 use App\Services\GcashWorkflow;
 use App\Services\MediaLifecycle;
+use App\Support\AccountInput;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 class BuyerController extends Controller
@@ -81,20 +85,44 @@ class BuyerController extends Controller
 
     public function browse(Request $request)
     {
+        $search = $request->input('q', '');
+        $request->merge(['q' => is_string($search) ? trim($search) : $search]);
+        $filters = $request->validate([
+            'q' => ['nullable', 'string', 'max:120'],
+            'page' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'category' => ['nullable', 'integer', 'exists:categories,id'],
+            'sort' => ['nullable', 'string', 'in:newest,price_asc,price_desc,best_selling'],
+            'min_rating' => ['nullable', 'numeric', 'min:0', 'max:5'],
+            'location' => ['nullable', 'string', 'max:120'],
+            'min_price' => ['nullable', 'numeric', 'min:0'],
+            'max_price' => array_filter(['nullable', 'numeric', 'min:0', $request->filled('min_price') ? 'gte:min_price' : null]),
+        ]);
         $categories = Category::orderBy('name')->get(['id', 'name']);
         $products = $this->dbProducts(
             0,
             $request->filled('category') ? (int) $request->input('category') : null,
             $request->filled('q') ? $request->input('q') : null,
-            $request->input('sort')
+            $request->input('sort'),
+            isset($filters['min_price']) ? (float) $filters['min_price'] : null,
+            isset($filters['max_price']) ? (float) $filters['max_price'] : null,
+            isset($filters['min_rating']) ? (float) $filters['min_rating'] : null,
+            $filters['location'] ?? null,
         );
+        $shops = $request->filled('q') ? $this->topSellingShops(null, $request->integer('category') ?: null) : [];
+        $suggestion = ! $products && $request->filled('q') ? $this->productSuggestion($request->input('q'), $request->integer('category') ?: null) : null;
+        $page = max(1, $request->integer('page', 1));
+        $products = new LengthAwarePaginator(array_slice($products, ($page - 1) * 20, 20), count($products), 20, $page,
+            ['path' => $request->url(), 'query' => $request->query()]);
 
-        return view('buyer.browse', compact('products', 'categories'));
+        return view('buyer.browse', compact('products', 'categories', 'shops', 'suggestion'));
     }
 
     public function product($id)
     {
-        $p = Product::with(['seller', 'category'])->where('id', $id)->where('status', 'active')->sellerApproved()->firstOrFail();
+        $p = Product::with(['seller', 'category'])->where('id', $id)->where('status', 'active')->sellerApproved()->first();
+        if (! $p) {
+            return response()->view('product-unavailable', [], 404);
+        }
         $product = $this->mapProduct($p);
         $sellerOnline = Cache::has('seller-online-'.$p->seller_id);
         $shopProducts = Product::with(['seller', 'category'])->where('seller_id', $p->seller_id)->where('status', 'active')->sellerApproved()->where('id', '!=', $id)->limit(6)->get()->map(fn ($r) => $this->mapProduct($r))->all();
@@ -129,7 +157,7 @@ class BuyerController extends Controller
     public function shop($slug)
     {
         $seller = User::where('username', $slug)->where('account_type', 'seller')->firstOrFail();
-        $items = Product::with(['seller', 'category'])->where('seller_id', $seller->id)->where('status', 'active')->sellerApproved()->get()->map(fn ($p) => $this->mapProduct($p))->all();
+        [$storeCategories, $items] = $this->storeCategoryData($seller);
         $shop = [
             'name' => $seller->business_name ?? ($seller->given_names.' '.$seller->last_name),
             'initial' => strtoupper(substr($seller->given_names, 0, 1)),
@@ -138,27 +166,33 @@ class BuyerController extends Controller
             'products' => count($items),
             'sales' => '0',
             'joined' => $seller->created_at->format('M Y'),
-            'desc' => '',
+            'desc' => $seller->store_description ?? '',
+            'banner' => $seller->store_banner ? Storage::disk('profile_images')->url($seller->store_banner) : null,
             'followers' => $seller->followers()->count(),
             'is_following' => ShopFollow::where('buyer_id', auth()->id())->where('seller_id', $seller->id)->exists(),
         ];
 
-        return view('buyer.shop', compact('shop', 'items', 'slug'));
+        return view('buyer.shop', compact('shop', 'items', 'slug', 'storeCategories'));
     }
 
     /** Toggle the current buyer's follow of a seller's shop. */
-    public function followShop($slug)
+    public function followShop(Request $request, $slug)
     {
         $seller = User::where('username', $slug)->where('account_type', 'seller')->firstOrFail();
 
-        $follow = ShopFollow::where('buyer_id', auth()->id())->where('seller_id', $seller->id)->first();
-        if ($follow) {
-            $follow->delete();
-            $following = false;
-        } else {
-            ShopFollow::create(['buyer_id' => auth()->id(), 'seller_id' => $seller->id]);
-            $following = true;
-        }
+        $request->validate(['following' => ['sometimes', 'boolean']]);
+        $following = DB::transaction(function () use ($request, $seller) {
+            User::whereKey(auth()->id())->lockForUpdate()->firstOrFail();
+            $query = ShopFollow::where('buyer_id', auth()->id())->where('seller_id', $seller->id);
+            $following = $request->has('following') ? $request->boolean('following') : ! $query->exists();
+            if ($following) {
+                ShopFollow::firstOrCreate(['buyer_id' => auth()->id(), 'seller_id' => $seller->id]);
+            } else {
+                $query->delete();
+            }
+
+            return $following;
+        }, 3);
 
         return response()->json([
             'following' => $following,
@@ -171,15 +205,37 @@ class BuyerController extends Controller
         // The cart lives in the database, scoped to the buyer's account —
         // it survives logging out and long idle gaps, unlike a session cart.
         $cart = CartItem::where('buyer_id', auth()->id())->get()->keyBy('id')->map->toArray();
-        $products = Product::whereIn('id', collect($cart)->pluck('product_id')->filter()->unique())->get()->keyBy('id');
+        $products = Product::with('seller')->whereIn('id', collect($cart)->pluck('product_id')->filter()->unique())->get()->keyBy('id');
         $items = collect($cart)->map(function (array $item, string $key) use ($products) {
+            $product = $products->get($item['product_id']);
+            $price = $product ? $this->currentUnitPrice($product, $item['variation_group'] ?: null, $item['variation_value'] ?: null) : null;
+            $stock = $product?->availableStock($item['variation_group'] ?: null, $item['variation_value'] ?: null) ?? 0;
+            $reason = match (true) {
+                ! $product || $product->status !== 'active' || $product->seller?->status !== 'approved' => 'Unavailable',
+                (bool) $product->seller?->is_on_vacation => 'Store on vacation',
+                $price === null => 'Variation unavailable',
+                $stock <= 0 => 'Out of stock',
+                $stock < (int) $item['qty'] => "Only {$stock} left — reduce quantity",
+                default => null,
+            };
+            $combination = $product?->combinationOption($item['variation_group'] ?: null);
+            if ($combination && $item['variation_value'] !== $combination['label']) {
+                CartItem::where('buyer_id', auth()->id())->whereKey($key)->update(['variation_value' => $combination['label']]);
+                $item['variation_value'] = $combination['label'];
+            }
+            if ($price !== null && abs((float) $item['price'] - $price) > 0.004) {
+                CartItem::where('buyer_id', auth()->id())->whereKey($key)->update(['price' => $price]);
+                $item['price'] = $price;
+            }
+
             return array_merge($item, [
                 'key' => $key,
+                'unavailable_reason' => $reason,
                 // The full raw variation groups (name + every option, with
                 // stock/price/image) so the edit modal can render the exact
                 // same options UI as the product page's Options tab —
                 // not just the one group this item happens to use.
-                'product_variations' => $products->get($item['product_id'])?->variations ?? [],
+                'product_variations' => !empty($product?->variant_axes) ? [['name' => 'Options', 'options' => collect($product->variant_rows)->map(fn ($row) => ['value' => $row['label'], 'group' => 'variant:'.$row['id'], 'price' => $row['price'], 'stock' => $row['stock']])->all()]] : ($product?->variations ?? []),
                 // Base stock for a plain (no-variation) product — the edit
                 // modal's quantity cap when there's no variation to check instead.
                 'product_stock' => $products->get($item['product_id'])?->total_stock ?? 0,
@@ -242,61 +298,101 @@ class BuyerController extends Controller
 
     public function storeAddress(Request $request)
     {
-        $data = $request->validate([
+        $data = $this->addressData($request);
+
+        $address = DB::transaction(function () use ($data) {
+            // Serialize address creation for this buyer, including the limit check.
+            User::whereKey(auth()->id())->lockForUpdate()->firstOrFail();
+            $count = BuyerAddress::where('buyer_id', auth()->id())->count();
+            if ($count >= 10) {
+                throw ValidationException::withMessages(['address' => 'You can save up to 10 addresses.']);
+            }
+
+            return BuyerAddress::create(array_merge($data, [
+                'buyer_id' => auth()->id(),
+                'is_default' => $count === 0,
+            ]));
+        });
+
+        return response()->json(['success' => true, 'address' => $address->toArray() + ['full_address' => $address->full_address]]);
+    }
+
+    public function showAddress(Request $request, BuyerAddress $address)
+    {
+        abort_unless($address->buyer_id === auth()->id(), 403);
+
+        return response()->json(['address' => $address]);
+    }
+
+    public function editAddress(Request $request, BuyerAddress $address)
+    {
+        abort_unless($address->buyer_id === auth()->id(), 403);
+        $data = $this->addressData($request);
+        DB::transaction(function () use ($address, $data) {
+            User::whereKey(auth()->id())->lockForUpdate()->firstOrFail();
+            BuyerAddress::whereKey($address->id)->where('buyer_id', auth()->id())->firstOrFail()->update($data);
+        });
+
+        return response()->json(['success' => true]);
+    }
+
+    private function addressData(Request $request): array
+    {
+        $request->merge(['contact_no' => AccountInput::phone($request->input('contact_no'))]);
+
+        return $request->validate([
             'label' => ['nullable', 'string', 'max:50'],
             'recipient_name' => ['required', 'string', 'max:150'],
-            'contact_no' => ['nullable', 'string', 'regex:/\A09[0-9]{9}\z/'],
+            'contact_no' => ['required', 'string', 'regex:/\A09[0-9]{9}\z/'],
+            'region' => ['required', 'string', 'max:150'],
             'province' => ['required', 'string', 'max:150'],
             'municipality' => ['required', 'string', 'max:150'],
             'barangay' => ['required', 'string', 'max:150'],
             'house_no' => ['nullable', 'string', 'max:100'],
-            'street' => ['nullable', 'string', 'max:150'],
+            'street' => ['required', 'string', 'max:150'],
         ], [
-            'contact_no.regex' => 'Contact number must start with 09 and be exactly 11 digits.',
+            'contact_no.regex' => 'Use 09XXXXXXXXX or +639XXXXXXXXX.',
         ]);
+    }
 
-        // The very first address a buyer ever saves becomes their default automatically.
-        $isFirst = ! BuyerAddress::where('buyer_id', auth()->id())->exists();
-        $address = BuyerAddress::create(array_merge($data, [
-            'buyer_id' => auth()->id(),
-            'is_default' => $isFirst,
-        ]));
+    public function defaultAddress(Request $request, BuyerAddress $address)
+    {
+        abort_unless($address->buyer_id === auth()->id(), 403);
+        DB::transaction(function () use ($address) {
+            User::whereKey(auth()->id())->lockForUpdate()->firstOrFail();
+            $address = BuyerAddress::whereKey($address->id)->where('buyer_id', auth()->id())->firstOrFail();
+            BuyerAddress::where('buyer_id', auth()->id())->update(['is_default' => false]);
+            $address->update(['is_default' => true]);
+        });
 
-        return response()->json([
-            'success' => true,
-            'address' => [
-                'id' => $address->id,
-                'label' => $address->label,
-                'recipient_name' => $address->recipient_name,
-                'contact_no' => $address->contact_no,
-                'full_address' => $address->full_address,
-                'is_default' => $address->is_default,
-            ],
-        ]);
+        return $request->expectsJson()
+            ? response()->json(['success' => true])
+            : back()->with('success', 'Default delivery address updated.');
     }
 
     public function destroyAddress(Request $request, BuyerAddress $address)
     {
         abort_unless($address->buyer_id === auth()->id(), 403);
 
-        // The default address mirrors the buyer's own approved account address —
-        // it isn't just another saved address, so it can't be removed directly.
-        // It only ever changes when a profile/address update request they submit
-        // gets approved by an admin (see AccountUpdateRequest::apply()).
-        if ($address->is_default) {
-            if ($request->expectsJson()) {
-                return response()->json(['success' => false, 'message' => 'Your default address cannot be removed. Submit an account update request to change it.'], 422);
+        return DB::transaction(function () use ($request, $address) {
+            User::whereKey(auth()->id())->lockForUpdate()->firstOrFail();
+            $address = BuyerAddress::whereKey($address->id)->firstOrFail();
+            if ($address->is_default) {
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => 'Set another address as default before removing this one.'], 422);
+                }
+
+                return back()->with('error', 'Set another address as default before removing this one.');
             }
-            return back()->with('error', 'Your default address is set from your account address. To change it, submit an account update request and wait for admin approval.');
-        }
 
-        $address->delete();
+            $address->delete();
 
-        if ($request->expectsJson()) {
-            return response()->json(['success' => true]);
-        }
+            if ($request->expectsJson()) {
+                return response()->json(['success' => true]);
+            }
 
-        return back()->with('success', 'Address removed.');
+            return back()->with('success', 'Address removed.');
+        });
     }
 
     public function cartAdd(Request $request)
@@ -309,6 +405,9 @@ class BuyerController extends Controller
         ]);
 
         $p = Product::with(['seller', 'category'])->where('id', $data['product_id'])->where('status', 'active')->sellerApproved()->firstOrFail();
+        if ($p->seller->is_on_vacation) {
+            throw ValidationException::withMessages(['product_id' => 'This store is on vacation and is not accepting new orders.']);
+        }
         $prod = $this->mapProduct($p);
 
         // A selected option carries its own authoritative price/stock — never
@@ -321,7 +420,13 @@ class BuyerController extends Controller
         $variationGroup = '';
         $available = (int) $p->stock;
 
-        if (! empty($p->variations)) {
+        if (!empty($p->variant_axes)) {
+            $option = $p->combinationOption($data['variation_group'] ?? null);
+            abort_unless($option, 422, 'Please select a variation.');
+            $available = (int)$option['stock']; abort_if($available <= 0, 422, 'This variation is out of stock.');
+            $price = (float)$option['price']; $variationGroup = 'variant:'.$option['id']; $variationValue = $option['label'];
+            if (!empty($option['image'])) $img = $this->productImageUrl($option['image']);
+        } elseif (! empty($p->variations)) {
             abort_unless(! empty($data['variation_group']) && ! empty($data['variation_value']), 422, 'Select an available variation first.');
             $option = $this->findVariationOption($p, $data['variation_group'], $data['variation_value']);
             abort_unless($option, 422, 'Selected option is no longer available.');
@@ -343,14 +448,15 @@ class BuyerController extends Controller
 
         $buyerId = auth()->id();
         $existing = CartItem::where('buyer_id', $buyerId)->where('product_id', $p->id)
-            ->where('variation_value', $variationValue)->where('variation_group', $variationGroup)->first();
+            ->when(empty($p->variant_axes), fn ($query) => $query->where('variation_value', $variationValue))->where('variation_group', $variationGroup)->first();
         $requestedQuantity = ($existing->qty ?? 0) + $data['qty'];
         abort_if($requestedQuantity > $available, 422, "Only {$available} item(s) are currently available.");
 
         if ($existing) {
-            $existing->update(['qty' => min(99, $existing->qty + $data['qty'])]);
+            $existing->update(['qty' => min(99, $existing->qty + $data['qty']), 'variation_value' => $variationValue]);
+            $line = $existing;
         } else {
-            CartItem::create([
+            $line = CartItem::create([
                 'buyer_id' => $buyerId,
                 'product_id' => $p->id,
                 'name' => $p->name,
@@ -364,12 +470,13 @@ class BuyerController extends Controller
             ]);
         }
 
-        return response()->json(['count' => (int) CartItem::where('buyer_id', $buyerId)->sum('qty')]);
+        return response()->json(['count' => (int) CartItem::where('buyer_id', $buyerId)->sum('qty'), 'item_id' => $line->id]);
     }
 
     /** Authoritatively resolve one variation option from a product's own stored data — never trust client-submitted price/stock/image for it. */
     private function findVariationOption(Product $p, string $group, string $value): ?array
     {
+        if (!empty($p->variant_axes)) return $p->combinationOption($group);
         foreach ($p->variations ?? [] as $variation) {
             if (($variation['name'] ?? null) !== $group) {
                 continue;
@@ -388,9 +495,7 @@ class BuyerController extends Controller
     {
         $data = $request->validate(['qty' => ['required', 'integer', 'min:1', 'max:99']]);
         $item = CartItem::where('buyer_id', auth()->id())->where('id', $key)->first();
-        if (! $item) {
-            return redirect()->route('buyer.cart')->with('error', 'This item is no longer in your cart.');
-        }
+        abort_unless($item, 404);
 
         $product = Product::find($item->product_id);
         $available = $product?->availableStock($item->variation_group ?: null, $item->variation_value ?: null) ?? 0;
@@ -417,9 +522,7 @@ class BuyerController extends Controller
         // of the cart, so every failure below bounces back with a flash
         // message instead, same as every other buyer-facing form.
         $item = CartItem::where('buyer_id', auth()->id())->where('id', $key)->first();
-        if (! $item) {
-            return redirect()->route('buyer.cart')->with('error', 'This item is no longer in your cart.');
-        }
+        abort_unless($item, 404);
         $product = Product::find($item->product_id);
         if (! $product) {
             return back()->with('error', 'This product is no longer available.');
@@ -432,7 +535,12 @@ class BuyerController extends Controller
         // selected option below carries its own (e.g. switching color).
         $img = $this->mapProduct($product)['img'];
 
-        if (! empty($product->variations)) {
+        if (!empty($product->variant_axes)) {
+            $groupName = $data['variation_group'] ?? ''; $option = $product->combinationOption($groupName);
+            if (!$option || $option['stock'] < $data['qty']) return back()->with('error', 'Please select an available variation with enough stock.');
+            $newValue = $option['label']; $price = (float)$option['price']; $stockLimit = (int)$option['stock'];
+            if ($option['image']) $img = $this->productImageUrl($option['image']);
+        } elseif (! empty($product->variations)) {
             // Same "pick exactly one option, from any of the product's
             // variation groups" model as adding to cart — re-resolve the
             // option authoritatively so switching to a different group
@@ -704,7 +812,7 @@ class BuyerController extends Controller
             'items' => ['required', 'array', 'min:1'],
             'items.*' => ['string'],
             'voucher_code' => ['nullable', 'string', 'max:30'],
-            'buyer_note' => ['nullable', 'string', 'max:500'],
+            'buyer_note' => ['nullable', 'string', 'max:200'],
             'payment_method' => ['required', 'integer', 'exists:payment_methods,id'],
             'delivery_address_id' => ['nullable', 'integer'],
         ]);
@@ -735,7 +843,7 @@ class BuyerController extends Controller
             return redirect()->route('gcash.index')->with('success', 'A separate payment purchase was reserved for each seller.');
         }
         $cart = CartItem::where('buyer_id', auth()->id())->get()->keyBy('id')->map->toArray()->all();
-        $selected = collect($data['items'])->filter(fn ($key) => array_key_exists($key, $cart));
+        $selected = collect($data['items'])->unique()->filter(fn ($key) => array_key_exists($key, $cart));
         if ($selected->isEmpty()) {
             return back()->with('error', 'Select at least one cart item.');
         }
@@ -745,7 +853,7 @@ class BuyerController extends Controller
         // address so checkout still works for a buyer who's never saved one.
         $deliveryAddress = ! empty($data['delivery_address_id'])
             ? BuyerAddress::where('id', $data['delivery_address_id'])->where('buyer_id', auth()->id())->first()
-            : null;
+            : BuyerAddress::where('buyer_id', auth()->id())->where('is_default', true)->first();
         // A chosen address that no longer exists must not silently fall back to the
         // profile address — the buyer would ship to somewhere they didn't pick.
         if (! empty($data['delivery_address_id']) && ! $deliveryAddress) {
@@ -776,9 +884,13 @@ class BuyerController extends Controller
             // this when the item was added), and its price must still be the one the buyer saw.
             $priceChanges = [];
             foreach ($items as $item) {
-                $product = Product::where('id', $item['product_id'])->where('status', 'active')->sellerApproved()->first();
-                if (! $product) {
+                $product = $lockedProducts->get($item['product_id']);
+                $owner = $product ? User::whereKey($product->seller_id)->lockForUpdate()->first() : null;
+                if (! $product || $product->status !== 'active' || $owner?->status !== 'approved') {
                     return back()->with('error', "\"{$item['name']}\" is no longer available — remove it from your cart to continue.");
+                }
+                if ($owner->is_on_vacation) {
+                    return back()->with('error', 'This store is on vacation and is not accepting new orders.');
                 }
                 $currentPrice = $this->currentUnitPrice($product, $item['variation_group'] ?: null, $item['variation_value'] ?: null);
                 if ($currentPrice === null) {
@@ -810,13 +922,10 @@ class BuyerController extends Controller
                             throw new \RuntimeException('Some items in your order are from a shop that is no longer available. Remove them from your cart and try again.');
                         }
 
-                        // A courtesy check only — placing an order never touches stock, so
-                        // this doesn't lock anything. Stock only actually leaves inventory
-                        // once the seller confirms the order (see SellerController::confirmOrder()),
-                        // which means several buyers can "place" against the same limited
-                        // stock and it's the seller who decides who gets confirmed.
+                        // Reserve inventory while the product lock is held. A later
+                        // checkout must see the remaining stock, before seller confirmation.
                         foreach ($sellerItems as $item) {
-                            $product = Product::where('id', $item['product_id'])->where('status', 'active')->sellerApproved()->first();
+                            $product = Product::where('id', $item['product_id'])->where('status', 'active')->sellerApproved()->lockForUpdate()->first();
                             if (! $product) {
                                 throw new \RuntimeException("\"{$item['name']}\" is no longer available.");
                             }
@@ -826,6 +935,7 @@ class BuyerController extends Controller
                                     ? "Only {$available} of \"{$item['name']}\" left in stock."
                                     : "\"{$item['name']}\" just sold out.");
                             }
+                            $product->deductStock((int) $item['qty'], ($item['variation_group'] ?? null) ?: null, ($item['variation_value'] ?? null) ?: null);
                         }
 
                         $subtotal = $sellerItems->sum(fn ($item) => $item['price'] * $item['qty']);
@@ -856,6 +966,7 @@ class BuyerController extends Controller
                             'buyer_note' => $data['buyer_note'] ?? null,
                             'payment_method' => $paymentMethod->name,
                             'payment_method_id' => $data['payment_method'] ?? null,
+                            'inventory_reserved' => true,
                         ]);
                         $created[] = $order;
                         $order->logStatus('placed', auth()->id());
@@ -911,6 +1022,7 @@ class BuyerController extends Controller
     /** What one unit of this product (or of the chosen variation option) costs right now — null if that option no longer exists. */
     private function currentUnitPrice(Product $product, ?string $group, ?string $value): ?float
     {
+        if (!empty($product->variant_axes)) { $option = $product->combinationOption($group); return $option ? (float)$option['price'] : null; }
         $hasDiscount = $product->discount_price !== null && (float) $product->discount_price < (float) $product->price;
         $price = (float) ($hasDiscount ? $product->discount_price : $product->price);
 
@@ -1344,23 +1456,20 @@ class BuyerController extends Controller
         ]));
     }
 
-    /** Submits a profile-change request — nothing changes on the account until admin approves it. */
+    /** Names and profile photos are self-service; contact changes require verification. */
     public function updateProfile(Request $request)
     {
-        $request->validate([
-            'given_names' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'contact_no' => ['nullable', 'regex:/^09[0-9]{9}$/'],
-        ], [
-            'contact_no.regex' => 'Contact number must start with 09 and be exactly 11 digits.',
+        $data = $request->validate([
+            'given_names' => AccountInput::name(),
+            'last_name' => AccountInput::name(),
+            'profile_picture' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
         ]);
+        if ($request->hasFile('profile_picture')) {
+            $data['profile_picture'] = $request->file('profile_picture')->store('buyers', 'profile_images');
+        }
+        $request->user()->update($data);
 
-        return $this->submitAccountUpdateRequest(
-            $request,
-            ['given_names', 'last_name', 'contact_no'],
-            [],
-            'profile_success'
-        );
+        return back()->with('profile_success', 'Profile updated.');
     }
 
     /** Submits an address-change request — nothing changes on the account until admin approves it. */
@@ -1385,7 +1494,7 @@ class BuyerController extends Controller
     /** Password changes are immediate/self-service — never gated behind admin approval. */
     public function passwordUpdate(Request $request)
     {
-        $request->validate(['current_password' => 'required', 'password' => 'required|min:8|confirmed']);
+        $request->validate(['current_password' => 'required', 'password' => ['required', 'string', 'confirmed', 'different:current_password', Password::min(8)->mixedCase()->numbers()->symbols()]]);
         if (! Hash::check($request->current_password, auth()->user()->password)) {
             return back()->withErrors(['current_password' => 'Current password is incorrect.']);
         }

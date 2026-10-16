@@ -1,0 +1,38 @@
+[
+  {
+    "cases": [
+      "SEL-PROD-009"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: name-only Save as Draft succeeded; saved draft is absent from buyer search and direct buyer URL returns 404.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:52:14.971Z"
+  },
+  {
+    "cases": [
+      "SEL-PROD-010"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: publishing incomplete draft is blocked by required-field validation; database status remains draft. Direct HTTP regression also checks server required-field responses.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:52:14.971Z"
+  },
+  {
+    "cases": [
+      "SEL-PROD-001"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: published exact workbook values including brand, dimensions, category and two ordered images; active record retained after reload and buyer found product via search, platform/store category and product page.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:52:14.971Z"
+  },
+  {
+    "cases": [
+      "SEL-PROD-017"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: two immediate Publish button clicks created exactly one active Double Click Test Tote. Separate HTTP regression replays the same creation key and also verifies one record and one set of uploads.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:52:14.971Z"
+  }
+]

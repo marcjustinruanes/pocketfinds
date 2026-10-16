@@ -5,12 +5,13 @@
 @php use Illuminate\Support\Facades\Storage; @endphp
 
 @section('content')
+<p><a href="{{ route('seller.store-categories') }}">Manage store categories</a></p>
 @if($errors->has('product'))<div role="alert" style="padding:12px;border:1px solid #d77;margin-bottom:12px">{{ $errors->first('product') }}</div>@endif
 
 @if(!$seller->category_id)
   <div style="background:var(--warning-soft);border:1px solid var(--warning-line);color:var(--warning);padding:12px 16px;border-radius:9px;font-size:13px;margin-bottom:18px;display:flex;align-items:center;gap:10px">
     @include('seller.partials.icon',['name'=>'bell','size'=>15])
-    <span>You haven't set a shop category yet. <a href="{{ route('seller.account') }}" style="font-weight:700;color:var(--warning);text-decoration:underline">Set it in Account → Shop Information</a> before adding products.</span>
+    <span>Choose a platform category in the product form before publishing. You can save an unfinished product as a draft.</span>
   </div>
 @endif
 
@@ -25,20 +26,26 @@
     <option value="">All Status</option>
     <option value="pending">Pending</option>
     <option value="active">Active</option>
+    <option value="draft">Draft</option>
     <option value="rejected">Rejected</option>
     <option value="archived">Archived</option>
   </select>
-  <button class="btn btn-primary" data-modal="addProductModal" @disabled(!$seller->category_id) title="{{ !$seller->category_id ? 'Set your shop category first' : '' }}">
+  <button class="btn btn-primary" data-modal="addProductModal">
     @include('seller.partials.icon',['name'=>'plus','size'=>14]) Add Product
   </button>
 </div>
 
+<form method="POST" action="{{ route('seller.inventory.bulk') }}" id="bulkProductForm" style="display:flex;gap:8px;margin:12px 0">@csrf
+  <button class="btn btn-outline" type="submit" name="action" value="deactivate">Deactivate selected</button>
+  <button class="btn btn-danger" type="submit" name="action" value="delete">Delete selected</button>
+</form>
 <div class="card">
   <div class="card-pad" style="padding:0">
     <div class="table-wrap">
     <table class="tbl" id="productTable" style="table-layout:fixed">
       <thead>
         <tr style="text-align:center">
+          <th style="width:36px"><input type="checkbox" id="selectAllProducts" aria-label="Select all products"></th>
           <th style="text-align:center;width:34%">Product</th>
           <th style="text-align:center;width:13%">Category</th>
           <th style="text-align:center;width:17%">Price</th>
@@ -56,6 +63,7 @@
           $maxPrice     = $optionPrices->max();
         @endphp
         <tr data-status="{{ $product->status }}" style="white-space:nowrap">
+          <td><input type="checkbox" name="ids[]" value="{{ $product->id }}" form="bulkProductForm" aria-label="Select {{ $product->name }}"></td>
           <td style="overflow:hidden">
             <div style="display:flex;align-items:center;gap:10px;min-width:0">
               <div class="inv-img" style="flex:none">
@@ -82,6 +90,7 @@
           <td style="text-align:center">
             @php $stock = $product->total_stock; @endphp
             <span style="font-size:13px;font-weight:600;{{ $stock <= 0 ? 'color:var(--danger)' : '' }}">{{ $stock }}</span>
+            @if($stock <= 0 && $product->status === 'active')<small style="display:block">Out of Stock</small>@endif
           </td>
           <td style="text-align:center">
             @if($product->status === 'pending')
@@ -112,6 +121,7 @@
           </td>
           <td style="text-align:center">
             <div class="tbl-actions" style="justify-content:center">
+              <form method="POST" action="{{ route('seller.inventory.duplicate', $product) }}">@csrf<button type="submit" class="btn btn-sm btn-outline" title="Duplicate product">Copy</button></form>
               <button type="button" class="btn btn-sm btn-outline icon-only" data-modal="viewProductModal-{{ $product->id }}" title="View" aria-label="View">
                 @include('seller.partials.icon',['name'=>'eye','size'=>13])
               </button>
@@ -137,7 +147,7 @@
                   @include('seller.partials.icon',['name'=>'check-circle','size'=>13])
                 </button>
               @endif
-              @if(in_array($product->status, ['pending','rejected','archived']))
+              @if(in_array($product->status, ['pending','rejected','archived','active','draft']))
                 <form method="POST" action="{{ route('seller.inventory.destroy', $product->id) }}" id="removeForm-{{ $product->id }}">
                   @csrf @method('DELETE')
                 </form>
@@ -151,7 +161,7 @@
         </tr>
         @empty
         <tr>
-          <td colspan="6">
+          <td colspan="7">
             <div class="empty" style="padding:40px 20px">
               @include('seller.partials.icon',['name'=>'bag','size'=>28,'class'=>'ic'])
               <h3>No products yet</h3>
@@ -165,6 +175,13 @@
     </div>
   </div>
 </div>
+<script>
+document.getElementById('selectAllProducts').addEventListener('change', event => document.querySelectorAll('[form="bulkProductForm"][name="ids[]"]').forEach(input => { input.checked = event.target.checked; }));
+document.getElementById('bulkProductForm').addEventListener('submit', event => {
+  if (!document.querySelector('[form="bulkProductForm"][name="ids[]"]:checked')) { event.preventDefault(); return; }
+  if (event.submitter?.value === 'delete' && !confirm('Delete the selected products? Products with unfinished orders will be skipped.')) event.preventDefault();
+});
+</script>
 
 @include('seller.partials.add-product-modal')
 

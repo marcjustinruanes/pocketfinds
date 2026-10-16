@@ -46,10 +46,10 @@
     </div>
     <div class="section">
       <div class="label-title">To</div>
-      <div class="value">{{ $order->buyer?->given_names }} {{ $order->buyer?->last_name }}</div>
       @php($addr = $order->shipping_address ?? [])
+      <div class="value">{{ $addr['recipient_name'] ?? trim(($order->buyer?->given_names ?? '') . ' ' . ($order->buyer?->last_name ?? '')) }}</div>
       <div class="sub">{{ trim((($addr['house_no'] ?? null) ? $addr['house_no'] . ', ' : '') . (($addr['street'] ?? null) ? $addr['street'] . ', ' : '') . ($addr['barangay'] ?? '') . ', ' . ($addr['municipality'] ?? '') . ', ' . ($addr['province'] ?? '')) }}</div>
-      <div class="sub">{{ $order->buyer?->contact_no }}</div>
+      <div class="sub">{{ $addr['contact_no'] ?? $order->buyer?->contact_no }}</div>
     </div>
     <div class="section">
       <div class="label-title">Order {{ $order->order_number }}</div>

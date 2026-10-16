@@ -1182,7 +1182,7 @@ class LogisticsController extends Controller
     {
         $counts = $this->sidebarCounts();
         $company = auth()->user()->business_name;
-        $status = in_array($request->query('status'), ['pending', 'approved', 'rejected', 'suspended'], true)
+        $status = in_array($request->query('status'), ['pending', 'pending_activation', 'approved', 'rejected', 'suspended'], true)
             ? $request->query('status') : 'pending';
         // A company's own roster only — riders who joined this exact company at registration.
         $riders = User::where('account_type', 'rider')->where('business_name', $company)

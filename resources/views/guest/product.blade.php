@@ -118,8 +118,8 @@
       <div class="pd-title-price-row">
         <h1 class="pd-title">{{ $product['name'] }}</h1>
         <div class="pd-price-group">
-          <span class="pd-price" id="pdPrice" data-base-price="{{ $product['price'] }}">₱{{ number_format($product['price']) }}</span>
-          @if($product['old_price'])<span class="pd-old">₱{{ number_format($product['old_price']) }}</span>@endif
+          <span class="pd-price" id="pdPrice" data-base-price="{{ $product['price'] }}">₱{{ number_format($product['price'], 2) }}</span>
+          @if($product['old_price'])<span class="pd-old">₱{{ number_format($product['old_price'], 2) }}</span>@endif
         </div>
       </div>
       <div class="pd-meta-row">
@@ -139,10 +139,13 @@
       </div>
     </div>
 
+    <a class="btn btn-outline" href="{{ route('login') }}" aria-label="Add to wishlist">? Add to wishlist</a>
     <div class="pd-purchase-options">
       {{-- Options --}}
       <div class="pd-tab-pane active" id="tab-options">
-        @if(!empty($product['variations']))
+        @if(!empty($product['variant_axes']))
+          @include('buyer.partials.matrix-selectors')
+        @elseif(!empty($product['variations']))
           @php $firstOptionPicked = false; @endphp
           @foreach($product['variations'] as $variation)
           <div class="pd-opt-group">
@@ -175,7 +178,7 @@
           </div>
           @endforeach
         @endif
-        @if(empty($product['variations']))
+        @if(empty($product['variations']) && empty($product['variant_axes']))
           <div style="font-size:13px;color:var(--muted);padding:8px 0">
             Stock: <strong style="color:{{ $product['stock'] > 0 ? 'var(--success)' : 'var(--danger)' }}">{{ $product['stock'] > 0 ? $product['stock'] . ' available' : 'Out of stock' }}</strong>
           </div>
@@ -195,11 +198,12 @@
 
     </div>
     <div class="pd-actions">
-      <button class="pd-btn-cart" id="pdAddCartBtn" type="button" data-protected {{ $product['stock'] <= 0 ? 'disabled' : '' }}>
+      @if($product['on_vacation'] ?? false)<p role="status">On vacation — this store is not accepting new orders.</p>@endif
+      <button class="pd-btn-cart" id="pdAddCartBtn" type="button" data-protected {{ $product['stock'] <= 0 || ($product['on_vacation'] ?? false) ? 'disabled' : '' }}>
         @include('buyer.partials.icon', ['name' => 'cart', 'size' => 15])
-        {{ $product['stock'] <= 0 ? 'Out of Stock' : 'Add to Cart' }}
+        {{ $product['stock'] <= 0 ? 'Sold out' : 'Add to Cart' }}
       </button>
-      <button class="pd-btn-buy" id="pdBuyNowBtn" type="button" data-protected {{ $product['stock'] <= 0 ? 'disabled' : '' }}>
+      <button class="pd-btn-buy" id="pdBuyNowBtn" type="button" data-protected {{ $product['stock'] <= 0 || ($product['on_vacation'] ?? false) ? 'disabled' : '' }}>
         @include('buyer.partials.icon', ['name' => 'bag', 'size' => 15])
         {{ $product['stock'] <= 0 ? 'Unavailable' : 'Buy Now' }}
       </button>
@@ -358,6 +362,7 @@ function syncThumbForImage(src) {
 }
 
 function syncVariantForImage(src) {
+  if (window.productMatrix) { window.productMatrix.selectImage(src); return; }
   const match = [...document.querySelectorAll('#tab-options .pd-opt-btn[data-image]')]
     .find(b => b.dataset.image === src);
   if (match && !match.disabled) {
@@ -368,6 +373,7 @@ function syncVariantForImage(src) {
 }
 
 function currentUnitPrice() {
+  if (window.productMatrix?.selected()) return Number(window.productMatrix.selected().price);
   const priceEl = document.getElementById('pdPrice');
   const active  = document.querySelector('#tab-options .pd-opt-btn.active[data-exclusive="true"]');
   return active ? parseFloat(active.dataset.price) : parseFloat(priceEl.dataset.basePrice);
@@ -376,7 +382,8 @@ function currentUnitPrice() {
 function updatePriceDisplay() {
   const priceEl = document.getElementById('pdPrice');
   if (!priceEl) return;
-  priceEl.textContent = '₱' + currentUnitPrice().toLocaleString();
+  if (window.productMatrix && !window.productMatrix.selected()) { priceEl.textContent = window.productMatrix.range(); return; }
+  priceEl.textContent = '₱' + currentUnitPrice().toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   updateQtyTotal();
 }
 
@@ -384,7 +391,7 @@ function updateQtyTotal() {
   const totalEl = document.getElementById('pdQtyTotal');
   if (!totalEl) return;
   if (qty >= 2) {
-    totalEl.textContent = 'Total: ₱' + (currentUnitPrice() * qty).toLocaleString();
+    totalEl.textContent = 'Total: ₱' + (currentUnitPrice() * qty).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     totalEl.style.display = '';
   } else {
     totalEl.style.display = 'none';

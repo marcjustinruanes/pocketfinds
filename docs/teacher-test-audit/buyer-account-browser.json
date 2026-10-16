@@ -1,0 +1,116 @@
+[
+  {
+    "cases": [
+      "BUY-ACCT-001"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: saved Juan Miguel Jr. and photo; refresh/logout/login retained profile and header photo; email and phone unchanged.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:46:57.350Z"
+  },
+  {
+    "cases": [
+      "BUY-ACCT-002"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: empty, Juan123, J, 5.1 MB upload and renamed executable rejected; name and previous photo unchanged after refresh.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:46:57.350Z"
+  },
+  {
+    "cases": [
+      "BUY-ACCT-006"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: old email logged in while change pending; logged code verified new email; old login rejected, new login succeeded. Local mail transport only; external delivery unverified.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:46:57.350Z"
+  },
+  {
+    "cases": [
+      "BUY-ACCT-007"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: wrong code and correct-but-expired token rejected without changing email. Audit fixture expired the token; PHP controlled-clock test verifies five-minute expiry.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:46:57.350Z"
+  },
+  {
+    "cases": [
+      "BUY-ACCT-008",
+      "BUY-ACCT-009"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: both duplicate emails (cross-role/case) and invalid/duplicate phones rejected without sending code; valid phone saved only after logged email OTP. External email delivery unverified.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:46:57.350Z"
+  },
+  {
+    "cases": [
+      "BUY-ADDR-001",
+      "BUY-ADDR-002"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL with bundled PSGC data: NCR contains Makati and no Cebu; Makati contains Bel-Air; changing to Region VII clears city/barangay. Saved office with all exact fields; original home remains sole default.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:46:57.350Z"
+  },
+  {
+    "cases": [
+      "BUY-ADDR-003",
+      "BUY-ADDR-004"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: each of six required controls rejects blank values; invalid short/long phones cannot submit; both local and +63 formats saved. PHP additionally submits all blank fields directly and confirms zero writes.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:46:57.350Z"
+  },
+  {
+    "cases": [
+      "BUY-ADDR-008"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: saved address edited then deleted; existing order snapshot, buyer view, seller view and printed waybill retained original street and recipient phone. Printed PDF retained.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:46:57.350Z"
+  },
+  {
+    "cases": [
+      "BUY-ADDR-006",
+      "BUY-ADDR-007"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: deleting default returns choose-another-default message; changed default, checked checkout radio preselection and sole-default invariant; previous default then deleted successfully.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:46:57.350Z"
+  },
+  {
+    "cases": [
+      "BUY-ADDR-009"
+    ],
+    "status": "PASS",
+    "evidence": "Authenticated browser requested another buyer address ID: HTTP 403 with no foreign address text. HTTP suite also verifies writes are denied.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:46:57.350Z"
+  },
+  {
+    "cases": [
+      "BUY-ADDR-005"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: prepared nine fictional addresses; tenth saved using form; eleventh blocked with explicit limit message, count remained ten.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:46:57.350Z"
+  },
+  {
+    "cases": [
+      "BUY-ACCT-004",
+      "BUY-ACCT-005",
+      "BUY-ACCT-003"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: wrong old password rejected and old login retained; all seven specified invalid new passwords rejected with visible messages, old login retained; valid change succeeded, old login rejected and new login succeeded.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:46:57.350Z"
+  }
+]

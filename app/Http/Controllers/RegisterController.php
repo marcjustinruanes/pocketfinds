@@ -27,6 +27,7 @@ class RegisterController extends Controller
     /** Shown right after picking a role — choose Google or manual sign-up before the step-by-step form appears. */
     public function method(Request $request)
     {
+        abort_if($request->query('type') === 'rider', 403, 'Rider accounts are created by their logistics company.');
         $type = in_array($request->query('type'), ['buyer', 'seller', 'rider', 'logistics', 'logistics-staff'], true) ? $request->query('type') : 'buyer';
 
         return view('auth.register-method', ['type' => $type]);

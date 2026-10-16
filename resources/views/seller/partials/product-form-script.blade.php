@@ -5,6 +5,11 @@
 window.initProductForm = function (root, opts) {
   opts = opts || {};
   const form = root.querySelector('[data-role="product-form"]');
+  for (const [name, limit] of [['name', 120], ['description', 3000]]) {
+    const field = form.elements.namedItem(name);
+    field.removeAttribute('maxlength');
+    field.addEventListener('input', () => field.setCustomValidity(field.value.length > limit ? `The maximum length is ${limit} characters.` : ''));
+  }
 
   // ── Cover photos (existing server paths + newly picked files) ──────────
   const imgInput       = form.querySelector('[data-role="images-input"]');
@@ -14,6 +19,10 @@ window.initProductForm = function (root, opts) {
   const MAX_PHOTOS     = 9;
   let existingImages   = (opts.existingImages || []).slice(); // [{path, url}]
   let selectedImages   = []; // newly picked File objects
+  let imageWork = Promise.resolve();
+  const imageError = document.createElement('p');
+  imageError.dataset.role = 'image-errors'; imageError.setAttribute('role', 'alert'); imageError.hidden = true;
+  imgDropZone.insertAdjacentElement('afterend', imageError);
 
   imgDropZone.addEventListener('click', () => imgInput.click());
   imgInput.addEventListener('change', function () { addImages(this.files); this.value = ''; });
@@ -26,12 +35,21 @@ window.initProductForm = function (root, opts) {
   function totalPhotoCount() { return existingImages.length + selectedImages.length; }
 
   function addImages(fileList) {
-    for (const file of fileList) {
-      if (totalPhotoCount() >= MAX_PHOTOS) break;
-      if (!file.type.startsWith('image/')) continue;
-      selectedImages.push(file);
-    }
-    renderThumbs();
+    const files = Array.from(fileList);
+    imageWork = imageWork.then(async () => {
+      imageError.hidden = true;
+      for (const file of files) {
+        if (totalPhotoCount() >= MAX_PHOTOS) { imageError.textContent = 'A product can have up to 9 photos.'; imageError.hidden = false; break; }
+        try {
+          if (!['image/jpeg', 'image/png'].includes(file.type) || file.size > 5 * 1024 * 1024) throw new Error();
+          const bitmap = await createImageBitmap(file); bitmap.close();
+          selectedImages.push(file);
+        } catch {
+          imageError.textContent = 'Product photos must be valid JPG or PNG, up to 5 MB.'; imageError.hidden = false;
+        }
+      }
+      renderThumbs();
+    });
   }
 
   function makeThumbWrap(position, onRemove) {
@@ -323,17 +341,49 @@ window.initProductForm = function (root, opts) {
     opts.existingDetails.forEach(d => addDetailRow(d));
   }
 
+  const matrixEditor = new ProductMatrixEditor(form, opts);
+
   // Sync everything right before submit
-  form.addEventListener('submit', (e) => {
-    if (totalPhotoCount() === 0 && optionImages.size === 0) {
-      e.preventDefault();
-      alert('Add at least one product photo — either a cover photo or a photo on a variation option.');
-      return;
-    }
+  let saving = false;
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (saving) return;
+    await imageWork;
+    if (saving) return;
+    const draft = e.submitter?.value === 'draft';
     syncImages();
     syncVariations();
     syncOptionImageInputs();
     syncDetails();
+    matrixEditor.sync();
+    if (matrixEditor.toggle.checked) variationsJson.value = '';
+    let summary = form.querySelector('[data-role="product-errors"]');
+    if (!summary) { summary = document.createElement('div'); summary.dataset.role = 'product-errors'; summary.setAttribute('role', 'alert'); form.querySelector('.modal-body').prepend(summary); }
+    summary.replaceChildren(); summary.hidden = true;
+    form.querySelectorAll('[data-field-error]').forEach(element => element.remove());
+    const payload = new FormData(form);
+    payload.set('intent', draft ? 'draft' : 'publish');
+    if (!payload.has('store_category_ids[]')) payload.set('store_category_ids', '');
+    const buttons = [...form.querySelectorAll('button[type=submit]')], disabled = buttons.map(button => button.disabled);
+    saving = true; buttons.forEach(button => { button.disabled = true; });
+    try {
+      const response = await fetch(form.action, { method: 'POST', body: payload, headers: { Accept: 'application/json' } });
+      const result = await response.json();
+      if (response.ok && result.success) { window.location.assign(result.redirect || window.location.href); return; }
+      summary.hidden = false;
+      matrixEditor.showErrors(result.errors);
+      for (const [field, messages] of Object.entries(result.errors || { product: [result.message || 'Could not save this product.'] })) {
+        const error = document.createElement('p'); error.dataset.fieldError = field; error.textContent = messages.join(' '); summary.append(error);
+        const base = field.split('.')[0];
+        const control = form.elements.namedItem(field) || form.elements.namedItem(base) || form.elements.namedItem(base + '[]');
+        if (control instanceof HTMLElement) { const message = error.cloneNode(true); control.insertAdjacentElement('afterend', message); }
+      }
+      summary.scrollIntoView({ block: 'nearest' });
+    } catch {
+      summary.hidden = false; summary.textContent = 'Could not save this product. Check your connection and retry; your entered values are still here.';
+    } finally {
+      saving = false; buttons.forEach((button, index) => { button.disabled = disabled[index]; });
+    }
   });
 };
 </script>

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="Tests\Feature\TeacherValidationTest" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\TeacherValidationTest.php" tests="10" assertions="45" errors="0" failures="6" skipped="0" time="2.413997">
+    <testcase name="test_buy_acct_003_correct_old_password_changes_password_and_rejects_old_login" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\TeacherValidationTest.php" line="50" class="Tests\Feature\TeacherValidationTest" classname="Tests.Feature.TeacherValidationTest" assertions="5" time="0.758706"/>
+    <testcase name="test_buy_acct_004_wrong_old_password_never_changes_password" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\TeacherValidationTest.php" line="59" class="Tests\Feature\TeacherValidationTest" classname="Tests.Feature.TeacherValidationTest" assertions="4" time="0.125787"/>
+    <testcase name="test_buy_acct_005_all_invalid_new_passwords_leave_hash_unchanged" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\TeacherValidationTest.php" line="68" class="Tests\Feature\TeacherValidationTest" classname="Tests.Feature.TeacherValidationTest" assertions="6" time="0.145733">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\TeacherValidationTest::test_buy_acct_005_all_invalid_new_passwords_leave_hash_unchanged&#13;
+Expected response status code [422] but received 302.
+Failed asserting that 302 is identical to 422.
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:183
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:221
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\TeacherValidationTest.php:74</failure>
+    </testcase>
+    <testcase name="test_buy_addr_005_tenth_address_saves_but_eleventh_does_not" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\TeacherValidationTest.php" line="82" class="Tests\Feature\TeacherValidationTest" classname="Tests.Feature.TeacherValidationTest" assertions="4" time="0.165992">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\TeacherValidationTest::test_buy_addr_005_tenth_address_saves_but_eleventh_does_not&#13;
+Expected response status code [422] but received 200.
+Failed asserting that 200 is identical to 422.
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:183
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:221
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\TeacherValidationTest.php:92</failure>
+    </testcase>
+    <testcase name="test_buy_addr_007_default_cannot_be_deleted" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\TeacherValidationTest.php" line="96" class="Tests\Feature\TeacherValidationTest" classname="Tests.Feature.TeacherValidationTest" assertions="3" time="0.126155"/>
+    <testcase name="test_buy_addr_009_foreign_address_cannot_be_deleted" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\TeacherValidationTest.php" line="104" class="Tests\Feature\TeacherValidationTest" classname="Tests.Feature.TeacherValidationTest" assertions="3" time="0.132986"/>
+    <testcase name="test_sel_prod_004_price_boundaries_and_precision" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\TeacherValidationTest.php" line="113" class="Tests\Feature\TeacherValidationTest" classname="Tests.Feature.TeacherValidationTest" assertions="2" time="0.319088">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\TeacherValidationTest::test_sel_prod_004_price_boundaries_and_precision&#13;
+Expected response status code [422] but received 302.
+Failed asserting that 302 is identical to 422.
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:183
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:221
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\TeacherValidationTest.php:119</failure>
+    </testcase>
+    <testcase name="test_sel_prod_005_stock_is_an_integer_between_zero_and_99999" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\TeacherValidationTest.php" line="129" class="Tests\Feature\TeacherValidationTest" classname="Tests.Feature.TeacherValidationTest" assertions="5" time="0.195127">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\TeacherValidationTest::test_sel_prod_005_stock_is_an_integer_between_zero_and_99999&#13;
+Expected response status code [422] but received 302.
+Failed asserting that 302 is identical to 422.
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:183
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:221
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\TeacherValidationTest.php:134</failure>
+    </testcase>
+    <testcase name="test_sel_prod_008_zero_negative_and_nonnumeric_dimensions_rejected" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\TeacherValidationTest.php" line="143" class="Tests\Feature\TeacherValidationTest" classname="Tests.Feature.TeacherValidationTest" assertions="11" time="0.255443">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\TeacherValidationTest::test_sel_prod_008_zero_negative_and_nonnumeric_dimensions_rejected&#13;
+Expected response status code [422] but received 302.
+Failed asserting that 302 is identical to 422.
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:183
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:221
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\TeacherValidationTest.php:149</failure>
+    </testcase>
+    <testcase name="test_sel_vou_004_code_format_is_enforced_and_codes_are_uppercase" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\TeacherValidationTest.php" line="157" class="Tests\Feature\TeacherValidationTest" classname="Tests.Feature.TeacherValidationTest" assertions="2" time="0.188980">
+      <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\TeacherValidationTest::test_sel_vou_004_code_format_is_enforced_and_codes_are_uppercase&#13;
+Expected response status code [422] but received 302.
+Failed asserting that 302 is identical to 422.
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:183
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:221
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\TeacherValidationTest.php:162</failure>
+    </testcase>
+  </testsuite>
+</testsuites>

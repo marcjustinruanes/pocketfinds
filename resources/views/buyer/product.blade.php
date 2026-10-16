@@ -88,7 +88,7 @@
       </div>
       <div class="pd-title-price-row">
         <h1 class="pd-title">{{ $product['name'] }}</h1>
-        <span class="pd-price" id="pdPrice" data-base-price="{{ $product['price'] }}" data-base-stock="{{ $product['stock'] }}">₱{{ number_format($product['price']) }}</span>
+        <span class="pd-price" id="pdPrice" data-base-price="{{ $product['price'] }}" data-base-stock="{{ $product['stock'] }}">₱{{ number_format($product['price'], 2) }}</span>
       </div>
       <div class="pd-meta-row">
         <span class="pd-stars-row">
@@ -105,20 +105,24 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4m0 1h10l-2 3 2 3H5"/></svg>
         </button>
         <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
-          @if($product['old_price'])<span class="pd-old">₱{{ number_format($product['old_price']) }}</span>@endif
+          @if($product['old_price'])<span class="pd-old">₱{{ number_format($product['old_price'], 2) }}</span>@endif
         </div>
       </div>
+      <button type="button" class="btn btn-outline" data-wishlist-product="{{ $product['id'] }}" data-wishlist-url="{{ route('buyer.wishlist.save', $product['id']) }}" aria-pressed="{{ \App\Models\WishlistEntry::where('buyer_id', auth()->id())->where('product_id', $product['id'])->exists() ? 'true' : 'false' }}">{{ \App\Models\WishlistEntry::where('buyer_id', auth()->id())->where('product_id', $product['id'])->exists() ? 'Saved to wishlist' : 'Add to wishlist' }}</button>
+      <span id="wishlistStatus" role="status" aria-live="polite"></span>
+      <script src="{{ asset('js/buyer-wishlist.js') }}" defer></script>
       <div class="pd-actions">
         <a class="pd-btn-chat" href="{{ route('buyer.messages', ['seller' => $product['seller_slug'], 'product' => $product['id']]) }}" onclick="event.preventDefault();openChatWithSelectedVariant(this)">@include('buyer.partials.icon', ['name' => 'chat', 'size' => 15]) Chat</a>
-        <button class="pd-btn-cart" id="pdAddCartBtn" type="button" onclick="directAddToCart(false, this)" data-product-id="{{ $product['id'] }}" data-product-name="{{ addslashes($product['name']) }}" data-product-img="{{ $product['img'] }}" {{ $product['stock'] <= 0 ? 'disabled' : '' }}>
+        <button class="pd-btn-cart" id="pdAddCartBtn" type="button" onclick="directAddToCart(false, this)" data-product-id="{{ $product['id'] }}" data-product-name="{{ addslashes($product['name']) }}" data-product-img="{{ $product['img'] }}" {{ $product['stock'] <= 0 || ($product['on_vacation'] ?? false) ? 'disabled' : '' }}>
           <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 5m12-5l2 5M9 21a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"/></svg>
-          {{ $product['stock'] <= 0 ? 'Out of Stock' : 'Add to Cart' }}
+          {{ $product['stock'] <= 0 ? 'Sold out' : 'Add to Cart' }}
         </button>
-        <button class="pd-btn-buy" id="pdBuyNowBtn" type="button" onclick="directAddToCart(true, this)" data-product-id="{{ $product['id'] }}" data-product-name="{{ addslashes($product['name']) }}" data-product-img="{{ $product['img'] }}" {{ $product['stock'] <= 0 ? 'disabled' : '' }}>
+        <button class="pd-btn-buy" id="pdBuyNowBtn" type="button" onclick="directAddToCart(true, this)" data-product-id="{{ $product['id'] }}" data-product-name="{{ addslashes($product['name']) }}" data-product-img="{{ $product['img'] }}" {{ $product['stock'] <= 0 || ($product['on_vacation'] ?? false) ? 'disabled' : '' }}>
           <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
           {{ $product['stock'] <= 0 ? 'Unavailable' : 'Buy Now' }}
         </button>
       </div>
+      @if($product['on_vacation'] ?? false)<p role="status">On vacation — this store is not accepting new orders.</p>@endif
       @if($product['stock'] <= 0 && $product['restock_date'])
         <div class="pd-restock-note">Expected restock: {{ $product['restock_date'] }}</div>
       @endif
@@ -135,7 +139,9 @@
 
       {{-- Options --}}
       <div class="pd-tab-pane active" id="tab-options">
-        @if(!empty($product['variations']))
+        @if(!empty($product['variant_axes']))
+          @include('buyer.partials.matrix-selectors')
+        @elseif(!empty($product['variations']))
           @php $firstOptionPicked = false; @endphp
           @foreach($product['variations'] as $variation)
           <div class="pd-opt-group">
@@ -187,7 +193,7 @@
           </div>
         </div>
         @endif
-        @if(empty($product['variations']) && empty($product['variants']['color']) && empty($product['variants']['size']))
+        @if(empty($product['variant_axes']) && empty($product['variations']) && empty($product['variants']['color']) && empty($product['variants']['size']))
           @if(isset($product['stock']))
           <div style="font-size:13px;color:var(--muted);padding:8px 0">
             Stock: <strong style="color:{{ $product['stock'] > 0 ? 'var(--success)' : 'var(--danger)' }}">{{ $product['stock'] > 0 ? $product['stock'] . ' available' : 'Out of stock' }}</strong>
@@ -199,7 +205,7 @@
           <div style="display:flex;align-items:center;gap:12px">
             <div class="pd-qty-row">
               <button type="button" class="pd-qty-btn" onclick="changeQty(-1)">−</button>
-              <span class="pd-qty-num" id="pdQty">1</span>
+              <input class="pd-qty-num" id="pdQty" type="number" required min="1" step="1" max="99" value="1" aria-label="Quantity" style="width:65px">
               <button type="button" class="pd-qty-btn" onclick="changeQty(1)">+</button>
             </div>
             <span class="pd-qty-total" id="pdQtyTotal" style="display:none"></span>
@@ -385,21 +391,22 @@ function selectVariant(btn) {
 function updatePurchaseAvailability(stock) {
   const cartButton = document.getElementById('pdAddCartBtn');
   const buyButton = document.getElementById('pdBuyNowBtn');
-  const unavailable = stock <= 0;
+  const vacation = @json($product['on_vacation'] ?? false);
+  const unavailable = stock <= 0 || vacation;
   if (cartButton) {
     cartButton.disabled = unavailable;
-    cartButton.lastChild.textContent = unavailable ? ' Out of Stock' : ' Add to Cart';
+    cartButton.lastChild.textContent = vacation ? ' On vacation' : (unavailable ? ' Sold out' : ' Add to Cart');
   }
   if (buyButton) {
     buyButton.disabled = unavailable;
-    buyButton.lastChild.textContent = unavailable ? ' Unavailable' : ' Buy Now';
+    buyButton.lastChild.textContent = vacation ? ' On vacation' : (unavailable ? ' Unavailable' : ' Buy Now');
   }
   // Switching to a variation with less stock than the currently-selected
   // quantity — bring the quantity back down instead of leaving it invalid.
   if (typeof qty !== 'undefined' && qty > Math.max(stock, 1)) {
     qty = Math.max(stock, 1);
     const qtyEl = document.getElementById('pdQty');
-    if (qtyEl) qtyEl.textContent = qty;
+    if (qtyEl) qtyEl.value = qty;
     if (typeof updateQtyTotal === 'function') updateQtyTotal();
   }
 }
@@ -415,6 +422,7 @@ function syncThumbForImage(src) {
 }
 
 function syncVariantForImage(src) {
+  if (window.productMatrix) { window.productMatrix.selectImage(src); return; }
   const match = [...document.querySelectorAll('#tab-options .pd-opt-btn[data-image]')]
     .find(b => b.dataset.image === src);
   if (match && !match.disabled) {
@@ -425,6 +433,7 @@ function syncVariantForImage(src) {
 }
 
 function currentUnitPrice() {
+  if (window.productMatrix?.selected()) return Number(window.productMatrix.selected().price);
   const priceEl = document.getElementById('pdPrice');
   const active  = document.querySelector('#tab-options .pd-opt-btn.active[data-exclusive="true"]');
   return active ? parseFloat(active.dataset.price) : parseFloat(priceEl.dataset.basePrice);
@@ -432,6 +441,7 @@ function currentUnitPrice() {
 
 /** Stock for whatever's currently selected — the one specific variation option, or the plain product. */
 function currentAvailableStock() {
+  if (window.productMatrix) return window.productMatrix.selected() ? Number(window.productMatrix.selected().stock) : window.productMatrix.totalStock();
   const priceEl = document.getElementById('pdPrice');
   const active  = document.querySelector('#tab-options .pd-opt-btn.active[data-exclusive="true"]');
   const stock   = active ? active.dataset.stock : priceEl?.dataset.baseStock;
@@ -441,7 +451,8 @@ function currentAvailableStock() {
 function updatePriceDisplay() {
   const priceEl = document.getElementById('pdPrice');
   if (!priceEl) return;
-  priceEl.textContent = '₱' + currentUnitPrice().toLocaleString();
+  if (window.productMatrix && !window.productMatrix.selected()) { priceEl.textContent = window.productMatrix.range(); return; }
+  priceEl.textContent = '₱' + currentUnitPrice().toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   updateQtyTotal();
 }
 
@@ -449,7 +460,7 @@ function updateQtyTotal() {
   const totalEl = document.getElementById('pdQtyTotal');
   if (!totalEl) return;
   if (qty >= 2) {
-    totalEl.textContent = 'Total: ₱' + (currentUnitPrice() * qty).toLocaleString();
+    totalEl.textContent = 'Total: ₱' + (currentUnitPrice() * qty).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     totalEl.style.display = '';
   } else {
     totalEl.style.display = 'none';
@@ -471,6 +482,13 @@ function openChatWithSelectedVariant(link) {
 }
 
 function directAddToCart(isBuyNow, btn) {
+  if (window.productMatrix && !window.productMatrix.selected()) { showToast('Please select a variation.', 'error'); return; }
+  const field = document.getElementById('pdQty');
+  field.max = Math.min(99, currentAvailableStock());
+  if (!field.checkValidity() || !Number.isInteger(Number(field.value))) {
+    showToast(`Quantity must be a whole number between 1 and ${field.max}.`, 'error'); field.reportValidity(); return;
+  }
+  qty = Number(field.value);
   const active = document.querySelector('#tab-options .pd-opt-btn.active');
   if (active && active.disabled) {
     showToast('This option is out of stock.', 'error');
@@ -484,7 +502,9 @@ function directAddToCart(isBuyNow, btn) {
   }
 
   const payload = { product_id: btn.dataset.productId, qty };
-  if (active && active.dataset.exclusive === 'true') {
+  if (window.productMatrix?.selected()) {
+    const row = window.productMatrix.selected(); payload.variation_group = 'variant:' + row.id; payload.variation_value = row.label;
+  } else if (active && active.dataset.exclusive === 'true') {
     payload.variation_group = active.dataset.group;
     payload.variation_value = active.dataset.value;
   } else {
@@ -514,7 +534,7 @@ function directAddToCart(isBuyNow, btn) {
         if (badge) { badge.textContent = data.count; badge.style.display = ''; }
         flyToCart(btn);
       } else {
-        showToast('Proceeding to checkout…', 'buy');
+        window.location.assign('/buyer/cart?checkout_item=' + encodeURIComponent(data.item_id));
       }
     })
     .catch(error => {
@@ -599,14 +619,16 @@ function setActiveThumb(thumb) {
   });
 })();
 let qty = 1;
+document.getElementById('pdQty').addEventListener('input', event => { qty = Number(event.target.value); updateQtyTotal(); });
 function changeQty(d) {
+  if (!Number.isInteger(qty) || qty < 1) qty = 1;
   const max = currentAvailableStock();
   if (d > 0 && qty >= max) {
     showToast(max > 0 ? `Only ${max} item(s) available.` : 'This item is out of stock.', 'error');
     return;
   }
   qty = Math.max(1, Math.min(qty + d, Math.max(max, 1)));
-  document.getElementById('pdQty').textContent = qty;
+  document.getElementById('pdQty').value = qty;
   updateQtyTotal();
 }
 function switchTab(btn, id) {

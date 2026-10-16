@@ -30,7 +30,11 @@ class GcashWorkflow
                 abort(409, 'This payment or purchase identifier is already in use. Refresh before retrying.');
             }
             Log::warning('GCash transaction database failure', ['sqlstate' => $error->getCode()]);
-            abort(503, 'Unable to complete the GCash operation. Refresh and retry; no payment was automatically verified.');
+            $message = 'Unable to complete the GCash operation. Refresh and retry; no payment was automatically verified.';
+            if (request()->expectsJson()) {
+                abort(response()->json(['message' => $message], 503));
+            }
+            abort(503, $message);
         }
     }
 
@@ -73,6 +77,11 @@ class GcashWorkflow
 
     private function price(Product $p, ?string $group, ?string $value): int
     {
+        if (!empty($p->variant_axes)) {
+            $option = $p->combinationOption($group);
+            if (!$option) $this->fail('Select one current variant.');
+            return $this->cents($option['price']);
+        }
         if (empty($p->variations)) {
             if ($group || $value) {
                 $this->fail('This product no longer has the selected variation.');
@@ -232,6 +241,9 @@ class GcashWorkflow
                 }
                 $seller = User::whereKey($product->seller_id)->lockForUpdate()->firstOrFail();
                 $this->eligible($seller, 'seller');
+                if ($seller->is_on_vacation) {
+                    $this->fail('This store is on vacation and is not accepting new orders.');
+                }
                 if ($row->seller_slug !== $seller->username || $row->qty < 1 || $row->qty > 99) {
                     $this->fail('Invalid cart seller or quantity.');
                 }
@@ -624,6 +636,9 @@ class GcashWorkflow
                 return $existing;
             }
             $this->assertPlacement($p, $products, $revision);
+            if (User::whereKey($p->seller_id)->lockForUpdate()->value('is_on_vacation')) {
+                $this->fail('This store is on vacation and is not accepting new orders.');
+            }
             $snapshot = $p->snapshot;
             $pm = PaymentMethod::findOrFail($p->payment_method_id);
             $order = Order::create(['order_number' => 'PF-'.now()->format('YmdHis').'-'.strtoupper(Str::random(5)), 'buyer_id' => $p->buyer_id, 'seller_id' => $p->seller_id, 'status' => 'placed', 'items' => $snapshot['items'], 'subtotal' => $snapshot['subtotal'], 'shipping_amount' => $snapshot['shipping_amount'], 'discount_amount' => $snapshot['discount_amount'], 'voucher_code' => $snapshot['voucher_code'], 'total' => $p->amount_due, 'shipping_address' => $snapshot['shipping_address'], 'buyer_note' => $snapshot['buyer_note'], 'payment_method_id' => $pm->id, 'payment_method' => 'GCash', 'gcash_purchase_id' => $id]);

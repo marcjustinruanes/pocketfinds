@@ -1,0 +1,22 @@
+
+ INFO Preparing database. 
+
+ Creating migration table .. 39.75ms DONE
+
+ INFO Running migrations. 
+
+ 2026_10_04_000000_create_mysql_baseline .. 2s DONE
+ 2026_10_04_000001_create_mysql_queue_tables .. 128.39ms DONE
+ 2026_10_04_000002_add_category_photos .. 261.08ms DONE
+ 2026_10_04_000003_remove_hero_label .. 78.74ms DONE
+ 2026_10_10_000001_create_inventory_movements_table .. 79.14ms DONE
+ 2026_10_10_000002_create_buyer_conversations .. 199.34ms DONE
+ 2026_10_10_000003_create_support_faqs .. 54.51ms DONE
+ 2026_10_10_000004_add_buyer_chat_provider .. 74.06ms DONE
+ 2026_10_13_000001_add_logistics_operations .. 1s DONE
+ 2026_10_14_000001_add_hub_transfer_batches .. 2s DONE
+ 2026_10_14_000002_add_role_hiring_management .. 1s DONE
+ 2026_10_14_000003_add_mobile_scanner_api .. 343.17ms DONE
+ 2026_10_14_000004_add_gcash_purchases .. 2s DONE
+ 2026_10_16_000001_add_account_verification .. 8s DONE
+

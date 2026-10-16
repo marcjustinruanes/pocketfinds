@@ -115,7 +115,7 @@
       <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
         <div class="form-row">
           <label for="voucherCode">Voucher code</label>
-          <input class="auth-input" id="voucherCode" name="code" type="text" maxlength="30" placeholder="e.g. SHOP50" required style="text-transform:uppercase">
+          <input class="auth-input" id="voucherCode" name="code" type="text" minlength="4" maxlength="12" pattern="[A-Za-z0-9]{4,12}" placeholder="e.g. SHOP50" required style="text-transform:uppercase">
           @error('code')<span style="color:var(--danger);font-size:12px">{{ $message }}</span>@enderror
         </div>
         <div class="form-row">

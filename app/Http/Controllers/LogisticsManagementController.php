@@ -32,7 +32,7 @@ class LogisticsManagementController extends LogisticsController
 
     public function accounts(Request $request)
     {
-        $data = $request->validate(['search' => 'nullable|string|max:100', 'role' => 'nullable|in:rider,hub_staff', 'status' => 'nullable|in:pending,interview,approved,rejected,suspended']);
+        $data = $request->validate(['search' => 'nullable|string|max:100', 'role' => 'nullable|in:rider,hub_staff', 'status' => 'nullable|in:pending,pending_activation,interview,approved,rejected,suspended']);
         $accounts = $this->managedUsers()->with('logisticsHub')
             ->when($data['search'] ?? null, fn ($q, $s) => $q->where(fn ($q) => $q->where('username', 'like', '%'.$s.'%')->orWhere('given_names', 'like', '%'.$s.'%')->orWhere('last_name', 'like', '%'.$s.'%')))
             ->when($data['role'] ?? null, fn ($q, $role) => $role === 'rider' ? $q->where('account_type', 'rider') : $q->where('logistics_role', 'hub_staff'))
@@ -97,6 +97,9 @@ class LogisticsManagementController extends LogisticsController
 
     public function storeAccount(Request $request)
     {
+        if ($request->input('role') === 'rider') {
+            return app(RiderInvitationController::class)->store($request, app(\App\Services\RiderInvitations::class));
+        }
         $data = $this->accountData($request);
         $account = DB::transaction(function () use ($data) {
             $hub = $this->companyHubs()->where('is_operational', true)->lockForUpdate()->findOrFail($data['logistics_hub_id']);

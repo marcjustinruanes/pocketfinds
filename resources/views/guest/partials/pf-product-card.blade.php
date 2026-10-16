@@ -12,8 +12,9 @@
   </div>
   <div class="pf-product-body">
     <div class="pf-product-name">{{ $p['name'] }}</div>
+    @if($p['on_vacation'] ?? false)<span class="stamp">On vacation</span>@endif
     <div>
-      <span class="pf-product-price">₱{{ number_format($p['price']) }}</span>
+      <span class="pf-product-price">₱{{ number_format($p['price'], 2) }}@if(($p['price_max'] ?? $p['price']) > $p['price']) &ndash; {{ number_format($p['price_max'], 2) }}@endif</span>
       @if($p['old_price'] ?? null)<span class="pf-product-old-price">₱{{ number_format($p['old_price']) }}</span>@endif
     </div>
     @if(!($catalogCard ?? false) || ($p['rating'] ?? 0) > 0 || ($p['sold'] ?? 0) > 0)

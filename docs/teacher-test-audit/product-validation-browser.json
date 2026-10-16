@@ -1,0 +1,56 @@
+[
+  {
+    "cases": [
+      "SEL-PROD-002"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: all seven required-field omissions individually blocked with a field message; no product created, other values and uploaded preview retained.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:42:11.405Z"
+  },
+  {
+    "cases": [
+      "SEL-PROD-007"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: real JPEG padded to exactly 5 MiB accepted, saved and read back at full length; 5.1 MiB JPEG, DOCX and executable renamed JPG rejected before preview with JPG/PNG and 5 MB messages.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:42:11.405Z"
+  },
+  {
+    "cases": [
+      "SEL-PROD-003"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: exact 4/5/120/121 name and 19/20/3000/3001 description boundaries checked; only permitted lengths publish and persist exactly; rejected values show their limits.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:42:11.405Z"
+  },
+  {
+    "cases": [
+      "SEL-PROD-004"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: all eleven workbook price inputs checked; only 1.00, 1.01, 999999.99 and 1000000.00 publish at exact prices; three-decimal input rejected without rounding or a product write.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:42:11.405Z"
+  },
+  {
+    "cases": [
+      "SEL-PROD-005"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: only integer stocks 0, 1 and 99999 publish; -1, 100000 and 2.5 rejected; zero-stock buyer product shows Sold out and both purchase buttons disabled.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:42:11.405Z"
+  },
+  {
+    "cases": [
+      "SEL-PROD-006"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: zero images rejected, one saved, edit retained the first and saved eight more; attempted tenth photo shows the nine-photo limit and is not added.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:42:11.405Z"
+  }
+]

@@ -1,0 +1,63 @@
+[
+  {
+    "cases": [
+      "BUY-PDP-004"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: quantities 0, -1, 21, 1.5 and alphabetic typing show validation and do not change cart; 1 and 20 each add exactly that quantity in separate attempts; plus stops at available 20.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:24:49.294Z"
+  },
+  {
+    "cases": [
+      "BUY-CART-003"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: products from two sellers render in exactly two named store groups, with only the correct item in each group.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:24:49.294Z"
+  },
+  {
+    "cases": [
+      "BUY-CART-005"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: cart editor rejects 0 and 21, saves exactly 1 and 20, and displays Only 20 for an overstock quantity while preserving the previous value.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:24:49.294Z"
+  },
+  {
+    "cases": [
+      "BUY-CART-008"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: same two saved items/quantities survived logout/login and appeared unchanged in a separate browser context.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:24:49.294Z"
+  },
+  {
+    "cases": [
+      "BUY-CART-010"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: forged update and edit requests using Buyer 2 cart ID each return 404 and preserve all Buyer 2 cart rows.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:24:49.294Z"
+  },
+  {
+    "cases": [
+      "BUY-CART-009"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: confirmed deletion removed the line persistently and recalculated the remaining subtotal to 399.00.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:24:49.294Z"
+  },
+  {
+    "cases": [],
+    "status": "PASS",
+    "evidence": "Supporting browser check only: plain-product Buy Now selects that line, leaves unrelated item saved/unselected and opens explicit confirmation without creating an order. Matrix-specific BUY-PDP-007 is not certified by this check.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:24:49.294Z"
+  }
+]

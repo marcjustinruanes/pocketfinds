@@ -1,0 +1,18 @@
+{
+    "users": {
+        "rows": 20,
+        "sha256": "6431ca555c7a50dec3da082fa06a2cfa3e48d94305b7bc662314b5c2041ad788"
+    },
+    "products": {
+        "rows": 33,
+        "sha256": "6933c2fae43e487110c2a93f4911cf1157e5a18033cef147a40212087d80e724"
+    },
+    "orders": {
+        "rows": 9,
+        "sha256": "8a29db456e9e98b3fc18615403e9eb43fdd6c367b360e1f4f19b5e5d4c405e8e"
+    },
+    "shipments": {
+        "rows": 5,
+        "sha256": "b2863229f6282de6529a0098a845892be03fc637bd20a6e484b78a14e8227985"
+    }
+}

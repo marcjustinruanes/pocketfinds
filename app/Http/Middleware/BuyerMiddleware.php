@@ -15,6 +15,7 @@ class BuyerMiddleware
         if (auth()->user()->account_type !== 'buyer' && !auth()->user()->is_admin) {
             abort(403);
         }
+        abort_unless(auth()->user()->status === 'approved', 403, 'This account is not active.');
         return $next($request);
     }
 }

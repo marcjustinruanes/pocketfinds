@@ -1,0 +1,8 @@
+{
+    "driver": "mysql",
+    "host": "127.0.0.1",
+    "port": "3307",
+    "database": "pocketfinds",
+    "verified": true,
+    "server_version": "8.0.44"
+}

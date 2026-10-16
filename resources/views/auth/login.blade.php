@@ -78,6 +78,7 @@
                     <p>Enter your credentials to continue.</p>
                 </div>
 
+                @if(session('success'))<div class="auth-success" role="status">{{ session('success') }}</div>@endif
                 @if (!empty($errors) && $errors->any())
                     <div id="loginErrorBanner">
                     @if(session('accountStatus'))

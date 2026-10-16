@@ -1,0 +1,68 @@
+[
+  {
+    "cases": [
+      "SEL-PROF-001"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: saved specified store name/description/phone, 300 KB PNG logo and 1.8 MB JPG banner; refresh retained fields; separate buyer saw text/images and found new store name by search; other store unchanged.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:51:06.224Z"
+  },
+  {
+    "cases": [
+      "SEL-PROF-002",
+      "SEL-PROF-003"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: all six specified required fields block blank submission without writes; spaces-only store name rejected by server with required message. PHP direct requests additionally verify one field error per attempt and unchanged fields.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:51:06.224Z"
+  },
+  {
+    "cases": [
+      "SEL-PROF-004",
+      "SEL-PROF-005"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: three case/space variants of other store name rejected; 2/31-character names blocked and 3/30-character names saved exactly; original store unchanged on rejection.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:51:06.224Z"
+  },
+  {
+    "cases": [
+      "SEL-PROF-006"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: 500-character description saved and displayed in full to buyer; 501 rejected with limit message and prior text preserved.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:51:06.224Z"
+  },
+  {
+    "cases": [
+      "SEL-PROF-007"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: both Philippine phone formats saved canonically; all four invalid workbook inputs blocked without updates. PHP also verifies server validation.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:51:06.224Z"
+  },
+  {
+    "cases": [
+      "SEL-PROF-008"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL using actual multipart bodies: both logo/banner accepted valid 4.9 MB and 5.0 MB JPGs; rejected valid 5.1 MB JPG, DOCX, EXE and renamed executable with JPG/PNG and 5 MB message. Prior image remained accessible after every rejection/refresh.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:51:06.224Z"
+  },
+  {
+    "cases": [
+      "SEL-PROF-012",
+      "SEL-PROF-013"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: both script/HTML payloads displayed as literal text with no executable elements/dialogs. Tampered foreign store ID denied with 403 for read and save; both stores remained unchanged.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:51:06.224Z"
+  }
+]

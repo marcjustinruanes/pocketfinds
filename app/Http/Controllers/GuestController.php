@@ -3,16 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\FetchesProducts;
+use App\Http\Controllers\Concerns\LoadsStorefront;
 use App\Models\Category;
 use App\Models\Product;
-use App\Models\Review;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class GuestController extends Controller
 {
     use FetchesProducts;
-    use \App\Http\Controllers\Concerns\LoadsStorefront;
+    use LoadsStorefront;
 
     public function home(Request $request)
     {
@@ -36,17 +37,21 @@ class GuestController extends Controller
             'Cache-Control' => 'public, max-age=86400',
         ])->setEtag($category->image_sha256);
         $response->isNotModified($request);
+
         return $response;
     }
 
     public function product($id)
     {
-        $p = Product::with(['seller', 'category'])->where('id', $id)->where('status', 'active')->sellerApproved()->firstOrFail();
+        $p = Product::with(['seller', 'category'])->where('id', $id)->where('status', 'active')->sellerApproved()->first();
+        if (! $p) {
+            return response()->view('product-unavailable', [], 404);
+        }
         $product = $this->mapProduct($p);
 
         $shopProducts = Product::with(['seller', 'category'])
             ->where('seller_id', $p->seller_id)->where('status', 'active')->sellerApproved()->where('id', '!=', $id)
-            ->limit(6)->get()->map(fn($r) => $this->mapProduct($r))->all();
+            ->limit(6)->get()->map(fn ($r) => $this->mapProduct($r))->all();
 
         $sellerSold = $product['sold'] + collect($shopProducts)->sum('sold');
 
@@ -61,40 +66,41 @@ class GuestController extends Controller
             ->when($titleTerms->isNotEmpty(), function ($query) use ($titleTerms) {
                 $query->where(function ($matches) use ($titleTerms) {
                     foreach ($titleTerms as $term) {
-                        $matches->orWhere('name', 'like', '%' . $term . '%');
+                        $matches->orWhere('name', 'like', '%'.$term.'%');
                     }
                 });
             }, fn ($query) => $query->whereRaw('1 = 0'))
             ->limit(8)
             ->get()
-            ->map(fn($r) => $this->mapProduct($r))
+            ->map(fn ($r) => $this->mapProduct($r))
             ->all();
 
         $shop = null;
         $announcement = $this->guestAnnouncement();
+
         return view('guest.product', compact('product', 'shop', 'related', 'shopProducts', 'announcement', 'sellerSold'));
     }
 
     public function shop($slug)
     {
-        $seller = \App\Models\User::where('username', $slug)->where('account_type', 'seller')->firstOrFail();
-        $items  = Product::with(['seller', 'category'])
-            ->where('seller_id', $seller->id)->where('status', 'active')->sellerApproved()
-            ->get()->map(fn($p) => $this->mapProduct($p))->all();
+        $seller = User::where('username', $slug)->where('account_type', 'seller')->firstOrFail();
+        [$storeCategories, $items] = $this->storeCategoryData($seller);
 
         $shop = [
-            'name'      => $seller->business_name ?? ($seller->given_names . ' ' . $seller->last_name),
-            'initial'   => strtoupper(substr($seller->given_names, 0, 1)),
-            'photo'     => $seller->shopPhotoUrl(),
-            'rating'    => 0,
-            'products'  => count($items),
-            'sales'     => '0',
-            'joined'    => $seller->created_at->format('M Y'),
-            'desc'      => '',
+            'name' => $seller->business_name ?? ($seller->given_names.' '.$seller->last_name),
+            'initial' => strtoupper(substr($seller->given_names, 0, 1)),
+            'photo' => $seller->shopPhotoUrl(),
+            'rating' => 0,
+            'products' => count($items),
+            'sales' => '0',
+            'joined' => $seller->created_at->format('M Y'),
+            'desc' => $seller->store_description ?? '',
+            'banner' => $seller->store_banner ? Storage::disk('profile_images')->url($seller->store_banner) : null,
             'followers' => $seller->followers()->count(),
         ];
 
         $announcement = $this->guestAnnouncement();
-        return view('guest.shop', compact('shop', 'items', 'slug', 'announcement'));
+
+        return view('guest.shop', compact('shop', 'items', 'slug', 'announcement', 'storeCategories'));
     }
 }

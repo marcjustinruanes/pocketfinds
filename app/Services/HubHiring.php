@@ -14,6 +14,19 @@ class HubHiring
 {
     private ?User $registering = null;
 
+    /** The invitation service has checked the token; retain the shared hub capacity lock. */
+    public function activateInvitation(User $user): void
+    {
+        abort_unless($user->account_type === 'rider' && $user->status === 'pending_activation', 422);
+        $this->registering = $user;
+        try {
+            $user->status = 'approved';
+            $user->save();
+        } finally {
+            $this->registering = null;
+        }
+    }
+
     public function role(User $u): ?string
     {
         if ($u->is_admin) {

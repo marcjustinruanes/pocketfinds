@@ -39,7 +39,7 @@
             <div class="cart-items">
             @foreach($shopItems as $item)
               <div class="cart-item">
-                <input class="cart-select" type="checkbox" aria-label="Select {{ $item['name'] }}" checked data-price="{{ $item['price'] }}" data-qty="{{ $item['qty'] }}" data-shop="{{ $item['seller_slug'] }}">
+                <input class="cart-select" type="checkbox" aria-label="Select {{ $item['name'] }}" @checked(! $item['unavailable_reason'] && (!request()->filled('checkout_item') || request('checkout_item') === $item['key'])) @disabled($item['unavailable_reason']) data-price="{{ $item['price'] }}" data-qty="{{ $item['qty'] }}" data-shop="{{ $item['seller_slug'] }}">
                 <div class="cart-item-image">
                   @if(filled($item['img']))
                     <img src="{{ $item['img'] }}" alt="{{ $item['name'] }}">
@@ -49,6 +49,9 @@
                 </div>
                 <div style="min-width:0">
                   <a class="cart-item-name" href="{{ route('buyer.product', $item['product_id']) }}">{{ $item['name'] }}</a>
+                  @if($item['unavailable_reason'])
+                    <div class="cart-item-unavailable" role="status">{{ $item['unavailable_reason'] }}</div>
+                  @endif
                   @if($item['variation_value'])
                     <div class="cart-item-variant">{{ $item['variation_value'] }}</div>
                   @endif
@@ -347,7 +350,7 @@
 @push('head')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  const itemChecks = [...document.querySelectorAll('.cart-select')];
+  const itemChecks = [...document.querySelectorAll('.cart-select:not(:disabled)')];
   const shopChecks = [...document.querySelectorAll('.cart-shop-select')];
   const selectAll = document.getElementById('cartSelectAll');
   const checkoutButton = document.getElementById('checkoutButton');
@@ -391,7 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let shipping = 0;
     const selectedShops = new Set();
     document.querySelectorAll('.cart-shop').forEach(shop => {
-      const hasSelected = [...shop.querySelectorAll('.cart-select')].some(input => input.checked);
+      const hasSelected = [...shop.querySelectorAll('.cart-select:not(:disabled)')].some(input => input.checked);
       if (hasSelected) {
         shipping += Number(shop.dataset.shippingFee || 0);
         selectedShops.add(shop.dataset.shopSlug);
@@ -452,12 +455,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dockButton) dockButton.disabled = checkoutButton.disabled;
 
     shopChecks.forEach(check => {
-      const shopItems = [...check.closest('.cart-shop').querySelectorAll('.cart-select')];
+      const shopItems = [...check.closest('.cart-shop').querySelectorAll('.cart-select:not(:disabled)')];
       const selectedCount = shopItems.filter(item => item.checked).length;
-      check.checked = selectedCount === shopItems.length;
+      check.checked = shopItems.length > 0 && selectedCount === shopItems.length;
+      check.disabled = shopItems.length === 0;
       check.indeterminate = selectedCount > 0 && selectedCount < shopItems.length;
     });
-    selectAll.checked = selected.length === itemChecks.length;
+    selectAll.checked = itemChecks.length > 0 && selected.length === itemChecks.length;
+    selectAll.disabled = itemChecks.length === 0;
     selectAll.indeterminate = selected.length > 0 && selected.length < itemChecks.length;
   }
   window.cartRefreshSummary = refreshSummary;
@@ -510,7 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   itemChecks.forEach(input => input.addEventListener('change', () => { refreshSummary(); revalidateAppliedVoucher(); }));
   shopChecks.forEach(input => input.addEventListener('change', () => {
-    input.closest('.cart-shop').querySelectorAll('.cart-select').forEach(check => check.checked = input.checked);
+    input.closest('.cart-shop').querySelectorAll('.cart-select:not(:disabled)').forEach(check => check.checked = input.checked);
     refreshSummary();
     revalidateAppliedVoucher();
   }));
@@ -559,24 +564,28 @@ document.addEventListener('DOMContentLoaded', () => {
       row.className = 'pd-opt-row';
 
       (variation.options || []).forEach(opt => {
+        const optionGroup = opt.group || variation.name;
         const inStock = (opt.stock ?? 0) > 0;
-        const isActive = !matched && variation.name === currentGroup && opt.value === currentValue;
+        const isActive = !matched && optionGroup === currentGroup && opt.value === currentValue;
         if (isActive) matched = true;
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'pd-opt-btn' + (isActive ? ' active' : '');
-        btn.dataset.group = variation.name;
+        btn.dataset.group = optionGroup;
         btn.dataset.value = opt.value;
         btn.dataset.stock = opt.stock ?? 0;
         if (!inStock) { btn.disabled = true; btn.style.opacity = '.4'; btn.style.cursor = 'not-allowed'; }
-        btn.innerHTML = opt.value + (inStock
+        btn.textContent = opt.value;
+        const stockLabel = document.createElement('span');
+        stockLabel.innerHTML = (inStock
           ? `<span style="font-size:10px;color:var(--muted);display:block">${opt.stock} left</span>`
           : `<span style="font-size:10px;color:var(--danger);display:block">Out of stock</span>`);
+        btn.append(stockLabel);
         btn.addEventListener('click', () => {
           container.querySelectorAll('.pd-opt-btn').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
           document.getElementById('editValue').value = opt.value;
-          document.getElementById('editVariationGroup').value = variation.name;
+          document.getElementById('editVariationGroup').value = optionGroup;
           setEditQtyMax(opt.stock ?? 0);
         });
         row.appendChild(btn);
@@ -969,6 +978,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   refreshSummary();
+  if (window.location.search.includes('checkout_item=') && !checkoutButton.disabled) {
+    requestAnimationFrame(() => checkoutButton.click());
+  }
 });
 
 </script>

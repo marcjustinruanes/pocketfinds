@@ -236,11 +236,14 @@ class LogisticsAuthorizationTest extends TestCase
 
     public function test_role_specific_account_creation_forms_and_endpoints_keep_riders_and_staff_separate(): void
     {
+        (require database_path('migrations/2026_10_16_000001_add_account_verification.php'))->up();
+        Mail::fake();
+        \Illuminate\Support\Facades\Storage::fake('public');
         $hub = $this->hub();
         $admin = $this->user($hub, 'logistics_admin');
         $this->actingAs($admin)->get('/logistics/accounts?role=rider')->assertOk()
-            ->assertSee('name="role" value="rider"', false)->assertSee('/logistics/riders/accounts', false)
-            ->assertSee('name="vehicle_type"', false);
+            ->assertSee('/logistics/riders/create', false)->assertDontSee('name="password"', false);
+        $this->get('/logistics/riders/create')->assertOk()->assertSee('name="license_file"', false)->assertSee('name="vehicle_type"', false);
         $this->get('/logistics/accounts?role=hub_staff')->assertOk()
             ->assertSee('name="role" value="hub_staff"', false)->assertSee('/logistics/staff/accounts', false)
             ->assertDontSee('name="vehicle_type"', false);
@@ -254,6 +257,10 @@ class LogisticsAuthorizationTest extends TestCase
         $this->assertTrue(User::where('username', 'specific_staff')->firstOrFail()->isHubStaff());
         $data = array_merge($data, ['role' => 'rider', 'username' => 'specific_rider', 'email' => 'specific_rider@example.test',
             'vehicle_type' => 'four_wheels', 'vehicle_ownership' => 'own']);
+        $data += ['license_number' => 'N01-23-456789', 'license_expiry' => '2030-01-01', 'plate_number' => 'SPECIFIC',
+            'license_file' => \Illuminate\Http\UploadedFile::fake()->image('license.jpg'), 'or_cr_file' => \Illuminate\Http\UploadedFile::fake()->image('or-cr.jpg')];
+        unset($data['password'], $data['password_confirmation'], $data['status']);
+        $data['contact_no'] = '09123456788';
         $this->postJson('/logistics/staff/accounts', $data)->assertUnprocessable()->assertJsonValidationErrors('role');
         $this->postJson('/logistics/riders/accounts', array_diff_key($data, ['vehicle_type' => true]))
             ->assertUnprocessable()->assertJsonValidationErrors('vehicle_type');
@@ -262,7 +269,7 @@ class LogisticsAuthorizationTest extends TestCase
         $this->assertSame('rider', $rider->account_type);
         $this->assertFalse($rider->is_logistics);
         $this->assertSame('four_wheels', $rider->vehicle_type);
-        $this->get('/logistics/riders?status=pending')->assertSee('specific_rider@example.test')->assertDontSee('specific_staff@example.test');
+        $this->get('/logistics/riders?status=pending_activation')->assertSee('specific_rider@example.test')->assertDontSee('specific_staff@example.test');
         $this->get('/logistics/staff?status=pending')->assertSee('specific_staff@example.test')->assertDontSee('specific_rider@example.test');
         $this->actingAs($this->user($hub))->postJson('/logistics/riders/accounts', $data)->assertForbidden();
         $this->postJson('/logistics/staff/accounts', $data)->assertForbidden();
@@ -454,11 +461,13 @@ class LogisticsAuthorizationTest extends TestCase
         $this->user($hub, 'logistics_admin');
         $response = $this->postJson('/register', ['account_type' => 'rider', 'auth_method' => 'manual', 'business_name' => 'Alpha', 'logistics_hub_id' => $hub->id,
             'vehicle_type' => 'two_wheels', 'vehicle_ownership' => 'own', 'license_number' => 'AUDIT-LICENSE']);
-        $response->assertUnprocessable()->assertJsonStructure(['errors' => ['logistics_hub_id']]);
+        $response->assertForbidden();
     }
 
-    public function test_rider_creation_approval_activation_suspension_and_hub_move(): void
+    public function test_rider_invitation_activation_suspension_and_hub_move(): void
     {
+        (require database_path('migrations/2026_10_16_000001_add_account_verification.php'))->up();
+        \Illuminate\Support\Facades\Storage::fake('public');
         Mail::fake();
         $hub = $this->hub();
         $next = $this->hub('Alpha', 'Pila');
@@ -466,10 +475,15 @@ class LogisticsAuthorizationTest extends TestCase
         $data = ['role' => 'rider', 'username' => 'audit_rider', 'email' => 'audit_rider@example.test', 'given_names' => 'Audit', 'last_name' => 'Rider', 'sex' => 'female',
             'birthday' => '2000-01-01', 'contact_no' => '09123456789', 'barangay' => 'Test', 'password' => 'AuditPassword!123', 'password_confirmation' => 'AuditPassword!123',
             'status' => 'pending', 'logistics_hub_id' => $hub->id, 'vehicle_type' => 'two_wheels', 'vehicle_ownership' => 'own'];
+        $data += ['license_number' => 'N01-23-456789', 'license_expiry' => '2030-01-01', 'plate_number' => 'AUDIT',
+            'license_file' => \Illuminate\Http\UploadedFile::fake()->image('license.jpg'), 'or_cr_file' => \Illuminate\Http\UploadedFile::fake()->image('or-cr.jpg')];
+        unset($data['password'], $data['password_confirmation'], $data['status']);
         $this->actingAs($admin)->post('/logistics/accounts', $data)->assertRedirect();
+        $mail = Mail::sent(\App\Mail\RiderActivation::class)->last();
+        $this->postJson(route('rider.activation.submit', ['user' => $mail->rider->id, 'token' => $mail->token]), ['password' => 'Rider@2026', 'password_confirmation' => 'Rider@2026'])->assertOk();
         $rider = User::where('username', 'audit_rider')->firstOrFail();
         $rider->update(['id_file' => 'id.png', 'id_type_id' => 1, 'selfie_file' => 'selfie.png', 'license_file' => 'license.png', 'license_number' => 'audit-license', 'license_expiry' => '2030-01-01', 'vehicle_brand' => 'Test', 'vehicle_model' => 'Test', 'plate_number' => 'AUDIT', 'or_file' => 'or.png', 'cr_file' => 'cr.png']);
-        foreach (['approve' => 'approved', 'suspend' => 'suspended', 'activate' => 'approved'] as $action => $status) {
+        foreach (['suspend' => 'suspended', 'activate' => 'approved'] as $action => $status) {
             $this->patch('/logistics/riders/'.$rider->id.'/'.$action)->assertRedirect();
             $this->assertSame($status, $rider->fresh()->status);
         }

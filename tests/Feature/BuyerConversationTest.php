@@ -29,7 +29,7 @@ class BuyerConversationTest extends TestCase
 
     private function buyer(int $id): User
     {
-        return (new User(['account_type' => 'buyer', 'is_admin' => false]))->forceFill(['id' => $id]);
+        return (new User(['account_type' => 'buyer', 'is_admin' => false, 'status' => 'approved']))->forceFill(['id' => $id]);
     }
 
     private function base(): string { return route('buyer.assistant.conversations'); }

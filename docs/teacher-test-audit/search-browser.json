@@ -1,0 +1,83 @@
+[
+  {
+    "cases": [
+      "BUY-SRCH-001"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: browsed every page of Home & Living; visible IDs exactly match all active fixture products in that category, including P-02; other-category and inactive/draft items excluded.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:56:01.216Z"
+  },
+  {
+    "cases": [
+      "BUY-SRCH-003"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: exact, partial, uppercase and padded workbook searches all returned Rattan Fruit Basket.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:56:01.216Z"
+  },
+  {
+    "cases": [
+      "BUY-SRCH-004"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: typo produced a usable Rattan Fruit Basket suggestion; following it found P-02; zzqxw returned a clear empty state with HTTP 200.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:56:01.216Z"
+  },
+  {
+    "cases": [
+      "BUY-SRCH-005"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: all four workbook injection/special-character searches returned no products and escaped their literal input; no dialog, script execution or page error occurred.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:56:01.216Z"
+  },
+  {
+    "cases": [
+      "BUY-SRCH-006"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: empty and spaces-only queries displayed normal listings without errors.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:56:01.216Z"
+  },
+  {
+    "cases": [
+      "BUY-SRCH-007"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: all three workbook ranges use inclusive endpoints; equal 450 bounds return P-02 only; reversed range reports validation without applying it, negative min is blocked by the form.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:56:01.216Z"
+  },
+  {
+    "cases": [
+      "BUY-SRCH-008"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: rating 4+, Home & Living and Metro Manila intersect to P-02 only; independently clearing location, rating and category each widened results and retained P-02.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:56:01.216Z"
+  },
+  {
+    "cases": [
+      "BUY-SRCH-009"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: low/high price, latest and completed-unit best-selling order checked across two pages; all active category IDs occur exactly once; Previous retains category/sort.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:56:01.216Z"
+  },
+  {
+    "cases": [
+      "BUY-SRCH-010"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: inactive, draft and actually deleted products absent from exact search, category and store; all three direct product URLs return 404.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:56:01.216Z"
+  }
+]

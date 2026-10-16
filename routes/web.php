@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminAssistantController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AccountRegistrationController;
 use App\Http\Controllers\BuyerAssistantController;
 use App\Http\Controllers\BuyerController;
 use App\Http\Controllers\BuyerConversationController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\LogisticsManagementController;
 use App\Http\Controllers\PhoneScannerController;
 use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\RiderController;
+use App\Http\Controllers\RiderInvitationController;
 use App\Http\Controllers\SellerController;
 use App\Http\Controllers\SocialAuthController;
 use App\Http\Controllers\SupportController;
@@ -33,6 +35,8 @@ Route::get('/assistant', [GuestAssistantController::class, 'history'])->middlewa
 Route::post('/assistant', [GuestAssistantController::class, 'send'])->middleware('throttle:6,1')->name('guest.assistant.send');
 Route::delete('/assistant', [GuestAssistantController::class, 'clear'])->middleware('throttle:10,1')->name('guest.assistant.clear');
 Route::get('/categories/{id}/image', [GuestController::class, 'categoryImage'])->whereNumber('id')->name('guest.category-image');
+Route::get('/locations/{path}', [\App\Http\Controllers\LocationController::class, 'index'])
+    ->where('path', '(regions|provinces|cities-municipalities)(/[0-9]{9}/(provinces|cities-municipalities|barangays))?')->name('locations');
 Route::get('/product/{id}', [GuestController::class, 'product'])->name('guest.product');
 Route::get('/shop/{slug}', [GuestController::class, 'shop'])->name('guest.shop');
 // Sends the message itself via the server — unlike a mailto: link, this works the
@@ -127,20 +131,31 @@ Route::middleware('web')->group(function () {
                 : null,
         ]);
     };
-    Route::get('/register/buyer', fn () => $registerView('auth.register-buyer', 'buyer'))->name('register.buyer');
-    Route::get('/register/seller', fn () => $registerView('auth.register-seller', 'seller'))->name('register.seller');
-    Route::get('/register/rider', fn () => $registerView('auth.register-rider', 'rider'))->name('register.rider');
+    Route::get('/register/buyer', [AccountRegistrationController::class, 'form'])->defaults('role', 'buyer')->name('register.buyer');
+    Route::get('/register/seller', [AccountRegistrationController::class, 'form'])->defaults('role', 'seller')->name('register.seller');
+    Route::get('/register/rider', fn () => abort(403, 'Rider accounts are created by their logistics company.'))->name('register.rider');
     // Logistics company registration (founding a new company — always "found" mode).
-    Route::get('/register/logistics', fn () => $registerView('auth.register-logistics', 'logistics'))->name('register.logistics');
+    Route::get('/register/logistics', [AccountRegistrationController::class, 'form'])->defaults('role', 'logistics')->name('register.logistics');
     // Hub staff registration (joining an existing company — always "join" mode).
     Route::get('/register/logistics-staff', fn () => $registerView('auth.register-logistics-staff', 'logistics-staff'))->name('register.logistics-staff');
-    Route::post('/register', [RegisterController::class, 'store'])->name('register.store');
+    Route::post('/register', [AccountRegistrationController::class, 'store'])->name('register.store');
+    Route::get('/register/verify', [AccountRegistrationController::class, 'verificationPage'])->name('registration.verify');
+    Route::get('/register/terms/{role}', function (string $role) {
+        abort_unless(in_array($role, ['buyer', 'seller', 'logistics']), 404);
+
+        return view('auth.registration-terms', ['policies' => Policy::whereIn('type', ['terms_and_conditions', 'privacy_policy'])
+            ->where(fn ($query) => $query->where('account_type', $role)->orWhereNull('account_type'))->get()]);
+    })->name('registration.terms');
     // Legacy shared buyer/seller page — kept so any old bookmark/link still resolves,
     // but nothing in the app links here anymore; use register.buyer/register.seller above.
-    Route::get('/register', fn () => $registerView('auth.register', in_array(request('type'), ['buyer', 'seller'], true) ? request('type') : 'buyer'))->name('register');
+    Route::get('/register', fn () => redirect()->route(request('type') === 'seller' ? 'register.seller' : 'register.buyer'))->name('register');
     Route::get('/register/categories', [RegisterController::class, 'categories'])->name('register.categories');
-    Route::post('/register/send-otp', [RegisterController::class, 'sendOtp'])->name('register.send-otp');
-    Route::post('/register/verify-otp', [RegisterController::class, 'verifyOtp'])->name('register.verify-otp');
+    Route::post('/register/send-otp', [AccountRegistrationController::class, 'resend'])->middleware('throttle:6,1')->name('register.send-otp');
+    Route::post('/register/verify-otp', [AccountRegistrationController::class, 'verify'])->middleware('throttle:20,1')->name('register.verify-otp');
+    Route::post('/register/staff/send-otp', [RegisterController::class, 'sendOtp'])->middleware('throttle:6,1');
+    Route::post('/register/staff/verify-otp', [RegisterController::class, 'verifyOtp'])->middleware('throttle:20,1');
+    Route::get('/rider/activate/{user}/{token}', [RiderInvitationController::class, 'activation'])->where('token', '[A-Za-z0-9]{64}')->name('rider.activation');
+    Route::post('/rider/activate/{user}/{token}', [RiderInvitationController::class, 'activate'])->where('token', '[A-Za-z0-9]{64}')->middleware('throttle:20,1')->name('rider.activation.submit');
     Route::get('/register/check-username', [RegisterController::class, 'checkUsername'])->name('register.check-username');
     Route::get('/register/check-business-name', [RegisterController::class, 'checkBusinessName'])->name('register.check-business-name');
     Route::get('/register/check-license', [RegisterController::class, 'checkLicenseNumber'])->name('register.check-license');
@@ -168,10 +183,16 @@ Route::prefix('buyer')->name('buyer.')->middleware(['web', 'buyer'])->group(func
     Route::get('/product/{id}', [BuyerController::class, 'product'])->name('product');
     Route::post('/product/report', [BuyerController::class, 'reportProduct'])->name('product.report');
     Route::get('/shop/{slug}', [BuyerController::class, 'shop'])->name('shop');
+    Route::get('/wishlist', [\App\Http\Controllers\BuyerSavedController::class, 'index'])->name('wishlist');
+    Route::put('/wishlist/{product}', [\App\Http\Controllers\BuyerSavedController::class, 'save'])->whereUuid('product')->name('wishlist.save');
+    Route::get('/following', [\App\Http\Controllers\BuyerSavedController::class, 'following'])->name('following');
     Route::post('/shop/{slug}/follow', [BuyerController::class, 'followShop'])->name('shop.follow');
     Route::get('/cart', [BuyerController::class, 'cart'])->name('cart');
     Route::post('/checkout', [BuyerController::class, 'checkout'])->name('checkout');
     Route::post('/addresses', [BuyerController::class, 'storeAddress'])->name('addresses.store');
+    Route::get('/addresses/{address}', [BuyerController::class, 'showAddress'])->name('addresses.show');
+    Route::patch('/addresses/{address}', [BuyerController::class, 'editAddress'])->name('addresses.update');
+    Route::patch('/addresses/{address}/default', [BuyerController::class, 'defaultAddress'])->name('addresses.default');
     Route::delete('/addresses/{address}', [BuyerController::class, 'destroyAddress'])->name('addresses.destroy');
     Route::post('/cart/preview-voucher', [BuyerController::class, 'previewVoucher'])->name('cart.preview-voucher');
     Route::post('/cart/add', [BuyerController::class, 'cartAdd'])->name('cart.add');
@@ -192,6 +213,8 @@ Route::prefix('buyer')->name('buyer.')->middleware(['web', 'buyer'])->group(func
     Route::get('/announcements/{id}', [BuyerController::class, 'showAnnouncement'])->name('announcements.show');
     Route::get('/account', [BuyerController::class, 'account'])->name('account');
     Route::post('/account/profile', [BuyerController::class, 'updateProfile'])->name('account.profile');
+    Route::post('/account/contact/{field}/send', [\App\Http\Controllers\BuyerContactController::class, 'send'])->middleware('throttle:6,1')->name('account.contact.send');
+    Route::post('/account/contact/{field}/verify', [\App\Http\Controllers\BuyerContactController::class, 'verify'])->middleware('throttle:20,1')->name('account.contact.verify');
     Route::post('/account/address', [BuyerController::class, 'updateAddress'])->name('account.address');
     Route::post('/account/password', [BuyerController::class, 'passwordUpdate'])->name('account.password');
     Route::post('/payment-accounts/send-code', [BuyerController::class, 'sendPaymentAccountCode'])->name('payment-accounts.send-code');
@@ -211,6 +234,9 @@ Route::prefix('seller')->name('seller.')->middleware(['web', 'seller'])->group(f
     Route::patch('/orders/{order}/confirm-pickup', [SellerController::class, 'confirmPickup'])->name('orders.confirm-pickup');
     Route::get('/inventory', [SellerController::class, 'inventory'])->name('inventory');
     Route::post('/inventory', [SellerController::class, 'storeProduct'])->name('inventory.store');
+    Route::post('/inventory/bulk', [SellerController::class, 'bulkProducts'])->name('inventory.bulk');
+    Route::post('/inventory/{product}/duplicate', [SellerController::class, 'duplicateProduct'])->name('inventory.duplicate');
+    Route::patch('/inventory/{product}/stock', [SellerController::class, 'setStock'])->name('inventory.stock');
     Route::patch('/inventory/{product}', [SellerController::class, 'updateProduct'])->name('inventory.update');
     Route::delete('/inventory/{product}', [SellerController::class, 'destroyProduct'])->name('inventory.destroy');
     Route::patch('/inventory/{product}/archive', [SellerController::class, 'archiveProduct'])->name('inventory.archive');
@@ -234,7 +260,14 @@ Route::prefix('seller')->name('seller.')->middleware(['web', 'seller'])->group(f
     Route::post('/account/profile', [SellerController::class, 'updateProfile'])->name('account.profile');
     Route::post('/account/address', [SellerController::class, 'updateAddress'])->name('account.address');
     Route::post('/account/shop', [SellerController::class, 'updateShop'])->name('account.shop');
+    Route::post('/account/vacation', [SellerController::class, 'vacation'])->name('account.vacation');
     Route::post('/account/shop-photo', [SellerController::class, 'updateShopPhoto'])->name('account.shop-photo');
+    Route::get('/store-categories', [\App\Http\Controllers\StoreCategoryController::class, 'index'])->name('store-categories');
+    Route::post('/store-categories', [\App\Http\Controllers\StoreCategoryController::class, 'store'])->name('store-categories.store');
+    Route::post('/store-categories/reorder', [\App\Http\Controllers\StoreCategoryController::class, 'reorder'])->name('store-categories.reorder');
+    Route::patch('/store-categories/{storeCategory}', [\App\Http\Controllers\StoreCategoryController::class, 'update'])->name('store-categories.update');
+    Route::post('/store-categories/{storeCategory}/products', [\App\Http\Controllers\StoreCategoryController::class, 'assign'])->name('store-categories.products');
+    Route::delete('/store-categories/{storeCategory}', [\App\Http\Controllers\StoreCategoryController::class, 'destroy'])->name('store-categories.destroy');
     Route::get('/vouchers', [SellerController::class, 'vouchers'])->name('vouchers');
     Route::post('/vouchers', [SellerController::class, 'storeVoucher'])->name('vouchers.store');
     Route::patch('/vouchers/{voucher}', [SellerController::class, 'updateVoucher'])->name('vouchers.update');
@@ -381,6 +414,9 @@ Route::prefix('logistics')->name('logistics.')->middleware(['logistics', 'logist
         Route::patch('/hubs/{id}', [LogisticsManagementController::class, 'updateHub'])->name('hubs.update');
         Route::patch('/vehicles/{id}', [LogisticsManagementController::class, 'updateVehicle'])->name('vehicles.update');
         Route::get('/riders', [LogisticsController::class, 'riders'])->name('riders');
+        Route::get('/riders/create', [RiderInvitationController::class, 'create'])->name('riders.create');
+        Route::post('/riders', [RiderInvitationController::class, 'store'])->name('riders.store');
+        Route::post('/riders/{user}/resend-invitation', [RiderInvitationController::class, 'resend'])->middleware('throttle:6,1')->name('riders.resend-invitation');
         Route::patch('/riders/{id}/approve', [LogisticsController::class, 'approveRider'])->name('riders.approve');
         Route::patch('/riders/{id}/reject', [LogisticsController::class, 'rejectRider'])->name('riders.reject');
         Route::patch('/riders/{id}/activate', [LogisticsController::class, 'activateRider'])->name('riders.activate');

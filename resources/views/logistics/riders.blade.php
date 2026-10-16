@@ -4,6 +4,7 @@
 @section('page-sub', "Approve/disapprove courier applications, activate or suspend riders")
 
 @section('content')
+<a href="{{ route('logistics.riders.create') }}" class="btn btn-primary" style="margin-bottom:16px">Add rider</a>
 <a href="{{ route('logistics.accounts',['role'=>'rider']) }}" class="btn btn-outline" style="margin-bottom:16px">Create or edit accounts and hub assignments</a>
 @if(session('success'))<div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('success') }}</div>@endif
 
@@ -13,6 +14,7 @@
   </div>
   <div class="card-pad">
     <div data-tabs id="riderTabs">
+      <a class="tab {{ $status === 'pending_activation' ? 'active' : '' }}" href="{{ route('logistics.riders', ['status' => 'pending_activation']) }}">Pending activation <span class="tab-count">{{ $statusCounts['pending_activation'] ?? 0 }}</span></a>
       <a class="tab {{ $status === 'pending' ? 'active' : '' }}" href="{{ route('logistics.riders', ['status' => 'pending']) }}">Pending <span class="tab-count">{{ $statusCounts['pending'] ?? 0 }}</span></a>
       <a class="tab {{ $status === 'approved' ? 'active' : '' }}" href="{{ route('logistics.riders', ['status' => 'approved']) }}">Approved <span class="tab-count">{{ $statusCounts['approved'] ?? 0 }}</span></a>
       <a class="tab {{ $status === 'rejected' ? 'active' : '' }}" href="{{ route('logistics.riders', ['status' => 'rejected']) }}">Rejected <span class="tab-count">{{ $statusCounts['rejected'] ?? 0 }}</span></a>
@@ -36,9 +38,12 @@
             <td>{{ $rider->vehicle_type ? \Illuminate\Support\Str::title(str_replace('_', ' ', $rider->vehicle_type)) : '—' }}</td>
             <td class="mono">{{ $rider->vehicle_ownership === 'company' ? 'Company Vehicle' : ($rider->plate_number ?: '—') }}</td>
             <td class="mono">{{ $rider->created_at?->format('M d, Y') ?? '—' }}</td>
-            <td><span class="stamp stamp-{{ $rider->status }}">{{ ucfirst($rider->status) }}</span></td>
+            <td><span class="stamp stamp-{{ $rider->status }}">{{ ucfirst(str_replace('_', ' ', $rider->status)) }}</span></td>
             <td>
               <div class="row-actions">
+                @if($rider->status === 'pending_activation')
+                  <form method="POST" action="{{ route('logistics.riders.resend-invitation', $rider) }}">@csrf<button class="btn btn-sm btn-outline" type="submit">Resend invitation</button></form>
+                @endif
                 <button class="btn btn-sm btn-outline" data-modal-open="riderModal-{{ $rider->id }}">Review</button>
               </div>
             </td>

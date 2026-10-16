@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="Tests\Feature\HubHiringTest" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" tests="20" assertions="0" errors="20" failures="0" skipped="0" time="0.000000">
+    <testcase name="test_staff_requires_interview_and_records_each_decision" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="72" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="0" time="0.000000">
+      <error type="Error">Tests\Feature\HubHiringTest::test_staff_requires_interview_and_records_each_decision&#13;
+Error: Trait "Laravel\Sanctum\HasApiTokens" not found
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\app\Models\User.php:16
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:46
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:36</error>
+    </testcase>
+    <testcase name="test_platform_cannot_recruit_but_can_suspend_and_reactivate_personnel" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="89" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="0" time="0.000000">
+      <error type="Error">Tests\Feature\HubHiringTest::test_platform_cannot_recruit_but_can_suspend_and_reactivate_personnel&#13;
+Error: Trait "Laravel\Sanctum\HasApiTokens" not found
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\app\Models\User.php:16
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:46
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:36</error>
+    </testcase>
+    <testcase name="test_staff_early_rejection_requires_reason_and_preserves_reapplication" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="109" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="0" time="0.000000">
+      <error type="Error">Tests\Feature\HubHiringTest::test_staff_early_rejection_requires_reason_and_preserves_reapplication&#13;
+Error: Trait "Laravel\Sanctum\HasApiTokens" not found
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\app\Models\User.php:16
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:46
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:36</error>
+    </testcase>
+    <testcase name="test_generic_staff_creation_and_edits_cannot_establish_recruitment_states" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="124" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="0" time="0.000000">
+      <error type="Error">Tests\Feature\HubHiringTest::test_generic_staff_creation_and_edits_cannot_establish_recruitment_states&#13;
+Error: Trait "Laravel\Sanctum\HasApiTokens" not found
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\app\Models\User.php:16
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:46
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:36</error>
+    </testcase>
+    <testcase name="test_missing_approval_documents_and_stale_decisions_are_rejected" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="145" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="0" time="0.000000">
+      <error type="Error">Tests\Feature\HubHiringTest::test_missing_approval_documents_and_stale_decisions_are_rejected&#13;
+Error: Trait "Laravel\Sanctum\HasApiTokens" not found
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\app\Models\User.php:16
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:46
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:36</error>
+    </testcase>
+    <testcase name="test_switches_are_independent_and_audited_without_changing_legacy_value" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="170" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="0" time="0.000000">
+      <error type="Error">Tests\Feature\HubHiringTest::test_switches_are_independent_and_audited_without_changing_legacy_value&#13;
+Error: Trait "Laravel\Sanctum\HasApiTokens" not found
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\app\Models\User.php:16
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:46
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:36</error>
+    </testcase>
+    <testcase name="test_staff_switch_does_not_block_rider_or_change_other_settings" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="184" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="0" time="0.000000">
+      <error type="Error">Tests\Feature\HubHiringTest::test_staff_switch_does_not_block_rider_or_change_other_settings&#13;
+Error: Trait "Laravel\Sanctum\HasApiTokens" not found
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\app\Models\User.php:16
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:46
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:36</error>
+    </testcase>
+    <testcase name="test_settings_validate_values_scope_roles_and_stale_versions" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="192" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="0" time="0.000000">
+      <error type="Error">Tests\Feature\HubHiringTest::test_settings_validate_values_scope_roles_and_stale_versions&#13;
+Error: Trait "Laravel\Sanctum\HasApiTokens" not found
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\app\Models\User.php:16
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:46
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:36</error>
+    </testcase>
+    <testcase name="test_deadline_boundary_clear_and_closed_hub_are_server_rules" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="206" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="0" time="0.000000">
+      <error type="Error">Tests\Feature\HubHiringTest::test_deadline_boundary_clear_and_closed_hub_are_server_rules&#13;
+Error: Trait "Laravel\Sanctum\HasApiTokens" not found
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\app\Models\User.php:16
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:46
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:36</error>
+    </testcase>
+    <testcase name="test_only_approved_assigned_role_consumes_slots_and_zero_blocks_intake" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="222" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="0" time="0.000000">
+      <error type="Error">Tests\Feature\HubHiringTest::test_only_approved_assigned_role_consumes_slots_and_zero_blocks_intake&#13;
+Error: Trait "Laravel\Sanctum\HasApiTokens" not found
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\app\Models\User.php:16
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:46
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:36</error>
+    </testcase>
+    <testcase name="test_full_limits_protect_company_and_platform_approval_and_reactivation" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="237" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="0" time="0.000000">
+      <error type="Error">Tests\Feature\HubHiringTest::test_full_limits_protect_company_and_platform_approval_and_reactivation&#13;
+Error: Trait "Laravel\Sanctum\HasApiTokens" not found
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\app\Models\User.php:16
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:46
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:36</error>
+    </testcase>
+    <testcase name="test_pending_reviews_can_approve_after_intake_closes_when_capacity_remains" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="262" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="0" time="0.000000">
+      <error type="Error">Tests\Feature\HubHiringTest::test_pending_reviews_can_approve_after_intake_closes_when_capacity_remains&#13;
+Error: Trait "Laravel\Sanctum\HasApiTokens" not found
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\app\Models\User.php:16
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:46
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:36</error>
+    </testcase>
+    <testcase name="test_model_boundary_protects_direct_approved_creation_and_hub_moves" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="270" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="0" time="0.000000">
+      <error type="Error">Tests\Feature\HubHiringTest::test_model_boundary_protects_direct_approved_creation_and_hub_moves&#13;
+Error: Trait "Laravel\Sanctum\HasApiTokens" not found
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\app\Models\User.php:16
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:46
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:36</error>
+    </testcase>
+    <testcase name="test_reapplication_preserves_account_id_rejection_and_attempt_history" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="291" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="0" time="0.000000">
+      <error type="Error">Tests\Feature\HubHiringTest::test_reapplication_preserves_account_id_rejection_and_attempt_history&#13;
+Error: Trait "Laravel\Sanctum\HasApiTokens" not found
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\app\Models\User.php:16
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:46
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:36</error>
+    </testcase>
+    <testcase name="test_history_failure_rolls_back_account_and_uploaded_files" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="308" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="0" time="0.000000">
+      <error type="Error">Tests\Feature\HubHiringTest::test_history_failure_rolls_back_account_and_uploaded_files&#13;
+Error: Trait "Laravel\Sanctum\HasApiTokens" not found
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\app\Models\User.php:16
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:46
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:36</error>
+    </testcase>
+    <testcase name="test_management_creation_status_changes_and_moves_enforce_capacity" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="316" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="0" time="0.000000">
+      <error type="Error">Tests\Feature\HubHiringTest::test_management_creation_status_changes_and_moves_enforce_capacity&#13;
+Error: Trait "Laravel\Sanctum\HasApiTokens" not found
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\app\Models\User.php:16
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:46
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:36</error>
+    </testcase>
+    <testcase name="test_staff_fallback_ownership_and_vehicle_rules_remain_enforced" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="351" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="0" time="0.000000">
+      <error type="Error">Tests\Feature\HubHiringTest::test_staff_fallback_ownership_and_vehicle_rules_remain_enforced&#13;
+Error: Trait "Laravel\Sanctum\HasApiTokens" not found
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\app\Models\User.php:16
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:46
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:36</error>
+    </testcase>
+    <testcase name="test_final_intake_check_rejects_a_hub_closed_after_preliminary_validation" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="369" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="0" time="0.000000">
+      <error type="Error">Tests\Feature\HubHiringTest::test_final_intake_check_rejects_a_hub_closed_after_preliminary_validation&#13;
+Error: Trait "Laravel\Sanctum\HasApiTokens" not found
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\app\Models\User.php:16
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:46
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:36</error>
+    </testcase>
+    <testcase name="test_shared_registration_preserves_rejected_buyer_records_without_hiring_restrictions" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="385" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="0" time="0.000000">
+      <error type="Error">Tests\Feature\HubHiringTest::test_shared_registration_preserves_rejected_buyer_records_without_hiring_restrictions&#13;
+Error: Trait "Laravel\Sanctum\HasApiTokens" not found
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\app\Models\User.php:16
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:46
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:36</error>
+    </testcase>
+    <testcase name="test_hub_pagination_retains_search_and_company_isolation" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="398" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="0" time="0.000000">
+      <error type="Error">Tests\Feature\HubHiringTest::test_hub_pagination_retains_search_and_company_isolation&#13;
+Error: Trait "Laravel\Sanctum\HasApiTokens" not found
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\app\Models\User.php:16
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:46
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:36</error>
+    </testcase>
+  </testsuite>
+</testsuites>

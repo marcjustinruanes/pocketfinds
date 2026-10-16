@@ -46,6 +46,10 @@ class User extends Authenticatable
         // logistics-only settings
         'notify_new_requests', 'notify_unassigned_shipments', 'preferred_scanner',
         'theme', 'preferred_language',
+        'email_verified_at', 'region', 'seller_type', 'tin', 'sec_registration_no', 'postal_code', 'position', 'service_areas',
+        'dti_file', 'sec_file', 'bir_file', 'or_cr_file',
+        'is_on_vacation',
+        'store_description', 'store_banner',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -54,6 +58,8 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'service_areas' => 'array',
+            'is_on_vacation' => 'boolean',
             'password' => 'hashed',
             'birthday' => 'date',
             'suffix' => Suffix::class,

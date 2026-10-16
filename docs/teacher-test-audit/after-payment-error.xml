@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="Tests\Feature\GcashPurchaseTest" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\GcashPurchaseTest.php" tests="1" assertions="7" errors="0" failures="0" skipped="0" time="0.873031">
+    <testcase name="test_audit_failure_rolls_back_reservation_and_returns_sanitized_error" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\GcashPurchaseTest.php" line="681" class="Tests\Feature\GcashPurchaseTest" classname="Tests.Feature.GcashPurchaseTest" assertions="7" time="0.873031"/>
+  </testsuite>
+</testsuites>

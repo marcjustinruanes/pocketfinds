@@ -1,0 +1,45 @@
+{
+    "checked_at": "2026-10-16T09:08:52+00:00",
+    "external_email": {
+        "mailer": "smtp",
+        "smtp_host": "smtp.gmail.com",
+        "smtp_port": "465",
+        "username_configured": true,
+        "password_configured": true,
+        "from_is_placeholder": false,
+        "verified": false,
+        "needed": "A configured working mail transport and a user-designated test mailbox with inbox access; local mail-log tests do not establish external delivery."
+    },
+    "payments": {
+        "configured_methods": [
+            {
+                "name": "Cash on Delivery",
+                "type": "cod",
+                "is_active": true
+            },
+            {
+                "name": "GCash",
+                "type": "ewallet",
+                "is_active": true
+            },
+            {
+                "name": "BPI",
+                "type": "bank",
+                "is_active": true
+            },
+            {
+                "name": "PayMaya",
+                "type": "ewallet",
+                "is_active": true
+            }
+        ],
+        "external_provider_verified": false,
+        "needed": "A specified payment provider, sandbox merchant credentials, supported success/failure/cancel/refund scenarios, and a reachable verified webhook endpoint. Current GCash flow records manual payment proof; it does not establish provider charging or refunds."
+    },
+    "google_sign_in": {
+        "client_id_configured": true,
+        "client_secret_configured": true,
+        "verified": false,
+        "needed": "A designated Google test account and a permitted callback URL for end-to-end sign-in."
+    }
+}

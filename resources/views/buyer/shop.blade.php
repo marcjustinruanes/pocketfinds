@@ -11,6 +11,7 @@
 </a>
 
 {{-- Shop hero --}}
+@if($shop['banner'] ?? null)<img class="store-banner" src="{{ $shop['banner'] }}" alt="{{ $shop['name'] }} banner" style="display:block;width:100%;max-height:280px;object-fit:cover;margin-bottom:16px;border-radius:12px">@endif
 <div class="sp-hero">
   <div class="sp-avatar">@if($shop['photo'] ?? null)<img src="{{ $shop['photo'] }}" alt="{{ $shop['name'] }}">@else{{ $shop['initial'] }}@endif</div>
   <div class="sp-info">
@@ -56,6 +57,7 @@
 </div>
 
 {{-- Products --}}
+@include('components.store-category-navigation')
 <div class="sp-products-head">
   <span>All Products</span>
   <span class="sp-products-count">{{ count($items) }} item{{ count($items)!==1?'s':'' }}</span>

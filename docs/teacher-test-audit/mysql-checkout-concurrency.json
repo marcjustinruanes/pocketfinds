@@ -1,0 +1,23 @@
+{
+  "database": "pocketfinds_teacher_audit_20261016_032721",
+  "case": "SEL-INV-006",
+  "scope": "Two concurrent Laravel HTTP requests on MySQL; fictional isolated fixtures.",
+  "workers": [
+    {
+      "worker": 0,
+      "http_status": 302,
+      "error": "\"Audit Last Unit e8139c35690e\" just sold out.",
+      "orders": 0
+    },
+    {
+      "worker": 1,
+      "http_status": 302,
+      "error": null,
+      "orders": 1
+    }
+  ],
+  "remaining_stock": 0,
+  "orders": 1,
+  "remaining_cart_items": 1,
+  "status": "PASS"
+}

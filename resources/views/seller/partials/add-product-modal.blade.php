@@ -1,12 +1,16 @@
 <div class="modal-overlay" id="addProductModal">
   <div class="modal" style="max-width:620px;width:100%">
     <div class="modal-head">
-      <div><h3>Add Product</h3><p>Submit a product for admin review</p></div>
+      <div><h3>Add Product</h3><p>Publish your product or save a private draft</p></div>
       <button class="modal-close" data-modal-close>@include('seller.partials.icon',['name'=>'x','size'=>14])</button>
     </div>
     <form method="POST" action="{{ route('seller.inventory.store') }}" enctype="multipart/form-data" data-role="product-form">
       @csrf
+      <input type="hidden" name="creation_key" value="{{ old('creation_key', (string) \Illuminate\Support\Str::uuid()) }}">
       <div class="modal-body" style="max-height:70vh;overflow-y:auto;display:flex;flex-direction:column;gap:14px">
+        <div data-role="product-errors" role="alert" hidden></div>
+        <div class="form-row"><label>Platform Category *</label><select name="category_id" required><option value="">Choose category</option>@foreach($categories as $category)<option value="{{ $category->id }}" @selected((int)old('category_id', auth()->user()->category_id) === (int)$category->id)>{{ $category->name }}</option>@endforeach</select></div>
+        <div class="form-row"><label>Store categories (up to 3)</label><select name="store_category_ids[]" multiple>@foreach(\App\Models\StoreCategory::where('seller_id', auth()->id())->orderBy('position')->get() as $storeCategory)<option value="{{ $storeCategory->id }}">{{ $storeCategory->name }}</option>@endforeach</select></div>
 
         {{-- Images --}}
         <div class="form-row">
@@ -16,10 +20,10 @@
             <div data-role="img-placeholder" style="display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--muted)">
               @include('seller.partials.icon',['name'=>'image','size'=>26])
               <span style="font-size:12px">Click to upload or drag & drop (up to 9 photos)</span>
-              <span style="font-size:11px">JPG, PNG, WEBP — max 4MB each. First photo is the cover. Use this for a group shot (e.g. all colors together) — each variation option can also have its own photo below.</span>
+              <span style="font-size:11px">JPG, PNG — max 5MB each. First photo is the cover. Use this for a group shot (e.g. all colors together) — each variation option can also have its own photo below.</span>
             </div>
           </div>
-          <input type="file" data-role="images-input" name="images[]" accept="image/jpeg,image/png,image/webp" multiple style="display:none">
+          <input type="file" data-role="images-input" name="images[]" accept="image/jpeg,image/png" multiple style="display:none">
           @error('images')<span style="font-size:11px;color:var(--danger);margin-top:3px;display:block">{{ $message }}</span>@enderror
         </div>
 
@@ -44,14 +48,14 @@
         {{-- Name --}}
         <div class="form-row">
           <label>Product Name <span style="color:var(--danger)">*</span></label>
-          <input type="text" name="name" placeholder="e.g. Cotton T-Shirt" required value="{{ old('name') }}">
+          <input type="text" name="name" minlength="5" maxlength="120" placeholder="e.g. Cotton T-Shirt" required value="{{ old('name') }}">
         </div>
 
         {{-- Price + SKU --}}
         <div class="form-grid-2">
           <div class="form-row">
             <label>Price (₱) <span style="color:var(--danger)">*</span></label>
-            <input type="number" name="price" placeholder="0.00" min="0" step="0.01" required value="{{ old('price') }}">
+            <input type="number" name="price" placeholder="0.00" min="1" max="1000000" step="0.01" required value="{{ old('price') }}">
           </div>
           <div class="form-row">
             <label>SKU <span style="color:var(--muted);font-weight:400">(optional)</span></label>
@@ -65,8 +69,8 @@
 
         {{-- Description --}}
         <div class="form-row">
-          <label>Description <span style="color:var(--muted);font-weight:400">(optional)</span></label>
-          <textarea name="description" rows="2" placeholder="Brief description of the product…">{{ old('description') }}</textarea>
+          <label>Description <span style="color:var(--danger)">*</span></label>
+          <textarea name="description" minlength="20" maxlength="3000" required rows="2" placeholder="Brief description of the product…">{{ old('description') }}</textarea>
         </div>
 
         {{-- Divider --}}
@@ -96,9 +100,9 @@
           <div class="form-row">
             <label>Package Dimensions (cm) <span style="color:var(--muted);font-weight:400">(optional)</span></label>
             <div style="display:flex;gap:8px">
-              <input type="number" name="length_cm" placeholder="Length" min="0" step="0.1" value="{{ old('length_cm') }}">
-              <input type="number" name="width_cm" placeholder="Width" min="0" step="0.1" value="{{ old('width_cm') }}">
-              <input type="number" name="height_cm" placeholder="Height" min="0" step="0.1" value="{{ old('height_cm') }}">
+              <input type="number" name="length_cm" placeholder="Length" min="0.1" step="0.1" value="{{ old('length_cm') }}">
+              <input type="number" name="width_cm" placeholder="Width" min="0.1" step="0.1" value="{{ old('width_cm') }}">
+              <input type="number" name="height_cm" placeholder="Height" min="0.1" step="0.1" value="{{ old('height_cm') }}">
             </div>
           </div>
         </div>
@@ -106,8 +110,9 @@
         {{-- Divider --}}
         <div style="border-top:1px solid var(--border);margin:2px 0"></div>
 
+        @include('seller.partials.matrix-editor')
         {{-- Variations --}}
-        <div>
+        <div data-role="legacy-variations">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
             <div>
               <div style="font-size:13px;font-weight:650">Variations</div>
@@ -122,7 +127,7 @@
           <div data-role="no-variation-stock">
             <div class="form-row">
               <label>Stock <span style="color:var(--danger)">*</span></label>
-              <input type="number" name="stock" data-role="stock-input" placeholder="0" min="0" value="0" style="max-width:140px">
+              <input type="number" name="stock" max="99999" step="1" data-role="stock-input" placeholder="0" min="0" value="0" style="max-width:140px">
             </div>
           </div>
 
@@ -157,14 +162,15 @@
 
         <div style="background:var(--info-soft);border:1px solid var(--info-line);border-radius:9px;padding:10px 14px;font-size:12px;color:var(--info);display:flex;align-items:flex-start;gap:8px">
           @include('seller.partials.icon',['name'=>'bell','size'=>14])
-          <span>Your product will be reviewed by admin to ensure it matches your shop category <strong>{{ optional(\DB::table('categories')->where('id', auth()->user()->category_id)->first())->name ?? '—' }}</strong> before going live.</span>
+          <span>Approved stores can publish immediately. Drafts remain private until all required fields are completed and published.</span>
         </div>
       </div>
 
       <div class="modal-foot">
         <button class="btn btn-outline" type="button" data-modal-close>Cancel</button>
-        <button class="btn btn-primary" type="submit" style="display:inline-flex;align-items:center;gap:7px">
-          @include('seller.partials.icon',['name'=>'send','size'=>14]) Submit for Review
+        <button class="btn btn-outline" type="submit" name="intent" value="draft" formnovalidate>Save as Draft</button>
+        <button class="btn btn-primary" type="submit" name="intent" value="publish" @disabled(auth()->user()->status !== 'approved') style="display:inline-flex;align-items:center;gap:7px">
+          @include('seller.partials.icon',['name'=>'send','size'=>14]) Publish
         </button>
       </div>
     </form>

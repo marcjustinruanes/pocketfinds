@@ -1,0 +1,21 @@
+[
+  {
+    "cases": [
+      "SEL-PROF-009",
+      "BUY-SRCH-011"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: enabled vacation in seller settings; store, search and product remained visible with vacation label; Add to Cart/Buy Now disabled; direct add and existing-cart COD checkout blocked; stock/order count unchanged. Separate PHP checks also block GCash reservation and placement.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:51:43.278Z"
+  },
+  {
+    "cases": [
+      "SEL-PROF-010"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: disabled vacation; label disappeared and purchase buttons enabled; confirmed COD checkout created exactly one order and deducted one unit.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T08:51:43.278Z"
+  }
+]

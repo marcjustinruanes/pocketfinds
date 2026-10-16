@@ -1,0 +1,26 @@
+{
+  "retrieved_utc": "2026-10-16T04:01:15.013223+00:00",
+  "provider": "PSGC API (psgc.gitlab.io), same provider previously used by forms",
+  "sources": [
+    {
+      "url": "https://psgc.gitlab.io/api/regions/",
+      "sha256": "5a7e9191497cdeb936494dc820247f158becfd56049b9509ba7f5360df5bc35a",
+      "records": 17
+    },
+    {
+      "url": "https://psgc.gitlab.io/api/provinces/",
+      "sha256": "8e8edfd4e8ccc12417088ae988a4961f5a64604910ec7a38b159e90f3ebebe11",
+      "records": 81
+    },
+    {
+      "url": "https://psgc.gitlab.io/api/cities-municipalities/",
+      "sha256": "ad08a909329793de103d791156edb92a8b4a76bacf1950f9a23cbd440e815857",
+      "records": 1634
+    },
+    {
+      "url": "https://psgc.gitlab.io/api/barangays/",
+      "sha256": "0921beb0c626ef0d8d20f69365a75a3378f71ba6526634cb66d35d8859115423",
+      "records": 42046
+    }
+  ]
+}

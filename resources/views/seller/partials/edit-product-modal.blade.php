@@ -20,17 +20,20 @@ $existingVariationsJs = collect($product->variations ?? [])->map(function ($grou
 <div class="modal-overlay" id="editProductModal-{{ $product->id }}">
   <div class="modal" style="max-width:620px;width:100%">
     <div class="modal-head">
-      <div><h3>Edit Product</h3><p>Saving will resubmit this product for admin review</p></div>
+      <div><h3>Edit Product</h3><p>Save a draft or publish your changes</p></div>
       <button class="modal-close" data-modal-close>@include('seller.partials.icon',['name'=>'x','size'=>14])</button>
     </div>
     <form method="POST" action="{{ route('seller.inventory.update', $product) }}" enctype="multipart/form-data" data-role="product-form">
       @csrf
       @method('PATCH')
       <div class="modal-body" style="max-height:70vh;overflow-y:auto;display:flex;flex-direction:column;gap:14px">
+        <div data-role="product-errors" role="alert" hidden></div>
+        <div class="form-row"><label>Platform Category *</label><select name="category_id" required><option value="">Choose category</option>@foreach($categories as $category)<option value="{{ $category->id }}" @selected((int)$product->category_id === (int)$category->id)>{{ $category->name }}</option>@endforeach</select></div>
+        <div class="form-row"><label>Store categories (up to 3)</label><select name="store_category_ids[]" multiple>@foreach(\App\Models\StoreCategory::where('seller_id', auth()->id())->orderBy('position')->get() as $storeCategory)<option value="{{ $storeCategory->id }}" @selected($product->storeCategories->contains('id', $storeCategory->id))>{{ $storeCategory->name }}</option>@endforeach</select></div>
 
         <div style="background:var(--info-soft);border:1px solid var(--info-line);border-radius:9px;padding:10px 14px;font-size:12px;color:var(--info);display:flex;align-items:flex-start;gap:8px">
           @include('seller.partials.icon',['name'=>'bell','size'=>14])
-          <span>Saving changes will resubmit this product for admin review. It will show as <strong>Pending</strong> to you and stay hidden from buyers until approved again.</span>
+          <span>Publish your completed listing immediately, or keep unfinished changes in a private draft.</span>
         </div>
 
         {{-- Images --}}
@@ -41,10 +44,10 @@ $existingVariationsJs = collect($product->variations ?? [])->map(function ($grou
             <div data-role="img-placeholder" style="display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--muted)">
               @include('seller.partials.icon',['name'=>'image','size'=>26])
               <span style="font-size:12px">Click to upload or drag & drop (up to 9 photos)</span>
-              <span style="font-size:11px">JPG, PNG, WEBP — max 4MB each. First photo is the cover.</span>
+              <span style="font-size:11px">JPG, PNG — max 5MB each. First photo is the cover.</span>
             </div>
           </div>
-          <input type="file" data-role="images-input" name="images[]" accept="image/jpeg,image/png,image/webp" multiple style="display:none">
+          <input type="file" data-role="images-input" name="images[]" accept="image/jpeg,image/png" multiple style="display:none">
           @error('images')<span style="font-size:11px;color:var(--danger);margin-top:3px;display:block">{{ $message }}</span>@enderror
         </div>
 
@@ -70,14 +73,14 @@ $existingVariationsJs = collect($product->variations ?? [])->map(function ($grou
         {{-- Name --}}
         <div class="form-row">
           <label>Product Name <span style="color:var(--danger)">*</span></label>
-          <input type="text" name="name" placeholder="e.g. Cotton T-Shirt" required value="{{ old('name', $product->name) }}">
+          <input type="text" name="name" minlength="5" maxlength="120" placeholder="e.g. Cotton T-Shirt" required value="{{ old('name', $product->name) }}">
         </div>
 
         {{-- Price + SKU --}}
         <div class="form-grid-2">
           <div class="form-row">
             <label>Price (₱) <span style="color:var(--danger)">*</span></label>
-            <input type="number" name="price" placeholder="0.00" min="0" step="0.01" required value="{{ old('price', $product->price) }}">
+            <input type="number" name="price" placeholder="0.00" min="1" max="1000000" step="0.01" required value="{{ old('price', $product->price) }}">
           </div>
           <div class="form-row">
             <label>SKU <span style="color:var(--muted);font-weight:400">(optional)</span></label>
@@ -91,8 +94,8 @@ $existingVariationsJs = collect($product->variations ?? [])->map(function ($grou
 
         {{-- Description --}}
         <div class="form-row">
-          <label>Description <span style="color:var(--muted);font-weight:400">(optional)</span></label>
-          <textarea name="description" rows="2" placeholder="Brief description of the product…">{{ old('description', $product->description) }}</textarea>
+          <label>Description <span style="color:var(--danger)">*</span></label>
+          <textarea name="description" minlength="20" maxlength="3000" required rows="2" placeholder="Brief description of the product…">{{ old('description', $product->description) }}</textarea>
         </div>
 
         {{-- Divider --}}
@@ -122,9 +125,9 @@ $existingVariationsJs = collect($product->variations ?? [])->map(function ($grou
           <div class="form-row">
             <label>Package Dimensions (cm) <span style="color:var(--muted);font-weight:400">(optional)</span></label>
             <div style="display:flex;gap:8px">
-              <input type="number" name="length_cm" placeholder="Length" min="0" step="0.1" value="{{ old('length_cm', $product->length_cm) }}">
-              <input type="number" name="width_cm" placeholder="Width" min="0" step="0.1" value="{{ old('width_cm', $product->width_cm) }}">
-              <input type="number" name="height_cm" placeholder="Height" min="0" step="0.1" value="{{ old('height_cm', $product->height_cm) }}">
+              <input type="number" name="length_cm" placeholder="Length" min="0.1" step="0.1" value="{{ old('length_cm', $product->length_cm) }}">
+              <input type="number" name="width_cm" placeholder="Width" min="0.1" step="0.1" value="{{ old('width_cm', $product->width_cm) }}">
+              <input type="number" name="height_cm" placeholder="Height" min="0.1" step="0.1" value="{{ old('height_cm', $product->height_cm) }}">
             </div>
           </div>
         </div>
@@ -132,8 +135,9 @@ $existingVariationsJs = collect($product->variations ?? [])->map(function ($grou
         {{-- Divider --}}
         <div style="border-top:1px solid var(--border);margin:2px 0"></div>
 
+        @include('seller.partials.matrix-editor')
         {{-- Variations --}}
-        <div>
+        <div data-role="legacy-variations">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
             <div>
               <div style="font-size:13px;font-weight:650">Variations</div>
@@ -148,7 +152,7 @@ $existingVariationsJs = collect($product->variations ?? [])->map(function ($grou
           <div data-role="no-variation-stock" style="{{ $existingVariationsJs->isNotEmpty() ? 'display:none' : '' }}">
             <div class="form-row">
               <label>Stock <span style="color:var(--danger)">*</span></label>
-              <input type="number" name="stock" data-role="stock-input" placeholder="0" min="0" value="{{ old('stock', $product->stock) }}" style="max-width:140px">
+              <input type="number" name="stock" max="99999" step="1" data-role="stock-input" placeholder="0" min="0" value="{{ old('stock', $product->stock) }}" style="max-width:140px">
             </div>
           </div>
 
@@ -184,8 +188,9 @@ $existingVariationsJs = collect($product->variations ?? [])->map(function ($grou
 
       <div class="modal-foot">
         <button class="btn btn-outline" type="button" data-modal-close>Cancel</button>
-        <button class="btn btn-primary" type="submit" style="display:inline-flex;align-items:center;gap:7px">
-          @include('seller.partials.icon',['name'=>'send','size'=>14]) Save & Resubmit for Review
+        <button class="btn btn-outline" type="submit" name="intent" value="draft" formnovalidate>Save as Draft</button>
+        <button class="btn btn-primary" type="submit" name="intent" value="publish" @disabled(auth()->user()->status !== 'approved') style="display:inline-flex;align-items:center;gap:7px">
+          @include('seller.partials.icon',['name'=>'send','size'=>14]) Publish
         </button>
       </div>
     </form>
@@ -194,6 +199,8 @@ $existingVariationsJs = collect($product->variations ?? [])->map(function ($grou
 
 <script>
 initProductForm(document.getElementById('editProductModal-{{ $product->id }}'), {
+  variantAxes: @json($product->variant_axes ?? []),
+  variantRows: @json($product->variant_rows ?? []),
   existingImages: @json($existingImagesJs),
   existingVideoName: {{ $product->video ? json_encode(basename($product->video)) : 'null' }},
   existingVariations: @json($existingVariationsJs),

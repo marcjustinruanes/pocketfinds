@@ -86,6 +86,7 @@ class Order extends Model
         'shipping_amount', 'discount_amount', 'voucher_code', 'total', 'shipping_address',
         'buyer_note', 'payment_method_id', 'payment_method', 'gcash_purchase_id',
         'cancellation_reason', 'cancellation_note',
+        'inventory_reserved',
     ];
 
     protected $casts = [
@@ -95,10 +96,11 @@ class Order extends Model
         'shipping_amount' => 'decimal:2',
         'discount_amount' => 'decimal:2',
         'total' => 'decimal:2',
+        'inventory_reserved' => 'boolean',
     ];
 
     /** A parcel the courier marked delivered auto-completes if the buyer never confirms receipt within this many days. */
-    const AUTO_COMPLETE_DAYS = 3;
+    const AUTO_COMPLETE_DAYS = 7;
 
     /** Statuses before a shipment exists — the only ones an order can still be cancelled from. */
     const CANCELLABLE_STATUSES = ['placed', 'confirmed', 'preparing'];
@@ -110,9 +112,8 @@ class Order extends Model
     }
 
     /**
-     * Puts this order's items back into stock. Stock only leaves inventory once the seller
-     * confirms (SellerController::confirmOrder()), so call this only for an order that got
-     * past 'placed'. Must run inside a DB::transaction.
+     * Restore this order's inventory inside a transaction. New COD orders reserve
+     * at checkout; older orders reserve when confirmed. Callers enforce a one-time transition.
      */
     public function restoreStock(): void
     {
@@ -156,7 +157,7 @@ class Order extends Model
         if (! in_array($this->status, $allowedFrom, true)) {
             return false;
         }
-        $hadDeductedStock = $this->status !== 'placed' || $this->gcash_purchase_id;
+        $hadDeductedStock = $this->inventory_reserved || $this->status !== 'placed' || $this->gcash_purchase_id;
 
         $this->update(['status' => 'cancelled', 'cancellation_reason' => $reason, 'cancellation_note' => $note]);
         if ($hadDeductedStock) {
@@ -170,14 +171,18 @@ class Order extends Model
     /** Completes every delivered order the buyer never confirmed within AUTO_COMPLETE_DAYS. Safe to call repeatedly. */
     public static function autoCompleteDelivered(): int
     {
-        $ids = static::where('status', 'delivered')
-            ->where('updated_at', '<', now()->subDays(self::AUTO_COMPLETE_DAYS))->pluck('id');
+        $cutoff = now()->subDays(self::AUTO_COMPLETE_DAYS);
+        $ids = static::where('status', 'delivered')->where(function ($query) use ($cutoff) {
+            $query->whereHas('shipment', fn ($shipment) => $shipment->where('delivered_at', '<=', $cutoff))
+                ->orWhere(fn ($legacy) => $legacy->whereDoesntHave('shipment')->where('updated_at', '<=', $cutoff));
+        })->pluck('id');
 
         $completed = 0;
         foreach ($ids as $id) {
             DB::transaction(function () use ($id, &$completed) {
                 $order = static::lockFresh($id);
-                if ($order->status !== 'delivered') {
+                $deliveredAt = $order->shipment?->delivered_at ?? $order->updated_at;
+                if ($order->status !== 'delivered' || ! $deliveredAt || $deliveredAt->greaterThan(now()->subDays(self::AUTO_COMPLETE_DAYS))) {
                     return;
                 }
 

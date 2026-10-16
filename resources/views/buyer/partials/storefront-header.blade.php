@@ -11,9 +11,9 @@
       <span><span class="logo-pocket">Pocket</span><span class="logo-finds">Finds</span></span>
     </a>
     <div class="pf-search-wrap">
-      <form class="search" action="{{ route('buyer.dashboard') }}#products" method="GET">
+      <form class="search" action="{{ route('buyer.browse') }}" method="GET">
         <span class="pf-search-icon">@include('buyer.partials.icon', ['name' => 'search', 'size' => 14])</span>
-        <input data-search name="q" type="search" placeholder="Search" aria-label="Search products" value="{{ $search ?? '' }}">
+        <input data-search name="q" type="search" placeholder="Search" aria-label="Search products" value="{{ $search ?? request('q', '') }}">
         <button type="submit" aria-label="Search">@include('buyer.partials.icon', ['name' => 'search', 'size' => 15])</button>
       </form>
     </div>
@@ -51,7 +51,7 @@
       </a>
       <details class="pf-buyer-menu">
         <summary class="pf-acct-icon pf-buyer-avatar" aria-label="Account menu" title="{{ auth()->user()->given_names }}">
-          {{ mb_strtoupper(mb_substr(auth()->user()->given_names, 0, 1)) }}
+          <x-user-avatar :user="auth()->user()" size="36" />
         </summary>
         <div class="pf-buyer-dropdown pf-buyer-account-navigation">
           <div class="pf-buyer-identity"><strong>{{ auth()->user()->given_names }} {{ auth()->user()->last_name }}</strong><small>Buyer account</small></div>
@@ -59,6 +59,8 @@
 <x-navigation-group id="buyer-shopping" label="Shopping" :active="request()->routeIs('buyer.browse', 'buyer.cart', 'buyer.product', 'buyer.shop')">
 <a href="{{ route('buyer.browse') }}" @if(request()->routeIs('buyer.browse', 'buyer.product', 'buyer.shop')) aria-current="page" @endif>@include('buyer.partials.icon', ['name' => 'search', 'size' => 16]) Browse Products</a>
 <a href="{{ route('buyer.cart') }}" @if(request()->routeIs('buyer.cart')) aria-current="page" @endif>@include('buyer.partials.icon', ['name' => 'cart', 'size' => 16]) Cart</a>
+<a href="{{ route('buyer.wishlist') }}">Wishlist</a>
+<a href="{{ route('buyer.following') }}">Following stores</a>
 </x-navigation-group>
 <x-navigation-group id="buyer-orders" label="Orders" :active="request()->routeIs('buyer.orders', 'gcash.*')">
 <a href="{{ route('buyer.orders') }}" @if(request()->routeIs('buyer.orders')) aria-current="page" @endif>@include('buyer.partials.icon', ['name' => 'package', 'size' => 16]) My Orders</a>

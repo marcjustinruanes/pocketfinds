@@ -1,0 +1,90 @@
+[
+  {
+    "script": "teacher-smoke.mjs",
+    "started": "2026-10-16T08:44:01.684Z",
+    "finished": "2026-10-16T08:44:39.750Z",
+    "exit_code": 0,
+    "status": "PASS",
+    "error": null
+  },
+  {
+    "script": "teacher-registration.mjs",
+    "started": "2026-10-16T08:44:39.754Z",
+    "finished": "2026-10-16T08:44:52.833Z",
+    "exit_code": 0,
+    "status": "PASS",
+    "error": null
+  },
+  {
+    "script": "teacher-rider-invitation.mjs",
+    "started": "2026-10-16T08:44:52.836Z",
+    "finished": "2026-10-16T08:45:12.174Z",
+    "exit_code": 0,
+    "status": "PASS",
+    "error": null
+  },
+  {
+    "script": "teacher-buyer-account.mjs",
+    "started": "2026-10-16T08:45:12.178Z",
+    "finished": "2026-10-16T08:46:57.705Z",
+    "exit_code": 0,
+    "status": "PASS",
+    "error": null
+  },
+  {
+    "script": "teacher-store-categories.mjs",
+    "started": "2026-10-16T08:46:57.708Z",
+    "finished": "2026-10-16T08:49:11.354Z",
+    "exit_code": 0,
+    "status": "PASS",
+    "error": null
+  },
+  {
+    "script": "teacher-store-profile.mjs",
+    "started": "2026-10-16T08:49:11.357Z",
+    "finished": "2026-10-16T08:51:06.642Z",
+    "exit_code": 0,
+    "status": "PASS",
+    "error": null
+  },
+  {
+    "script": "teacher-vacation.mjs",
+    "started": "2026-10-16T08:51:06.645Z",
+    "finished": "2026-10-16T08:51:43.703Z",
+    "exit_code": 0,
+    "status": "PASS",
+    "error": null
+  },
+  {
+    "script": "teacher-product-publishing.mjs",
+    "started": "2026-10-16T08:51:43.707Z",
+    "finished": "2026-10-16T08:52:15.484Z",
+    "exit_code": 0,
+    "status": "PASS",
+    "error": null
+  },
+  {
+    "script": "teacher-search.mjs",
+    "started": "2026-10-16T08:55:23.792Z",
+    "finished": "2026-10-16T08:56:02.107Z",
+    "exit_code": 0,
+    "status": "PASS",
+    "error": null
+  },
+  {
+    "script": "teacher-cart.mjs",
+    "started": "2026-10-16T08:52:53.933Z",
+    "finished": "2026-10-16T08:54:03.426Z",
+    "exit_code": 0,
+    "status": "PASS",
+    "error": null
+  },
+  {
+    "script": "mysql-checkout-concurrency.mjs",
+    "started": "2026-10-16T08:54:03.428Z",
+    "finished": "2026-10-16T08:54:06.549Z",
+    "exit_code": 0,
+    "status": "PASS",
+    "error": null
+  }
+]

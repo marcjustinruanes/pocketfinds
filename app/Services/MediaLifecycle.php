@@ -150,7 +150,7 @@ class MediaLifecycle
     {
         $references = match ($disk) {
             'local' => ['gcash_proofs' => ['path']],
-            'profile_images' => ['users' => ['profile_picture']],
+            'profile_images' => ['users' => ['profile_picture', 'store_banner']],
             'messages' => ['messages' => ['attachment_path']],
             'public' => ['users' => ['id_file', 'selfie_file', 'license_file', 'business_permit_file', 'or_file', 'cr_file', 'resume_file', 'company_logo', 'id_photo_path', 'selfie_photo_path', 'license_photo_path', 'or_cr_path'],
                 'settings' => ['hero_image'], 'products' => ['image', 'video'], 'complaints' => ['evidence_path'],
@@ -167,7 +167,7 @@ class MediaLifecycle
             }
         }
         if ($disk === 'public') {
-            foreach (['products' => ['images', 'variations'], 'account_update_requests' => ['requested_documents']] as $table => $fields) {
+            foreach (['products' => ['images', 'variations', 'variant_axes', 'variant_rows'], 'account_update_requests' => ['requested_documents']] as $table => $fields) {
                 if (! Schema::hasTable($table)) {
                     continue;
                 }

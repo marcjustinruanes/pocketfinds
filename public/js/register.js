@@ -208,7 +208,7 @@ function sendOtp() {
     const btn = document.getElementById('sendOtpBtn');
     btn.disabled = true; btn.textContent = 'Sending…';
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || document.querySelector('input[name="_token"]').value;
-    fetch('/register/send-otp', {
+    fetch('/register/staff/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
         body: JSON.stringify({ email }),
@@ -271,7 +271,7 @@ function verifyOtp() {
     if (otp.length !== 6) { showOtpError('Please enter the full 6-digit code.'); return; }
     verifyBtn.disabled = true; verifyBtn.textContent = 'Verifying…';
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || document.querySelector('input[name="_token"]').value;
-    fetch('/register/verify-otp', {
+    fetch('/register/staff/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
         body: JSON.stringify({ email, otp }),

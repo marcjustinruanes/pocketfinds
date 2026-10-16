@@ -68,9 +68,13 @@ class AdminController extends Controller
         $login = $request->input('email');
 
         // Find user by email or username
-        $user = User::where('email', $login)->orWhere('username', $login)->first();
+        $user = User::whereRaw('LOWER(email) = ?', [mb_strtolower(trim($login))])->orWhere('username', $login)->first();
 
         if ($user) {
+            if (in_array($user->status, ['unverified', 'pending_activation'], true)) {
+                return back()->withErrors(['email' => $user->status === 'unverified'
+                    ? 'Verify your email before signing in.' : 'Activate your rider account using the email invitation before signing in.'])->withInput();
+            }
             if ($user->status === 'pending') {
                 return back()->withErrors(['email' => 'Your account is still pending admin approval. Please wait for confirmation.'])->withInput();
             }
@@ -163,6 +167,7 @@ class AdminController extends Controller
     public function approveUser(User $user)
     {
         abort_if(app(HubHiring::class)->role($user) !== null, 403, 'Personnel recruitment belongs to the company Logistics Admin.');
+        abort_unless($user->status === 'pending', 422, 'Only verified pending applications can be approved.');
         $user->update(['status' => 'approved', 'status_reason' => null]);
         $this->sendStatusEmail($user, 'approved');
 
@@ -172,6 +177,7 @@ class AdminController extends Controller
     public function rejectUser(Request $request, User $user)
     {
         abort_if(app(HubHiring::class)->role($user) !== null, 403, 'Personnel recruitment belongs to the company Logistics Admin.');
+        abort_unless($user->status === 'pending', 422, 'Only verified pending applications can be rejected.');
         $reason = $this->resolveReason($request);
         // If a logistics company founder is rejected, remove their registered hubs so
         // that the company name is fully free for re-use (either by them or someone else).

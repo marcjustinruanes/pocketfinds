@@ -5,6 +5,17 @@
 
 @section('content')
 @php $u = $seller; @endphp
+@if($errors->any())<div class="auth-error" role="alert">@foreach($errors->all() as $message)<p>{{ $message }}</p>@endforeach</div>@endif
+<div class="card" style="margin-bottom:16px"><div class="card-pad">
+  <h2>Vacation mode</h2>
+  <p>Keep your products visible while pausing new orders. Existing orders can still be fulfilled.</p>
+  @if(session('shop_success'))<p role="status">{{ session('shop_success') }}</p>@endif
+  <form method="POST" action="{{ route('seller.account.vacation') }}">@csrf
+    <input type="hidden" name="is_on_vacation" value="0">
+    <label><input type="checkbox" name="is_on_vacation" value="1" @checked($u->is_on_vacation)> On vacation</label>
+    <button type="submit" class="btn btn-primary">Save vacation mode</button>
+  </form>
+</div></div>
 
 @if($pendingRequest)
 <div style="background:var(--warning-soft);border:1px solid var(--warning-line);color:var(--warning);padding:12px 14px;border-radius:9px;font-size:13px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px">
@@ -130,8 +141,8 @@
             </div>
             <div class="form-row" style="flex:1;min-width:180px">
               <label for="shop-profile-picture">Shop picture</label>
-              <input id="shop-profile-picture" type="file" name="profile_picture" accept="image/jpeg,image/png,image/webp" required>
-              <small style="color:var(--muted)">JPG, PNG or WebP, up to 2 MB. Appears on your public shop.</small>
+              <input id="shop-profile-picture" type="file" name="profile_picture" accept="image/jpeg,image/png" required>
+              <small style="color:var(--muted)">JPG or PNG, up to 5 MB. Appears on your public shop.</small>
               @error('profile_picture')<p role="alert" style="color:var(--danger)">{{ $message }}</p>@enderror
             </div>
             <button type="submit" class="btn btn-primary">Update Picture</button>
@@ -140,12 +151,26 @@
         @if(session('shop_success'))
           <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px">{{ session('shop_success') }}</div>
         @endif
-        <form method="POST" action="{{ route('seller.account.shop') }}" {{ $pendingRequest ? 'style=opacity:.5;pointer-events:none' : '' }}>
+        <form method="POST" action="{{ route('seller.account.shop') }}" enctype="multipart/form-data" id="storeSettingsForm">
           @csrf
           <div class="form-grid-2">
-            <div class="form-row"><label>Business Name</label><input type="text" name="business_name" value="{{ old('business_name', $u->business_name) }}" placeholder="Your Shop Name"></div>
+            <div class="form-row"><label>Store Name (3–30 characters)</label><input type="text" name="business_name" value="{{ old('business_name', $u->business_name) }}" minlength="3" maxlength="31" placeholder="Your Shop Name" required></div>
             <div class="form-row"><label>Username</label><input type="text" name="username" value="{{ old('username', $u->username) }}" placeholder="@yourshop"></div>
           </div>
+          <div class="form-row"><label>Description (up to 500 characters)</label><textarea name="store_description" rows="3" maxlength="501">{{ old('store_description', $u->store_description) }}</textarea></div>
+          <div class="form-row"><label>Contact Number</label><input type="tel" name="contact_no" value="{{ old('contact_no', $u->contact_no) }}" pattern="(09[0-9]{9}|\+639[0-9]{9})" maxlength="13" placeholder="09XXXXXXXXX or +639XXXXXXXXX" required></div>
+          <h3>Pickup address</h3>
+          <div class="form-grid-2">
+            @foreach(['region' => 'Region', 'province' => 'Province', 'municipality' => 'City / Municipality', 'barangay' => 'Barangay', 'street' => 'Street Address'] as $field => $label)
+              <div class="form-row"><label>{{ $label }}<input type="text" name="{{ $field }}" value="{{ old($field, $u->$field) }}" maxlength="150" required></label></div>
+            @endforeach
+            <div class="form-row"><label>House No. / Unit<input type="text" name="house_no" value="{{ old('house_no', $u->house_no) }}" maxlength="100"></label></div>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-row"><label>Logo (JPG or PNG, up to 5 MB)<input type="file" name="logo" accept="image/jpeg,image/png"></label></div>
+            <div class="form-row"><label>Banner (JPG or PNG, up to 5 MB)<input type="file" name="banner" accept="image/jpeg,image/png"></label></div>
+          </div>
+          @if($u->store_banner)<img src="{{ \Illuminate\Support\Facades\Storage::disk('profile_images')->url($u->store_banner) }}" alt="Current store banner" style="max-width:100%;max-height:180px">@endif
           <div class="form-row">
             <label>Shop Category</label>
             <select name="category_id">

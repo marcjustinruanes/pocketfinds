@@ -1,0 +1,14 @@
+[
+  {
+    "cases": [
+      "TC-RID-001",
+      "TC-RID-020",
+      "TC-RID-025",
+      "TC-RID-027",
+      "TC-RID-029"
+    ],
+    "status": "BROWSER WORKFLOW VERIFIED",
+    "evidence": "Created rider from logistics form, read local logged invitation, activated, signed in, verified single-use link and denied public registration. External email delivery unverified.",
+    "origin": "http://127.0.0.1:8020"
+  }
+]

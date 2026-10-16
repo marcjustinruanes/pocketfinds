@@ -41,7 +41,7 @@ try {
     checkPage('/login');
     checkPage('/register/buyer');
     checkPage('/register/seller');
-    checkPage('/register/rider');
+    checkPage('/register/rider', null, 403);
     checkPage('/register/logistics');
     $product=Product::where('status','active')->sellerApproved()->firstOrFail();
     checkPage('/product/'.$product->id);

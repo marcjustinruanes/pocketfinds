@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>@yield('title', 'Seller') — PocketFinds</title>
 <link rel="stylesheet" href="/css/seller.css">
+<script src="{{ asset('js/product-matrix-editor.js') }}"></script>
 @include('seller.partials.product-form-script')
 <link rel="stylesheet" href="{{ asset('css/navigation.css') }}?v={{ filemtime(public_path('css/navigation.css')) }}">
 @stack('head')

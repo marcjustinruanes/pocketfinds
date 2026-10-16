@@ -74,6 +74,7 @@ trait LoadsStorefront
     private function topSellingShops(?int $limit = null, ?int $categoryId = null)
     {
         return User::where('account_type', 'seller')->where('status', 'approved')->whereNotNull('business_name')
+            ->when(request()->filled('q'), fn ($q) => $q->whereRaw("LOWER(business_name) LIKE ? ESCAPE '!'", [$this->literalSearchPattern((string) request('q'))]))
             ->when($categoryId, fn ($q) => $q->whereHas('products', fn ($products) => $products->where('status', 'active')->where('category_id', $categoryId)))
             ->withCount(['products' => fn ($q) => $q->where('status', 'active')])
             ->get()

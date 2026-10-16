@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="CLI Arguments" tests="28" assertions="308" errors="0" failures="1" skipped="0" time="5.726168">
+    <testsuite name="Tests\Feature\HubHiringTest" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" tests="20" assertions="223" errors="0" failures="1" skipped="0" time="4.543827">
+      <testcase name="test_staff_requires_interview_and_records_each_decision" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="72" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="11" time="0.894916"/>
+      <testcase name="test_platform_cannot_recruit_but_can_suspend_and_reactivate_personnel" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="89" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="35" time="0.296108"/>
+      <testcase name="test_staff_early_rejection_requires_reason_and_preserves_reapplication" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="109" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="10" time="0.200632"/>
+      <testcase name="test_generic_staff_creation_and_edits_cannot_establish_recruitment_states" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="124" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="35" time="0.346524"/>
+      <testcase name="test_missing_approval_documents_and_stale_decisions_are_rejected" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="145" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="8" time="0.164555"/>
+      <testcase name="test_switches_are_independent_and_audited_without_changing_legacy_value" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="170" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="9" time="0.137253"/>
+      <testcase name="test_staff_switch_does_not_block_rider_or_change_other_settings" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="184" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="5" time="0.128522"/>
+      <testcase name="test_settings_validate_values_scope_roles_and_stale_versions" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="192" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="17" time="0.173596"/>
+      <testcase name="test_deadline_boundary_clear_and_closed_hub_are_server_rules" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="206" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="9" time="0.143575"/>
+      <testcase name="test_only_approved_assigned_role_consumes_slots_and_zero_blocks_intake" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="223" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="6" time="0.154649"/>
+      <testcase name="test_full_limits_protect_company_and_platform_approval_and_reactivation" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="238" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="21" time="0.215669"/>
+      <testcase name="test_pending_reviews_can_approve_after_intake_closes_when_capacity_remains" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="263" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="4" time="0.102098"/>
+      <testcase name="test_model_boundary_protects_direct_approved_creation_and_hub_moves" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="271" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="4" time="0.116741"/>
+      <testcase name="test_reapplication_preserves_account_id_rejection_and_attempt_history" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="292" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="7" time="0.180143">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\HubHiringTest::test_reapplication_preserves_account_id_rejection_and_attempt_history&#13;
+Expected response status code [403] but received 422.
+Failed asserting that 422 is identical to 403.&#13;
+&#13;
+The following errors occurred during the last request:
+
+{
+    "success": false,
+    "message": "The email has already been taken.",
+    "errors": {
+        "email": [
+            "The email has already been taken."
+        ],
+        "username": [
+            "The username has already been taken."
+        ]
+    }
+}
+&#13;
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:183
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:141
+C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php:303</failure>
+      </testcase>
+      <testcase name="test_history_failure_rolls_back_account_and_uploaded_files" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="309" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="4" time="0.162288"/>
+      <testcase name="test_management_creation_status_changes_and_moves_enforce_capacity" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="317" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="15" time="0.310095"/>
+      <testcase name="test_staff_fallback_ownership_and_vehicle_rules_remain_enforced" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="357" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="6" time="0.170259"/>
+      <testcase name="test_final_intake_check_rejects_a_hub_closed_after_preliminary_validation" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="375" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="2" time="0.133003"/>
+      <testcase name="test_shared_registration_preserves_rejected_buyer_records_without_hiring_restrictions" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="391" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="6" time="0.176693"/>
+      <testcase name="test_hub_pagination_retains_search_and_company_isolation" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\HubHiringTest.php" line="407" class="Tests\Feature\HubHiringTest" classname="Tests.Feature.HubHiringTest" assertions="9" time="0.336510"/>
+    </testsuite>
+    <testsuite name="Tests\Feature\FulfillmentWorkflowTest" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\FulfillmentWorkflowTest.php" tests="8" assertions="85" errors="0" failures="0" skipped="0" time="1.182340">
+      <testcase name="test_public_rider_registration_is_denied_and_staff_application_stays_pending" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\FulfillmentWorkflowTest.php" line="63" class="Tests\Feature\FulfillmentWorkflowTest" classname="Tests.Feature.FulfillmentWorkflowTest" assertions="13" time="0.176065"/>
+      <testcase name="test_registration_failure_after_upload_removes_files_and_invalid_hub_never_uploads" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\FulfillmentWorkflowTest.php" line="88" class="Tests\Feature\FulfillmentWorkflowTest" classname="Tests.Feature.FulfillmentWorkflowTest" assertions="6" time="0.164601"/>
+      <testcase name="test_checkout_seller_confirmation_preparation_and_logistics_handoff" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\FulfillmentWorkflowTest.php" line="111" class="Tests\Feature\FulfillmentWorkflowTest" classname="Tests.Feature.FulfillmentWorkflowTest" assertions="19" time="0.202513"/>
+      <testcase name="test_checkout_rejects_foreign_addresses_and_rolls_back_failed_order_creation" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\FulfillmentWorkflowTest.php" line="135" class="Tests\Feature\FulfillmentWorkflowTest" classname="Tests.Feature.FulfillmentWorkflowTest" assertions="10" time="0.141290"/>
+      <testcase name="test_failed_seller_confirmation_rolls_back_stock_and_hides_database_details" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\FulfillmentWorkflowTest.php" line="149" class="Tests\Feature\FulfillmentWorkflowTest" classname="Tests.Feature.FulfillmentWorkflowTest" assertions="7" time="0.113021"/>
+      <testcase name="test_buyer_cancellation_restock_is_idempotent_and_returned_parcels_restock_once" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\FulfillmentWorkflowTest.php" line="161" class="Tests\Feature\FulfillmentWorkflowTest" classname="Tests.Feature.FulfillmentWorkflowTest" assertions="14" time="0.158316"/>
+      <testcase name="test_payment_account_verification_is_user_scoped_without_real_payment_or_email" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\FulfillmentWorkflowTest.php" line="184" class="Tests\Feature\FulfillmentWorkflowTest" classname="Tests.Feature.FulfillmentWorkflowTest" assertions="10" time="0.128884"/>
+      <testcase name="test_admin_approval_notification_is_deferred_until_commit_and_discarded_on_rollback" file="C:\Users\Chlouie Cabot\OneDrive\Desktop\pocketfinds\tests\Feature\FulfillmentWorkflowTest.php" line="198" class="Tests\Feature\FulfillmentWorkflowTest" classname="Tests.Feature.FulfillmentWorkflowTest" assertions="6" time="0.097651"/>
+    </testsuite>
+  </testsuite>
+</testsuites>

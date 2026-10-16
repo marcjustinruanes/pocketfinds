@@ -14,7 +14,7 @@ class AutomatedAssistantTest extends TestCase
 {
     private function buyer(): User
     {
-        return (new User(['account_type' => 'buyer', 'is_admin' => false]))->forceFill(['id' => 1]);
+        return (new User(['account_type' => 'buyer', 'is_admin' => false, 'status' => 'approved']))->forceFill(['id' => 1]);
     }
 
     private function shopping(): array

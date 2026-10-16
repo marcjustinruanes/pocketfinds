@@ -67,6 +67,9 @@ class SocialAuthController extends Controller
                 ]);
             }
 
+            if ($existing->status !== 'approved') {
+                return redirect()->route('login')->withErrors(['email' => 'This account is not active. Verify your email or contact your account administrator.']);
+            }
             Auth::login($existing, true);
             request()->session()->regenerate();
 

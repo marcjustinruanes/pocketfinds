@@ -1,0 +1,231 @@
+[
+  {
+    "cases": [
+      "TC-BUY-001"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. All required valid values saved, exactly one six-digit OTP logged, success and verification page shown; account remains Unverified. External delivery is separate.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-002"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. Empty submission shows visible required messages on all seven fields and terms, with no account or OTP.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-003"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. Cleared each mandatory field separately: exactly that field shows a required message, other inputs retained, account count unchanged.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-004"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. Both workbook names containing digits/symbols rejected with field messages; no account/mail.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-005"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. Specified ñ, apostrophe and hyphen names saved byte-for-byte.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-006"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. Exact workbook names of 1/2/50/51 characters checked; only 2 and 50 accepted and saved exactly.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-007"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. On the workbook test date 2026-10-16, tomorrow’s 18th birthday rejected with age message; today/yesterday accepted.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-008"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. Tomorrow’s birth date rejected with a valid-date/future-date message.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-010",
+      "TC-BUY-011"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. Existing primary email and uppercase form both rejected as duplicate without another account or OTP.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-012"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. Two outer email spaces removed and canonical email persisted.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-013"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. All four literal workbook invalid phones rejected without account/mail.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-014"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. Ten/twelve-digit numbers rejected; unique eleven-digit Philippine number accepted.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-015",
+      "TC-BUY-016"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. Existing phone in 09 and equivalent +63 formats both rejected as the same registered number.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-017"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. Seven-character workbook password rejected; eight-character password accepted.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-018"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. All four missing-character-class passwords rejected without account/mail.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-019"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. Mismatched confirmation rejected with password-confirmation message.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-021"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. Unticked terms block registration with explicit terms message and no new account.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-022"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. Three immediate Register button clicks produced exactly one unverified account and exactly one OTP, without duplicate-email error.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-024"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. A code different from actual mail code was rejected and account stayed Unverified.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-025"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. Five/seven-digit, alphabetic and blank OTPs rejected by visible native validation; account stayed Unverified.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-028"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. Unverified buyer login denied portal access and displayed verification requirement.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-029",
+      "TC-BUY-030"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. Verified credentials opened buyer dashboard with Juan Miguel; seller, logistics, rider and admin dashboards each denied access without exposing their data.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-026"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. Waited at least 5:01 in real elapsed time without token/clock edits; original code rejected as expired, Resend remained available, account stayed Unverified.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-009"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. All five literal malformed workbook emails rejected with field messages and no account/OTP.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  },
+  {
+    "cases": [
+      "TC-BUY-027",
+      "TC-BUY-023"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL/local mail log; isolated unique email/phone aliases preserve existing accounts. Resend logged a different code; first code rejected while Unverified, replacement accepted within five minutes, status became Active/approved and login showed success.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:35:11.865Z"
+  }
+]

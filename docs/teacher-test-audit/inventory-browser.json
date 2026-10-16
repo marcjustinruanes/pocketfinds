@@ -1,0 +1,47 @@
+[
+  {
+    "cases": [
+      "SEL-INV-001"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: buyer explicitly placed a COD order for two units from stock 20; immediately committed stock and refreshed seller inventory both show exactly 18.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:44:57.813Z"
+  },
+  {
+    "cases": [
+      "SEL-INV-003"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: cancelled the actual preceding two-unit COD order through its reason/review/confirmation UI; order became Cancelled and stock returned exactly to 20.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:44:57.813Z"
+  },
+  {
+    "cases": [
+      "SEL-INV-007"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: bought the only remaining unit; separate Buyer 2 saw Sold out in search and product, purchase buttons disabled; Seller 2 inventory showed Out of Stock.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:44:57.813Z"
+  },
+  {
+    "cases": [
+      "SEL-INV-008"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: three real confirmed COD purchases moved stock 7→6→5→4; no new low-stock alert at 6, exactly one at 5, no duplicate at 4; seller notification page displayed the alert.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:44:57.813Z"
+  },
+  {
+    "cases": [
+      "BUY-PDP-008"
+    ],
+    "status": "PASS",
+    "evidence": "Chrome/MySQL: inactive and actually deleted fixture product URLs show a clear Product unavailable page with no purchase button or exception; checked both buyer and guest URLs.",
+    "origin": "http://127.0.0.1:8020",
+    "executed_at": "2026-10-16T09:44:57.813Z"
+  }
+]

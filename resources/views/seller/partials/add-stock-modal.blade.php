@@ -46,5 +46,12 @@
         </button>
       </div>
     </form>
+    @if(empty($product->variations))
+    <form method="POST" action="{{ route('seller.inventory.stock', $product) }}" style="padding:16px">
+      @csrf @method('PATCH')
+      <div class="form-row"><label>Set available stock<input type="number" name="stock" min="0" max="99999" step="1" value="{{ $product->stock }}" required></label></div>
+      <button type="submit" class="btn btn-outline">Set stock</button>
+    </form>
+    @endif
   </div>
 </div>
