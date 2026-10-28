@@ -6,7 +6,7 @@
     <title>Hub Staff Registration — PocketFinds</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/register.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/register.css') }}?v={{ @filemtime(public_path('css/register.css')) ?: 1 }}">
     <style>
         .prefilled-note {
             font-size: 11px;
@@ -846,6 +846,7 @@
                         </div>
 
                         <div class="address-grid">
+                            @include('auth.partials.registration-region')
                             <div class="auth-field full">
                                 <label class="auth-label" for="province">Province <span class="auth-required">*</span></label>
                                 <select class="auth-input auth-select" id="province" name="province" required>
@@ -864,6 +865,7 @@
                                     <option value="" disabled selected>Select city / municipality first</option>
                                 </select>
                             </div>
+                            @include('auth.partials.registration-postal-code')
                             <div class="auth-field">
                                 <label class="auth-label" for="house_no">House / Unit No.</label>
                                 <input class="auth-input" id="house_no" name="house_no" type="text" placeholder="e.g. Blk 1 Lot 2">
@@ -1191,7 +1193,7 @@
                             </div>
                             <div class="auth-field full">
                                 <label class="auth-label" for="contact_no">Contact number <span class="auth-required">*</span></label>
-                                <input class="auth-input" id="contact_no" name="contact_no" type="tel" placeholder="09XXXXXXXXX" maxlength="11" required>
+                                @include('auth.partials.registration-mobile')
                                 <span class="field-hint" id="contactHint"></span>
                             </div>
                         </div>
@@ -1850,9 +1852,12 @@ nextStep = function (current) {
     if (current === 5) {
         // Step 1: Address
         const prov = document.getElementById('province');
+        const region = document.getElementById('region');
         const muni = document.getElementById('municipality');
         const brgy = document.getElementById('barangay');
         let valid = true;
+        clearError(region);
+        if (!region?.value) { showError(region, 'Please select your region.'); valid = false; }
         clearError(prov); clearError(muni); clearError(brgy);
         if (!prov?.value) { showError(prov, 'Please select your province.'); valid = false; }
         if (!muni?.value) { showError(muni, 'Please select your city / municipality.'); valid = false; }
@@ -1909,8 +1914,8 @@ nextStep = function (current) {
             return;
         }
         const phone = document.getElementById('contact_no');
-        if (!phone?.value.trim() || phone.value.trim().length !== 11) {
-            showError(phone, 'Enter a valid 11-digit mobile number.');
+        if (!/^9\d{9}$/.test(phone?.value.trim() ?? '')) {
+            showError(phone, 'Enter 10 digits starting with 9 after +63.');
             return;
         }
     }
@@ -1964,6 +1969,9 @@ validateStep = function (step) {
 };
 
 // Re-check options and reset company/hub if address fields change
+document.getElementById('region')?.addEventListener('change', () => {
+    resetCompanyAndHubStep();
+});
 document.getElementById('province')?.addEventListener('change', () => {
     resetCompanyAndHubStep();
     setTimeout(refreshCompanyAndHubOptions, 200);

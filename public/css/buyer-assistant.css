@@ -1,10 +1,18 @@
-.pf-assistant { --assistant-pink: #bf3c7d; font-family: Inter, sans-serif; font-size: 14px; color: #25232b; }
+.pf-assistant { --assistant-pink: #bf3c7d; --assistant-button-size: clamp(44px, 4vw, 52px); font-family: Inter, sans-serif; font-size: 14px; color: #25232b; }
 .pf-assistant * { box-sizing: border-box; letter-spacing: 0; }
 .pf-assistant [hidden] { display: none !important; }
 .pf-assistant button, .pf-assistant a { -webkit-tap-highlight-color: transparent; }
 .pf-assistant button { cursor: pointer; font: inherit; }
-.pf-assistant-launch { position: fixed; right: 24px; bottom: 24px; z-index: 160; display: flex; align-items: center; gap: 9px; min-height: 48px; padding: 12px 18px; border: 1px solid #ac316e; border-radius: 24px; background: #bf3c7d; color: white; box-shadow: 0 4px 18px #bf3c7d33; transition: transform .18s, box-shadow .18s; }
-.pf-assistant-launch:hover { transform: translateY(-2px); box-shadow: 0 6px 22px #bf3c7d55; }
+.pf-assistant-dock { position: fixed; right: 24px; bottom: 24px; z-index: 160; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.pf-assistant-launch { --assistant-icon-size: clamp(20px, 2vw, 26px); position: relative; display: block; width: var(--assistant-button-size); height: var(--assistant-button-size); padding: 0; overflow: hidden; border: 1px solid #ac316e; border-radius: 999px; background: #bf3c7d; color: white; box-shadow: 0 4px 18px #bf3c7d33; transition: width .28s cubic-bezier(.22,1,.36,1), box-shadow .18s; }
+.pf-assistant-launch > svg { position: absolute; left: calc((var(--assistant-button-size) - var(--assistant-icon-size)) / 2 - 1px); top: 50%; transform: translateY(-50%); width: var(--assistant-icon-size); height: var(--assistant-icon-size); }
+.pf-assistant-launch-label { position: absolute; left: var(--assistant-button-size); top: 0; height: 100%; display: flex; align-items: center; padding-right: 16px; font-size: clamp(11px, 1vw, 13px); white-space: nowrap; pointer-events: none; opacity: 0; transform: translateX(10px); transition: transform .28s cubic-bezier(.22,1,.36,1), opacity .18s; }
+.pf-assistant-launch:hover, .pf-assistant-launch:focus-visible { width: calc(var(--assistant-button-size) + 132px); }
+.pf-assistant-launch:hover .pf-assistant-launch-label, .pf-assistant-launch:focus-visible .pf-assistant-launch-label { transform: translateX(0); opacity: 1; }
+.pf-assistant-top { display: grid; place-items: center; width: var(--assistant-button-size); height: var(--assistant-button-size); padding: 0; border: 0; background: transparent; color: var(--assistant-pink); box-shadow: none; }
+.pf-assistant-top > svg { width: var(--assistant-button-size); height: var(--assistant-button-size); }
+.pf-assistant:has(.pf-assistant-panel:not([hidden])) .pf-assistant-dock, body:has(#messagesModal.open) .pf-assistant-dock { display: none; }
+.pf-assistant-launch:hover { box-shadow: 0 6px 22px #bf3c7d55; }
 body:has(#messagesModal.open) .pf-assistant-launch { display: none; }
 .pf-assistant-panel { position: fixed; right: 24px; bottom: 24px; z-index: 170; width: 390px; max-width: calc(100% - 32px); height: 610px; max-height: calc(100dvh - 48px); display: flex; flex-direction: column; overflow: hidden; background: white; border: 1px solid #e9d8e1; border-radius: 8px; box-shadow: 0 12px 48px #29202b30; animation: pfAssistantIn .18s ease-out; }
 .pf-assistant-head { flex: none; display: flex; align-items: center; gap: 10px; padding: 15px; border-bottom: 1px solid #eee5eb; background: #fff8fc; }
@@ -70,8 +78,7 @@ body:has(#messagesModal.open) .pf-assistant-launch { display: none; }
 .pf-assistant-sr { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
 @keyframes pfAssistantIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 700px) {
-  .pf-assistant-launch { right: 14px; bottom: calc(76px + env(safe-area-inset-bottom)); padding: 0; width: 48px; height: 48px; justify-content: center; }
-  .pf-assistant-launch span { display: none; }
+  .pf-assistant-dock { right: 14px; bottom: calc(76px + env(safe-area-inset-bottom)); }
   .pf-assistant-panel { right: 12px; bottom: calc(76px + env(safe-area-inset-bottom)); width: calc(100% - 24px); max-width: none; max-height: calc(100dvh - 100px - env(safe-area-inset-bottom)); }
   .pf-assistant-form textarea { font-size: 16px; min-height: 68px; }
   .pf-assistant-support input, .pf-assistant-support textarea { font-size: 16px; }

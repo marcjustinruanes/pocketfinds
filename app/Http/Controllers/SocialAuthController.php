@@ -9,22 +9,48 @@ use GuzzleHttp\Client;
 
 class SocialAuthController extends Controller
 {
+    private function googleProvider()
+    {
+        // Use the exact callback registered for this OAuth client in Google Cloud.
+        return Socialite::driver('google');
+    }
+
+    private function googleStartRedirect(string $route, array $parameters = [])
+    {
+        $callback = parse_url(config('services.google.redirect'));
+        $origin = $callback['scheme'].'://'.$callback['host'].(isset($callback['port']) ? ':'.$callback['port'] : '');
+
+        // Establish the OAuth session where Google will return its callback.
+        if (request()->getSchemeAndHttpHost() !== $origin) {
+            return redirect()->away($origin.route($route, $parameters, false));
+        }
+
+        return null;
+    }
+
     public function redirectToGoogle()
     {
         $type = request('type', 'buyer');
+        if ($redirect = $this->googleStartRedirect('google.redirect', ['type' => $type])) {
+            return $redirect;
+        }
         session(['oauth_account_type' => $type, 'oauth_intent' => 'register']);
-        return Socialite::driver('google')->stateless()->redirect();
+        return $this->googleProvider()->redirect();
     }
 
     public function redirectToGoogleLogin()
     {
+        if ($redirect = $this->googleStartRedirect('google.login')) {
+            return $redirect;
+        }
+        session()->forget('oauth_account_type');
         session(['oauth_intent' => 'login']);
-        return Socialite::driver('google')->stateless()->redirect();
+        return $this->googleProvider()->redirect();
     }
 
     public function handleGoogleCallback()
     {
-        $intent = session('oauth_intent', 'register');
+        $intent = session('oauth_intent', 'login');
 
         // Google redirects here without a usable `code` if the user cancels
         // consent, the code was already used (e.g. a duplicate/back-button
@@ -35,10 +61,11 @@ class SocialAuthController extends Controller
         }
 
         try {
-            $googleUser = Socialite::driver('google')
+            $googleUser = $this->googleProvider()
                 ->setHttpClient(new Client(['verify' => false]))
-                ->stateless()
                 ->user();
+        } catch (\Laravel\Socialite\Two\InvalidStateException $e) {
+            return $this->googleFailureRedirect($intent, 'Your Google sign-in session expired. Please try again.');
         } catch (\Throwable $e) {
             return $this->googleFailureRedirect($intent, 'Google sign-in failed. Please try again.');
         }
@@ -62,9 +89,9 @@ class SocialAuthController extends Controller
             }
 
             if ($existing->status === 'rejected') {
-                return redirect()->route('register.type')->withErrors([
-                    'email' => 'Your previous application was not approved. You may register again with the same email.',
-                ]);
+                return redirect()->route('login')->withErrors([
+                    'email' => 'Your account application was rejected.'.($existing->status_reason ? ' Reason: '.$existing->status_reason : ''),
+                ])->with('accountStatus', 'rejected');
             }
 
             Auth::login($existing, true);

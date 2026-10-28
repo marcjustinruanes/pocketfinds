@@ -1,4 +1,27 @@
 /* ── Global overrides for register page (compact, consistent across all steps) ── */
+.registration-mobile {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+}
+.registration-mobile-prefix {
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    color: #374151;
+    background: #f3f4f6;
+    border: 1px solid var(--auth-border, #e5e7eb);
+    border-right: 0;
+    border-radius: 8px 0 0 8px;
+    font-size: 13px;
+    font-weight: 600;
+    user-select: none;
+}
+.registration-mobile .auth-input {
+    flex: 1;
+    min-width: 0;
+    border-radius: 0 8px 8px 0;
+}
 .auth-form-panel {
     padding: 20px clamp(20px, 4vw, 44px);
     align-items: flex-start;

@@ -71,6 +71,7 @@ class GcashPurchaseController extends Controller
 
     public function create(Request $r, GcashWorkflow $flow)
     {
+        if(\App\Services\BuyerCommerce::installed()) return app(CommerceController::class)->checkout($r);
         $d = $r->validate(['items' => 'required|array|min:1|max:100', 'items.*' => 'required|string|distinct', 'payment_method' => 'required|integer', 'checkout_id' => 'required|uuid', 'voucher_code' => 'nullable|string|max:30', 'delivery_address_id' => 'nullable|integer', 'buyer_note' => 'nullable|string|max:500']);
         $rows = $flow->create($r->user(), $d['items'], $d['payment_method'], $d['checkout_id'], $d['voucher_code'] ?? null, $d['delivery_address_id'] ?? null, $d['buyer_note'] ?? null);
 

@@ -12,7 +12,7 @@ class MediaConsistency
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->isMethodSafe() || (count($request->allFiles()) === 0 && ! $request->boolean('hero_image_clear') && ! $request->routeIs('admin.update-requests.*'))) {
+        if ($request->isMethodSafe() || (count($request->allFiles()) === 0 && ! $request->boolean('hero_image_clear') && ! $request->boolean('hero_image_2_clear') && ! $request->routeIs('admin.update-requests.*'))) {
             return $next($request);
         }
         $level = DB::transactionLevel();

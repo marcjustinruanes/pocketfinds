@@ -3,10 +3,15 @@
 @php($assistantProduct = in_array(request()->route()?->getName(), ['guest.product', 'buyer.product'], true) ? request()->route('id') : null)
 <link rel="stylesheet" href="{{ asset('css/buyer-assistant.css') }}?v={{ filemtime(public_path('css/buyer-assistant.css')) }}">
 <div class="pf-assistant" data-endpoint="{{ route($assistantGuest ? 'guest.assistant.send' : 'buyer.assistant.send') }}" @unless($assistantGuest) data-conversations="{{ route('buyer.assistant.conversations') }}" @endunless data-support="{{ route('support.contact') }}" data-guest="{{ $assistantGuest ? 'true' : 'false' }}">
-  <button class="pf-assistant-launch" type="button" aria-label="Open PocketFinds assistant" title="PocketFinds assistant" aria-expanded="false" aria-controls="pfAssistantPanel">
+  <div class="pf-assistant-dock">
+  <button class="pf-assistant-launch" type="button" aria-label="Ask PocketFinds" aria-expanded="false" aria-controls="pfAssistantPanel">
     @include('buyer.partials.icon', ['name' => 'chat', 'size' => 24])
-    <span>Ask PocketFinds</span>
+    <span class="pf-assistant-launch-label" aria-hidden="true">Ask PocketFinds</span>
   </button>
+  <button class="pf-assistant-top" type="button" data-back-to-top aria-label="Back to top" title="Back to top" hidden>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
+  </button>
+  </div>
   <section id="pfAssistantPanel" class="pf-assistant-panel" role="dialog" aria-label="PocketFinds assistant" hidden>
     <header class="pf-assistant-head">
       <img src="{{ asset('images/logo.png') }}" alt="" width="32" height="32">

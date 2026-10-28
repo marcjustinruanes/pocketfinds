@@ -18,11 +18,16 @@
       </form>
     </div>
     <nav class="nav-links" aria-label="Storefront">
-      <a class="nav-link" href="{{ $storefrontAnchor }}#shops">Shops</a>
       <a class="nav-link" href="{{ $storefrontAnchor }}#deals">Deals</a>
+      <a class="nav-link" href="{{ $storefrontAnchor }}#products">Products</a>
       <a class="nav-link" href="#about">About</a>
     </nav>
     <div class="header-actions">
+      @if(\App\Services\BuyerCommerce::installed())
+      <a class="pf-acct-icon" href="{{ route('buyer.wishlist') }}" title="Wishlist" aria-label="Wishlist">
+        @include('buyer.partials.icon', ['name' => 'wishlist', 'size' => 18])
+      </a>
+      @endif
       <details class="pf-buyer-menu">
         <summary class="pf-acct-icon" aria-label="Notifications" title="Notifications">
           @include('buyer.partials.icon', ['name' => 'bell', 'size' => 18])
@@ -30,6 +35,9 @@
         </summary>
         <div class="pf-buyer-dropdown pf-buyer-notifications">
           <strong>Notifications</strong>
+          @if(\App\Services\BuyerCommerce::installed())
+          <form method="POST" action="{{ route('buyer.commerce.read-all') }}">@csrf<button type="submit">Mark all as read</button></form>
+          @endif
           @forelse($notifications as $notification)
           <a href="{{ route('buyer.notifications.open', $notification->id) }}" class="{{ $notification->is_read ? '' : 'is-unread' }}">
             <span>{{ $notification->message }}</span>
@@ -56,12 +64,18 @@
         <div class="pf-buyer-dropdown pf-buyer-account-navigation">
           <div class="pf-buyer-identity"><strong>{{ auth()->user()->given_names }} {{ auth()->user()->last_name }}</strong><small>Buyer account</small></div>
 <a href="{{ route('buyer.dashboard') }}" @if(request()->routeIs('buyer.dashboard')) aria-current="page" @endif>@include('buyer.partials.icon', ['name' => 'home', 'size' => 16]) Home</a>
-<x-navigation-group id="buyer-shopping" label="Shopping" :active="request()->routeIs('buyer.browse', 'buyer.cart', 'buyer.product', 'buyer.shop')">
+<x-navigation-group id="buyer-shopping" label="Shopping" :active="request()->routeIs('buyer.browse', 'buyer.cart', 'buyer.product', 'buyer.shop', 'buyer.wishlist') || (request()->routeIs('buyer.commerce.index') && in_array(request('tab','wishlist'),['wishlist','vouchers','sales']))">
 <a href="{{ route('buyer.browse') }}" @if(request()->routeIs('buyer.browse', 'buyer.product', 'buyer.shop')) aria-current="page" @endif>@include('buyer.partials.icon', ['name' => 'search', 'size' => 16]) Browse Products</a>
 <a href="{{ route('buyer.cart') }}" @if(request()->routeIs('buyer.cart')) aria-current="page" @endif>@include('buyer.partials.icon', ['name' => 'cart', 'size' => 16]) Cart</a>
+@if(\App\Services\BuyerCommerce::installed())
+<a href="{{ route('buyer.wishlist') }}">@include('buyer.partials.icon', ['name' => 'wishlist', 'size' => 16]) Wishlist</a>
+<a href="{{ route('buyer.account').'#my-vouchers' }}">@include('buyer.partials.icon', ['name' => 'wallet', 'size' => 16]) My Vouchers</a>
+@endif
 </x-navigation-group>
-<x-navigation-group id="buyer-orders" label="Orders" :active="request()->routeIs('buyer.orders', 'gcash.*')">
+<x-navigation-group id="buyer-orders" label="Orders" :active="request()->routeIs('buyer.orders', 'gcash.*') || (request()->routeIs('buyer.commerce.index') && in_array(request('tab'),['returns','reviews']))">
 <a href="{{ route('buyer.orders') }}" @if(request()->routeIs('buyer.orders')) aria-current="page" @endif>@include('buyer.partials.icon', ['name' => 'package', 'size' => 16]) My Orders</a>
+@if(\App\Services\BuyerCommerce::installed())
+@endif
 @if(\App\Services\GcashInventory::installed())
 <a href="{{ route('gcash.index') }}" @if(request()->routeIs('gcash.*')) aria-current="page" @endif>@include('buyer.partials.icon', ['name' => 'wallet', 'size' => 16]) GCash payments</a>
 @endif

@@ -1,6 +1,15 @@
 (() => {
   const root = document.querySelector('.pf-assistant');
   if (!root) return;
+  const backToTop = root.querySelector('[data-back-to-top]');
+  if (backToTop) {
+    const updateBackToTop = () => { backToTop.hidden = window.scrollY < 320; };
+    window.addEventListener('scroll', updateBackToTop, { passive: true });
+    updateBackToTop();
+    backToTop.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+    });
+  }
   const panel = root.querySelector('.pf-assistant-panel');
   const launch = root.querySelector('.pf-assistant-launch');
   const form = root.querySelector('.pf-assistant-form');

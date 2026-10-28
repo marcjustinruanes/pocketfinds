@@ -6,7 +6,7 @@
     <title>Create Your Buyer Account — PocketFinds</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/register.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/register.css') }}?v={{ @filemtime(public_path('css/register.css')) ?: 1 }}">
     <style>
         .prefilled-note {
             font-size: 11px;
@@ -402,7 +402,7 @@
                             </div>
                             <div class="auth-field full">
                                 <label class="auth-label" for="contact_no">Contact number <span class="auth-required">*</span></label>
-                                <input class="auth-input" id="contact_no" name="contact_no" type="tel" placeholder="09XXXXXXXXX" maxlength="11" required>
+                                @include('auth.partials.registration-mobile')
                                 <span class="field-hint" id="contactHint"></span>
                             </div>
                         </div>
@@ -426,6 +426,7 @@
 
 
                         <div class="address-grid">
+                            @include('auth.partials.registration-region')
                             <div class="auth-field full">
                                 <label class="auth-label" for="province">Province <span class="auth-required">*</span></label>
                                 <select class="auth-input auth-select" id="province" name="province" required>
@@ -444,6 +445,7 @@
                                     <option value="" disabled selected>Select city / municipality first</option>
                                 </select>
                             </div>
+                            @include('auth.partials.registration-postal-code')
                             <div class="auth-field">
                                 <label class="auth-label" for="house_no">House No. / Unit</label>
                                 <input class="auth-input" id="house_no" name="house_no" type="text" placeholder="e.g. 123">

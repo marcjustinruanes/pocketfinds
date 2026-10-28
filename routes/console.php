@@ -23,3 +23,5 @@ Artisan::command('gcash:expire', function () {
     $this->info(app(GcashWorkflow::class)->sweep().' GCash reservations expired.');
 })->purpose('Release expired GCash stock and voucher allocations exactly once');
 Schedule::command('gcash:expire')->everyMinute()->withoutOverlapping();
+Artisan::command('commerce:sweep', function () { app(\App\Services\BuyerCommerce::class)->sweep(); $this->info('Flash reminders and return deadlines processed.'); });
+Schedule::command('commerce:sweep')->everyMinute()->withoutOverlapping();

@@ -175,6 +175,7 @@ class BuyerController extends Controller
         $items = collect($cart)->map(function (array $item, string $key) use ($products) {
             return array_merge($item, [
                 'key' => $key,
+                'seller_id' => $products->get($item['product_id'])?->seller_id,
                 // The full raw variation groups (name + every option, with
                 // stock/price/image) so the edit modal can render the exact
                 // same options UI as the product page's Options tab —
@@ -242,10 +243,13 @@ class BuyerController extends Controller
 
     public function storeAddress(Request $request)
     {
+        if(is_string($request->input('contact_no'))) $request->merge(['contact_no'=>\App\Support\PhilippineMobile::normalize($request->contact_no)]);
         $data = $request->validate([
+            'region' => ['required','string','max:255'],
+            'postal_code' => ['required','regex:/^[0-9]{4}$/D'],
             'label' => ['nullable', 'string', 'max:50'],
             'recipient_name' => ['required', 'string', 'max:150'],
-            'contact_no' => ['nullable', 'string', 'regex:/\A09[0-9]{9}\z/'],
+            'contact_no' => ['required', 'string', 'regex:/\A09[0-9]{9}\z/'],
             'province' => ['required', 'string', 'max:150'],
             'municipality' => ['required', 'string', 'max:150'],
             'barangay' => ['required', 'string', 'max:150'],
@@ -256,12 +260,16 @@ class BuyerController extends Controller
         ]);
 
         // The very first address a buyer ever saves becomes their default automatically.
+        $address = DB::transaction(function() use($data) {
+        User::whereKey(auth()->id())->lockForUpdate()->firstOrFail();
+        if(BuyerAddress::where('buyer_id',auth()->id())->count()>=10) throw ValidationException::withMessages(['address'=>'You can save at most 10 addresses.']);
         $isFirst = ! BuyerAddress::where('buyer_id', auth()->id())->exists();
-        $address = BuyerAddress::create(array_merge($data, [
+        return BuyerAddress::create(array_merge($data, [
             'buyer_id' => auth()->id(),
             'is_default' => $isFirst,
-        ]));
+        ])); });
 
+        $request->session()->put('buyer_checkout_address',$address->id);
         return response()->json([
             'success' => true,
             'address' => [
@@ -309,6 +317,7 @@ class BuyerController extends Controller
         ]);
 
         $p = Product::with(['seller', 'category'])->where('id', $data['product_id'])->where('status', 'active')->sellerApproved()->firstOrFail();
+        app(\App\Services\BuyerCommerce::class)->available($p->seller);
         $prod = $this->mapProduct($p);
 
         // A selected option carries its own authoritative price/stock — never
@@ -341,6 +350,7 @@ class BuyerController extends Controller
             abort_if($available <= 0, 422, 'This product is out of stock.');
         }
 
+        $price=app(\App\Services\BuyerCommerce::class)->unitPrice($p,$price);
         $buyerId = auth()->id();
         $existing = CartItem::where('buyer_id', $buyerId)->where('product_id', $p->id)
             ->where('variation_value', $variationValue)->where('variation_group', $variationGroup)->first();
@@ -504,24 +514,28 @@ class BuyerController extends Controller
     {
         Order::autoCompleteDeliveredThrottled();
 
-        $allowedTabs = ['all', 'to_ship', 'in_transit', 'out_for_delivery', 'delivered', 'completed', 'cancelled'];
+        $allowedTabs = ['all', 'to_ship', 'in_transit', 'out_for_delivery', 'delivered', 'completed', 'cancelled', 'refunds'];
         $tab = in_array($request->query('tab'), $allowedTabs, true) ? $request->query('tab') : 'all';
         $baseQuery = Order::where('buyer_id', auth()->id());
         $orderCounts = (clone $baseQuery)->selectRaw('status, count(*) as aggregate')->groupBy('status')->pluck('aggregate', 'status');
+        $returnRequests=\App\Services\BuyerCommerce::installed()?DB::table('commerce_returns')->where('buyer_id',auth()->id())->get()->keyBy('order_id'):collect();
         $orders = $baseQuery->with(['seller', 'paymentMethod', 'shipment.courier', 'shipment.pickupRider', 'review'])
             ->when($tab === 'to_ship', fn ($query) => $query->whereIn('status', Order::BUYER_TO_SHIP_STATUSES))
             ->when($tab === 'in_transit', fn ($query) => $query->whereIn('status', Order::BUYER_IN_TRANSIT_STATUSES))
-            ->when(! in_array($tab, ['all', 'to_ship', 'in_transit'], true), fn ($query) => $query->where('status', $tab))
+            ->when($tab==='refunds',fn($query)=>$query->whereIn('id',$returnRequests->keys()))
+            ->when(! in_array($tab, ['all', 'to_ship', 'in_transit', 'refunds'], true), fn ($query) => $query->where('status', $tab))
             ->latest()
             ->get();
 
         $orderHistory = DB::table('order_status_history')->whereIn('order_id', $orders->modelKeys())->orderBy('created_at')->get(['order_id', 'status', 'created_at'])->groupBy('order_id');
 
-        return view('buyer.orders', compact('orders', 'tab', 'orderCounts', 'orderHistory'));
+        return view('buyer.orders', compact('orders', 'tab', 'orderCounts', 'orderHistory','returnRequests'));
     }
 
     public function storeReview(Request $request, Order $order)
     {
+        if(!$request->has('item_key'))$request->merge(['item_key'=>0]);
+        if(\App\Services\BuyerCommerce::installed()) return app(CommerceController::class)->review($request,$order);
         abort_unless($order->buyer_id === auth()->id(), 403);
         if ($order->status !== 'completed') {
             return back()->with('error', 'You can only rate completed orders.');
@@ -598,6 +612,7 @@ class BuyerController extends Controller
     public function confirmReceipt(Order $order)
     {
         abort_unless($order->buyer_id === auth()->id(), 403);
+        if(\App\Services\BuyerCommerce::installed() && DB::table('commerce_returns')->where('order_id',$order->id)->whereIn('status',['pending','approved','escalated','received','refunded'])->exists()) return back()->with('error','Resolve the return/refund request before completing this order.');
         // Only confirmable once the courier has actually marked it delivered — not merely
         // "out for delivery" (still en route). See RiderController/LogisticsController's
         // ORDER_STATUS_MAP for why 'delivered' stops short of 'completed' on its own.
@@ -700,6 +715,7 @@ class BuyerController extends Controller
 
     public function checkout(Request $request)
     {
+        if(\App\Services\BuyerCommerce::installed()) return app(CommerceController::class)->checkout($request);
         $data = $request->validate([
             'items' => ['required', 'array', 'min:1'],
             'items.*' => ['string'],
@@ -729,7 +745,7 @@ class BuyerController extends Controller
             if (count($purchases) === 1) {
                 $seller = User::findOrFail($purchases[0]->seller_id);
 
-                return redirect()->route('buyer.messages', ['seller' => $seller->username, 'purchase' => $purchases[0]->id])->with('success', 'Stock reserved for 15 minutes. Ask the seller for GCash instructions.');
+                return redirect()->route('buyer.messages', ['seller' => $seller->username, 'purchase' => $purchases[0]->id])->with('success', 'Stock reserved for one hour. Ask the seller for GCash instructions.');
             }
 
             return redirect()->route('gcash.index')->with('success', 'A separate payment purchase was reserved for each seller.');
@@ -927,7 +943,7 @@ class BuyerController extends Controller
             }
         }
 
-        return $price;
+        return app(\App\Services\BuyerCommerce::class)->unitPrice($product,$price);
     }
 
     /** Whether the given code matches a usable voucher for any shop present in $items. */
@@ -1280,6 +1296,7 @@ class BuyerController extends Controller
         DB::table('notifications')->where('id', $id)->update(['is_read' => true]);
 
         return match ($notification->notification_type) {
+            'flash_sale' => redirect()->route('buyer.product',$notification->reference_id),
             'gcash_purchase' => redirect()->route('gcash.show', $notification->reference_id),
             'order_status' => redirect()->route('buyer.orders'),
             'review_reply' => redirect()->route('buyer.orders'),
@@ -1347,9 +1364,11 @@ class BuyerController extends Controller
     /** Submits a profile-change request — nothing changes on the account until admin approves it. */
     public function updateProfile(Request $request)
     {
+        if(is_string($request->input('contact_no'))) $request->merge(['contact_no'=>\App\Support\PhilippineMobile::normalize($request->contact_no)]);
         $request->validate([
-            'given_names' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
+            'given_names' => ['required','string','min:2','max:50','regex:/^[\p{L}-]+$/u'],
+            'last_name' => ['required','string','min:2','max:50','regex:/^[\p{L}-]+$/u'],
+            'middle_name' => ['nullable','string','min:2','max:50','regex:/^[\p{L}-]+$/u'],
             'contact_no' => ['nullable', 'regex:/^09[0-9]{9}$/'],
         ], [
             'contact_no.regex' => 'Contact number must start with 09 and be exactly 11 digits.',
@@ -1357,7 +1376,7 @@ class BuyerController extends Controller
 
         return $this->submitAccountUpdateRequest(
             $request,
-            ['given_names', 'last_name', 'contact_no'],
+            ['given_names', 'middle_name', 'last_name', 'contact_no'],
             [],
             'profile_success'
         );
@@ -1367,6 +1386,8 @@ class BuyerController extends Controller
     public function updateAddress(Request $request)
     {
         $request->validate([
+            'region' => 'required|string|max:255',
+            'postal_code' => ['required','regex:/^[0-9]{4}$/D'],
             'province' => 'required|string|max:255',
             'municipality' => 'required|string|max:255',
             'barangay' => 'required|string|max:255',
@@ -1376,7 +1397,7 @@ class BuyerController extends Controller
 
         return $this->submitAccountUpdateRequest(
             $request,
-            ['province', 'municipality', 'barangay', 'house_no', 'street'],
+            ['region', 'postal_code', 'province', 'municipality', 'barangay', 'house_no', 'street'],
             [],
             'address_success'
         );
@@ -1385,7 +1406,7 @@ class BuyerController extends Controller
     /** Password changes are immediate/self-service — never gated behind admin approval. */
     public function passwordUpdate(Request $request)
     {
-        $request->validate(['current_password' => 'required', 'password' => 'required|min:8|confirmed']);
+        $request->validate(['current_password' => 'required', 'password' => ['required','string',\Illuminate\Validation\Rules\Password::min(8)->mixedCase()->numbers()->symbols(),'confirmed']]);
         if (! Hash::check($request->current_password, auth()->user()->password)) {
             return back()->withErrors(['current_password' => 'Current password is incorrect.']);
         }

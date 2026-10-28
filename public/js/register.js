@@ -4,6 +4,63 @@ const accountTypeVal = document.querySelector('input[name="account_type"]')?.val
 const isSeller    = accountTypeVal === 'seller';
 const isRider     = accountTypeVal === 'rider';
 const isLogistics = accountTypeVal === 'logistics';
+const shopNameField = document.getElementById('business_name');
+if (isSeller && shopNameField) { shopNameField.minLength = 3; shopNameField.maxLength = 30; }
+const minimumRegistrationAge = ['buyer', 'rider'].includes(accountTypeVal) ? 18 : 16;
+
+['given_names', 'last_name', 'middle_name'].forEach(id => {
+    const field = document.getElementById(id);
+    if (field) { field.minLength = 2; field.maxLength = 50; }
+});
+const mobileField = document.getElementById('contact_no');
+['tin', 'postal_code'].forEach(id => {
+    const field = document.getElementById(id);
+    if (!field) return;
+    const sanitize = value => value.replace(/[^0-9]/g, '').slice(0, field.maxLength);
+    field.addEventListener('input', () => { field.value = sanitize(field.value); });
+    field.addEventListener('paste', event => {
+        const text = event.clipboardData?.getData('text');
+        if (!text) return;
+        event.preventDefault();
+        field.value = sanitize(text);
+        field.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+});
+document.getElementById('sec_registration_no')?.addEventListener('input', function () {
+    this.value = this.value.toUpperCase();
+});
+if (mobileField) {
+    mobileField.maxLength = 10;
+    mobileField.placeholder = '9XXXXXXXXX';
+}
+const birthdayField = document.getElementById('birthday');
+const licenseExpiryField = document.getElementById('license_expiry');
+if (licenseExpiryField) {
+    const today = new Date();
+    licenseExpiryField.min = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+}
+if (birthdayField) {
+    const cutoff = new Date();
+    cutoff.setFullYear(cutoff.getFullYear() - minimumRegistrationAge);
+    birthdayField.max = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}-${String(cutoff.getDate()).padStart(2, '0')}`;
+}
+const registrationPassword = document.getElementById('password');
+if (registrationPassword) {
+    registrationPassword.placeholder = '8+ characters, Aa, number and symbol';
+    registrationPassword.title = 'Use at least 8 characters with uppercase, lowercase, a number and a special character.';
+}
+
+function normalizeMobile(number) {
+    const value = number.trim();
+    if (/^9\d{9}$/.test(value)) return '0' + value;
+    return /^\+?639\d{9}$/.test(value) ? '0' + value.replace(/^\+?63/, '') : value;
+}
+
+function validateRegistrationName(value) {
+    if (!value) return null;
+    if ([...value].length < 2 || [...value].length > 50) return 'Name must be between 2 and 50 characters.';
+    return /^[\p{L}-]+$/u.test(value) ? null : 'Use only letters and hyphens.';
+}
 
 if (isSeller) {
     const businessNameField = document.getElementById('businessNameField');
@@ -797,6 +854,12 @@ function clearOcrPrefill() {
 function runOcr(source) {
     const ocrBox  = document.getElementById('ocrResult');
     const noteBox = document.getElementById('ocrPrefillNote');
+    if (document.querySelector('input[name="logistics_mode"]')?.value === 'found') {
+        // Company registration collects contact details before uploads, and the
+        // address on the person's ID is not necessarily the company's address.
+        if (ocrBox) { ocrBox.className = 'ocr-result'; ocrBox.textContent = 'ID uploaded for verification.'; }
+        return;
+    }
     if (source && source.type === 'application/pdf') {
         ocrBox.className = 'ocr-result mismatch';
         ocrBox.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> PDF detected — please fill in your details manually.';
@@ -905,6 +968,14 @@ async function ocrMatchAddress(rawText) {
     const filled  = [];
     const provMatch = matchFromList(psgcProvinces, rawText);
     if (!provMatch) return filled;
+    const region = document.getElementById('region');
+    if (region) {
+        const option = [...region.options].find(o => o.dataset.code === provMatch.regionCode);
+        if (!option) return filled;
+        region.value = option.value;
+        await loadRegionAddress(option.dataset.code);
+        filled.push('region');
+    }
     provSel.value = provMatch.name; provSel.dispatchEvent(new Event('change')); filled.push('province');
     const munis = await fetchJSON(`${PSGC}/provinces/${provMatch.code}/cities-municipalities/`);
     populateSelect(muniSel, munis, 'code', 'name', 'Select city / municipality');
@@ -920,9 +991,57 @@ async function ocrMatchAddress(rawText) {
 }
 
 let psgcProvinces = [];
-fetchJSON(`${PSGC}/provinces/`)
-    .then(data => { psgcProvinces = data; populateSelect(document.getElementById('province'), data, 'code', 'name', 'Select province'); })
-    .catch(() => { const sel = document.getElementById('province'); sel.innerHTML = '<option value="" disabled selected>Failed to load provinces</option>'; sel.disabled = false; });
+let provincesRequest;
+function loadProvinces() {
+    if (!provincesRequest) {
+        provincesRequest = fetchJSON(`${PSGC}/provinces/`)
+            .then(data => { psgcProvinces = data; return data; })
+            .catch(error => { provincesRequest = null; throw error; });
+    }
+    return provincesRequest;
+}
+loadProvinces()
+    .then(data => { if (!document.getElementById('region')) populateSelect(document.getElementById('province'), data, 'code', 'name', 'Select province'); })
+    .catch(() => {
+        if (!document.getElementById('region')) setLoading(document.getElementById('province'), 'Failed to load provinces');
+    });
+
+const regionSelect = document.getElementById('region');
+let addressRequestId = 0;
+async function loadRegionAddress(code) {
+    const requestId = ++addressRequestId;
+    const province = document.getElementById('province');
+    const municipality = document.getElementById('municipality');
+    setLoading(province, 'Loading provinces…');
+    setLoading(municipality, 'Select province first');
+    setLoading(document.getElementById('barangay'), 'Select municipality first');
+    try {
+        const allProvinces = await loadProvinces();
+        if (requestId !== addressRequestId || regionSelect.selectedOptions[0]?.dataset.code !== code) return;
+        const provinces = allProvinces.filter(province => String(province.regionCode) === String(code));
+        if (provinces.length) {
+            populateSelect(province, provinces, 'code', 'name', 'Select province');
+        } else {
+            // Some regions have no provinces; load their cities directly from the API.
+            province.replaceChildren(new Option(regionSelect.value, regionSelect.value, true, true));
+            province.options[0].dataset.code = code;
+            province.options[0].dataset.isRegion = '1';
+            const cities = await fetchJSON(`${PSGC}/regions/${code}/cities-municipalities/`);
+            if (requestId !== addressRequestId || regionSelect.selectedOptions[0]?.dataset.code !== code) return;
+            province.disabled = false;
+            populateSelect(municipality, cities, 'code', 'name', 'Select city / municipality');
+        }
+    } catch {
+        if (requestId === addressRequestId && regionSelect.selectedOptions[0]?.dataset.code === code) setLoading(province, 'Unable to load address. Select the region again.');
+    }
+}
+if (regionSelect) {
+    setLoading(document.getElementById('province'), 'Select region first');
+    fetchJSON(`${PSGC}/regions/`)
+        .then(data => populateSelect(regionSelect, data, 'code', 'name', 'Select region'))
+        .catch(() => setLoading(regionSelect, 'Unable to load regions. Refresh to retry.'));
+    regionSelect.addEventListener('change', () => loadRegionAddress(regionSelect.selectedOptions[0].dataset.code));
+}
 
 document.getElementById('province')?.addEventListener('change', function () {
     const munSel = document.getElementById('municipality');
@@ -930,23 +1049,39 @@ document.getElementById('province')?.addEventListener('change', function () {
     setLoading(munSel, 'Loading cities / municipalities…');
     setLoading(barSel, 'Select municipality first');
     const code = this.options[this.selectedIndex]?.dataset.code ?? this.value;
-    fetchJSON(`${PSGC}/provinces/${code}/cities-municipalities/`)
-        .then(data => populateSelect(munSel, data, 'code', 'name', 'Select city / municipality'))
-        .catch(() => setLoading(munSel, 'Failed to load'));
+    const requestId = addressRequestId;
+    const parent = this.selectedOptions[0]?.dataset.isRegion === '1' ? 'regions' : 'provinces';
+    fetchJSON(`${PSGC}/${parent}/${code}/cities-municipalities/`)
+        .then(data => { if (requestId === addressRequestId && this.selectedOptions[0]?.dataset.code === code) populateSelect(munSel, data, 'code', 'name', 'Select city / municipality'); })
+        .catch(() => { if (requestId === addressRequestId && this.selectedOptions[0]?.dataset.code === code) setLoading(munSel, 'Failed to load'); });
 });
 
 document.getElementById('municipality')?.addEventListener('change', function () {
     const barSel = document.getElementById('barangay');
     setLoading(barSel, 'Loading barangays…');
     const code = this.options[this.selectedIndex]?.dataset.code ?? this.value;
+    const requestId = addressRequestId;
     fetchJSON(`${PSGC}/cities-municipalities/${code}/barangays/`)
-        .then(data => populateSelect(barSel, data, 'code', 'name', 'Select barangay'))
-        .catch(() => setLoading(barSel, 'Failed to load'));
+        .then(data => { if (requestId === addressRequestId && this.selectedOptions[0]?.dataset.code === code) populateSelect(barSel, data, 'code', 'name', 'Select barangay'); })
+        .catch(() => { if (requestId === addressRequestId && this.selectedOptions[0]?.dataset.code === code) setLoading(barSel, 'Failed to load'); });
 });
 
 // ── Field rules ──
 const rules = {
-    middle_name: () => null,
+    tin: (v) => !v || /^[0-9]{12}$/.test(v) ? null : 'Enter exactly 12 digits for the TIN, without hyphens.',
+    sec_registration_no: (v) => /^[A-Za-z]{2}[0-9]{9}$/.test(v) ? null : 'Enter two letters followed by nine digits, such as CS202012345.',
+    postal_code: (v) => /^[0-9]{4}$/.test(v) ? null : 'Enter a four-digit postal code.',
+    business_name: (v) => isSeller && ([...v].length < 3 || [...v].length > 30) ? 'Shop name must be between 3 and 30 characters.' : null,
+    given_names: validateRegistrationName,
+    last_name: validateRegistrationName,
+    middle_name: validateRegistrationName,
+    birthday: (v) => v && v > birthdayField.max ? `You must be at least ${minimumRegistrationAge} years old to register.` : null,
+    password: (v) => {
+        if (v.length < 8 || !/[A-Z]/.test(v) || !/[a-z]/.test(v) || !/[0-9]/.test(v) || !/[^\p{L}\p{N}\s]/u.test(v)) {
+            return 'Use at least 8 characters with uppercase, lowercase, a number and a special character.';
+        }
+        return null;
+    },
     email: (v) => {
         if (!v) return 'Email is required.';
         if (!/@gmail\.com$/i.test(v)) return 'Must be a Gmail address (@gmail.com).';
@@ -954,28 +1089,37 @@ const rules = {
     },
     contact_no: (v) => {
         if (!v) return 'Contact number is required.';
-        if (!/^09\d{9}$/.test(v)) return 'Must be 11 digits starting with 09.';
+        if (!/^9\d{9}$/.test(v)) return 'Enter 10 digits starting with 9 after +63.';
         return null;
     },
     age: (v) => {
         if (!v) return 'Birthday is required.';
-        if (parseInt(v, 10) < 16) return 'You must be at least 16 years old to register.';
+        if (parseInt(v, 10) < minimumRegistrationAge) return `You must be at least ${minimumRegistrationAge} years old to register.`;
         return null;
     },
 };
 
-// Contact number: strip anything that isn't a digit as the user types, so
-// letters can't be entered at all.
-document.getElementById('contact_no')?.addEventListener('input', function () {
-    this.value = this.value.replace(/\D/g, '').slice(0, 11);
+function mobileNationalDigits(value) {
+    let digits = value.replace(/\D/g, '');
+    if (digits.startsWith('639')) digits = digits.slice(2);
+    else if (digits.startsWith('09')) digits = digits.slice(1);
+    return digits.slice(0, 10);
+}
+mobileField?.addEventListener('input', function () {
+    this.value = mobileNationalDigits(this.value);
+});
+mobileField?.addEventListener('paste', function (event) {
+    const pasted = event.clipboardData?.getData('text');
+    if (!pasted) return;
+    event.preventDefault();
+    this.value = mobileNationalDigits(pasted);
+    this.dispatchEvent(new Event('input', { bubbles: true }));
 });
 
-// Name fields: strip digits/symbols as the user types — only letters, spaces,
-// and the punctuation real names actually use (hyphen, apostrophe, period for
-// suffixes like "Jr.") survive.
+// Name fields accept Unicode letters and hyphens only.
 ['last_name', 'given_names', 'middle_name'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', function () {
-        this.value = this.value.replace(/[^\p{L}\s'.-]/gu, '');
+        this.value = this.value.replace(/[^\p{L}-]/gu, '');
     });
 });
 
@@ -1205,7 +1349,15 @@ function validateStep(step) {
             return false;
         }
         wrap.style.outline = '';
-        return true;
+        let detailsValid = true;
+        ['seller_type', 'tin'].forEach(id => {
+            const field = document.getElementById(id);
+            if (!field) return;
+            clearError(field);
+            const message = field.required && !field.value.trim() ? 'This field is required.' : rules[id]?.(field.value.trim());
+            if (message) { showError(field, message); detailsValid = false; }
+        });
+        return detailsValid;
     }
 
     // Contact step: require email verification on manual form only

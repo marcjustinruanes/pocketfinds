@@ -1,6 +1,21 @@
 @props(['name', 'size' => 18, 'class' => ''])
 @php
 $icons = [
+    'category-all' => '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+    'category-teddy' => '<circle cx="6" cy="4.5" r="2.5"/><circle cx="18" cy="4.5" r="2.5"/><ellipse cx="12" cy="8" rx="6" ry="5"/><ellipse cx="12" cy="17" rx="4.5" ry="5"/><ellipse cx="5.5" cy="15" rx="2" ry="3" transform="rotate(25 5.5 15)"/><ellipse cx="18.5" cy="15" rx="2" ry="3" transform="rotate(-25 18.5 15)"/><ellipse cx="8" cy="20" rx="2.5" ry="2"/><ellipse cx="16" cy="20" rx="2.5" ry="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M9.5 7h.01m5 0h.01M11 9h2l-1 1-1-1Z"/>',
+    'category-camping' => '<path stroke-linecap="round" stroke-linejoin="round" d="m2 21 7-12 7 12H2Zm4 0 3-6 3 6M7 6l2 3 2-3m7-4-4 7h2l-3 5h4v7m1-19 4 7h-2l3 5h-6M1 21h22"/>',
+    'category-paw' => '<ellipse cx="5" cy="9" rx="2" ry="2.5"/><ellipse cx="10" cy="5.5" rx="2" ry="2.5"/><ellipse cx="15" cy="5.5" rx="2" ry="2.5"/><ellipse cx="20" cy="9" rx="2" ry="2.5"/><path stroke-linecap="round" stroke-linejoin="round" d="M7 14c2-1 2-4 5.5-4s3.5 3 5.5 4c3 2 2 6-1 6-2 0-2.5-1-4.5-1S10 20 8 20c-3 0-4-4-1-6Z"/>',
+    'category-toy' => '<rect x="4" y="8" width="16" height="13" rx="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M8 8V4h3v4m2 0V4h3v4m-7 8 3-5 3 5m-5-2h4"/>',
+    'category-outdoors' => '<path stroke-linecap="round" stroke-linejoin="round" d="m2 21 8-15 8 15H2Zm12-7 3-5 5 12h-4M7 12l3 2 3-2"/><circle cx="18" cy="4" r="2"/>',
+    'category-electronics' => '<rect x="2" y="4" width="15" height="11" rx="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M6 20h7m-3.5-5v5"/><rect x="16" y="10" width="6" height="11" rx="1.5"/><path stroke-linecap="round" d="M19 18h.01"/>',
+    'category-bottles' => '<path stroke-linecap="round" stroke-linejoin="round" d="M5 8V4h5m-3-2v6M3 12a4 4 0 0 1 8 0v9H3V12Zm1 3h6m6-5V6h4v4m-5 4h6m-7-4h8v11h-8V10Z"/>',
+    'category-pacifier' => '<path stroke-linecap="round" stroke-linejoin="round" d="M9 9V6a3 3 0 0 1 6 0v3M4 9h16v2a8 8 0 0 1-16 0V9Z"/><circle cx="12" cy="16" r="5"/><path stroke-linecap="round" d="M7 11h.01M17 11h.01"/>',
+    'category-men' => '<path stroke-linecap="round" stroke-linejoin="round" d="m8 3-5 3-1 15h20L21 6l-5-3H8Zm0 0 4 16 4-16M6 14v7m12-7v7"/><path fill="currentColor" stroke="none" d="m10.5 3 1.5 2 1.5-2h-3Zm.5 3h2l.8 6-1.8 3-1.8-3 .8-6Z"/>',
+    'category-women' => '<path stroke-linecap="round" stroke-linejoin="round" d="M8 3h2a2 2 0 0 0 4 0h2l-1 7 6 11H3l6-11-1-7Zm1 7h6"/>',
+    'category-collar' => '<path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18v7H3zM7 7v7m10-7v7"/><rect x="9" y="6" width="6" height="9" rx="1"/><path stroke-linecap="round" d="M10 10.5h4m-2 4.5v2"/><circle cx="12" cy="19" r="2"/>',
+    'category-ball' => '<circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="m12 8 4 3-1.5 4h-5L8 11l4-3Zm0 0V3m4 8 4.5-2m-6 6 3 4m-8-4-3 4M8 11 3.5 9"/>',
+    'wishlist' => '<path stroke-linecap="round" stroke-linejoin="round" d="m15 4 5 5L7 22l-5-5L15 4Z"/><path stroke-linecap="round" stroke-linejoin="round" d="m12 7 5 5M5 3v4M3 5h4M19 15v4M17 17h4M19 2v2M18 3h2"/>',
+    'heart' => '<path stroke-linecap="round" stroke-linejoin="round" d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 00-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 000-7.8z"/>',
     'dashboard' => '<path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>',
     'bag'       => '<path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>',
     'cart'      => '<path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 5m12-5l2 5M9 21a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"/>',

@@ -6,7 +6,7 @@
     <title>Courier Registration — PocketFinds</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/register.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/register.css') }}?v={{ @filemtime(public_path('css/register.css')) ?: 1 }}">
     <style>
         .prefilled-note { font-size:11px;color:var(--auth-primary);margin:0 0 14px;padding:6px 12px;background:var(--auth-primary-soft);border-radius:8px;border-left:3px solid var(--auth-primary); }
         .img-lightbox { display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:center;justify-content:center; }
@@ -218,6 +218,7 @@
                         </div>
                         <p class="auth-subtitle" style="margin:0 0 12px">Where are you located? We'll use this to show which hub covers your area on the next step.</p>
                         <div class="address-grid">
+                            @include('auth.partials.registration-region')
                             <div class="auth-field full">
                                 <label class="auth-label" for="province">Province <span class="auth-required">*</span></label>
                                 <select class="auth-input auth-select" id="province" name="province" required>
@@ -236,6 +237,7 @@
                                     <option value="" disabled selected>Select city / municipality first</option>
                                 </select>
                             </div>
+                            @include('auth.partials.registration-postal-code')
                             <div class="auth-field">
                                 <label class="auth-label" for="house_no">House No. / Unit</label>
                                 <input class="auth-input" id="house_no" name="house_no" type="text" placeholder="e.g. 123">
@@ -639,7 +641,7 @@
                             </div>
                             <div class="auth-field full">
                                 <label class="auth-label" for="contact_no">Contact number <span class="auth-required">*</span></label>
-                                <input class="auth-input" id="contact_no" name="contact_no" type="tel" placeholder="09XXXXXXXXX" maxlength="11" required>
+                                @include('auth.partials.registration-mobile')
                                 <span class="field-hint" id="contactHint"></span>
                             </div>
                         </div>
@@ -1358,6 +1360,7 @@ function validateRiderStep2() {
     if (!ln.value.trim()) { showError(ln, 'License number is required.'); valid = false; }
     else if (licenseNumberAvailable === false) { showError(ln, "This license number is already registered."); valid = false; }
     if (!le.value) { showError(le, 'Expiry date is required.'); valid = false; }
+    else if (le.value < le.min) { showError(le, 'Your driver\'s license has expired. Enter today or a later expiry date.'); valid = false; }
     if (!docBlobs.license) { document.getElementById('licenseError').style.display = 'block'; valid = false; }
     else { document.getElementById('licenseError').style.display = 'none'; }
     if (!selfieBlob) { document.getElementById('selfieError').style.display = 'block'; valid = false; }

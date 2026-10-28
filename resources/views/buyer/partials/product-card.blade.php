@@ -26,6 +26,8 @@
   </div>
   <div class="product-info">
     <div class="product-name">{{ $pName }}</div>
+    @if($p['on_vacation']??false)<small>Shop on vacation</small>@endif
+    @if($p['flash_sale']??null)<small>Flash sale</small>@endif
     <div class="product-price-row">
       <span class="product-price">₱{{ number_format($pPrice) }}</span>
       <span class="rating-pill">

@@ -25,7 +25,7 @@
         <option value="all">All Types</option>
         <option value="buyer">Buyer</option>
         <option value="seller">Seller</option>
-        <option value="rider">Rider</option>
+        <option value="logistics">Logistics</option>
       </select>
     </div>
 
@@ -152,6 +152,10 @@
                   <div class="section-head"><span class="ic"><x-admin-icon name="bag" /></span><span>Seller Details</span></div>
                   <div class="detail-grid">
                     <div><div class="field-label">Business Name</div><div class="field-value">{{ $user->business_name }}</div></div>
+                    <div><div class="field-label">Postal Code</div><div class="field-value">{{ $user->postal_code ?? 'Not provided' }}</div></div>
+                    <div><div class="field-label">Seller Type</div><div class="field-value">{{ $user->seller_type?->label() ?? 'Not provided' }}</div></div>
+                    <div><div class="field-label">TIN</div><div class="field-value">{{ $user->tin ?? 'Not provided' }}</div></div>
+                    <div><div class="field-label">Region</div><div class="field-value">{{ $user->region ?? 'Not provided' }}</div></div>
                     <div class="full"><div class="field-label">Category</div><div class="field-value">{{ collect([$user->category?->name, $user->category_other])->filter()->implode(', ') ?: '—' }}</div></div>
                   </div>
                 </div>
@@ -163,6 +167,20 @@
                   <div class="section-head"><span class="ic"><x-admin-icon name="truck" /></span><span>Logistics Company</span></div>
                   <div class="detail-grid">
                     <div class="full"><div class="field-label">Company Name</div><div class="field-value">{{ $user->business_name }}</div></div>
+                    <div><div class="field-label">Contact Person</div><div class="field-value">{{ $user->given_names }} {{ $user->last_name }}</div></div>
+                    <div><div class="field-label">Position / Job Title</div><div class="field-value">{{ $user->position ?? 'Not provided' }}</div></div>
+                    <div><div class="field-label">SEC Registration Number</div><div class="field-value">{{ $user->sec_registration_no ?? 'Not provided' }}</div></div>
+                    <div><div class="field-label">TIN</div><div class="field-value">{{ $user->tin ?? 'Not provided' }}</div></div>
+                    <div><div class="field-label">Region</div><div class="field-value">{{ $user->region ?? 'Not provided' }}</div></div>
+                    <div><div class="field-label">Postal Code</div><div class="field-value">{{ $user->postal_code ?? 'Not provided' }}</div></div>
+                    <div class="full"><div class="field-label">Service Regions</div><div class="field-value">{{ implode(', ', $user->service_regions ?? []) ?: 'Not provided' }}</div></div>
+                    <div class="full"><div class="field-label">Coverage Hubs</div><div class="field-value">
+                        @forelse(\App\Models\LogisticsHub::where('company_name', $user->business_name)->orderBy('province')->orderBy('municipality')->get() as $coverageHub)
+                            <div>{{ $coverageHub->region ? $coverageHub->region.' — ' : '' }}{{ $coverageHub->province }} / {{ $coverageHub->municipality }}</div>
+                        @empty
+                            No hubs registered.
+                        @endforelse
+                    </div></div>
                   </div>
                 </div>
                 @endif

@@ -28,6 +28,8 @@ use App\Services\HubHiring;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
+require __DIR__.'/commerce.php';
+
 Route::get('/', [GuestController::class, 'home']);
 Route::get('/assistant', [GuestAssistantController::class, 'history'])->middleware('throttle:30,1')->name('guest.assistant.history');
 Route::post('/assistant', [GuestAssistantController::class, 'send'])->middleware('throttle:6,1')->name('guest.assistant.send');

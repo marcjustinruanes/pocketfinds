@@ -14,12 +14,15 @@ class Review extends Model
     protected $fillable = [
         'id', 'order_id', 'buyer_id', 'seller_id', 'product_id',
         'rating', 'comment', 'seller_reply',
+        'item_key', 'photos', 'edited_at',
     ];
+
+    protected $casts = ['photos'=>'array', 'edited_at'=>'datetime'];
 
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
+        static::creating(function($m){$m->id=$m->id?:(string)Str::uuid();$m->created_at=$m->created_at?:now();});
     }
 
     public function order()   { return $this->belongsTo(Order::class); }

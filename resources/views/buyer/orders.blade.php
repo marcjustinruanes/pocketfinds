@@ -5,6 +5,7 @@
 
 @section('content')
 <div class="orders-page">
+@if($errors->any())<div class="auth-error" role="alert">@foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
 <div class="order-tabs-shell">
 <div class="tabs order-tabs">
   @php
@@ -16,11 +17,13 @@
     ['delivered',        'home',    'Delivered'],
     ['completed',        'check',   'Completed'],
     ['cancelled',        'x',       'Cancelled'],
+    ... (\App\Services\BuyerCommerce::installed() ? [['refunds','wallet','Return / Refund']] : []),
   ];
   @endphp
   @php
     $tabCount = fn ($key) => match ($key) {
       'all'        => $orderCounts->sum(),
+      'refunds' => $returnRequests->count(),
       'to_ship'    => collect(\App\Models\Order::BUYER_TO_SHIP_STATUSES)->sum(fn ($s) => (int) ($orderCounts[$s] ?? 0)),
       'in_transit' => collect(\App\Models\Order::BUYER_IN_TRANSIT_STATUSES)->sum(fn ($s) => (int) ($orderCounts[$s] ?? 0)),
       default      => (int) ($orderCounts[$key] ?? 0),
@@ -78,7 +81,7 @@
     <span style="color:var(--muted,#888)">Your rider is on the way — Confirm Receipt unlocks once they mark it delivered.</span>
   </div>
   @endif
-  @if($order->status === 'delivered')
+  @if($order->status === 'delivered' && !$returnRequests->has($order->id))
   <div class="order-actions" style="border-top:1px dashed var(--border,#eee);padding-top:10px">
     <span>Already have your package?</span>
     <form method="POST" action="{{ route('buyer.orders.confirm-receipt', $order) }}" onsubmit="return confirm('Confirm that you have received this order?')">
@@ -89,7 +92,9 @@
   @endif
   @if($order->status === 'completed')
   <div class="order-actions" style="border-top:1px dashed var(--border,#eee);padding-top:10px">
-    @if($order->review)
+    @if(\App\Services\BuyerCommerce::installed())
+      <button type="button" class="btn btn-primary btn-sm rate-order-open" data-order-details="rateOrder{{ $order->id }}">Review Items</button>
+    @elseif($order->review)
       <span>You rated this order {{ $order->review->rating }}/5 ★</span>
     @else
       <button type="button" class="btn btn-primary btn-sm rate-order-open" data-order-details="rateOrder{{ $order->id }}">Rate Order</button>
@@ -100,8 +105,11 @@
     </form>
   </div>
   @endif
+@if(\App\Services\BuyerCommerce::installed())@include('buyer.partials.order-return')@endif
 </div>
-@if($order->status === 'completed' && !$order->review)
+@if($order->status === 'completed' && \App\Services\BuyerCommerce::installed())
+@include('buyer.partials.order-reviews')
+@elseif($order->status === 'completed' && !$order->review)
 <div class="order-details-modal" id="rateOrder{{ $order->id }}" aria-hidden="true">
   <div class="order-details-dialog" role="dialog" aria-modal="true" aria-labelledby="rateOrderTitle{{ $order->id }}">
     <div class="order-details-head"><div><span class="order-kicker">Rate your order</span><h3 id="rateOrderTitle{{ $order->id }}">{{ $order->order_number }}</h3></div><button type="button" class="modal-close order-details-close" aria-label="Close rate order">&times;</button></div>
@@ -114,7 +122,7 @@
         </label>
         @endfor
       </div>
-      <textarea name="comment" rows="3" maxlength="1000" placeholder="Tell other buyers about this product (optional)"></textarea>
+      <textarea name="comment" rows="3" maxlength="500" placeholder="Tell other buyers about this product (optional)"></textarea>
       <div class="order-modal-actions"><button type="submit" class="btn btn-primary">Submit Rating</button></div>
     </form>
   </div>
@@ -129,6 +137,10 @@
       $addressPart = fn ($part) => filled($part) && $part !== 'Not provided';
       $addressLine1 = collect([$order->shipping_address['house_no'] ?? null, $order->shipping_address['street'] ?? null])->filter($addressPart)->join(', ');
       $addressLine2 = collect([$order->shipping_address['barangay'] ?? null, $order->shipping_address['municipality'] ?? null, $order->shipping_address['province'] ?? null])->filter($addressPart)->join(', ');
+      $customerName = trim((string) ($order->shipping_address['recipient_name'] ?? ''))
+        ?: trim(($order->buyer?->given_names ?? '').' '.($order->buyer?->last_name ?? ''))
+        ?: 'Customer not provided';
+      $customerContact = $order->shipping_address['contact_no'] ?? $order->buyer?->contact_no;
     @endphp
     <div class="order-current-status {{ $timeline['stopped'] ? 'is-interrupted' : '' }}"><strong>{{ ucwords(str_replace('_', ' ', $order->status)) }}</strong><p>{{ $timeline['explanation'] }}</p></div>
     <details class="order-tracking"><summary>Delivery progress <span>{{ ucwords(str_replace('_', ' ', $order->status)) }}</span></summary>
@@ -145,6 +157,10 @@
     </details>
     <div class="order-details-list">@foreach($order->items as $item)<div class="order-item"><span>{{ $item['name'] ?: 'Product not provided' }} @if(($item['variation_value'] ?? $item['color'] ?? '') || ($item['size'] ?? ''))<small>{{ collect([$item['variation_group'] ?? null, $item['variation_value'] ?? $item['color'] ?? null, $item['size'] ?? null])->filter()->unique()->join(': ') }}</small>@endif</span><strong>{{ $item['qty'] }} × ₱{{ number_format($item['price'], 2) }}</strong></div>@endforeach</div>
     <div class="order-detail-info-grid">
+      <div><span>Customer name</span><strong>{{ $customerName }}</strong></div>
+      <div><span>Contact number</span><strong>{{ $customerContact ?: 'Not provided' }}</strong></div>
+      <div><span>Order date</span><strong>{{ $order->created_at?->format('M d, Y') ?? '—' }}</strong></div>
+      <div><span>Order time</span><strong>{{ $order->created_at?->format('g:i A') ?? '—' }} {{ config('app.timezone') }}</strong></div>
       <div><span>Order status</span><strong>{{ ucwords(str_replace('_', ' ', $order->status)) }}</strong></div>
       <div><span>Payment method</span><strong>{{ $order->paymentMethod?->name ?: $order->payment_method ?: 'Payment not provided' }}</strong></div>
       <div class="order-address-info"><span>Delivery address</span><address>@if($addressLine1){{ $addressLine1 }}<br>@endif{{ $addressLine2 ?: ($addressLine1 ? '' : 'Address not provided') }}</address></div>

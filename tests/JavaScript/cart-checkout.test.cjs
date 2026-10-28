@@ -26,9 +26,10 @@ function fixture(gcash = true) {
     }
     const modal = element('orderConfirmModal'), cancel = element('orderCancelButton'), confirm = element('orderConfirmButton');
     const button = element('checkoutButton'), dock = element('cartDockCheckout');
-    for (const id of ['orderConfirmTitle', 'orderConfirmMessage', 'checkoutPayment', 'checkoutVoucher', 'checkoutNote', 'checkoutAddress']) element(id);
+    for (const id of ['orderConfirmTitle', 'orderConfirmMessage', 'checkoutPayment', 'checkoutVoucher', 'checkoutNote', 'checkoutAddress', 'cartTotal']) element(id);
     const fields = [], windowEvents = {};
     const form = element('checkoutForm');
+    form.dataset = {};
     let submits = 0;
     form.appendChild = field => fields.push(field);
     form.submit = () => { submits++; };
@@ -40,13 +41,13 @@ function fixture(gcash = true) {
         refreshSummary: () => { button.disabled = false; dock.disabled = false; },
     };
     runInNewContext(checkout, context);
-    const submit = () => { let prevented = false; form.handlers.submit({ preventDefault: () => { prevented = true; } }); return prevented; };
+    const submit = async () => { let prevented = false; await form.handlers.submit({ preventDefault: () => { prevented = true; } }); return prevented; };
     return { submit, modal, cancel, confirm, button, dock, document, fields, windowEvents, context, submits: () => submits };
 }
 
-test('GCash confirmation never creates an order before explicit confirmation', () => {
+test('GCash confirmation never creates an order before explicit confirmation', async () => {
     const f = fixture();
-    assert.equal(f.submit(), true);
+    assert.equal(await f.submit(), true);
     assert.equal(f.submits(), 0);
     assert.equal(f.modal.classList.contains('open'), true);
     assert.equal(f.confirm.textContent, 'Reserve & message seller');
@@ -56,30 +57,30 @@ test('GCash confirmation never creates an order before explicit confirmation', (
     assert.equal(f.modal.classList.contains('open'), false);
 });
 
-test('repeated confirmation and form submissions produce only one native submission', () => {
+test('repeated confirmation and form submissions produce only one native submission', async () => {
     const f = fixture();
-    f.submit();
+    await f.submit();
     f.confirm.handlers.click();
     f.confirm.handlers.click();
-    assert.equal(f.submit(), true);
+    assert.equal(await f.submit(), true);
     assert.equal(f.submits(), 1);
     assert.equal(f.fields.length, 1);
     assert.equal(f.confirm.disabled && f.button.disabled && f.dock.disabled, true);
 });
 
-test('COD uses the explicit Place Order confirmation', () => {
+test('COD uses the explicit Place Order confirmation', async () => {
     const f = fixture(false);
-    f.submit();
+    await f.submit();
     assert.equal(f.confirm.textContent, 'Place Order');
     assert.equal(f.submits(), 0);
     f.confirm.handlers.click();
     assert.equal(f.submits(), 1);
 });
 
-test('confirmation traps keyboard focus and Escape restores its opener', () => {
+test('confirmation traps keyboard focus and Escape restores its opener', async () => {
     const f = fixture();
     f.document.activeElement = f.dock;
-    f.submit();
+    await f.submit();
     f.modal.handlers.keydown({ key: 'Tab', shiftKey: true, preventDefault() {} });
     assert.equal(f.document.activeElement, f.confirm);
     f.modal.handlers.keydown({ key: 'Tab', shiftKey: false, preventDefault() {} });
@@ -89,9 +90,9 @@ test('confirmation traps keyboard focus and Escape restores its opener', () => {
     assert.equal(f.modal.classList.contains('open'), false);
 });
 
-test('back-forward cache restores usable checkout controls without resubmitting', () => {
+test('back-forward cache restores usable checkout controls without resubmitting', async () => {
     const f = fixture();
-    f.submit();
+    await f.submit();
     f.confirm.handlers.click();
     f.windowEvents.pageshow({ persisted: true });
     assert.equal(f.context.submittingOrder, false);

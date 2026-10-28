@@ -1,3 +1,6 @@
+@php
+$storedUnread=\Illuminate\Support\Facades\DB::table('notifications')->where('user_id',auth()->id())->where('is_read',false)->count();
+@endphp
 <header class="topbar">
   <button class="menu-toggle" data-sidebar-toggle aria-label="Toggle navigation">
     <x-admin-icon name="menu" />
@@ -20,7 +23,7 @@
     <div class="dropdown">
       <button class="icon-btn" data-dropdown-toggle="logisticsNotifPanel" aria-label="Notifications">
         <x-admin-icon name="bell" />
-        @if($showRequestAlert || $showUnassignedAlert)
+        @if($showRequestAlert || $showUnassignedAlert || $storedUnread)
         <span class="dot-badge"></span>
         @endif
       </button>
@@ -29,6 +32,7 @@
           <h3>Notifications</h3>
         </div>
         <div class="notif-list">
+@include('account.partials.notifications')
           @if($showRequestAlert)
           <a href="{{ route('logistics.requests') }}" class="notif-item" style="text-decoration:none;color:inherit;display:flex">
             <div class="dot"></div>
@@ -41,7 +45,7 @@
             <div><p>{{ $unassigned }} shipment{{ $unassigned > 1 ? 's' : '' }} unassigned.</p></div>
           </a>
           @endif
-          @if(!$showRequestAlert && !$showUnassignedAlert)
+          @if(!$showRequestAlert && !$showUnassignedAlert && !$storedUnread)
           <div class="notif-item read" style="display:flex">
             <div class="dot"></div>
             <div><p>No new notifications.</p></div>

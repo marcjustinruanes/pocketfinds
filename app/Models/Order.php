@@ -86,10 +86,12 @@ class Order extends Model
         'shipping_amount', 'discount_amount', 'voucher_code', 'total', 'shipping_address',
         'buyer_note', 'payment_method_id', 'payment_method', 'gcash_purchase_id',
         'cancellation_reason', 'cancellation_note',
+        'commerce_snapshot',
     ];
 
     protected $casts = [
         'items' => 'array',
+        'commerce_snapshot' => 'array',
         'shipping_address' => 'array',
         'subtotal' => 'decimal:2',
         'shipping_amount' => 'decimal:2',
@@ -98,7 +100,7 @@ class Order extends Model
     ];
 
     /** A parcel the courier marked delivered auto-completes if the buyer never confirms receipt within this many days. */
-    const AUTO_COMPLETE_DAYS = 3;
+    const AUTO_COMPLETE_DAYS = 7;
 
     /** Statuses before a shipment exists — the only ones an order can still be cancelled from. */
     const CANCELLABLE_STATUSES = ['placed', 'confirmed', 'preparing'];
@@ -156,13 +158,14 @@ class Order extends Model
         if (! in_array($this->status, $allowedFrom, true)) {
             return false;
         }
-        $hadDeductedStock = $this->status !== 'placed' || $this->gcash_purchase_id;
+        $hadDeductedStock = $this->status !== 'placed' || $this->gcash_purchase_id || $this->commerce_snapshot;
 
         $this->update(['status' => 'cancelled', 'cancellation_reason' => $reason, 'cancellation_note' => $note]);
         if ($hadDeductedStock) {
             $this->restoreStock();
         }
         $this->logStatus('cancelled', $actorId, $reason);
+        if(\App\Services\BuyerCommerce::installed()) app(\App\Services\BuyerCommerce::class)->release($this->gcash_purchase_id?:$this->id);
 
         return true;
     }
@@ -180,6 +183,7 @@ class Order extends Model
                 if ($order->status !== 'delivered') {
                     return;
                 }
+                if(\App\Services\BuyerCommerce::installed() && DB::table('commerce_returns')->where('order_id',$order->id)->whereIn('status',['pending','approved','escalated','received','refunded'])->exists()) return;
 
                 $order->update(['status' => 'completed']);
                 $order->shipment?->update(['delivered_at' => $order->shipment->delivered_at ?: now()]);

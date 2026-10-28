@@ -20,6 +20,10 @@ trait FetchesProducts
      *  column), never a placeholder. */
     private function soldCount(string $productId): int
     {
+        if(DB::connection()->getDriverName()==='sqlite') {
+            $row=DB::selectOne("SELECT COALESCE(SUM(json_extract(item.value, '$.qty')),0) AS total FROM orders JOIN json_each(COALESCE(orders.items,'[]')) AS item WHERE orders.status='completed' AND json_extract(item.value,'$.product_id')=?",[$productId]);
+            return (int)($row->total??0);
+        }
         $row = DB::selectOne("
                 SELECT COALESCE(SUM(item.qty), 0) AS total
                 FROM orders
@@ -55,19 +59,18 @@ trait FetchesProducts
         return $rows->map(fn($p) => $this->mapProduct($p))->values()->all();
     }
 
-    /** Real markdowns only — products whose seller actually set a discount_price below price.
-     *  No fabricated "flash sale" countdown: the schema has no sale-window field, so this is
-     *  just "currently discounted", sorted by the biggest real percentage off. */
+    /** Deals share the existing gallery: regular markdowns and scheduled flash sales. */
     private function dbDeals(int $limit = 8, ?int $categoryId = null)
     {
+        $flashProducts=\App\Services\BuyerCommerce::installed()?\Illuminate\Support\Facades\DB::table('commerce_flash_sales')->where('is_active',true)->where('ends_at','>',now())->pluck('product_id'):collect();
         return Product::with(['seller', 'category'])
             ->where('status', 'active')
             ->sellerApproved()
-            ->whereNotNull('discount_price')
+            ->whereHas('seller',fn($query)=>$query->when(\App\Services\BuyerCommerce::installed(),fn($q)=>$q->where('is_on_vacation',false)))
             ->when($categoryId, fn ($q) => $q->where('category_id', $categoryId))
-            ->whereColumn('discount_price', '<', 'price')
+            ->where(fn($q)=>$q->whereColumn('discount_price','<','price')->orWhereIn('id',$flashProducts))
             ->get()
-            ->sortByDesc(fn ($p) => 1 - ((float) $p->discount_price / max((float) $p->price, 0.01)))
+            ->sortByDesc(fn ($p) => $flashProducts->contains($p->id)?2:1 - ((float) $p->discount_price / max((float) $p->price, 0.01)))
             ->take($limit)
             ->map(fn ($p) => $this->mapProduct($p))
             ->values()
@@ -106,10 +109,16 @@ trait FetchesProducts
 
         $hasDiscount = $p->discount_price !== null && (float) $p->discount_price < (float) $p->price;
         $displayPrice = $hasDiscount ? (float) $p->discount_price : (float) $p->price;
+        $flash = app(\App\Services\BuyerCommerce::class)->flash($p);
+        $scheduledFlash=(!$flash&&\App\Services\BuyerCommerce::installed())?\Illuminate\Support\Facades\DB::table('commerce_flash_sales')->where('product_id',$p->id)->where('is_active',true)->where('starts_at','>',now())->orderBy('starts_at')->first():null;
+        if($flash) $displayPrice=(float)$flash->price;
         $percentOff = $hasDiscount ? (int) round((1 - ($p->discount_price / $p->price)) * 100) : 0;
 
         return [
             'id'          => $p->id,
+            'on_vacation' => (bool)$p->seller->is_on_vacation,
+            'flash_sale' => $flash ? ['id'=>$flash->id,'ends_at'=>\Illuminate\Support\Carbon::parse($flash->ends_at)->toIso8601String(),'remaining'=>$flash->remaining] : null,
+            'scheduled_flash' => $scheduledFlash?['id'=>$scheduledFlash->id,'starts_at'=>\Illuminate\Support\Carbon::parse($scheduledFlash->starts_at)->toIso8601String(),'price'=>(float)$scheduledFlash->price]:null,
             'name'        => $p->name,
             'seller'      => $sellerName,
             'seller_slug' => $sellerSlug,
@@ -138,7 +147,8 @@ trait FetchesProducts
             'stock'       => $p->total_stock,
             'restock_date'=> $p->restock_date?->format('M d, Y'),
             'reviews'     => $reviews->map(fn ($r) => [
-                'name'   => $r->buyer?->given_names ?: 'Buyer',
+                'name'   => $r->buyer?->given_names ? mb_substr($r->buyer->given_names,0,1).'***' : 'Buyer',
+                'photos' => array_map(fn($path)=>\Illuminate\Support\Facades\Storage::disk('public')->url($path),$r->photos??[]),
                 'rating' => $r->rating,
                 'date'   => $r->created_at ? \Illuminate\Support\Carbon::parse($r->created_at)->format('M d, Y') : '',
                 'text'   => $r->comment ?: '',

@@ -446,4 +446,10 @@ document.addEventListener('click', (e) => {
   }
 });
 </script>
+@if(\App\Services\BuyerCommerce::installed())
+@include('commerce.messages')
+@include('account.partials.commerce-vouchers')
+@endif
 @endsection
+
+@push('scripts')<script src="{{ asset('js/commerce.js') }}?v={{ filemtime(public_path('js/commerce.js')) }}"></script>@endpush

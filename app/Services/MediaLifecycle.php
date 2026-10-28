@@ -153,7 +153,7 @@ class MediaLifecycle
             'profile_images' => ['users' => ['profile_picture']],
             'messages' => ['messages' => ['attachment_path']],
             'public' => ['users' => ['id_file', 'selfie_file', 'license_file', 'business_permit_file', 'or_file', 'cr_file', 'resume_file', 'company_logo', 'id_photo_path', 'selfie_photo_path', 'license_photo_path', 'or_cr_path'],
-                'settings' => ['hero_image'], 'products' => ['image', 'video'], 'complaints' => ['evidence_path'],
+                'settings' => ['hero_image', 'hero_image_2'], 'products' => ['image', 'video'], 'complaints' => ['evidence_path'],
                 'document_update_requests' => ['id_file', 'business_permit_file'], 'rider_profiles' => ['id_file', 'selfie_file', 'license_file', 'or_file', 'cr_file']],
             default => [],
         };

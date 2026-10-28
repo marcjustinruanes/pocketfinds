@@ -4,6 +4,8 @@
 @section('page-sub', 'Manage your profile and settings')
 
 @section('content')
+@include('commerce.messages')
+
 @if(session('success'))
 <div class="auth-success" style="margin-bottom:16px">{{ session('success') }}</div>
 @endif
@@ -23,6 +25,7 @@
 
 <div class="dash-grid">
   <div class="stack">
+
     @if($pendingRequest)
     <div class="card">
       <div class="card-pad" style="background:var(--warning-soft);border:1px solid var(--warning-line);color:var(--warning);border-radius:9px;font-size:13px;display:flex;align-items:flex-start;gap:10px">
@@ -52,19 +55,23 @@
           <div class="form-grid-2">
             <div class="form-row">
               <label>First Name</label>
-              <input type="text" name="given_names" value="{{ old('given_names', auth()->user()->given_names) }}" required>
+              <input type="text" name="given_names" value="{{ old('given_names', auth()->user()->given_names) }}" minlength="2" maxlength="50" pattern="[\p{L}\-]+" required>
             </div>
             <div class="form-row">
               <label>Last Name</label>
-              <input type="text" name="last_name" value="{{ old('last_name', auth()->user()->last_name) }}" required>
+              <input type="text" name="last_name" value="{{ old('last_name', auth()->user()->last_name) }}" minlength="2" maxlength="50" pattern="[\p{L}\-]+" required>
             </div>
             <div class="form-row">
               <label>Email</label>
               <input type="email" value="{{ auth()->user()->email }}" disabled style="background:var(--paper)">
             </div>
             <div class="form-row">
+              <label>Middle Name (optional)</label>
+              <input type="text" name="middle_name" value="{{ old('middle_name', auth()->user()->middle_name) }}" minlength="2" maxlength="50" pattern="[\p{L}\-]+">
+            </div>
+            <div class="form-row">
               <label>Contact No.</label>
-              <input type="text" name="contact_no" value="{{ old('contact_no', auth()->user()->contact_no) }}" placeholder="09XXXXXXXXX" maxlength="11">
+              <span style="display:flex;gap:8px;align-items:center"><span>+63</span><input type="tel" name="contact_no" data-national-mobile value="{{ substr(\App\Support\PhilippineMobile::normalize((string)old('contact_no', auth()->user()->contact_no)),1) }}" placeholder="9XXXXXXXXX" minlength="10" maxlength="10" pattern="9[0-9]{9}" inputmode="numeric"></span>
             </div>
           </div>
           <button class="btn btn-primary" type="submit">Save Changes</button>
@@ -73,7 +80,7 @@
     </div>
 
     <div class="card">
-      <div class="card-head"><div><h2>Address Information</h2><p>Changes are reviewed by an admin before they take effect</p></div></div>
+      <div class="card-head" id="address-information"><div><h2>Address Information</h2><p>Changes are reviewed by an admin before they take effect</p></div></div>
       <div class="card-pad">
         @if(session('address_success'))
         <div class="auth-success" style="margin-bottom:16px">{{ session('address_success') }}</div>
@@ -81,6 +88,8 @@
         <form method="POST" action="{{ route('buyer.account.address') }}" {{ $pendingRequest ? 'style=opacity:.5;pointer-events:none' : '' }}>
           @csrf
           <div class="form-row">
+            <label>Region</label><select name="region" data-account-region data-current="{{ old('region',auth()->user()->region) }}" required></select>
+            <label>Postal code</label><input name="postal_code" value="{{ old('postal_code',auth()->user()->postal_code) }}" pattern="[0-9]{4}" minlength="4" maxlength="4" inputmode="numeric" required>
             <label>Province</label>
             <input type="text" name="province" value="{{ old('province', auth()->user()->province) }}" required>
           </div>
@@ -101,6 +110,7 @@
       </div>
     </div>
 
+@if(\App\Services\BuyerCommerce::installed())@include('buyer.partials.email-change')@endif
     <div class="card">
       <div class="card-head"><h2>Change Password</h2></div>
       <div class="card-pad">
@@ -118,7 +128,8 @@
           </div>
           <div class="form-row">
             <label>New Password</label>
-            <input type="password" name="password" placeholder="••••••••" required>
+            <input type="password" name="password" placeholder="••••••••" minlength="8" required autocomplete="new-password">
+            <small>At least 8 characters, including uppercase, lowercase, a number and a symbol.</small>
           </div>
           <div class="form-row">
             <label>Confirm New Password</label>
@@ -131,6 +142,9 @@
   </div>
 
   <div class="stack">
+@if(\App\Services\BuyerCommerce::installed())@include('buyer.partials.voucher-wallet')@endif
+
+
     <div class="card">
       <div class="card-head"><h2>Account Details</h2></div>
       <div class="card-pad" style="display:flex;flex-direction:column;gap:14px">
@@ -158,7 +172,7 @@
     <div class="card">
       <div class="card-head">
         <div><h2>Delivery Address</h2><p>Where your orders ship — pick one at checkout</p></div>
-        <button type="button" class="icon-btn" data-modal-open="addAddressModal" title="Add a delivery address" style="width:30px;height:30px">+</button>
+        <button type="button" class="btn btn-outline" data-modal-open="addAddressModal">Add New Address</button>
       </div>
       <div class="card-pad">
         @include('buyer.partials.delivery-addresses', ['addresses' => $addresses, 'selectable' => false])

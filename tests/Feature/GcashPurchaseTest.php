@@ -96,7 +96,7 @@ class GcashPurchaseTest extends TestCase
         $p = $this->flow->create($this->buyer, [$this->cart->id], 1, $nonce)[0]->fresh();
         $this->assertSame('220.00', $p->amount_due);
         $this->assertSame(8, $this->product->fresh()->stock);
-        $this->assertSame(900, $p->expires_at->timestamp - $p->activated_at->timestamp);
+        $this->assertSame(3600, $p->expires_at->timestamp - $p->activated_at->timestamp);
         $retry = $this->flow->create($this->buyer, [$this->cart->id], 1, $nonce)[0];
         $this->assertSame($p->id, $retry->id);
         $this->assertDatabaseCount('gcash_stock_allocations', 1);
@@ -112,7 +112,7 @@ class GcashPurchaseTest extends TestCase
         DB::commit();
         $p->refresh();
         $this->assertSame(now()->timestamp, $p->activated_at->timestamp);
-        $this->assertSame(now()->addMinutes(15)->timestamp, $p->expires_at->timestamp);
+        $this->assertSame(now()->addHour()->timestamp, $p->expires_at->timestamp);
     }
 
     public function test_rollback_preserves_original_inventory_and_no_purchase(): void
@@ -152,7 +152,7 @@ class GcashPurchaseTest extends TestCase
         $this->cart->update(['variation_group' => 'Size', 'variation_value' => 'S']);
         $p = $this->draft();
         $this->assertSame(3, $this->product->fresh()->availableStock('Size', 'S'));
-        $this->travel(15)->minutes();
+        $this->travel(60)->minutes();
         $this->assertTrue($this->flow->expire($p->id));
         $this->assertFalse($this->flow->expire($p->id));
         $this->assertSame(5, $this->product->fresh()->availableStock('Size', 'S'));
@@ -206,7 +206,7 @@ class GcashPurchaseTest extends TestCase
     public function test_expired_payment_reports_and_proofs_require_explicit_resolution(): void
     {
         $p = $this->draft();
-        $this->travel(16)->minutes();
+        $this->travel(61)->minutes();
         $p = $this->flow->proof($this->buyer, $p->id, (string) Str::uuid(), 'gcash-proofs/'.Str::uuid().'.png', 'image/png', 100, hash('sha256', 'late'));
         $this->assertSame('manual_resolution', $p->payment_state);
         $this->assertSame(10, $this->product->fresh()->stock);
@@ -220,7 +220,7 @@ class GcashPurchaseTest extends TestCase
     public function test_reported_money_without_receipt_is_preserved_and_not_refunded(): void
     {
         $p = $this->draft();
-        $this->travel(16)->minutes();
+        $this->travel(61)->minutes();
         $p = $this->flow->reportPaid($this->buyer, $p->id, 'I sent money');
         $p = $this->flow->resolve($this->seller, $p->id, $p->revision, '220', 'Cannot fulfill; repayment unresolved', false, 'LATE-654321');
         $this->assertSame('manual_resolution', $p->payment_state);
@@ -231,7 +231,7 @@ class GcashPurchaseTest extends TestCase
     public function test_expiration_before_verification_cannot_double_release_or_verify(): void
     {
         $p = $this->proof($this->draft());
-        $this->travel(16)->minutes();
+        $this->travel(61)->minutes();
         $this->invalid(fn () => $this->flow->decide($this->seller, $p->id, $p->revision, true, '220', null, 'EXPIRED-123456'));
         $this->assertSame(10, $this->product->fresh()->stock);
         $this->assertSame('manual_resolution', $p->fresh()->payment_state);
@@ -312,7 +312,7 @@ class GcashPurchaseTest extends TestCase
     {
         $v = Voucher::create(['seller_id' => $this->seller->id, 'code' => 'FREE', 'type' => 'free_shipping', 'usage_limit' => 1, 'used_count' => 0, 'minimum_spend' => 0, 'is_active' => true]);
         $p = $this->draft('FREE');
-        $this->travel(16)->minutes();
+        $this->travel(61)->minutes();
         $this->flow->sweep();
         $this->flow->sweep();
         $this->assertSame(0, $v->fresh()->used_count);
@@ -396,7 +396,7 @@ class GcashPurchaseTest extends TestCase
     public function test_expired_payment_navigation_prioritizes_help_without_an_active_payment_step(): void
     {
         $purchase = $this->draft();
-        $this->travel(16)->minutes();
+        $this->travel(61)->minutes();
 
         $this->actingAs($this->buyer)->get(route('gcash.show', $purchase->id))->assertOk()
             ->assertSee('This payment needs attention')->assertSee('Do not pay again.')
@@ -571,7 +571,7 @@ class GcashPurchaseTest extends TestCase
     public function test_sweep_command_and_expiration_notification_are_idempotent(): void
     {
         $p = $this->draft();
-        $this->travel(16)->minutes();
+        $this->travel(61)->minutes();
         $this->artisan('gcash:expire')->assertExitCode(0);
         $count = DB::table('notifications')->count();
         $this->artisan('gcash:expire')->assertExitCode(0);
@@ -822,7 +822,7 @@ class GcashPurchaseTest extends TestCase
     {
         $v = Voucher::create(['seller_id' => $this->seller->id, 'code' => 'VALID', 'type' => 'amount', 'discount_amount' => 10, 'minimum_spend' => 0, 'usage_limit' => 10, 'is_active' => true]);
         $p = $this->proof($this->draft('VALID'));
-        $this->travel(16)->minutes();
+        $this->travel(61)->minutes();
         $this->flow->expire($p->id);
         foreach ([['minimum_spend' => 300], ['discount_amount' => 5], ['type' => 'free_shipping'], ['type' => 'unknown'], ['seller_id' => $this->person('seller')->id], ['used_count' => 10], ['is_active' => false]] as $changed) {
             $old = $v->fresh()->getAttributes();
@@ -862,7 +862,7 @@ class GcashPurchaseTest extends TestCase
         $this->travel(4)->minutes();
         $this->flow->activate($p->id);
         $p->refresh();
-        $this->assertSame($p->created_at->copy()->addMinutes(15)->toISOString(), $p->expires_at->toISOString());
+        $this->assertSame($p->created_at->copy()->addHour()->toISOString(), $p->expires_at->toISOString());
         $this->assertSame(8, $this->product->fresh()->stock);
     }
 
@@ -945,14 +945,14 @@ class GcashPurchaseTest extends TestCase
 
     public function test_delivery_address_mobile_number_requires_eleven_ascii_digits_starting_with_09(): void
     {
-        $payload = ['label' => 'Fictional', 'recipient_name' => 'Test Recipient', 'province' => 'Test Province', 'municipality' => 'Test City', 'barangay' => 'Test Barangay'];
-        foreach (['0912345678', '091234567890', '08123456789', '09abc456789', '09123-45678', '+639123456789', '０９１２３４５６７８９'] as $number) {
+        $payload = ['label' => 'Fictional', 'recipient_name' => 'Test Recipient', 'region' => 'Test Region', 'postal_code' => '0123', 'province' => 'Test Province', 'municipality' => 'Test City', 'barangay' => 'Test Barangay'];
+        foreach (['0912345678', '091234567890', '08123456789', '09abc456789', '09123-45678', '０９１２３４５６７８９'] as $number) {
             $this->actingAs($this->buyer)->postJson(route('buyer.addresses.store'), $payload + ['contact_no' => $number])->assertUnprocessable()->assertJsonValidationErrors('contact_no');
         }
         $this->postJson(route('buyer.addresses.store'), $payload + ['contact_no' => '09123456789'])->assertOk()->assertJsonPath('address.contact_no', '09123456789');
         $this->assertDatabaseHas('buyer_addresses', ['buyer_id' => $this->buyer->id, 'contact_no' => '09123456789']);
-        // The format rule does not change the existing optional-field policy.
-        $this->postJson(route('buyer.addresses.store'), $payload + ['contact_no' => ''])->assertOk();
+        // A reachable delivery contact is now required.
+        $this->postJson(route('buyer.addresses.store'), $payload + ['contact_no' => ''])->assertUnprocessable();
     }
 
     public function test_unchanged_normal_cart_with_legacy_empty_options_is_removed_once(): void

@@ -17,10 +17,12 @@ class Voucher extends Model
     protected $fillable = [
         'seller_id', 'code', 'type', 'discount_amount', 'minimum_spend',
         'usage_limit', 'used_count', 'expires_at', 'is_active',
+        'starts_at',
     ];
 
     protected $casts = [
         'expires_at' => 'date',
+        'starts_at' => 'datetime',
         'is_active' => 'boolean',
     ];
 
@@ -37,6 +39,7 @@ class Voucher extends Model
 
     public function isUsable(): bool
     {
+        if ($this->starts_at && $this->starts_at->isFuture()) return false;
         if (! $this->is_active) {
             return false;
         }

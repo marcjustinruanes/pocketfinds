@@ -15,6 +15,7 @@
 @endpush
 
 @section('content')
+@include('commerce.messages')
 @php($user = auth()->user())
 
 @if($pendingRequest)
@@ -68,7 +69,7 @@
           </div>
           <div class="form-grid-2">
             <div class="form-row">
-              <label>Middle Initial <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+              <label>Middle Name <span style="color:var(--muted);font-weight:400">(optional)</span></label>
               <input type="text" name="middle_name" value="{{ old('middle_name', $user->middle_name) }}" maxlength="1" pattern="[A-Za-z]" placeholder="e.g. D" style="text-transform:uppercase">
               @error('middle_name')<div style="color:var(--danger);font-size:12px;margin-top:4px">{{ $message }}</div>@enderror
             </div>
@@ -105,6 +106,7 @@
         @enderror
         <form method="POST" action="{{ route('logistics.account.address') }}" id="addressForm" {{ $pendingRequest ? 'style=opacity:.5;pointer-events:none' : '' }}>
           @csrf
+@include('account.partials.address-region')
           <div class="form-row">
             <label>Province</label>
             <div class="addr-combo">
@@ -220,124 +222,9 @@
     @endif
   </div>
 </div>
+@include('account.partials.email-change')
 @endsection
 
 @push('scripts')
-<script>
-// Middle initial: letters only, single character, auto-uppercase.
-document.querySelector('input[name="middle_name"]')?.addEventListener('input', function () {
-  this.value = this.value.replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase();
-});
-
-// Contact number: digits only, forced to start with 09, capped at 11 digits.
-document.querySelector('input[name="contact_no"]')?.addEventListener('input', function () {
-  let v = this.value.replace(/\D/g, '').slice(0, 11);
-  this.value = v;
-});
-
-// Searchable, cascading Province → City/Municipality → Barangay combobox, backed by the
-// same PSGC API already used at registration (public/js/register.js), but with type-to-filter
-// instead of a plain <select> so it works well against thousands of barangays.
-(function () {
-  const PSGC = 'https://psgc.gitlab.io/api';
-
-  async function fetchJSON(url) {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('network');
-    return res.json();
-  }
-
-  function field(prefix) {
-    return {
-      input: document.getElementById(prefix + '_input'),
-      list: document.getElementById(prefix + '_list'),
-    };
-  }
-
-  const province = field('province');
-  const municipality = field('municipality');
-  const barangay = field('barangay');
-
-  let provinces = [];
-  let municipalities = [];
-  let barangays = [];
-
-  function closeList(f) { f.list.hidden = true; f.list.innerHTML = ''; }
-
-  function showOptions(f, items, onPick) {
-    if (!items.length) {
-      f.list.innerHTML = '<div class="addr-combo-empty">No matches — you can still type your own.</div>';
-      f.list.hidden = false;
-      return;
-    }
-    f.list.innerHTML = '';
-    items.slice(0, 50).forEach(item => {
-      const opt = document.createElement('div');
-      opt.className = 'addr-combo-option';
-      opt.textContent = item.name;
-      opt.addEventListener('mousedown', e => { e.preventDefault(); onPick(item); });
-      f.list.appendChild(opt);
-    });
-    f.list.hidden = false;
-  }
-
-  function filtered(source, query) {
-    const q = query.trim().toLowerCase();
-    return q ? source.filter(i => i.name.toLowerCase().includes(q)) : source;
-  }
-
-  function wire(f, getSource, onPick) {
-    f.input.addEventListener('input', () => showOptions(f, filtered(getSource(), f.input.value), onPick));
-    f.input.addEventListener('focus', () => showOptions(f, filtered(getSource(), f.input.value), onPick));
-    f.input.addEventListener('blur', () => setTimeout(() => closeList(f), 120));
-  }
-
-  function pickProvince(item) {
-    province.input.value = item.name;
-    closeList(province);
-    municipality.input.placeholder = 'Loading cities / municipalities…';
-    fetchJSON(`${PSGC}/provinces/${item.code}/cities-municipalities/`)
-      .then(data => { municipalities = data; municipality.input.placeholder = 'Type to search a city / municipality…'; })
-      .catch(() => { municipality.input.placeholder = 'Could not load suggestions — type manually'; });
-  }
-
-  function pickMunicipality(item) {
-    municipality.input.value = item.name;
-    closeList(municipality);
-    barangay.input.placeholder = 'Loading barangays…';
-    fetchJSON(`${PSGC}/cities-municipalities/${item.code}/barangays/`)
-      .then(data => { barangays = data; barangay.input.placeholder = 'Type to search a barangay…'; })
-      .catch(() => { barangay.input.placeholder = 'Could not load suggestions — type manually'; });
-  }
-
-  function pickBarangay(item) {
-    barangay.input.value = item.name;
-    closeList(barangay);
-  }
-
-  wire(province, () => provinces, pickProvince);
-  wire(municipality, () => municipalities, pickMunicipality);
-  wire(barangay, () => barangays, pickBarangay);
-
-  fetchJSON(`${PSGC}/provinces/`)
-    .then(async data => {
-      provinces = data;
-      const currentProvince = province.input.value.trim();
-      if (!currentProvince) return;
-
-      const pMatch = provinces.find(p => p.name.toLowerCase() === currentProvince.toLowerCase());
-      if (!pMatch) return;
-      try {
-        municipalities = await fetchJSON(`${PSGC}/provinces/${pMatch.code}/cities-municipalities/`);
-        const currentMuni = municipality.input.value.trim();
-        if (!currentMuni) return;
-
-        const mMatch = municipalities.find(m => m.name.toLowerCase() === currentMuni.toLowerCase());
-        if (!mMatch) return;
-        barangays = await fetchJSON(`${PSGC}/cities-municipalities/${mMatch.code}/barangays/`);
-      } catch (e) { /* leave fields as free text if lookups fail */ }
-    })
-    .catch(() => { province.input.placeholder = 'Could not load suggestions — type manually'; });
-})();
-</script>
+<script src="{{ asset('js/role-account-details.js') }}?v={{ filemtime(public_path('js/role-account-details.js')) }}"></script>
 @endpush

@@ -4,6 +4,7 @@
 @section('page-sub', 'Review your selected items')
 
 @section('content')
+@if($errors->any())<div class="auth-error" role="alert">@foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
 @php($subtotal = collect($items)->sum(fn ($item) => $item['price'] * $item['qty']))
 @if(session('error'))
 <div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('error') }}</div>
@@ -28,7 +29,7 @@
           </div>
           @foreach($groups as $slug => $shopItems)
           @php($shopShipping = $shippingFees[$slug] ?? 0)
-          <section class="cart-shop" data-shipping-fee="{{ $shopShipping }}" data-shop-slug="{{ $slug }}">
+          <section class="cart-shop" data-seller-id="{{ $shopItems->first()['seller_id'] }}" data-shipping-fee="{{ $shopShipping }}" data-shop-slug="{{ $slug }}">
             <div class="cart-shop-head">
               <label class="cart-check-wrap">
                 <input class="cart-shop-select" type="checkbox" aria-label="Select items from {{ $shopItems->first()['seller'] }}" checked>
@@ -103,7 +104,7 @@
         <div class="form-row" style="margin:0">
           <div style="display:flex;align-items:center;justify-content:space-between">
             <h3 class="cart-section-title">Delivery address</h3>
-            <button type="button" class="cart-view-vouchers" id="addAddressBtn" data-modal-open="addAddressModal">+ Add</button>
+            <button type="button" class="cart-view-vouchers" id="addAddressBtn" data-modal-open="addAddressModal">Add New Address</button>
           </div>
           <div class="cart-address-picker">
             <div class="cart-address-selected"><p id="cartAddressSummary">Your selected delivery address</p><button type="button" id="cartAddressToggle" aria-expanded="false" aria-controls="addressList">Change address</button></div>
@@ -111,6 +112,8 @@
           </div>
         </div>
 
+@if(\App\Services\BuyerCommerce::installed())@include('buyer.partials.cart-vouchers')@endif
+<div @if(\App\Services\BuyerCommerce::installed()) hidden @endif>
         <div class="form-row" style="margin:0">
           <div style="display:flex;align-items:center;justify-content:space-between">
             <h3 class="cart-section-title">Vouchers & discounts</h3>
@@ -134,6 +137,7 @@
           </div>
         </div>
 
+</div>
         @php($typeMeta = ['ewallet' => ['wallet', 'E-Wallet'], 'bank' => ['bank', 'Bank'], 'cod' => ['cash', 'Cash on Delivery'], 'other' => ['tag', 'Other']])
         @php($firstAvailableType = collect($typeMeta)->keys()->first(fn ($type) => $paymentMethods->has($type)))
         <div class="form-row" style="margin:0">
@@ -165,30 +169,30 @@
           @endif
         </div>
 
-        @if(\App\Services\GcashInventory::installed())
+        @if(\App\Services\GcashInventory::installed() && !\App\Services\BuyerCommerce::installed())
         <details class="cart-price-review"><summary>Check current prices</summary><p>Review current item prices before starting a GCash reservation.</p><button type="button" class="btn btn-outline" id="reviewGcashPrices">Review current prices for GCash</button>
         <p id="gcashPriceMessage" role="status" aria-live="polite"></p></details>
         @endif
-        <div class="cart-costs" aria-live="polite" aria-atomic="true">
+        <p id="cartCheckoutFeedback" role="status" aria-live="polite"></p><div class="cart-costs" aria-live="polite" aria-atomic="true">
         <h3 class="cart-section-title">Order summary</h3>
         <div class="cart-summary-row"><span>Subtotal</span><span class="mono" id="cartSubtotal">₱{{ number_format($subtotal, 2) }}</span></div>
         <div class="cart-summary-row"><span>Shipping</span><span class="mono" id="cartShipping">Free</span></div>
         <div class="cart-summary-row" id="cartDiscountRow" style="display:none;color:var(--success)"><span id="cartDiscountLabel">Discount</span><span class="mono" id="cartDiscount">- ₱0.00</span></div>
         <hr style="border:0;border-top:1px solid var(--border)">
         <div class="cart-summary-total">
-          <span><strong>Total</strong><small id="cartSelectedCount">{{ $items->count() }} item{{ $items->count() === 1 ? '' : 's' }}</small></span>
+          <span><strong id="cartTotalLabel">Total</strong><small id="cartSelectedCount">{{ $items->count() }} item{{ $items->count() === 1 ? '' : 's' }}</small></span>
           <span class="mono" id="cartTotal">₱{{ number_format($subtotal, 2) }}</span>
         </div>
 
         </div>
-        <form method="POST" action="{{ route('buyer.checkout') }}" id="checkoutForm">
+        <form method="POST" action="{{ route('buyer.checkout') }}" id="checkoutForm" @if(\App\Services\BuyerCommerce::installed()) data-quote-url="{{ route('buyer.commerce.quote') }}" @endif>
           @csrf
-          <input type="hidden" name="checkout_id" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
+          <input type="hidden" name="quote_hash" value=""><input type="hidden" name="checkout_id" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
           <input type="hidden" name="payment_method" id="checkoutPayment">
           <input type="hidden" name="voucher_code" id="checkoutVoucher">
           <input type="hidden" name="buyer_note" id="checkoutNote">
           <input type="hidden" name="delivery_address_id" id="checkoutAddress">
-          <button class="btn btn-primary btn-block" id="checkoutButton" type="submit" style="margin-top:4px" {{ $items->isEmpty() || $paymentMethods->isEmpty() ? 'disabled' : '' }}>Proceed to Checkout</button>
+          <button class="btn btn-primary btn-block" id="checkoutButton" type="submit" style="margin-top:4px" {{ $items->isEmpty() || $paymentMethods->isEmpty() ? 'disabled' : '' }}>Review & Place Order</button>
         </form>
       </div>
     </div>
@@ -197,7 +201,7 @@
 </div>
 @if($items->isNotEmpty())
 <div class="cart-checkout-dock" aria-label="Cart checkout" hidden>
- <div><span>Total</span><strong id="cartDockTotal">₱{{ number_format($subtotal, 2) }}</strong></div>
+ <div><span id="cartDockTotalLabel">Total</span><strong id="cartDockTotal">₱{{ number_format($subtotal, 2) }}</strong></div>
  <button class="btn btn-primary" type="submit" form="checkoutForm" id="cartDockCheckout" disabled>Continue</button>
 </div>
 @endif
@@ -267,8 +271,8 @@
       <button class="modal-close" type="button" data-modal-close>✕</button>
     </div>
     <div class="modal-body">
-      <textarea id="orderNoteTextarea" rows="4" maxlength="500" placeholder="e.g. Please gift wrap, deliver after 6PM…" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:10px 12px;font-size:13px;resize:vertical"></textarea>
-      <div style="text-align:right;font-size:11px;color:var(--muted);margin-top:4px" id="orderNoteCount">0/500</div>
+      <textarea id="orderNoteTextarea" rows="4" maxlength="200" placeholder="e.g. Please gift wrap, deliver after 6PM…" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:10px 12px;font-size:13px;resize:vertical"></textarea>
+      <div style="text-align:right;font-size:11px;color:var(--muted);margin-top:4px" id="orderNoteCount">0/200</div>
     </div>
     <div class="modal-foot">
       <button type="button" class="btn btn-outline" data-modal-close>Cancel</button>
@@ -436,21 +440,28 @@ document.addEventListener('DOMContentLoaded', () => {
       viewAllBtn.hidden = !anyLockedForSelectedShop;
     }
 
+    if (!checkoutForm.dataset.quoteUrl) {
     document.getElementById('cartSubtotal').textContent = '₱' + money.format(subtotal);
-    document.getElementById('cartShipping').textContent = selected.length === 0 ? '—' : (shipping > 0 ? '₱' + money.format(shipping) : 'Free');
+    document.getElementById('cartShipping').textContent = @json(\App\Services\BuyerCommerce::installed()) ? 'Calculated at checkout' : selected.length === 0 ? '—' : (shipping > 0 ? '₱' + money.format(shipping) : 'Free');
+    }
     const units = selected.reduce((sum, input) => sum + Number(input.dataset.qty), 0);
     document.getElementById('cartSelectedCount').textContent = `${units} item${units === 1 ? '' : 's'} selected`;
     checkoutButton.disabled = selected.length === 0 || Object.keys(paymentMethodsByType).length === 0;
 
+    if (!checkoutForm.dataset.quoteUrl) {
     const discount = appliedVoucherFreeShipping ? shipping : appliedVoucherDiscount;
     document.getElementById('cartDiscountRow').style.display = discount > 0 ? '' : 'none';
     document.getElementById('cartDiscountLabel').textContent = appliedVoucherFreeShipping ? 'Free Shipping' : 'Discount';
     document.getElementById('cartDiscount').textContent = '- ₱' + money.format(discount);
-    document.getElementById('cartTotal').textContent = '₱' + money.format(Math.max(0, subtotal + shipping - discount));
+    document.getElementById('cartTotal').textContent = '₱' + money.format(Math.max(0, subtotal + (@json(\App\Services\BuyerCommerce::installed()) ? 0 : shipping - discount)));
     const dockTotal = document.getElementById('cartDockTotal'), dockButton = document.getElementById('cartDockCheckout');
     if (dockTotal) dockTotal.textContent = document.getElementById('cartTotal').textContent;
     if (dockButton) dockButton.disabled = checkoutButton.disabled;
 
+    } else {
+      const dockButton=document.getElementById('cartDockCheckout');
+      if(dockButton)dockButton.disabled=checkoutButton.disabled;
+    }
     shopChecks.forEach(check => {
       const shopItems = [...check.closest('.cart-shop').querySelectorAll('.cart-select')];
       const selectedCount = shopItems.filter(item => item.checked).length;
@@ -459,6 +470,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     selectAll.checked = selected.length === itemChecks.length;
     selectAll.indeterminate = selected.length > 0 && selected.length < itemChecks.length;
+    if(checkoutForm.dataset.quoteUrl)document.dispatchEvent(new Event('buyer-cart-summary-changed'));
   }
   window.cartRefreshSummary = refreshSummary;
 
@@ -733,18 +745,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }catch(error){message.textContent=error.message;}finally{button.disabled=false;}
   });
 
-  checkoutForm.addEventListener('submit', event => {
+  checkoutForm.addEventListener('submit', async event => {
     const selected = itemChecks.filter(input => input.checked);
     event.preventDefault();
     if (submittingOrder) return;
     if (!selected.length) {
       return;
     }
+    if (checkoutForm.dataset.quoteUrl) {
+      const data = {items: selected.map(input=>input.closest('.cart-item').querySelector('[data-edit-key]')?.dataset.editKey).filter(Boolean), buyer_note: orderNoteValue};
+      if (!window.prepareBuyerCheckout) {
+        const feedback = document.getElementById('cartCheckoutFeedback');
+        feedback.textContent = 'Checkout could not load. Refresh the page and try again.';
+        feedback.setAttribute('role', 'alert');
+        feedback.classList.add('auth-error');
+        feedback.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      if (!await window.prepareBuyerCheckout(data)) return;
+    }
     const gcash = isGcashSelection();
     document.getElementById('orderConfirmTitle').textContent = gcash ? 'Continue with GCash?' : 'Place this order?';
     document.getElementById('orderConfirmMessage').textContent = gcash
-      ? 'Reserve your selected items and open the seller conversation for payment details. This does not place an order. After the seller verifies payment, return to the purchase to select Place Order.'
-      : `Are you sure you want to place this order for ${selected.length} item${selected.length === 1 ? '' : 's'}?`;
+      ? `Reserve your selected items for one hour for ${document.getElementById('cartTotal').textContent} and open the seller conversation for payment details. After the seller verifies payment, return to the purchase to select Place Order.`
+      : `Place this order for ${selected.length} item${selected.length === 1 ? '' : 's'} with a total of ${document.getElementById('cartTotal').textContent}?`;
     orderConfirmButton.textContent = gcash ? 'Reserve & message seller' : 'Place Order';
     checkoutReturnFocus = document.activeElement;
     orderConfirmModal.classList.add('open');
@@ -809,10 +833,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.querySelector('[data-modal-open="orderNoteModal"]')?.addEventListener('click', () => {
     orderNoteTextarea.value = orderNoteValue;
-    orderNoteCount.textContent = orderNoteTextarea.value.length + '/500';
+    orderNoteCount.textContent = orderNoteTextarea.value.length + '/200';
   });
   orderNoteTextarea?.addEventListener('input', () => {
-    orderNoteCount.textContent = orderNoteTextarea.value.length + '/500';
+    orderNoteCount.textContent = orderNoteTextarea.value.length + '/200';
   });
   document.getElementById('saveNoteBtn')?.addEventListener('click', () => {
     orderNoteValue = orderNoteTextarea.value.trim();
@@ -842,7 +866,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateVerificationStatus() {
     const type = paymentTypeSelect?.value;
     const statusEl = document.getElementById('paymentVerifyStatus');
-    checkoutButton.textContent = isGcashSelection() ? 'Continue with GCash' : 'Proceed to Checkout';
+    checkoutButton.textContent = isGcashSelection() ? 'Continue with GCash' : 'Review & Place Order';
     const priceReview = document.querySelector('.cart-price-review');
     if (priceReview) priceReview.hidden = !isGcashSelection();
     document.querySelectorAll('[name=cart_payment_choice]').forEach(choice => choice.checked = choice.value === paymentNameSelect.value);
@@ -977,4 +1001,8 @@ document.addEventListener('DOMContentLoaded', () => {
 @push('head')
 {{-- Essential cart layout travels with the page, without a separate asset request. --}}
 <style id="buyer-cart-page-styles">{!! file_get_contents(public_path('css/cart-page.css')) !!}</style>
+@endpush
+
+@push('scripts')
+@if(\App\Services\BuyerCommerce::installed())<script src="{{ asset('js/buyer-cart-checkout.js') }}?v={{ filemtime(public_path('js/buyer-cart-checkout.js')) }}"></script>@endif
 @endpush

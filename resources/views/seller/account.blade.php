@@ -4,6 +4,7 @@
 @section('page-sub', 'Manage your seller profile and settings')
 
 @section('content')
+@include('commerce.messages')
 @php $u = $seller; @endphp
 
 @if($pendingRequest)
@@ -81,6 +82,7 @@
         @endif
         <form method="POST" action="{{ route('seller.account.address') }}" id="addressForm" {{ $pendingRequest ? 'style=opacity:.5;pointer-events:none' : '' }}>
           @csrf
+@include('account.partials.address-region')
           <div class="form-row">
             <label>Province <span style="color:var(--danger)">*</span></label>
             <select name="province" id="addr-province" required style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff">
@@ -155,11 +157,11 @@
               @endforeach
             </select>
           </div>
-          <div class="form-row">
+          @if(!\App\Services\BuyerCommerce::installed())<div class="form-row">
             <label>Shipping Fee (₱)</label>
             <input type="number" name="shipping_fee" min="0" step="0.01" value="{{ old('shipping_fee', $u->shipping_fee) }}" placeholder="0.00 for free shipping">
             <span style="font-size:11px;color:var(--muted)">Charged once per order from your shop, shown to buyers at checkout.</span>
-          </div>
+          </div>@else<p>Checkout uses your <a href="#shipping-rates">regional shipping rates</a> and product weight.</p>@endif
           <button type="submit" class="btn btn-primary">Update Shop</button>
         </form>
       </div>
@@ -349,127 +351,12 @@ document.querySelectorAll('.doc-preview-btn').forEach(btn => {
 });
 </script>
 
-<script>
-// ── PSGC Address Cascading Selects ──
-// Scoped to #addr-* IDs — independent of the registration form selects.
-(function () {
-  const PSGC = 'https://psgc.gitlab.io/api';
-
-  const provSel  = document.getElementById('addr-province');
-  const muniSel  = document.getElementById('addr-municipality');
-  const brgysSel = document.getElementById('addr-barangay');
-  const houseIn  = document.getElementById('addr-house-no');
-  const streetIn = document.getElementById('addr-street');
-  const submitBtn = document.getElementById('addrSubmitBtn');
-
-  // Saved values — what's currently on the account (never changes client-side).
-  const SAVED = {
-    province:     provSel?.querySelector('option[selected]')?.value  || '',
-    municipality: muniSel?.querySelector('option[selected]')?.value  || '',
-    barangay:     brgysSel?.querySelector('option[selected]')?.value || '',
-    house_no:     houseIn?.value  || '',
-    street:       streetIn?.value || '',
-  };
-
-  // Enable/disable the submit button based on whether anything actually changed.
-  function checkDirty() {
-    if (!submitBtn) return;
-    const changed =
-      (provSel?.value  || '') !== SAVED.province     ||
-      (muniSel?.value  || '') !== SAVED.municipality ||
-      (brgysSel?.value || '') !== SAVED.barangay     ||
-      (houseIn?.value  || '').trim() !== SAVED.house_no.trim()  ||
-      (streetIn?.value || '').trim() !== SAVED.street.trim();
-
-    submitBtn.disabled = !changed;
-    submitBtn.style.opacity = changed ? '' : '.45';
-    submitBtn.style.cursor  = changed ? '' : 'not-allowed';
-  }
-
-  function populateAddr(sel, items, placeholder, preselect) {
-    sel.innerHTML = `<option value="" disabled>${placeholder}</option>`;
-    [...items].sort((a, b) => a.name.localeCompare(b.name)).forEach(item => {
-      const o = document.createElement('option');
-      o.value = item.name;
-      o.dataset.code = item.code;
-      o.textContent  = item.name;
-      if (item.name === preselect) o.selected = true;
-      sel.appendChild(o);
-    });
-    sel.disabled = false;
-    checkDirty();
-  }
-
-  function setLoading(sel, msg) {
-    sel.innerHTML = `<option value="" disabled selected>${msg}</option>`;
-    sel.disabled = true;
-  }
-
-  async function fetchJSON(url) {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Network error');
-    return res.json();
-  }
-
-  // Load provinces on page load; pre-select the saved province.
-  fetchJSON(`${PSGC}/provinces/`)
-    .then(data => {
-      populateAddr(provSel, data, 'Select province', SAVED.province);
-      // If there's a saved province, immediately load its municipalities.
-      if (SAVED.province) {
-        const savedOpt = [...provSel.options].find(o => o.value === SAVED.province);
-        const code = savedOpt?.dataset.code;
-        if (code) {
-          setLoading(muniSel, 'Loading…');
-          return fetchJSON(`${PSGC}/provinces/${code}/cities-municipalities/`);
-        }
-      }
-    })
-    .then(munis => {
-      if (!munis) return;
-      populateAddr(muniSel, munis, 'Select city / municipality', SAVED.municipality);
-      // If there's a saved municipality, immediately load its barangays.
-      if (SAVED.municipality) {
-        const savedOpt = [...muniSel.options].find(o => o.value === SAVED.municipality);
-        const code = savedOpt?.dataset.code;
-        if (code) {
-          setLoading(brgysSel, 'Loading…');
-          return fetchJSON(`${PSGC}/cities-municipalities/${code}/barangays/`);
-        }
-      }
-    })
-    .then(brgys => {
-      if (!brgys) return;
-      populateAddr(brgysSel, brgys, 'Select barangay', SAVED.barangay);
-    })
-    .catch(() => {
-      if (provSel) { provSel.innerHTML = '<option value="" disabled selected>Failed to load — refresh to retry</option>'; provSel.disabled = false; }
-    });
-
-  // Province → load municipalities, reset barangay.
-  provSel?.addEventListener('change', function () {
-    const code = this.options[this.selectedIndex]?.dataset.code ?? this.value;
-    setLoading(muniSel, 'Loading municipalities…');
-    setLoading(brgysSel, 'Select municipality first');
-    checkDirty();
-    fetchJSON(`${PSGC}/provinces/${code}/cities-municipalities/`)
-      .then(data => populateAddr(muniSel, data, 'Select city / municipality', ''))
-      .catch(() => { muniSel.innerHTML = '<option value="" disabled selected>Failed to load</option>'; muniSel.disabled = false; });
-  });
-
-  // Municipality → load barangays, reset barangay.
-  muniSel?.addEventListener('change', function () {
-    const code = this.options[this.selectedIndex]?.dataset.code ?? this.value;
-    setLoading(brgysSel, 'Loading barangays…');
-    checkDirty();
-    fetchJSON(`${PSGC}/cities-municipalities/${code}/barangays/`)
-      .then(data => populateAddr(brgysSel, data, 'Select barangay', ''))
-      .catch(() => { brgysSel.innerHTML = '<option value="" disabled selected>Failed to load</option>'; brgysSel.disabled = false; });
-  });
-
-  brgysSel?.addEventListener('change', checkDirty);
-  houseIn?.addEventListener('input',  checkDirty);
-  streetIn?.addEventListener('input', checkDirty);
-})();
-</script>
+<script src="{{ asset('js/role-account-details.js') }}?v={{ filemtime(public_path('js/role-account-details.js')) }}"></script>
+@if(\App\Services\BuyerCommerce::installed())
+@include('account.partials.commerce-vacation')
+@include('account.partials.commerce-shipping')
+@endif
+@include('account.partials.email-change')
 @endsection
+
+@push('scripts')<script src="{{ asset('js/commerce.js') }}?v={{ filemtime(public_path('js/commerce.js')) }}"></script>@endpush

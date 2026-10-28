@@ -54,18 +54,32 @@ class LogisticsManagementController extends LogisticsController
 
     private function accountData(Request $request, ?User $account = null): array
     {
+        $role = $account ? ($account->account_type === 'rider' ? 'rider' : 'hub_staff') : $request->input('role');
+        $minimumAge = $role === 'rider' ? 18 : 16;
+        if (is_string($request->input('contact_no'))) {
+            $request->merge(['contact_no' => \App\Support\PhilippineMobile::normalize($request->input('contact_no'))]);
+        }
         $data = $request->validate([
             'role' => [$account ? 'sometimes' : 'required', Rule::in(['rider', 'hub_staff'])],
             'username' => ['required', 'alpha_dash', 'max:60', Rule::unique('users', 'username')->ignore($account?->id)],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($account?->id)],
-            'given_names' => 'required|string|max:255', 'last_name' => 'required|string|max:255',
-            'sex' => 'required|in:male,female', 'birthday' => 'required|date|before_or_equal:'.now()->subYears(16)->format('Y-m-d'),
-            'contact_no' => 'required|digits:11', 'barangay' => 'required|string|max:255',
+            'given_names' => ['required', 'string', 'min:2', 'max:50', 'regex:/^[\p{L}-]+$/u'],
+            'last_name' => ['required', 'string', 'min:2', 'max:50', 'regex:/^[\p{L}-]+$/u'],
+            'middle_name' => ['nullable', 'string', 'min:2', 'max:50', 'regex:/^[\p{L}-]+$/u'],
+            'sex' => 'required|in:male,female', 'birthday' => 'required|date|before_or_equal:'.now()->subYears($minimumAge)->format('Y-m-d'),
+            'contact_no' => ['bail', 'required', 'string', 'regex:/^09[0-9]{9}$/D', function ($attribute, $value, $fail) use ($account) {
+                if (User::whereIn('contact_no', \App\Support\PhilippineMobile::variants($value))->when($account, fn ($query) => $query->where('id', '!=', $account->id))->exists()) {
+                    $fail('This mobile number is already registered.');
+                }
+            }],
+            'license_expiry' => $role === 'rider' ? ['required', 'date', 'after_or_equal:today'] : ['prohibited'],
+            'barangay' => 'required|string|max:255',
             'password' => [$account ? 'nullable' : 'required', 'string', 'min:12', 'max:128', 'confirmed'],
             'status' => $account ? 'prohibited' : 'sometimes|in:pending',
             'logistics_hub_id' => ['required', 'integer', Rule::exists('logistics_hubs', 'id')->where('company_name', auth()->user()->business_name)->where('is_operational', true)],
             'vehicle_type' => 'nullable|in:two_wheels,four_wheels', 'vehicle_ownership' => 'nullable|in:own,company',
-        ]);
+        ], ['birthday.before_or_equal' => "You must be at least {$minimumAge} years old.",
+            'license_expiry.after_or_equal' => 'The driver\'s license has expired. Enter today or a later expiry date.']);
         $role = $account ? ($account->account_type === 'rider' ? 'rider' : 'hub_staff') : $data['role'];
         if ($role === 'rider') {
             $request->validate(['vehicle_type' => 'required|in:two_wheels,four_wheels', 'vehicle_ownership' => 'required|in:own,company']);

@@ -16,8 +16,10 @@ class Setting extends Model
         'google_signin_enabled', 'new_registrations_enabled',
         'maintenance_mode', 'email_notifications_enabled', 'updated_by',
         // Hero banner — admin-controlled from Settings → Hero Banner
-        'hero_image', 'hero_tagline', 'hero_subtitle',
+        'hero_image', 'hero_image_2', 'hero_tagline', 'hero_subtitle',
         'hero_cta_text', 'hero_overlay',
+        'hero_crop_x', 'hero_crop_y', 'hero_crop_zoom',
+        'hero_2_crop_x', 'hero_2_crop_y', 'hero_2_crop_zoom',
     ];
 
     protected $casts = [
@@ -29,6 +31,16 @@ class Setting extends Model
     ];
 
     public function editor() { return $this->belongsTo(User::class, 'updated_by'); }
+
+    public function heroCropStyle(int $slide = 1): string
+    {
+        $prefix = $slide === 2 ? 'hero_2_crop_' : 'hero_crop_';
+        $x = max(0, min(100, (float) ($this->{$prefix.'x'} ?? 50)));
+        $y = max(0, min(100, (float) ($this->{$prefix.'y'} ?? 50)));
+        $zoom = max(100, min(200, (float) ($this->{$prefix.'zoom'} ?? 100))) / 100;
+
+        return "object-position: {$x}% {$y}%; transform-origin: {$x}% {$y}%; transform: scale({$zoom});";
+    }
 
     /**
      * The one settings row, auto-created with defaults on first use. The defaults are

@@ -65,18 +65,18 @@
   border: 1.5px solid var(--border);
   border-radius: 100px;
   background: var(--surface);
-  transition: border-color .18s, box-shadow .18s;
+  transition: border-color .18s;
   overflow: hidden;
   padding: 0;
   gap: 0;
 }
 .search:focus-within {
   border-color: var(--pink);
-  box-shadow: 0 0 0 3px rgba(217,70,143,.10);
+  box-shadow: none;
 }
 .search:hover {
   border-color: var(--pink);
-  box-shadow: 0 0 0 3px rgba(217,70,143,.10);
+  box-shadow: none;
 }
 .pf-search-icon {
   display: flex; align-items: center;
@@ -141,13 +141,28 @@
   border: 1.5px solid var(--border);
   background: var(--surface); border-radius: 50%;
   color: var(--ink-3); cursor: pointer;
-  transition: border-color .15s, color .15s, box-shadow .15s;
+  transition: border-color .15s, color .15s;
   position: relative; z-index: 1;
 }
 .pf-acct-icon:hover {
   border-color: var(--pink); color: var(--pink);
-  box-shadow: 0 0 0 3px rgba(217,70,143,.10);
+  box-shadow: none;
 }
+.market-header { --navbar-accent: #bf3c7d; }
+.market-header .logo-finds { color: var(--navbar-accent); }
+.market-header .search,
+.market-header .search:focus-within,
+.market-header .pf-acct-icon {
+  border-color: var(--border);
+  box-shadow: none;
+}
+.market-header .search:hover,
+.market-header .pf-acct-icon:hover {
+  border-color: var(--navbar-accent);
+  box-shadow: none;
+}
+.market-header .pf-acct-icon:hover,
+.market-header .search:focus-within .pf-search-icon { color: var(--navbar-accent); }
 .pf-acct-dropdown {
   display: none;
   position: absolute; top: calc(100% + 8px); right: 0;
@@ -345,9 +360,9 @@ html.hero-intro.hero-revealed #about {
 /* Subtitle */
 .pf-hero-p {
   font-family: 'Manrope', Arial, sans-serif;
-  font-size: 18px; line-height: 1.4;
+  font-size: 16px; line-height: 1.4;
   color: rgba(255,255,255,.6);
-  max-width: 600px; margin: 0;
+  max-width: 600px; margin: -10px 0 0;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -685,27 +700,40 @@ html.hero-intro.hero-revealed #about {
 }
 .pf-shop-name-row { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 .pf-shop-name-line { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
-.pf-shop-name { font-size: 13px; font-weight: 700; color: var(--ink); }
+.pf-shop-name {
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: .01em;
+  color: #bf3c7d;
+}
 .pf-shop-rating-pill {
   display: inline-flex; align-items: center; gap: 3px;
   padding: 2px 8px;
   border: 1.5px solid var(--pink-light); border-radius: 100px;
   background: var(--pink-xsoft);
-  font-size: 10.5px; font-weight: 700; color: var(--ink-3);
+  font-size: 10.5px; font-weight: 700; color: #bf3c7d;
 }
 .pf-shop-rating-pill svg { flex: none; }
 .pf-shop-stats-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
 .pf-shop-count { font-size: 11px; color: var(--muted); white-space: nowrap; }
 .pf-shop-dot { font-size: 11px; color: var(--muted); }
 .pf-shop-view-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: none;
-  padding: 7px 14px;
-  border: 1.5px solid var(--pink); border-radius: 100px;
-  font-size: 12px; font-weight: 700; color: var(--pink-dark);
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1.5px solid var(--border); border-radius: 50%;
+  background: var(--surface);
+  font-size: 12px; font-weight: 700; color: var(--ink-3);
   white-space: nowrap;
-  transition: background-color .15s, color .15s;
+  transition: border-color .15s, color .15s;
 }
-.pf-shop-view-btn:hover { background: var(--pink); color: #fff; }
+.pf-shop-view-btn:hover { border-color: #bf3c7d; color: #bf3c7d; box-shadow: none; }
 
 /* ── Deal cards (compact, horizontally-scrolling) ────────────────────────────*/
 .pf-deal-showcase { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(140px, 1fr); gap: 14px; align-items: start; }

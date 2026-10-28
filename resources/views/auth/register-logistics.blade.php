@@ -6,7 +6,7 @@
     <title>Logistics Registration — PocketFinds</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/register.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/register.css') }}?v={{ @filemtime(public_path('css/register.css')) ?: 1 }}">
     <style>
         .prefilled-note {
             font-size: 11px;
@@ -255,13 +255,13 @@
                         <div class="step-circle">2</div>
                         <span class="step-label">Coverage</span>
                     </div>
-                    <div class="step-item" data-step="2">
-                        <div class="step-circle" id="idSelfieStepCircle">3</div>
-                        <span class="step-label">ID & Selfie</span>
-                    </div>
                     <div class="step-item" data-step="3">
-                        <div class="step-circle" id="personalStepCircle">4</div>
-                        <span class="step-label">Personal</span>
+                        <div class="step-circle" id="personalStepCircle">3</div>
+                        <span class="step-label">Contact Person</span>
+                    </div>
+                    <div class="step-item" data-step="2">
+                        <div class="step-circle" id="idSelfieStepCircle">4</div>
+                        <span class="step-label">ID & Selfie</span>
                     </div>
                     <div class="step-item" data-step="4">
                         <div class="step-circle" id="contactStepCircle">5</div>
@@ -269,7 +269,7 @@
                     </div>
                     <div class="step-item" data-step="5">
                         <div class="step-circle" id="addressStepCircle">6</div>
-                        <span class="step-label">Address</span>
+                        <span class="step-label">Company Address</span>
                     </div>
                     <div class="step-item" data-step="6">
                         <div class="step-circle" id="accountStepCircle">7</div>
@@ -294,6 +294,12 @@
                         <p class="auth-subtitle" style="margin:0 0 14px">Register your company name, logo, and business permit.</p>
 
                         <input type="hidden" name="logistics_mode" value="found">
+
+                        @include('auth.partials.registration-business-details')
+                        <div class="auth-field">
+                            <label class="auth-label" for="sec_registration_no">SEC registration number <span class="auth-required">*</span></label>
+                            <input class="auth-input" id="sec_registration_no" name="sec_registration_no" type="text" minlength="11" maxlength="11" pattern="[A-Za-z]{2}[0-9]{9}" placeholder="CS202012345" value="{{ old('sec_registration_no') }}" required>
+                        </div>
 
                         <div class="auth-field" style="margin-bottom:10px">
                             <label class="auth-label" for="business_name">Company Name <span class="auth-required">*</span></label>
@@ -362,6 +368,10 @@
 
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end;margin-bottom:8px">
                             <div>
+                                <label class="auth-label" style="font-size:11px" for="hub_region_input">Service region</label>
+                                <select class="auth-input auth-select" id="hub_region_input"><option value="" disabled selected>Loading regions…</option></select>
+                            </div>
+                            <div>
                                 <label class="auth-label" style="font-size:11px" for="hub_province_input">Province</label>
                                 <select class="auth-input auth-select" id="hub_province_input"><option value="" disabled selected>Select province</option></select>
                             </div>
@@ -407,7 +417,7 @@
                             <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;background:var(--auth-primary-soft);border:1px solid rgba(217,70,143,.2);color:var(--auth-primary);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em">{!! $typeIcons[$regType] ?? $typeIcons['buyer'] !!} {{ ucfirst($regType) }}</span>
                         </div>
                         <div style="display:flex;align-items:center;justify-content:space-between">
-                            <p class="auth-subtitle" style="margin:0">Upload your ID — we'll pre-fill your details automatically.</p>
+                            <p class="auth-subtitle" style="margin:0">Upload the contact person's valid ID and selfie for verification.</p>
                             <a href="{{ route('register.delivery-team') }}" title="Change account type" style="flex-shrink:0;margin-left:8px;color:var(--auth-muted);text-decoration:none;line-height:1" onmouseover="this.style.color='var(--auth-primary)'" onmouseout="this.style.color='var(--auth-muted)'"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg></a>
                         </div>
 
@@ -515,15 +525,19 @@
                     {{-- ── STEP 3: Personal Info ── --}}
                     <div class="step-panel" id="panel-3">
                         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-                            <h2 class="auth-title" style="margin:0">Personal Information</h2>
+                            <h2 class="auth-title" style="margin:0">Contact Person</h2>
                             <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;background:var(--auth-primary-soft);border:1px solid rgba(217,70,143,.2);color:var(--auth-primary);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em">{!! $typeIcons[$regType] ?? $typeIcons['buyer'] !!} {{ ucfirst($regType) }}</span>
                         </div>
                         <div style="display:flex;align-items:center;justify-content:space-between">
-                            <p class="auth-subtitle" style="margin:0">Review and correct your details if needed.</p>
+                            <p class="auth-subtitle" style="margin:0">Enter the details of the person representing your company.</p>
                             <a href="{{ route('register.delivery-team') }}" title="Change account type" style="flex-shrink:0;margin-left:8px;color:var(--auth-muted);text-decoration:none;line-height:1" onmouseover="this.style.color='var(--auth-primary)'" onmouseout="this.style.color='var(--auth-muted)'"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg></a>
                         </div>
 
                         <div id="ocrPrefillNote" class="prefilled-note" style="display:none"></div>
+                        <div class="auth-field">
+                            <label class="auth-label" for="position">Position / job title <span class="auth-required">*</span></label>
+                            <input class="auth-input" id="position" name="position" type="text" maxlength="100" placeholder="e.g. Operations Manager" value="{{ old('position') }}" required>
+                        </div>
 
                         <div class="auth-form-grid">
                             <div class="auth-field">
@@ -531,7 +545,7 @@
                                 <input class="auth-input" id="last_name" name="last_name" type="text" placeholder="Dela Cruz" required>
                             </div>
                             <div class="auth-field">
-                                <label class="auth-label" for="given_names">Given names <span class="auth-required">*</span></label>
+                                <label class="auth-label" for="given_names">First name <span class="auth-required">*</span></label>
                                 <input class="auth-input" id="given_names" name="given_names" type="text" placeholder="Juan" required>
                             </div>
                             <div class="auth-field">
@@ -574,11 +588,11 @@
                     {{-- ── STEP 4: Contact ── --}}
                     <div class="step-panel" id="panel-4">
                         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-                            <h2 class="auth-title" style="margin:0">Contact Details</h2>
+                            <h2 class="auth-title" style="margin:0">Contact Person's Contact Details</h2>
                             <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;background:var(--auth-primary-soft);border:1px solid rgba(217,70,143,.2);color:var(--auth-primary);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em">{!! $typeIcons[$regType] ?? $typeIcons['buyer'] !!} {{ ucfirst($regType) }}</span>
                         </div>
                         <div style="display:flex;align-items:center;justify-content:space-between">
-                            <p class="auth-subtitle" style="margin:0">How can we reach you?</p>
+                            <p class="auth-subtitle" style="margin:0">Enter the contact person's email address and mobile number.</p>
                             <a href="{{ route('register.delivery-team') }}" title="Change account type" style="flex-shrink:0;margin-left:8px;color:var(--auth-muted);text-decoration:none;line-height:1" onmouseover="this.style.color='var(--auth-primary)'" onmouseout="this.style.color='var(--auth-muted)'"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg></a>
                         </div>
 
@@ -609,7 +623,7 @@
                             </div>
                             <div class="auth-field full">
                                 <label class="auth-label" for="contact_no">Contact number <span class="auth-required">*</span></label>
-                                <input class="auth-input" id="contact_no" name="contact_no" type="tel" placeholder="09XXXXXXXXX" maxlength="11" required>
+                                @include('auth.partials.registration-mobile')
                                 <span class="field-hint" id="contactHint"></span>
                             </div>
                         </div>
@@ -633,6 +647,7 @@
 
 
                         <div class="address-grid">
+                            @include('auth.partials.registration-region')
                             <div class="auth-field full">
                                 <label class="auth-label" for="province">Province <span class="auth-required">*</span></label>
                                 <select class="auth-input auth-select" id="province" name="province" required>
@@ -651,6 +666,7 @@
                                     <option value="" disabled selected>Select city / municipality first</option>
                                 </select>
                             </div>
+                            @include('auth.partials.registration-postal-code')
                             <div class="auth-field">
                                 <label class="auth-label" for="house_no">House No. / Unit</label>
                                 <input class="auth-input" id="house_no" name="house_no" type="text" placeholder="e.g. 123">
@@ -867,7 +883,8 @@ hubProvinceSelect?.addEventListener('change', function () {
     hubMuniSelectAll.checked = false;
     hubMuniFilter.value = '';
     const code = this.options[this.selectedIndex]?.dataset.code ?? this.value;
-    fetchJSON(`${PSGC}/provinces/${code}/cities-municipalities/`)
+    const parent = this.selectedOptions[0]?.dataset.isRegion === '1' ? 'regions' : 'provinces';
+    fetchJSON(`${PSGC}/${parent}/${code}/cities-municipalities/`)
         .then(data => {
             if (requestId !== hubMuniRequestId) return;
             hubMunicipalities = [...data].sort((a, b) => a.name.localeCompare(b.name));
@@ -1250,13 +1267,14 @@ function syncHubAreas() {
 }
 
 function addHubArea() {
+    const region = document.getElementById('hub_region_input').value;
     const province = hubProvinceSelect.value;
     const checked  = [...hubMuniCheckboxes.querySelectorAll('.hub-muni-checkbox:checked')];
-    if (!province || checked.length === 0) return;
+    if (!region || !province || checked.length === 0) return;
     checked.forEach(cb => {
         const municipality = cb.value;
         if (!hubAreas.some(a => a.province === province && a.municipality === municipality)) {
-            hubAreas.push({ province, municipality, is_regional: !hubAreas.some(a => a.province === province) });
+            hubAreas.push({ region, province, municipality, is_regional: !hubAreas.some(a => a.province === province) });
         }
     });
     syncHubAreas();
@@ -1279,12 +1297,16 @@ function validateHubAreas() {
 }
 
 // ── Logistics step flow: 7 → 8 → 2 → 3 → 4 → 5 → 6 ──
-const LOGISTICS_STEPS = [7, 8, 2, 3, 4, 5, 6];
+const LOGISTICS_STEPS = [7, 8, 3, 2, 4, 5, 6];
 
 // Grab indicator items once, in DOM order (7 items).
 const logisticsStepItems = Array.from(document.querySelectorAll('#stepIndicator .step-item'));
 
 function logisticsSetStep(from, to) {
+    if (from === 2) {
+        stopCamera();
+        if (idCameraStream) { idCameraStream.getTracks().forEach(track => track.stop()); idCameraStream = null; }
+    }
     document.getElementById('panel-' + from)?.classList.remove('active');
     document.getElementById('panel-' + to)?.classList.add('active');
 
@@ -1296,59 +1318,8 @@ function logisticsSetStep(from, to) {
     });
 
     document.querySelector('.auth-form-panel')?.scrollTo(0, 0);
-    if (to === 8) ensureHubProvincesLoaded();
-}
 
-// Province loading: reuse psgcProvinces if already loaded by register.js, or fetch directly.
-let hubProvincesLoaded = false;
-function populateHubProvinceSelect(data) {
-    if (!hubProvinceSelect) return;
-    hubProvinceSelect.innerHTML = '<option value="" disabled selected>Select province</option>';
-    [...data].sort((a, b) => a.name.localeCompare(b.name)).forEach(item => {
-        const o = document.createElement('option');
-        o.value = item.name;
-        o.dataset.code = item.code;
-        o.textContent = item.name;
-        hubProvinceSelect.appendChild(o);
-    });
-    hubProvinceSelect.disabled = false;
 }
-
-function ensureHubProvincesLoaded() {
-    if (hubProvinceSelect && hubProvinceSelect.options.length > 1 && !hubProvinceSelect.disabled) {
-        hubProvincesLoaded = true;
-        return;
-    }
-    if (typeof psgcProvinces !== 'undefined' && Array.isArray(psgcProvinces) && psgcProvinces.length > 0) {
-        populateHubProvinceSelect(psgcProvinces);
-        hubProvincesLoaded = true;
-        return;
-    }
-    if (hubProvincesLoaded) return;
-    hubProvincesLoaded = true;
-    if (hubProvinceSelect) {
-        hubProvinceSelect.innerHTML = '<option value="" disabled selected>Loading provinces…</option>';
-        hubProvinceSelect.disabled = true;
-    }
-    fetch(`${PSGC}/provinces/`)
-        .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-        .then(data => {
-            populateHubProvinceSelect(data);
-        })
-        .catch(() => {
-            if (hubProvinceSelect) {
-                hubProvinceSelect.innerHTML = '<option value="" disabled selected>Failed — click to retry</option>';
-                hubProvinceSelect.disabled = false;
-            }
-            hubProvincesLoaded = false;
-        });
-}
-
-// Pre-load provinces immediately so they are ready before reaching Step 2
-ensureHubProvincesLoaded();
-hubProvinceSelect?.addEventListener('focus', () => {
-    if (hubProvinceSelect.options.length <= 1) ensureHubProvincesLoaded();
-});
 
 // Keep a reference to register.js's original validateStep for steps it handles (2–5).
 const _origValidateStep = validateStep;
@@ -1357,6 +1328,12 @@ const _origValidateStep = validateStep;
 // These are function declarations on window, so assignment replaces them globally.
 nextStep = function (current) {
     if (current === 7) {
+        for (const id of ['tin', 'sec_registration_no']) {
+            const field = document.getElementById(id);
+            clearError(field);
+            const error = rules[id](field.value.trim());
+            if (!field.value.trim() || error) { showError(field, error || 'This field is required.'); return; }
+        }
         const bn = document.getElementById('business_name');
         if (!bn?.value.trim()) { showError(bn, 'Company name is required.'); return; }
         if (businessNameAvailable === false) { showError(bn, 'This company name is already registered.'); return; }
@@ -1389,5 +1366,6 @@ validateStep = function (step) {
     return _origValidateStep(step); // credentials + T&C check is the same
 };
 </script>
+<script src="{{ asset('js/logistics-service-regions.js') }}?v={{ @filemtime(public_path('js/logistics-service-regions.js')) ?: 1 }}"></script>
 </body>
 </html>

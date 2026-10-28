@@ -129,12 +129,13 @@ class GcashWorkflow
         $this->eligible($seller, 'seller');
         $this->eligible($buyer, 'buyer');
         foreach ($p->snapshot['items'] as $item) {
+            if(isset($p->snapshot['commerce'])) break; // Reserved prices are immutable.
             $product = $products->get($item['product_id']);
             if (! $product || $product->seller_id != $p->seller_id || $product->status !== 'active' || $this->price($product, $item['variation_group'], $item['variation_value']) !== $this->cents($item['price'])) {
                 $this->fail('Product availability or agreed price changed. Explicit payment reconciliation is required.');
             }
         }
-        if ($this->cents($seller->shipping_fee) !== $this->cents($p->snapshot['shipping_amount'])) {
+        if (!isset($p->snapshot['commerce']) && $this->cents($seller->shipping_fee) !== $this->cents($p->snapshot['shipping_amount'])) {
             $this->fail('Shipping amount changed. Explicit payment reconciliation is required.');
         }
     }
@@ -179,7 +180,7 @@ class GcashWorkflow
         }, 3);
     }
 
-    public function create(User $buyer, array $ids, int $method, string $checkoutId, ?string $code = null, ?int $addressId = null, ?string $note = null): array
+    public function create(User $buyer, array $ids, int $method, string $checkoutId, ?string $code = null, ?int $addressId = null, ?string $note = null, ?array $commerceQuote = null): array
     {
         $this->eligible($buyer, 'buyer');
         abort_unless(Str::isUuid($checkoutId), 422, 'A checkout retry identifier is required.');
@@ -187,7 +188,7 @@ class GcashWorkflow
         sort($ids);
         $hash = hash('sha256', json_encode([$ids, $method, strtoupper($code ?? ''), $addressId, $note]));
 
-        return $this->transaction(function () use ($buyer, $ids, $method, $checkoutId, $code, $addressId, $note, $hash) {
+        return $this->transaction(function () use ($buyer, $ids, $method, $checkoutId, $code, $addressId, $note, $hash, $commerceQuote) {
             $prior = GcashPurchase::where('buyer_id', $buyer->id)->where('checkout_id', $checkoutId)->get();
             $preview = CartItem::where('buyer_id', $buyer->id)->whereIn('id', $ids)->get();
             $itemsToLock = $prior->isNotEmpty() ? $prior->flatMap(fn ($p) => $p->snapshot['items'])->all() : $preview->map(fn ($row) => ['product_id' => $row->product_id])->all();
@@ -238,7 +239,7 @@ class GcashWorkflow
                 $group = $row->variation_group ?: null;
                 $value = $row->variation_value ?: null;
                 $price = $this->price($product, $group, $value);
-                if ($price !== $this->cents($row->price)) {
+                if (!$commerceQuote && $price !== $this->cents($row->price)) {
                     $this->fail('The cart price changed. Refresh and acknowledge the new amount before reserving.');
                 }
                 $grouped[$seller->id][] = ['product_id' => $product->id, 'name' => $product->name, 'price' => $this->money($price), 'qty' => (int) $row->qty, 'variation_group' => $group, 'variation_value' => $value, 'img' => $row->img, 'seller_slug' => $seller->username, 'cart_id' => $row->id];
@@ -262,8 +263,13 @@ class GcashWorkflow
                     }
                 }
                 $snapshot = ['items' => $items, 'shipping_address' => $address, 'buyer_note' => $note, 'subtotal' => $this->money($subtotal), 'shipping_amount' => $this->money($shipping), 'discount_amount' => $this->money($discount), 'voucher_id' => $voucher?->id, 'voucher_code' => $voucher?->code];
+                if($commerceQuote){
+                    $details=$commerceQuote['orders'][$sellerId];$subtotal=$this->cents($details['subtotal']);$shipping=$this->cents($details['shipping_amount']);$discount=$this->cents($details['discount_amount']);
+                    $snapshot=['items'=>$details['items'],'shipping_address'=>$commerceQuote['address'],'buyer_note'=>$note,'subtotal'=>$this->money($subtotal),'shipping_amount'=>$this->money($shipping),'discount_amount'=>$this->money($discount),'voucher_id'=>null,'voucher_code'=>null,'commerce'=>$details];
+                }
                 $p = GcashPurchase::create(['id' => (string) Str::uuid(), 'buyer_id' => $buyer->id, 'seller_id' => $sellerId, 'checkout_id' => $checkoutId, 'request_hash' => $hash, 'payment_method_id' => $pm->id, 'snapshot' => $snapshot, 'amount_due' => $this->money(max(0, $subtotal + $shipping - $discount)), 'payment_state' => 'awaiting_payment', 'reservation_state' => 'initializing']);
                 $this->allocate($p, $products, $voucher);
+                if($commerceQuote) app(BuyerCommerce::class)->allocate($p->id,$buyer,$commerceQuote['orders'][$sellerId],true,$checkoutId);
                 $this->event($p, 'created', $buyer);
                 $created[] = $p;
                 // The deadline begins only after the outermost transaction commits, never before upload/other middleware completion.
@@ -284,7 +290,7 @@ class GcashWorkflow
                 $p = GcashPurchase::whereKey($id)->lockForUpdate()->firstOrFail();
                 if ($p->reservation_state === 'initializing' && ! $p->activated_at) {
                     $start = $committedAt ?? $p->created_at;
-                    $p->update(['activated_at' => $start, 'expires_at' => $start->copy()->addMinutes(15)]);
+                    $p->update(['activated_at' => $start, 'expires_at' => $start->copy()->addHour()]);
                 }
             }, 3);
 
@@ -299,10 +305,10 @@ class GcashWorkflow
                 $before = $this->state($p);
                 // An interrupted process can recover, but never receive a new fifteen-minute window.
                 $start = $p->activated_at ?? now();
-                $p->update(['activated_at' => $start, 'expires_at' => $start->copy()->addMinutes(15), 'reservation_state' => 'held']);
+                $p->update(['activated_at' => $start, 'expires_at' => $start->copy()->addHour(), 'reservation_state' => 'held']);
                 $this->event($p, 'reservation_started', null, $before);
-                DB::table('messages')->insert(['sender_id' => $p->buyer_id, 'receiver_id' => $p->seller_id, 'gcash_purchase_id' => $p->id, 'body' => 'GCash payment for '.$p->productLabel().' - amount due PHP '.$p->amount_due.'. Stock reserved for 15 minutes. Awaiting seller payment instructions.', 'read' => false, 'created_at' => now(), 'updated_at' => now()]);
-                $this->notify($p, 'GCash reservation started', 'Purchase '.$p->id.' is reserved for 15 minutes. No payment has been verified.');
+                DB::table('messages')->insert(['sender_id' => $p->buyer_id, 'receiver_id' => $p->seller_id, 'gcash_purchase_id' => $p->id, 'body' => 'GCash payment for '.$p->productLabel().' - amount due PHP '.$p->amount_due.'. Stock reserved for one hour. Awaiting seller payment instructions.', 'read' => false, 'created_at' => now(), 'updated_at' => now()]);
+                $this->notify($p, 'GCash reservation started', 'Purchase '.$p->id.' is reserved for one hour. No payment has been verified.');
 
                 return true;
             }, 3);
@@ -345,6 +351,7 @@ class GcashWorkflow
             DB::table('gcash_stock_allocations')->where('id', $row->id)->update(['state' => 'released', 'released_at' => now(), 'updated_at' => now()]);
         }
         $this->releaseVoucher($p);
+        if(BuyerCommerce::installed())app(BuyerCommerce::class)->release($p->id);
     }
 
     private function releaseVoucher(GcashPurchase $p): void
@@ -369,7 +376,7 @@ class GcashWorkflow
         if (! in_array($p->reservation_state, ['held', 'initializing'])) {
             return false;
         }
-        $expired = $p->expires_at ? $p->expires_at->lte(now()) : $p->created_at->lte(now()->subMinutes(15));
+        $expired = $p->expires_at ? $p->expires_at->lte(now()) : $p->created_at->lte(now()->subHour());
         if (! $expired) {
             return false;
         }
@@ -397,7 +404,7 @@ class GcashWorkflow
         foreach (GcashPurchase::where('reservation_state', 'initializing')->pluck('id') as $initializing) {
             $this->activate($initializing);
         }
-        foreach (GcashPurchase::whereIn('reservation_state', ['held', 'initializing'])->where(fn ($q) => $q->where('expires_at', '<=', now())->orWhere(fn ($r) => $r->whereNull('expires_at')->where('created_at', '<=', now()->subMinutes(15))))->pluck('id') as $id) {
+        foreach (GcashPurchase::whereIn('reservation_state', ['held', 'initializing'])->where(fn ($q) => $q->where('expires_at', '<=', now())->orWhere(fn ($r) => $r->whereNull('expires_at')->where('created_at', '<=', now()->subHour())))->pluck('id') as $id) {
             if ($this->expire($id)) {
                 $n++;
             }
@@ -626,7 +633,7 @@ class GcashWorkflow
             $this->assertPlacement($p, $products, $revision);
             $snapshot = $p->snapshot;
             $pm = PaymentMethod::findOrFail($p->payment_method_id);
-            $order = Order::create(['order_number' => 'PF-'.now()->format('YmdHis').'-'.strtoupper(Str::random(5)), 'buyer_id' => $p->buyer_id, 'seller_id' => $p->seller_id, 'status' => 'placed', 'items' => $snapshot['items'], 'subtotal' => $snapshot['subtotal'], 'shipping_amount' => $snapshot['shipping_amount'], 'discount_amount' => $snapshot['discount_amount'], 'voucher_code' => $snapshot['voucher_code'], 'total' => $p->amount_due, 'shipping_address' => $snapshot['shipping_address'], 'buyer_note' => $snapshot['buyer_note'], 'payment_method_id' => $pm->id, 'payment_method' => 'GCash', 'gcash_purchase_id' => $id]);
+            $order = Order::create(['order_number' => 'PF-'.now()->format('YmdHis').'-'.strtoupper(Str::random(5)), 'buyer_id' => $p->buyer_id, 'seller_id' => $p->seller_id, 'status' => 'placed', 'items' => $snapshot['items'], 'subtotal' => $snapshot['subtotal'], 'shipping_amount' => $snapshot['shipping_amount'], 'discount_amount' => $snapshot['discount_amount'], 'voucher_code' => $snapshot['voucher_code'], 'total' => $p->amount_due, 'shipping_address' => $snapshot['shipping_address'], 'buyer_note' => $snapshot['buyer_note'], 'payment_method_id' => $pm->id, 'payment_method' => 'GCash', 'gcash_purchase_id' => $id, 'commerce_snapshot' => $snapshot['commerce'] ?? null]);
             $voucherId = $snapshot['voucher_id'] ?? null;
             if ($voucherId) {
                 $voucher = Voucher::whereKey($voucherId)->lockForUpdate()->firstOrFail();
@@ -640,11 +647,12 @@ class GcashWorkflow
             $before = $this->state($p);
             $p->update(['payment_state' => 'order_placed', 'reservation_state' => 'transferred', 'revision' => $p->revision + 1]);
             $order->logStatus('placed', $buyer->id, 'GCash prepayment verified by seller.');
+            if(BuyerCommerce::installed()) DB::table('commerce_allocations')->where('subject_id', $p->id)->where('state','held')->update(['state'=>'used']);
             $this->event($p, 'order_placed', $buyer, $before);
             $this->notify($p, 'GCash order placed', 'Order '.$order->order_number.' created from this purchase.');
             // Remove only unchanged cart rows; later cart edits never alter the paid snapshot.
             foreach ($snapshot['items'] as $item) {
-                $cart = CartItem::where('buyer_id', $buyer->id)->where('id', $item['cart_id'])->where('product_id', $item['product_id'])->where('qty', $item['qty'])->where('price', $item['price']);
+                $cart = CartItem::where('buyer_id', $buyer->id)->where('id', $item['cart_id'])->where('product_id', $item['product_id'])->where('qty', $item['cart_qty']??$item['qty'])->where('price', $item['cart_price']??$item['price']);
                 foreach (['variation_group', 'variation_value'] as $field) {
                     $item[$field] === null ? $cart->where(fn ($q) => $q->whereNull($field)->orWhere($field, '')) : $cart->where($field, $item[$field]);
                 }

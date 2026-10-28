@@ -4,6 +4,7 @@ document.addEventListener("DOMContentLoaded", () => {
         field.className = "pf-number-field";
         input.before(field);
         field.append(input);
+        if (input.closest('#products')) return;
         const label = input.closest("label")?.querySelector("span")?.textContent.trim() || "price";
         [1, -1].forEach(direction => {
             const button = document.createElement("button");
@@ -43,6 +44,10 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
     const productFilters = document.querySelector("#products .pf-product-filters");
+    const filterSidebar = document.querySelector('#products .pf-catalog-sidebar');
+    if (filterSidebar) {
+        filterSidebar.open = false;
+    }
     productFilters?.querySelectorAll('input[name="category"]').forEach((choice) => {
         choice.addEventListener("change", () => productFilters.requestSubmit());
     });
@@ -58,7 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
         target.search = new URLSearchParams(new FormData(productFilters)).toString();
         try { sessionStorage.setItem(scrollKey, JSON.stringify({ url: target.pathname + target.search, top: window.scrollY })); } catch (_) {}
     });
-    document.querySelectorAll("[data-catalog-reset]").forEach(link => link.addEventListener("click", event => {
+    document.querySelectorAll("[data-catalog-reset], [data-catalog-category]").forEach(link => link.addEventListener("click", event => {
         if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
         const target = new URL(link.href);
         try { sessionStorage.setItem(scrollKey, JSON.stringify({ url: target.pathname + target.search, top: window.scrollY })); } catch (_) {}
@@ -129,6 +134,35 @@ document.addEventListener("DOMContentLoaded", () => {
         updateNavbarHeight();
         if (typeof ResizeObserver !== "undefined") new ResizeObserver(updateNavbarHeight).observe(navbar);
         const links = [...navbar.querySelectorAll(".nav-link")];
+        const sectionLinks = links.map(link => {
+            const url = new URL(link.href);
+            if (url.pathname !== window.location.pathname || url.search !== window.location.search || !url.hash) return null;
+            const target = document.getElementById(url.hash.slice(1));
+            return target ? { link, target } : null;
+        }).filter(Boolean);
+        let navFrame = null;
+        const updateSelectedNavigation = () => {
+            navFrame = null;
+            const headerBottom = navbar.getBoundingClientRect().bottom;
+            const marker = headerBottom + Math.min(120, window.innerHeight * .2);
+            const sections = sectionLinks.map(entry => ({ ...entry, rect: entry.target.getBoundingClientRect() }))
+                .sort((a, b) => a.rect.top - b.rect.top);
+            let selected = sections.findLast(entry => entry.rect.top <= marker && entry.rect.bottom > headerBottom);
+            // A short footer cannot always reach the marker above the page bottom.
+            if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2) {
+                selected = sections.findLast(entry => entry.rect.top < window.innerHeight && entry.rect.bottom > headerBottom) || selected;
+            }
+            links.forEach(link => link === selected?.link ? link.setAttribute("aria-current", "location") : link.removeAttribute("aria-current"));
+        };
+        const scheduleNavigationUpdate = () => {
+            if (navFrame === null) navFrame = window.requestAnimationFrame(updateSelectedNavigation);
+        };
+        window.addEventListener("scroll", scheduleNavigationUpdate, { passive: true });
+        window.addEventListener("resize", scheduleNavigationUpdate);
+        window.addEventListener("hashchange", scheduleNavigationUpdate);
+        window.addEventListener("load", scheduleNavigationUpdate);
+        if (typeof ResizeObserver !== "undefined") new ResizeObserver(scheduleNavigationUpdate).observe(document.body);
+        scheduleNavigationUpdate();
         links.forEach((link) => link.addEventListener("click", (event) => {
             const url = new URL(link.href);
             if (url.pathname !== window.location.pathname || url.search !== window.location.search) return;
@@ -140,6 +174,7 @@ document.addEventListener("DOMContentLoaded", () => {
             target.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
             history.replaceState(null, "", url.hash);
             links.forEach((item) => item === link ? item.setAttribute("aria-current", "location") : item.removeAttribute("aria-current"));
+            scheduleNavigationUpdate();
         }));
     }
 
@@ -183,11 +218,18 @@ document.addEventListener("DOMContentLoaded", () => {
         const categoryChoices = [...showcase.closest("#deals").querySelectorAll('input[name="deal_category"]')];
         const emptyMessage = showcase.closest("#deals").querySelector("[data-deal-filter-empty]");
         const gallery = showcase.closest(".pf-deal-gallery-frame");
-        const previousDeal = gallery?.querySelector("[data-deal-prev]");
-        const nextDeal = gallery?.querySelector("[data-deal-next]");
+        const previousDeal = showcase.closest("#deals")?.querySelector("[data-deal-prev]");
+        const nextDeal = showcase.closest("#deals")?.querySelector("[data-deal-next]");
         const section = showcase.closest("#deals");
         const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
         let rotationTimer = null;
+        let transitionTimer = null;
+        let queuedDeal = null;
+        const resetTransition = () => {
+            window.clearTimeout(transitionTimer);
+            transitionTimer = null;
+            queuedDeal = null;
+        };
         let sectionVisible = typeof IntersectionObserver === "undefined";
         const selectDeal = (selected, animate = true) => {
             const mobile = window.matchMedia("(max-width: 600px)").matches;
@@ -251,12 +293,30 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             if (previousDeal) previousDeal.disabled = visible.length < 2;
             if (nextDeal) nextDeal.disabled = visible.length < 2;
-            const counter = gallery?.querySelector("[data-deal-position]");
+            const counter = section?.querySelector("[data-deal-position]");
             if (counter) counter.textContent = `${Math.max(0, position + 1)} / ${visible.length}`;
         };
         const animateToDeal = (selected) => {
+            if (transitionTimer !== null) {
+                // Coalesce repeated clicks instead of restarting moving cards or
+                // building an unbounded queue during a burst of input.
+                queuedDeal = selected;
+                return;
+            }
+            if (panels.find(panel => panel.classList.contains("is-active"))?.dataset.dealPanel === selected) return;
+            window.clearTimeout(rotationTimer);
             selectDeal(selected);
-            scheduleRotation();
+            if (reducedMotion.matches) {
+                scheduleRotation();
+                return;
+            }
+            transitionTimer = window.setTimeout(() => {
+                transitionTimer = null;
+                const pending = queuedDeal;
+                queuedDeal = null;
+                if (pending !== null && pending !== selected) animateToDeal(pending);
+                else scheduleRotation();
+            }, 620);
         };
         const moveDeal = (direction) => {
             const visible = panels.filter((panel) => !panel.hidden);
@@ -267,13 +327,15 @@ document.addEventListener("DOMContentLoaded", () => {
         const scheduleRotation = () => {
             window.clearTimeout(rotationTimer);
             rotationTimer = null;
-            if (!sectionVisible || document.hidden || reducedMotion.matches || panels.filter(panel => !panel.hidden).length < 2) return;
+            if (transitionTimer !== null || !sectionVisible || document.hidden || reducedMotion.matches || panels.filter(panel => !panel.hidden).length < 2) return;
             rotationTimer = window.setTimeout(() => moveDeal(1), 3000);
         };
         document.addEventListener("visibilitychange", scheduleRotation);
         reducedMotion.addEventListener("change", scheduleRotation);
         window.addEventListener("resize", () => {
+            resetTransition();
             selectDeal(panels.find(panel => panel.classList.contains("is-active"))?.dataset.dealPanel ?? "", false);
+            scheduleRotation();
         });
         if (typeof IntersectionObserver !== "undefined") {
             new IntersectionObserver(entries => {
@@ -297,6 +359,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 priceForm.elements.deal_max_price.setCustomValidity(minimum !== "" && maximum !== "" && Number(maximum) < Number(minimum) ? "Maximum price must be at least the minimum price." : "");
                 if (!priceForm.reportValidity()) return;
             }
+            resetTransition();
             categoryChoices.forEach((choice) => { choice.checked = choice.value === categoryFilter.value; });
             options.forEach((option) => {
                 const price = Number(option.dataset.dealPrice);
@@ -308,6 +371,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const first = options.find((option) => !option.hidden);
             showcase.hidden = !first;
             if (gallery) gallery.hidden = !first;
+            const controls = section?.querySelector('.pf-deal-gallery-controls');
+            if (controls) controls.hidden = !first;
             if (emptyMessage) emptyMessage.hidden = !!first;
             selectDeal(first?.dataset.dealSelect ?? "");
             scheduleRotation();

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Setting;
 use App\Models\User;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class BuyerStorefrontTest extends TestCase
@@ -58,6 +59,59 @@ class BuyerStorefrontTest extends TestCase
     public function test_dashboard_still_requires_authentication(): void
     {
         $this->get(route('buyer.dashboard'))->assertRedirect(route('login'));
+    }
+
+    public function test_each_banner_renders_its_saved_crop(): void
+    {
+        Storage::fake('public');
+        $data = $this->storefrontData();
+        $data['heroSettings'] = new Setting([
+            'hero_image' => 'hero_banners/primary.jpg',
+            'hero_crop_x' => 20, 'hero_crop_y' => 75, 'hero_crop_zoom' => 130,
+            'hero_2_crop_x' => 80, 'hero_2_crop_y' => 10, 'hero_2_crop_zoom' => 160,
+        ]);
+        $this->view('guest.home', $data)
+            ->assertSee('object-position: 20% 75%; transform-origin: 20% 75%; transform: scale(1.3);', false)
+            ->assertSee('object-position: 80% 10%; transform-origin: 80% 10%; transform: scale(1.6);', false);
+    }
+
+    public function test_crop_editor_loads_saved_values_for_the_correct_banner(): void
+    {
+        view()->share('errors', new \Illuminate\Support\ViewErrorBag());
+        $setting = new Setting(['hero_2_crop_x' => 80, 'hero_2_crop_y' => 10, 'hero_2_crop_zoom' => 160]);
+        $this->blade('<x-hero-crop :setting="$setting" :slide="2" src="/image.jpg" />', compact('setting'))
+            ->assertSee('name="hero_2_crop_x" data-crop-axis="x" type="range" min="0" max="100" step="1" value="80"', false)
+            ->assertSee('value="160"', false)
+            ->assertSee('Mobile')->assertSee('Reset crop');
+    }
+
+    public function test_hero_uses_beauty_image_as_second_slide_by_default(): void
+    {
+        Storage::fake('public');
+        $data = $this->storefrontData();
+        $data['heroSettings'] = new Setting(['hero_image' => 'hero_banners/primary.jpg']);
+
+        $this->view('guest.home', $data)->assertSeeInOrder([
+            'class="hero-slide active" src="'.Storage::url('hero_banners/primary.jpg').'"',
+            'class="hero-slide " src="'.asset('images/hero-beauty.jpg').'"',
+        ], false);
+    }
+
+    public function test_admin_second_image_replaces_default_and_excludes_stale_uploads(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('hero_banners/stale.jpg', 'unused');
+        $data = $this->storefrontData();
+        $data['heroSettings'] = new Setting([
+            'hero_image' => 'hero_banners/primary.jpg',
+            'hero_image_2' => 'hero_banners/second.jpg',
+        ]);
+
+        $this->view('guest.home', $data)->assertSeeInOrder([
+            'class="hero-slide active" src="'.Storage::url('hero_banners/primary.jpg').'"',
+            'class="hero-slide " src="'.Storage::url('hero_banners/second.jpg').'"',
+        ], false)->assertDontSee('images/hero-beauty.jpg', false)
+            ->assertDontSee('hero_banners/stale.jpg', false);
     }
 
     public function test_buyer_layout_uses_the_shared_storefront_navigation_and_theme(): void

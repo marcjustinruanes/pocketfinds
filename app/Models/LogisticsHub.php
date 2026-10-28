@@ -13,7 +13,7 @@ use Illuminate\Support\Collection;
  */
 class LogisticsHub extends Model
 {
-    protected $fillable = ['company_name', 'province', 'municipality', 'is_regional_hub', 'is_hiring', 'name', 'address', 'contact_no', 'is_operational'];
+    protected $fillable = ['company_name', 'region', 'province', 'municipality', 'is_regional_hub', 'is_hiring', 'name', 'address', 'contact_no', 'is_operational'];
 
     public function staff()
     {

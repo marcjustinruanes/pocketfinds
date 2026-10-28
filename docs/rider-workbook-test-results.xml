@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="Tests\Feature\RiderWorkbookTest" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" tests="47" assertions="208" errors="0" failures="8" skipped="27" time="6.709538">
+    <testsuite name="Tests\Feature\RiderWorkbookTest::test_workbook_case" tests="47" assertions="208" errors="0" failures="8" skipped="27" time="6.709538">
+      <testcase name="test_workbook_case with data set &quot;TC-RID-001&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="3" time="0.805261">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\RiderWorkbookTest::test_workbook_case with data set "TC-RID-001"&#13;
+Expected response status code [201, 301, 302, 303, 307, 308] but received 422.
+Failed asserting that false is true.&#13;
+&#13;
+The following errors occurred during the last request:
+
+{
+    "message": "The given names field format is invalid.",
+    "errors": {
+        "given_names": [
+            "The given names field format is invalid."
+        ]
+    }
+}
+&#13;
+C:\Users\Administrator\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Administrator\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:208
+C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php:75</failure>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-002&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="4" time="0.114535"/>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-003&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="18" time="0.212771">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\RiderWorkbookTest::test_workbook_case with data set "TC-RID-003"&#13;
+Missing required license_number was accepted; HTTP 302
+Failed asserting that 302 is identical to 422.
+&#13;
+C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php:88</failure>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-004&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="8" time="0.146449"/>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-005&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="11" time="0.225838">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\RiderWorkbookTest::test_workbook_case with data set "TC-RID-005"&#13;
+Expected response status code [201, 301, 302, 303, 307, 308] but received 422.
+Failed asserting that false is true.&#13;
+&#13;
+The following errors occurred during the last request:
+
+{
+    "message": "The given names field format is invalid.",
+    "errors": {
+        "given_names": [
+            "The given names field format is invalid."
+        ]
+    }
+}
+&#13;
+C:\Users\Administrator\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Administrator\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:208
+C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php:99</failure>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-006&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="7" time="0.177641"/>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-007&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="12" time="0.147176">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\RiderWorkbookTest::test_workbook_case with data set "TC-RID-007"&#13;
+Expected rejection for email=pedrojose.garcia@example; HTTP 302
+Failed asserting that 302 is identical to 422.
+&#13;
+C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php:62
+C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php:105</failure>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-008&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="5" time="0.116364"/>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-009&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="14" time="0.173149"/>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-010&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="9" time="0.148271"/>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-011&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="8" time="0.127827"/>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-012&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="3" time="0.127768">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\RiderWorkbookTest::test_workbook_case with data set "TC-RID-012"&#13;
+Expected rejection for license_number=N01-23-45678; HTTP 302
+Failed asserting that 302 is identical to 422.
+&#13;
+C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php:62
+C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php:122</failure>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-013&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="3" time="0.153199">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\RiderWorkbookTest::test_workbook_case with data set "TC-RID-013"&#13;
+Expected response status code [422] but received 302.
+Failed asserting that 302 is identical to 422.
+&#13;
+C:\Users\Administrator\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Administrator\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:183
+C:\Users\Administrator\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:221
+C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php:126</failure>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-014&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="7" time="0.154390"/>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-015&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="3" time="0.134664">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\RiderWorkbookTest::test_workbook_case with data set "TC-RID-015"&#13;
+Expected response status code [422] but received 302.
+Failed asserting that 302 is identical to 422.
+&#13;
+C:\Users\Administrator\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Administrator\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:183
+C:\Users\Administrator\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:221
+C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php:133</failure>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-016&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.105622">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-017&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.106670">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-018&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.112811">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-019&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.111032">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-020&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.125787">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-021&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.124675">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-022&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.107882">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-023&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.108103">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-024&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.111229">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-025&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.102794">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-026&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.103786">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-027&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.107674">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-028&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="7" time="0.258785"/>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-029&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="5" time="0.140106">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\RiderWorkbookTest::test_workbook_case with data set "TC-RID-029"&#13;
+Expected response status code [404] but received 200.
+Failed asserting that 200 is identical to 404.
+&#13;
+C:\Users\Administrator\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Administrator\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:183
+C:\Users\Administrator\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\Concerns\AssertsStatusCodes.php:151
+C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php:145</failure>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-030&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="11" time="0.128896"/>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-031&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="5" time="0.120279"/>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-032&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="11" time="0.169346"/>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-033&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.102771">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-034&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.103505">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-035&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.104661">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-036&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.103442">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-037&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.107993">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-038&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.104212">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-039&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.112788">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-040&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.105929">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-041&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.101034">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-042&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.102830">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-043&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.107872">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-044&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.110922">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-045&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.108634">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-046&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.114651">
+        <skipped/>
+      </testcase>
+      <testcase name="test_workbook_case with data set &quot;TC-RID-047&quot;" file="C:\Users\Administrator\pocketfinds\tests\Feature\RiderWorkbookTest.php" line="70" class="Tests\Feature\RiderWorkbookTest" classname="Tests.Feature.RiderWorkbookTest" assertions="2" time="0.107517">
+        <skipped/>
+      </testcase>
+    </testsuite>
+  </testsuite>
+</testsuites>

@@ -1,3 +1,6 @@
+@php
+$storedUnread=\Illuminate\Support\Facades\DB::table('notifications')->where('user_id',auth()->id())->where('is_read',false)->count();
+@endphp
 <header class="topbar">
   <button class="menu-toggle" data-sidebar-toggle aria-label="Toggle navigation">
     <x-admin-icon name="menu" />
@@ -10,11 +13,12 @@
     <div class="dropdown">
       <button class="icon-btn" data-dropdown-toggle="riderNotifPanel" aria-label="Notifications">
         <x-admin-icon name="bell" />
-        @if(($availableRequests ?? 0) > 0)<span class="dot-badge"></span>@endif
+        @if(($availableRequests ?? 0) > 0 || $storedUnread)<span class="dot-badge"></span>@endif
       </button>
       <div class="dropdown-panel" id="riderNotifPanel">
         <div class="dropdown-head"><h3>Notifications</h3></div>
         <div class="notif-list">
+@include('account.partials.notifications')
           @if(($availableRequests ?? 0) > 0)
           <a href="{{ route('rider.requests') }}" class="notif-item" style="text-decoration:none;color:inherit;display:flex">
             <div class="dot"></div>
@@ -27,7 +31,7 @@
             <div><p>{{ $activeDeliveries }} delivery{{ $activeDeliveries > 1 ? 'ies' : 'y' }} in progress.</p></div>
           </a>
           @endif
-          @if(($availableRequests ?? 0) === 0 && ($activeDeliveries ?? 0) === 0)
+          @if(($availableRequests ?? 0) === 0 && ($activeDeliveries ?? 0) === 0 && !$storedUnread)
           <div class="notif-item read" style="display:flex">
             <div class="dot"></div>
             <div><p>No new notifications.</p></div>

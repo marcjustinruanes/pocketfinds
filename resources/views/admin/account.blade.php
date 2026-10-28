@@ -15,6 +15,7 @@
 @endpush
 
 @section('content')
+@include('commerce.messages')
 @php($admin = auth()->user())
 @if(session('success'))
 <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">
@@ -60,7 +61,7 @@
         </div>
         <div class="form-row">
           <label>Email</label>
-          <input type="email" name="email" value="{{ old('email', $admin->email) }}" required>
+          <input type="email" name="email" value="{{ $admin->email }}" readonly required>
           @error('email')<div class="hint" style="color:var(--danger);margin-top:5px">{{ $message }}</div>@enderror
         </div>
         <div class="form-row">
@@ -68,6 +69,7 @@
           <input type="text" name="contact_no" value="{{ old('contact_no', $admin->contact_no) }}" maxlength="11" required>
           @error('contact_no')<div class="hint" style="color:var(--danger);margin-top:5px">{{ $message }}</div>@enderror
         </div>
+        @include('account.partials.address-region')
         <div class="form-grid-2">
           <div class="form-row">
             <label>Province</label>
@@ -152,4 +154,7 @@
     </div>
   </div>
 </div>
+@include('account.partials.email-change')
 @endsection
+
+@push('scripts')<script src="{{ asset('js/role-account-details.js') }}?v={{ filemtime(public_path('js/role-account-details.js')) }}"></script>@endpush

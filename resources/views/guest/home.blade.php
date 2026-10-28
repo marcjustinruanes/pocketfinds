@@ -86,8 +86,8 @@ if ((window.pocketfindsReloadAtHero || (!window.location.hash && !window.locatio
     </div>
 
     <nav class="nav-links">
-      <a class="nav-link" href="#shops">Shops</a>
       <a class="nav-link" href="#deals">Deals</a>
+      <a class="nav-link" href="#products">Products</a>
       <a class="nav-link" href="#about">About</a>
     </nav>
 
@@ -126,10 +126,15 @@ if ((window.pocketfindsReloadAtHero || (!window.location.hash && !window.locatio
 {{-- ── Hero — full-width editorial banner ── --}}
 @php
   $heroImg      = ($heroSettings->hero_image ?? null) ? \Illuminate\Support\Facades\Storage::url($heroSettings->hero_image) : null;
+  $heroImg2     = ($heroSettings->hero_image_2 ?? null) ? \Illuminate\Support\Facades\Storage::url($heroSettings->hero_image_2) : asset('images/hero-beauty.jpg');
   $heroImages   = collect(\Illuminate\Support\Facades\Storage::disk('public')->files('hero_banners'))
       ->filter(fn ($path) => in_array(strtolower(pathinfo($path, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'webp', 'avif'], true))
       ->map(fn ($path) => \Illuminate\Support\Facades\Storage::disk('public')->url($path))
-      ->prepend($heroImg)->filter()->unique()->values();
+      ->reject(fn ($image) => $image === $heroImg || $image === $heroImg2)
+      ->values();
+  // The first existing banner remains the first slide when no primary image is set.
+  $heroImg = $heroImg ?: $heroImages->shift();
+  $heroImages = collect([$heroImg, $heroImg2])->filter()->unique()->values();
   $heroTagline  = $heroSettings->hero_tagline  ?: 'Find It. Love It. Pocket It.';
   $heroSubtitle = $heroSettings->hero_subtitle ?: 'Discover everyday finds that fit your needs and budget. Simple, convenient shopping—all in one place.';
   $heroCtaText  = $heroSettings->hero_cta_text ?: 'Browse Products';
@@ -141,7 +146,7 @@ if ((window.pocketfindsReloadAtHero || (!window.location.hash && !window.locatio
   @if($heroImages->isNotEmpty())
   <div id="heroPhotoFrame" aria-hidden="true">
     @foreach($heroImages as $image)
-    <img class="hero-slide {{ $loop->first ? 'active' : '' }}" src="{{ $image }}" alt="" decoding="async" @if($loop->first) fetchpriority="high" @endif>
+    <img class="hero-slide {{ $loop->first ? 'active' : '' }}" src="{{ $image }}" style="{{ $heroSettings->heroCropStyle($image === $heroImg2 ? 2 : 1) }}" alt="" decoding="async" @if($loop->first) fetchpriority="high" @endif>
     @endforeach
   </div>
   @endif
@@ -217,12 +222,23 @@ if ((window.pocketfindsReloadAtHero || (!window.location.hash && !window.locatio
   <section class="pf-section">
     <div class="pf-split-row">
       <div class="pf-split-col" id="deals">
+        <div class="pf-deal-container">
         <div class="pf-section-head pf-category-heading pf-deal-heading">
-          <div>
+          @if(count($deals))
+          <div class="pf-deal-gallery-controls">
+            <button type="button" data-deal-prev aria-label="Previous deal" title="Previous deal">&larr;</button>
+            <span data-deal-position aria-live="polite">1 / {{ count($deals) }}</span>
+            <button type="button" data-deal-next aria-label="Next deal" title="Next deal">&rarr;</button>
+          </div>
+          @endif
+          <div class="pf-deal-heading-copy">
             <h2 class="pf-section-title">Deals</h2>
             <p class="pf-deal-intro">Little prices. Lovely finds.</p>
           </div>
         </div>
+        @include('guest.partials.deal-showcase')
+        </div>
+        <div class="pf-deal-bottom-controls">
         <form class="pf-deal-price-form pf-product-filters">
           <div class="pf-price-filter">
           <label class="pf-deal-category-label"><span>Category</span><select class="pf-deal-category-filter" data-deal-category>
@@ -239,7 +255,7 @@ if ((window.pocketfindsReloadAtHero || (!window.location.hash && !window.locatio
             </div>
           </div>
         </form>
-        @include('guest.partials.deal-showcase')
+        </div>
       </div>
       <div class="pf-split-col" id="shops">
         <div class="pf-section-head pf-category-heading">
@@ -260,7 +276,7 @@ if ((window.pocketfindsReloadAtHero || (!window.location.hash && !window.locatio
                 @if($shop['rating'])
                 <span class="pf-shop-rating-pill">
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="#f59e0b" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                  {{ $shop['rating'] }}
+                  {{ number_format((float) $shop['rating'], 1) }}
                 </span>
                 @endif
               </div>
@@ -274,7 +290,7 @@ if ((window.pocketfindsReloadAtHero || (!window.location.hash && !window.locatio
                 <span class="pf-shop-count">{{ $shop['products_count'] }} product{{ $shop['products_count'] === 1 ? '' : 's' }}</span>
               </div>
             </div>
-            <a href="{{ route($buyerMode ? 'buyer.shop' : 'guest.shop', $shop['slug']) }}" class="pf-shop-view-btn">View Shop</a>
+            <a href="{{ route($buyerMode ? 'buyer.shop' : 'guest.shop', $shop['slug']) }}" class="pf-shop-view-btn" aria-label="View {{ $shop['name'] }} shop" title="View shop"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10v11h18V10M9 21v-7h6v7M4 3h16l2 7a3 3 0 0 1-5 2 3 3 0 0 1-5 0 3 3 0 0 1-5 0 3 3 0 0 1-5-2l2-7ZM8 3l-1 7m9-7 1 7m-5-7v7"/></svg></a>
           </div>
           @empty
           <p class="pf-deal-empty">No featured shops yet — check back soon.</p>
@@ -298,18 +314,22 @@ if ((window.pocketfindsReloadAtHero || (!window.location.hash && !window.locatio
       </div>
     </div>
 
+    <div class="pf-catalog-layout">
+    <aside class="pf-catalog-sidebar-shell" aria-label="Product filters">
+    <details class="pf-catalog-sidebar">
+      <summary aria-label="Toggle product filters" title="Open or close product filters"><svg class="pf-catalog-toggle-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg><span>Product filters</span></summary>
     <form class="pf-product-filters" action="{{ $storefrontUrl }}#products" method="GET">
       @if($search)<input type="hidden" name="q" value="{{ $search }}">@endif
-      <fieldset class="pf-deal-category-strip">
-        <legend>Filter products by category</legend>
-        <label><input type="radio" name="category" value="" @checked(!$productCategoryId)><span>All categories</span></label>
+      <fieldset class="pf-catalog-categories">
+        <legend>Categories</legend>
+        <label><input type="radio" name="category" value="" @checked(!$productCategoryId)>@include('guest.partials.category-filter-icon', ['category' => null])<span>All categories</span></label>
         @foreach($categories as $category)
-        <label><input type="radio" name="category" value="{{ $category->id }}" @checked((int) $productCategoryId === (int) $category->id)><span>{{ $category->name }}</span></label>
+        <label><input type="radio" name="category" value="{{ $category->id }}" @checked((int) $productCategoryId === (int) $category->id)>@include('guest.partials.category-filter-icon', ['category' => $category])<span>{{ $category->name }}</span></label>
         @endforeach
       </fieldset>
       <div class="pf-price-filter">
-        <label><span>Min price (₱)</span><input type="number" name="min_price" min="0" max="1000000000" step="10" placeholder="0" value="{{ old('min_price', $minPrice) }}"></label>
-        <label><span>Max price (₱)</span><input type="number" name="max_price" min="0" max="1000000000" step="10" placeholder="Any" value="{{ old('max_price', $maxPrice) }}"></label>
+        <label class="pf-catalog-price-row"><span>Min price (₱)</span><input type="number" name="min_price" min="0" max="1000000000" step="10" placeholder="0" value="{{ old('min_price', $minPrice) }}"></label>
+        <label class="pf-catalog-price-row"><span>Max price (₱)</span><input type="number" name="max_price" min="0" max="1000000000" step="10" placeholder="Any" value="{{ old('max_price', $maxPrice) }}"></label>
         <label class="pf-catalog-sort"><span>Sort by</span><select name="sort" aria-label="Sort products">
           <option value="newest" @selected($sort === 'newest')>Newest</option>
           <option value="price_asc" @selected($sort === 'price_asc')>Price: Low to High</option>
@@ -320,6 +340,15 @@ if ((window.pocketfindsReloadAtHero || (!window.location.hash && !window.locatio
       @error('min_price')<p class="pf-filter-error" role="alert">{{ $message }}</p>@enderror
       @error('max_price')<p class="pf-filter-error" role="alert">{{ $message }}</p>@enderror
     </form>
+    </details>
+    <nav class="pf-catalog-icon-rail" aria-label="Filter products by category">
+      <a href="{{ $storefrontUrl.'?'.http_build_query(array_merge(request()->only('q', 'min_price', 'max_price', 'sort'), ['category' => ''])) }}#products" data-catalog-category title="All categories" aria-label="All categories" @if(!$productCategoryId) aria-current="true" @endif>@include('guest.partials.category-filter-icon', ['category' => null])</a>
+      @foreach($categories as $category)
+      <a href="{{ $storefrontUrl.'?'.http_build_query(array_merge(request()->only('q', 'min_price', 'max_price', 'sort'), ['category' => $category->id])) }}#products" data-catalog-category title="{{ $category->name }}" aria-label="{{ $category->name }}" @if((int) $productCategoryId === (int) $category->id) aria-current="true" @endif>@include('guest.partials.category-filter-icon', ['category' => $category])</a>
+      @endforeach
+    </nav>
+    </aside>
+    <div class="pf-catalog-results">
     <div class="pf-catalog-summary" role="status">{{ count($products) }} product{{ count($products) === 1 ? '' : 's' }} shown</div>
     <div class="pf-product-grid">
       @forelse($products as $p)
@@ -334,6 +363,8 @@ if ((window.pocketfindsReloadAtHero || (!window.location.hash && !window.locatio
         @endif
       </div>
       @endforelse
+    </div>
+    </div>
     </div>
   </section>
 

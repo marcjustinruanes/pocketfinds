@@ -126,11 +126,37 @@
             </div>
             @endif
 
+            @php
+              $firstBannerPath = $setting->hero_image ?: collect(\Illuminate\Support\Facades\Storage::disk('public')->files('hero_banners'))
+                  ->filter(fn ($path) => in_array(strtolower(pathinfo($path, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'webp', 'avif'], true))
+                  ->reject(fn ($path) => $path === $setting->hero_image_2)->first();
+              $firstBannerPreview = $firstBannerPath ? \Illuminate\Support\Facades\Storage::url($firstBannerPath) : asset('images/hero-beauty.jpg');
+            @endphp
+            <x-hero-crop :setting="$setting" :slide="1" :src="$firstBannerPreview" />
+
             {{-- Upload new image --}}
             <div class="form-row">
               <label>{{ $setting->hero_image ? 'Replace' : 'Upload' }} Banner Image</label>
               <input type="file" name="hero_image" accept="image/jpeg,image/png,image/webp" style="padding:6px">
               <span style="font-size:11.5px;color:var(--muted)">Recommended: 1920×800px or wider. JPG, PNG, or WEBP · max 4 MB. Use a high-quality editorial photo that represents the current season or campaign theme.</span>
+            </div>
+
+            <div style="height:1px;background:var(--border);margin:20px 0"></div>
+
+            <div class="form-row">
+              <label for="hero-image-2">Second Banner Image</label>
+              <x-hero-crop :setting="$setting" :slide="2" :src="$setting->hero_image_2 ? \Illuminate\Support\Facades\Storage::url($setting->hero_image_2) : asset('images/hero-beauty.jpg')" />
+              <input id="hero-image-2" type="file" name="hero_image_2" accept="image/jpeg,image/png,image/webp" style="padding:6px">
+              <span style="font-size:11.5px;color:var(--muted)">Shown as the second slide. JPG, PNG, or WEBP, up to 4 MB. The pink beauty image is the default.</span>
+              @error('hero_image_2')
+                <span style="color:var(--danger)">{{ $message }}</span>
+              @enderror
+              @if($setting->hero_image_2)
+                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;margin-top:10px">
+                  <input type="checkbox" name="hero_image_2_clear" value="1">
+                  Restore default second banner
+                </label>
+              @endif
             </div>
 
             <div style="height:1px;background:var(--border);margin:20px 0"></div>
@@ -270,6 +296,7 @@
   </div>
 </div>
 
+<script src="{{ asset('js/hero-crop.js') }}" defer></script>
 <script>
 document.querySelectorAll('#settingsNav [data-settings-tab]').forEach(tab => {
   tab.addEventListener('click', () => {

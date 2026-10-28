@@ -141,5 +141,6 @@
 <script src="{{ asset('js/buyer-storefront.js') }}?v={{ filemtime(public_path('js/buyer-storefront.js')) }}"></script>
 <script src="{{ asset('js/navigation.js') }}?v={{ filemtime(public_path('js/navigation.js')) }}"></script>
 @stack('scripts')
+<script src="{{ asset('js/buyer-account-details.js') }}?v={{ filemtime(public_path('js/buyer-account-details.js')) }}"></script>
 </body>
 </html>

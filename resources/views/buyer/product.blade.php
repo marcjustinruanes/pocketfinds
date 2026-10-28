@@ -4,6 +4,7 @@
 @section('page-sub', $product['cat'])
 
 @section('content')
+@include('commerce.product-tools')
 @php
   $avg     = $product['rating'];
   $reviews = $product['reviews'];
@@ -110,11 +111,11 @@
       </div>
       <div class="pd-actions">
         <a class="pd-btn-chat" href="{{ route('buyer.messages', ['seller' => $product['seller_slug'], 'product' => $product['id']]) }}" onclick="event.preventDefault();openChatWithSelectedVariant(this)">@include('buyer.partials.icon', ['name' => 'chat', 'size' => 15]) Chat</a>
-        <button class="pd-btn-cart" id="pdAddCartBtn" type="button" onclick="directAddToCart(false, this)" data-product-id="{{ $product['id'] }}" data-product-name="{{ addslashes($product['name']) }}" data-product-img="{{ $product['img'] }}" {{ $product['stock'] <= 0 ? 'disabled' : '' }}>
+        <button class="pd-btn-cart" id="pdAddCartBtn" type="button" onclick="directAddToCart(false, this)" data-product-id="{{ $product['id'] }}" data-product-name="{{ addslashes($product['name']) }}" data-product-img="{{ $product['img'] }}" {{ ($product['stock'] <= 0 || ($product['on_vacation'] ?? false)) ? 'disabled' : '' }}>
           <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 5m12-5l2 5M9 21a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"/></svg>
           {{ $product['stock'] <= 0 ? 'Out of Stock' : 'Add to Cart' }}
         </button>
-        <button class="pd-btn-buy" id="pdBuyNowBtn" type="button" onclick="directAddToCart(true, this)" data-product-id="{{ $product['id'] }}" data-product-name="{{ addslashes($product['name']) }}" data-product-img="{{ $product['img'] }}" {{ $product['stock'] <= 0 ? 'disabled' : '' }}>
+        <button class="pd-btn-buy" id="pdBuyNowBtn" type="button" onclick="directAddToCart(true, this)" data-product-id="{{ $product['id'] }}" data-product-name="{{ addslashes($product['name']) }}" data-product-img="{{ $product['img'] }}" {{ ($product['stock'] <= 0 || ($product['on_vacation'] ?? false)) ? 'disabled' : '' }}>
           <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
           {{ $product['stock'] <= 0 ? 'Unavailable' : 'Buy Now' }}
         </button>
@@ -261,6 +262,7 @@
                 <span class="pd-rev-date">{{ $r['date'] }}</span>
               </div>
               <p class="pd-rev-text">{{ $r['text'] }}</p>
+              @foreach($r['photos']??[] as $photo)<a href="{{ $photo }}" target="_blank" rel="noopener"><img src="{{ $photo }}" alt="Buyer review photo" width="90" height="90" loading="lazy" style="object-fit:cover;border-radius:6px"></a>@endforeach
             </div>
           </div>
           @empty
@@ -383,6 +385,7 @@ function selectVariant(btn) {
 }
 
 function updatePurchaseAvailability(stock) {
+  if (@json($product['on_vacation']??false)) { document.getElementById('pdAddCartBtn').disabled=true;document.getElementById('pdBuyNowBtn').disabled=true;return; }
   const cartButton = document.getElementById('pdAddCartBtn');
   const buyButton = document.getElementById('pdBuyNowBtn');
   const unavailable = stock <= 0;
@@ -471,6 +474,7 @@ function openChatWithSelectedVariant(link) {
 }
 
 function directAddToCart(isBuyNow, btn) {
+  if (@json($product['on_vacation']??false)) return;
   const active = document.querySelector('#tab-options .pd-opt-btn.active');
   if (active && active.disabled) {
     showToast('This option is out of stock.', 'error');

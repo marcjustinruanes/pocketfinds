@@ -78,7 +78,14 @@ class AdminController extends Controller
                 return back()->withErrors(['email' => "You've been invited to a face-to-face interview — check your email for details. Your account will be enabled after that interview is confirmed."])->withInput();
             }
             if ($user->status === 'rejected') {
-                return back()->withErrors(['email' => 'Your account application was rejected.'])
+                if (! $user->password || ! \Illuminate\Support\Facades\Hash::check($request->input('password'), $user->password)) {
+                    return back()->withErrors(['email' => 'Invalid credentials.'])->withInput();
+                }
+                $message = 'Your account application was rejected.';
+                if ($user->status_reason) {
+                    $message .= ' Reason: '.$user->status_reason;
+                }
+                return back()->withErrors(['email' => $message])
                     ->with('accountStatus', 'rejected')->withInput();
             }
             if ($user->status === 'suspended') {
@@ -573,6 +580,14 @@ class AdminController extends Controller
             'hero_cta_text' => 'nullable|string|max:80',
             'hero_overlay' => 'nullable|in:dark,light,none',
             'hero_image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
+            'hero_image_2' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
+            'hero_image_2_clear' => 'sometimes|boolean',
+            'hero_crop_x' => 'sometimes|required|integer|between:0,100',
+            'hero_crop_y' => 'sometimes|required|integer|between:0,100',
+            'hero_crop_zoom' => 'sometimes|required|integer|between:100,200',
+            'hero_2_crop_x' => 'sometimes|required|integer|between:0,100',
+            'hero_2_crop_y' => 'sometimes|required|integer|between:0,100',
+            'hero_2_crop_zoom' => 'sometimes|required|integer|between:100,200',
         ]);
 
         $setting = Setting::current();
@@ -583,6 +598,15 @@ class AdminController extends Controller
         } elseif ($request->hasFile('hero_image')) {
             $data['hero_image'] = app(MediaLifecycle::class)->store($request->file('hero_image'), 'hero_banners', 'public');
             app(MediaLifecycle::class)->deleteAfterCommit($setting->hero_image, 'public');
+        }
+
+        unset($data['hero_image_2_clear']);
+        if ($request->boolean('hero_image_2_clear')) {
+            $data['hero_image_2'] = null;
+            app(MediaLifecycle::class)->deleteAfterCommit($setting->hero_image_2, 'public');
+        } elseif ($request->hasFile('hero_image_2')) {
+            $data['hero_image_2'] = app(MediaLifecycle::class)->store($request->file('hero_image_2'), 'hero_banners', 'public');
+            app(MediaLifecycle::class)->deleteAfterCommit($setting->hero_image_2, 'public');
         }
 
         $data['updated_by'] = auth()->id();
@@ -822,12 +846,15 @@ class AdminController extends Controller
 
     public function accountUpdate(Request $request)
     {
+        \App\Support\AccountDetails::normalize($request);
         $user = auth()->user();
         $request->validate([
-            'given_names' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
-            'contact_no' => 'required|string|max:11',
+            'given_names' => \App\Support\AccountDetails::name(),
+            'last_name' => \App\Support\AccountDetails::name(),
+            'email' => ['required', 'email', 'max:255', Rule::in([$user->email])],
+            'contact_no' => ['required','regex:/^09[0-9]{9}$/'],
+            'region' => 'required|string|max:255',
+            'postal_code' => ['required','regex:/^[0-9]{4}$/D'],
             'province' => 'required|string|max:255',
             'municipality' => 'required|string|max:255',
             'barangay' => 'required|string|max:255',
@@ -839,8 +866,9 @@ class AdminController extends Controller
         $data = $request->only([
             'given_names',
             'last_name',
-            'email',
             'contact_no',
+            'region',
+            'postal_code',
             'province',
             'municipality',
             'barangay',
@@ -865,7 +893,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'current_password' => 'required',
-            'password' => 'required|min:8|confirmed',
+            'password' => ['required','confirmed',\Illuminate\Validation\Rules\Password::min(8)->mixedCase()->numbers()->symbols()],
         ]);
 
         if (! Hash::check($request->current_password, auth()->user()->password)) {

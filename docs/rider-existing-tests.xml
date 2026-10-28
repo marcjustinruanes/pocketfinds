@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="C:\Users\Administrator\pocketfinds\phpunit.xml" tests="46" assertions="1261" errors="1" failures="1" skipped="0" time="9.547539">
+    <testsuite name="Feature" tests="46" assertions="1261" errors="1" failures="1" skipped="0" time="9.547539">
+      <testsuite name="Tests\Feature\LogisticsAuthorizationTest" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" tests="35" assertions="950" errors="1" failures="1" skipped="0" time="7.964015">
+        <testcase name="test_hub_staff_visibility_distinguishes_same_named_municipalities_and_companies" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="145" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="3" time="0.630616"/>
+        <testcase name="test_suspended_staff_and_non_logistics_roles_cannot_use_logistics_routes" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="158" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="10" time="0.219766"/>
+        <testcase name="test_hub_staff_cannot_open_company_management_or_scan_an_unrelated_parcel" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="167" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="5" time="0.146874"/>
+        <testcase name="test_staff_cannot_receive_a_parcel_at_the_destination_before_origin_handoff" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="178" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="4" time="0.150684"/>
+        <testcase name="test_delivery_assignment_rejects_other_hubs_and_inactive_riders_then_audits_valid_assignment" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="188" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="8" time="0.227078"/>
+        <testcase name="test_rider_self_claim_cannot_take_another_company_or_hubs_parcel" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="206" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="5" time="0.197826"/>
+        <testcase name="test_company_admin_can_create_staff_without_accepting_injected_platform_privileges" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="218" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="9" time="0.139580"/>
+        <testcase name="test_role_specific_account_creation_forms_and_endpoints_keep_riders_and_staff_separate" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="237" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="21" time="0.238740">
+          <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\LogisticsAuthorizationTest::test_role_specific_account_creation_forms_and_endpoints_keep_riders_and_staff_separate&#13;
+Failed to find a validation error in the response for key: 'vehicle_type'&#13;
+&#13;
+Response has the following JSON validation errors:&#13;
+&#13;
+{
+    "contact_no": [
+        "This mobile number is already registered."
+    ],
+    "license_expiry": [
+        "The license expiry field is required."
+    ]
+}&#13;
+
+Failed asserting that an array has the key 'vehicle_type'.&#13;
+&#13;
+The following errors occurred during the last request:
+
+{
+    "message": "This mobile number is already registered. (and 1 more error)",
+    "errors": {
+        "contact_no": [
+            "This mobile number is already registered."
+        ],
+        "license_expiry": [
+            "The license expiry field is required."
+        ]
+    }
+}
+&#13;
+C:\Users\Administrator\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponseAssert.php:45
+C:\Users\Administrator\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:1173
+C:\Users\Administrator\pocketfinds\vendor\laravel\framework\src\Illuminate\Testing\TestResponse.php:1101
+C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php:259</failure>
+        </testcase>
+        <testcase name="test_issue_records_and_ownership_are_scoped_and_keep_resolution_history" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="271" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="7" time="0.138245"/>
+        <testcase name="test_invalid_redelivery_transition_does_not_write_an_assignment" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="287" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="6" time="0.107589"/>
+        <testcase name="test_rendered_error_responses_roll_back_partial_changes" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="300" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="4" time="0.091196"/>
+        <testcase name="test_unavailable_company_vehicle_prevents_new_assignments" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="314" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="4" time="0.111468"/>
+        <testcase name="test_report_export_filters_company_and_escapes_spreadsheet_formulas" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="326" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="6" time="0.105703"/>
+        <testcase name="test_transfer_requests_distinguish_provinces_and_log_each_affected_leg" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="342" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="6" time="0.134904"/>
+        <testcase name="test_admin_issue_assignment_remains_visible_to_the_responsible_hub_staff" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="362" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="7" time="0.203544"/>
+        <testcase name="test_every_logistics_route_rejects_platform_admin_buyer_seller_and_rider" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="377" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="650" time="0.995688"/>
+        <testcase name="test_every_company_admin_route_rejects_hub_staff" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="391" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="42" time="0.281914"/>
+        <testcase name="test_unknown_logistics_subrole_cannot_become_company_admin" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="402" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="3" time="0.102802"/>
+        <testcase name="test_invalid_closed_and_cross_company_hub_assignments_are_denied" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="410" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="5" time="0.140976"/>
+        <testcase name="test_message_reply_cannot_reference_another_conversation" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="424" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="6" time="0.135632"/>
+        <testcase name="test_public_rider_registration_rejects_a_closed_but_hiring_hub" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="447" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="4" time="0.108499"/>
+        <testcase name="test_rider_creation_approval_activation_suspension_and_hub_move" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="460" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="2" time="0.104074">
+          <error type="Illuminate\Database\Eloquent\ModelNotFoundException">Tests\Feature\LogisticsAuthorizationTest::test_rider_creation_approval_activation_suspension_and_hub_move&#13;
+Illuminate\Database\Eloquent\ModelNotFoundException: No query results for model [App\Models\User].
+&#13;
+C:\Users\Administrator\pocketfinds\vendor\laravel\framework\src\Illuminate\Database\Eloquent\Builder.php:786
+C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php:470</error>
+        </testcase>
+        <testcase name="test_audit_insert_failure_rolls_back_the_operational_change" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="487" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="4" time="0.123705"/>
+        <testcase name="test_operational_lists_paginate_with_company_and_status_isolation" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="501" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="20" time="0.679224"/>
+        <testcase name="test_transfer_pagination_keeps_complete_batches_and_company_isolation" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="532" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="24" time="0.377094"/>
+        <testcase name="test_report_query_count_does_not_grow_per_rider_or_hub_and_route_touches_are_distinct" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="566" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="10" time="0.338312"/>
+        <testcase name="test_history_filters_pagination_and_report_counts_match_fixture_data" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="596" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="14" time="0.283067"/>
+        <testcase name="test_company_admin_cannot_use_foreign_resource_ids_on_logistics_endpoints" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="619" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="29" time="0.262933"/>
+        <testcase name="test_staff_from_a_different_hub_cannot_receive_an_active_transfer" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="660" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="4" time="0.127859"/>
+        <testcase name="test_suspended_staff_can_still_log_out" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="672" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="4" time="0.092676"/>
+        <testcase name="test_management_preserves_the_existing_registration_age_rule" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="678" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="3" time="0.108142"/>
+        <testcase name="test_rider_approval_does_not_send_email_before_the_audit_commits" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="690" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="5" time="0.144998"/>
+        <testcase name="test_rider_approval_email_runs_only_after_successful_outer_commit" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="702" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="4" time="0.147489"/>
+        <testcase name="test_transfer_assignability_does_not_skip_a_prior_leg" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="714" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="3" time="0.201680"/>
+        <testcase name="test_transfer_assignment_and_arrival_update_the_assignment_progress" file="C:\Users\Administrator\pocketfinds\tests\Feature\LogisticsAuthorizationTest.php" line="726" class="Tests\Feature\LogisticsAuthorizationTest" classname="Tests.Feature.LogisticsAuthorizationTest" assertions="9" time="0.363440"/>
+      </testsuite>
+      <testsuite name="Tests\Feature\RegistrationValidationTest" file="C:\Users\Administrator\pocketfinds\tests\Feature\RegistrationValidationTest.php" tests="11" assertions="311" errors="0" failures="0" skipped="0" time="1.583524">
+        <testcase name="test_names_and_buyer_age_boundaries" file="C:\Users\Administrator\pocketfinds\tests\Feature\RegistrationValidationTest.php" line="42" class="Tests\Feature\RegistrationValidationTest" classname="Tests.Feature.RegistrationValidationTest" assertions="21" time="0.125118"/>
+        <testcase name="test_names_accept_only_letters_and_hyphens" file="C:\Users\Administrator\pocketfinds\tests\Feature\RegistrationValidationTest.php" line="53" class="Tests\Feature\RegistrationValidationTest" classname="Tests.Feature.RegistrationValidationTest" assertions="67" time="0.319533"/>
+        <testcase name="test_public_rider_age_and_license_expiry_boundaries" file="C:\Users\Administrator\pocketfinds\tests\Feature\RegistrationValidationTest.php" line="66" class="Tests\Feature\RegistrationValidationTest" classname="Tests.Feature.RegistrationValidationTest" assertions="14" time="0.095348"/>
+        <testcase name="test_managed_rider_validation_matches_registration_rules" file="C:\Users\Administrator\pocketfinds\tests\Feature\RegistrationValidationTest.php" line="76" class="Tests\Feature\RegistrationValidationTest" classname="Tests.Feature.RegistrationValidationTest" assertions="26" time="0.119059"/>
+        <testcase name="test_mobile_formats_and_duplicates_across_roles" file="C:\Users\Administrator\pocketfinds\tests\Feature\RegistrationValidationTest.php" line="107" class="Tests\Feature\RegistrationValidationTest" classname="Tests.Feature.RegistrationValidationTest" assertions="41" time="0.173289"/>
+        <testcase name="test_password_complexity_and_confirmation" file="C:\Users\Administrator\pocketfinds\tests\Feature\RegistrationValidationTest.php" line="125" class="Tests\Feature\RegistrationValidationTest" classname="Tests.Feature.RegistrationValidationTest" assertions="22" time="0.121515"/>
+        <testcase name="test_registration_rechecks_mobile_inside_the_save_transaction" file="C:\Users\Administrator\pocketfinds\tests\Feature\RegistrationValidationTest.php" line="134" class="Tests\Feature\RegistrationValidationTest" classname="Tests.Feature.RegistrationValidationTest" assertions="4" time="0.048855"/>
+        <testcase name="test_seller_shop_type_tin_and_region_validation" file="C:\Users\Administrator\pocketfinds\tests\Feature\RegistrationValidationTest.php" line="147" class="Tests\Feature\RegistrationValidationTest" classname="Tests.Feature.RegistrationValidationTest" assertions="48" time="0.222718"/>
+        <testcase name="test_logistics_company_fields_are_required_and_validated" file="C:\Users\Administrator\pocketfinds\tests\Feature\RegistrationValidationTest.php" line="167" class="Tests\Feature\RegistrationValidationTest" classname="Tests.Feature.RegistrationValidationTest" assertions="51" time="0.224141"/>
+        <testcase name="test_rejection_reason_is_shown_only_after_password_verification" file="C:\Users\Administrator\pocketfinds\tests\Feature\RegistrationValidationTest.php" line="189" class="Tests\Feature\RegistrationValidationTest" classname="Tests.Feature.RegistrationValidationTest" assertions="7" time="0.067626"/>
+        <testcase name="test_otp_expires_after_five_minutes_and_resend_replaces_it" file="C:\Users\Administrator\pocketfinds\tests\Feature\RegistrationValidationTest.php" line="200" class="Tests\Feature\RegistrationValidationTest" classname="Tests.Feature.RegistrationValidationTest" assertions="10" time="0.066323"/>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

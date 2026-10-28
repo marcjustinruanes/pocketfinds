@@ -39,6 +39,8 @@
       <span class="ic">@include('seller.partials.icon', ['name' => 'star', 'size' => 16])</span> Customer Feedback
     </a>
 </x-navigation-group>
+<a class="nav-item" href="{{ route('seller.account') }}#shipping-rates">Shipping Rates & Availability</a>
+<a class="nav-item" href="{{ route('seller.inventory') }}#flash-sales">Flash Sales</a>
 <x-navigation-group id="seller-tracking-reports" label="Tracking & Reports" :active="request()->routeIs('seller.reports')">
 <a @if(request()->routeIs('seller.reports')) aria-current="page" @endif href="{{ route('seller.reports') }}" class="nav-item {{ request()->routeIs('seller.reports') ? 'active' : '' }}">
       <span class="ic">@include('seller.partials.icon', ['name' => 'chart', 'size' => 16])</span> Reports

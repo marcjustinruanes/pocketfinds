@@ -267,4 +267,10 @@ document.querySelectorAll('.rejection-note-btn').forEach(btn => {
 
 
 </script>
+@if(\App\Services\BuyerCommerce::installed())
+@include('commerce.messages')
+@include('account.partials.commerce-flash')
+@endif
 @endsection
+
+@push('scripts')<script src="{{ asset('js/commerce.js') }}?v={{ filemtime(public_path('js/commerce.js')) }}"></script>@endpush

@@ -31,7 +31,7 @@
               <div><strong>{{ optional(optional($s->order)->buyer)->given_names }} {{ optional(optional($s->order)->buyer)->last_name }}</strong></div>
             </div>
           </td>
-          <td style="font-size:12px;max-width:220px">{{ implode(', ', array_filter([$addr['barangay'] ?? null, $addr['municipality'] ?? null, $addr['province'] ?? null])) ?: '—' }}</td>
+          <td style="font-size:12px;max-width:220px">{{ implode(', ', array_filter([$addr['barangay'] ?? null, $addr['municipality'] ?? null, $addr['province'] ?? null, $addr['region'] ?? null, $addr['postal_code'] ?? null])) ?: '—' }}</td>
           <td class="mono">₱{{ number_format(optional($s->order)->total ?? 0, 2) }}</td>
           <td class="mono">{{ $s->created_at?->format('M d, Y') }}</td>
           <td>

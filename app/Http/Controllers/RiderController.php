@@ -499,15 +499,16 @@ class RiderController extends Controller
      */
     public function accountUpdate(Request $request)
     {
+        \App\Support\AccountDetails::normalize($request);
         $request->validate([
-            'given_names' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'middle_name' => ['nullable', 'regex:/^[A-Za-z]$/'],
+            'given_names' => \App\Support\AccountDetails::name(),
+            'last_name' => \App\Support\AccountDetails::name(),
+            'middle_name' => \App\Support\AccountDetails::name(true),
             'contact_no' => ['nullable', 'regex:/^09[0-9]{9}$/'],
             'sex' => 'nullable|in:male,female,other',
             'profile_picture' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ], [
-            'middle_name.regex' => 'Middle name must be a single letter.',
+            'middle_name.regex' => 'Middle name may contain letters and dashes only.',
             'contact_no.regex' => 'Contact number must start with 09 and be exactly 11 digits.',
         ]);
 
@@ -531,6 +532,8 @@ class RiderController extends Controller
     public function accountAddressUpdate(Request $request)
     {
         $request->validate([
+            'region' => 'required|string|max:255',
+            'postal_code' => ['required','regex:/^[0-9]{4}$/D'],
             'province' => 'required|string|max:255',
             'municipality' => 'required|string|max:255',
             'barangay' => 'required|string|max:255',
@@ -540,7 +543,7 @@ class RiderController extends Controller
 
         return $this->submitAccountUpdateRequest(
             $request,
-            ['province', 'municipality', 'barangay', 'house_no', 'street'],
+            ['region','postal_code','province', 'municipality', 'barangay', 'house_no', 'street'],
             [],
             'address_success'
         );
@@ -550,7 +553,7 @@ class RiderController extends Controller
     {
         $request->validate([
             'current_password' => 'required',
-            'password' => 'required|min:8|confirmed',
+            'password' => ['required','confirmed',\Illuminate\Validation\Rules\Password::min(8)->mixedCase()->numbers()->symbols()],
         ]);
         if (! Hash::check($request->current_password, auth()->user()->password)) {
             return back()->withErrors(['current_password' => 'Current password is incorrect.']);

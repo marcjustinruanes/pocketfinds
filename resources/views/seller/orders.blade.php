@@ -4,6 +4,7 @@
 @section('page-sub', 'Prepare, ship, and confirm delivery — all in one place')
 
 @section('content')
+@include('commerce.messages')
 @if(session('order_success'))<div class="auth-success" style="margin-bottom:16px">{{ session('order_success') }}</div>@endif
 @if(session('error'))<div style="background:var(--danger-soft,#fef2f2);border:1px solid var(--danger-line,#fecaca);color:var(--danger,#dc2626);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('error') }}</div>@endif
 
@@ -47,9 +48,11 @@
     ['delivery_failed',   'Failed'],
     ['returned',          'Returned'],
     ['cancelled',         'Cancelled'],
+    ...(\App\Services\BuyerCommerce::installed()?[['refunds','Return / Refund']]:[]),
   ];
   $tabCount = fn ($key) => match ($key) {
     'all'         => $statusCounts->sum(),
+    'refunds'     => $returnRequests->count(),
     'in_transit'  => collect(\App\Models\Order::IN_TRANSIT_STATUSES)->sum(fn ($s) => (int) ($statusCounts[$s] ?? 0)),
     default       => (int) ($statusCounts[$key] ?? 0),
   };
@@ -76,8 +79,13 @@
         $address = collect([
           $order->shipping_address['house_no'] ?? null, $order->shipping_address['street'] ?? null,
           $order->shipping_address['barangay'] ?? null, $order->shipping_address['municipality'] ?? null,
-          $order->shipping_address['province'] ?? null,
+          $order->shipping_address['province'] ?? null, $order->shipping_address['region'] ?? null, $order->shipping_address['postal_code'] ?? null,
         ])->filter()->join(', ') ?: 'Address not provided';
+        $customerName = trim((string) ($order->shipping_address['recipient_name'] ?? ''))
+          ?: trim(($order->buyer?->given_names ?? '').' '.($order->buyer?->last_name ?? ''))
+          ?: 'Customer not provided';
+        $customerContact = $order->shipping_address['contact_no'] ?? $order->buyer?->contact_no;
+        $orderedAt = $order->created_at?->format('M d, Y g:i A') ?? '—';
         // Only companies with a hub in BOTH your city and the buyer's city can
         // actually move this parcel through their own connected hub network.
         $eligibleCompanies = ($order->status === 'preparing' && !$shipment)
@@ -85,11 +93,11 @@
           : collect();
         $detailPayload = [
           'number' => $order->order_number,
-          'date' => $order->created_at?->format('M d, Y g:i A') ?? '—',
+          'date' => $orderedAt,
           'status' => $order->status,
           'status_label' => str_replace('_', ' ', ucfirst($order->status)),
-          'buyer_name' => trim(($order->buyer?->given_names ?: 'Customer not provided') . ' ' . $order->buyer?->last_name),
-          'buyer_contact' => $order->buyer?->contact_no,
+          'buyer_name' => $customerName,
+          'buyer_contact' => $customerContact,
           'address' => $address,
           'payment' => $order->paymentMethod?->name ?: $order->payment_method ?: 'Payment not provided',
           'items' => $items->values(),
@@ -119,13 +127,17 @@
           <div class="order-card-s-id">
             <span class="mono">{{ $order->order_number }}</span>
             <button type="button" class="copy-btn" data-copy="{{ $order->order_number }}" title="Copy order ID">@include('seller.partials.icon', ['name' => 'copy', 'size' => 13])</button>
-            <span class="order-card-s-date">{{ $order->created_at?->format('M d, Y g:i A') ?? '—' }}</span>
+            <span class="order-card-s-date">Ordered: {{ $orderedAt }}</span>
           </div>
           <span class="stamp stamp-{{ $order->status === 'placed' ? 'new' : $order->status }}">{{ str_replace('_', ' ', ucfirst($order->status)) }}</span>
         </div>
 
         <div class="order-card-s-buyer">
-          <span>@include('seller.partials.icon', ['name' => 'user', 'size' => 13]) {{ $detailPayload['buyer_name'] }}</span>
+          <div style="display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center">
+            <span>@include('seller.partials.icon', ['name' => 'user', 'size' => 13]) <strong>Customer:</strong> {{ $customerName }}</span>
+            <span><strong>Contact:</strong> {{ $customerContact ?: 'Not provided' }}</span>
+            <span><strong>Date &amp; time:</strong> {{ $orderedAt }}</span>
+          </div>
           <a href="{{ $detailPayload['message_url'] }}">@include('seller.partials.icon', ['name' => 'mail', 'size' => 12]) Message</a>
         </div>
 
@@ -153,6 +165,7 @@
           @endif
         </div>
 
+        @if($returnRequests->has($order->id))@include('account.partials.return-case',['return'=>$returnRequests->get($order->id)])@endif
         <div class="order-card-s-foot">
           <div class="order-card-s-shipment">
             @if($shipment)

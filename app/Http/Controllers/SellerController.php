@@ -65,10 +65,12 @@ class SellerController extends Controller
         Order::autoCompleteDeliveredThrottled();
 
         $status = $request->query('status', 'all');
+        $returnRequests=\App\Services\BuyerCommerce::installed()?DB::table('commerce_returns')->where('seller_id',auth()->id())->get()->keyBy('order_id'):collect();
         $orders = Order::with(['buyer', 'paymentMethod', 'shipment.courier', 'shipment.pickupRider'])
             ->where('seller_id', auth()->id())
             ->when($status === 'in_transit', fn ($query) => $query->whereIn('status', Order::IN_TRANSIT_STATUSES))
-            ->when($status !== 'all' && $status !== 'in_transit', fn ($query) => $query->where('status', $status))
+            ->when($status==='refunds',fn($query)=>$query->whereIn('id',$returnRequests->keys()))
+            ->when(!in_array($status,['all','in_transit','refunds']), fn ($query) => $query->where('status', $status))
             ->latest()
             ->get();
 
@@ -80,7 +82,7 @@ class SellerController extends Controller
         $deliveredToday = Order::where('seller_id', $sellerId)->where('status', 'completed')->whereDate('updated_at', today())->count();
         $statusCounts = Order::where('seller_id', $sellerId)->selectRaw('status, count(*) as c')->groupBy('status')->pluck('c', 'status');
 
-        return view('seller.orders', compact('orders', 'status', 'pendingConfirmation', 'deliveredToday', 'statusCounts'));
+        return view('seller.orders', compact('orders', 'status', 'pendingConfirmation', 'deliveredToday', 'statusCounts','returnRequests'));
     }
 
     /** Order stage transitions a seller drives on their own, before any shipment exists. */
@@ -125,7 +127,7 @@ class SellerController extends Controller
                     app(GcashWorkflow::class)->eligible(auth()->user(), 'seller');
                     $purchase = GcashPurchase::whereKey($locked->gcash_purchase_id)->lockForUpdate()->firstOrFail();
                     abort_unless($purchase->payment_state === 'order_placed' && $purchase->reservation_state === 'transferred', 422, 'GCash payment requires manual resolution.');
-                } else {
+                } elseif (!$locked->commerce_snapshot) {
                     $products = [];
                     foreach ($locked->items ?? [] as $item) {
                         $product = $products[$item['product_id']]
@@ -366,10 +368,10 @@ class SellerController extends Controller
         $completed = Order::where('seller_id', $sellerId)->where('status', 'completed')
             ->whereBetween('updated_at', [$from, $to])->get();
 
-        $totalRevenue = (float) $completed->sum('total');
+        $totalRevenue = (float) $completed->sum(fn($o)=>(float)$o->total+max(0,(float)$o->discount_amount-(float)($o->commerce_snapshot['seller_discount']??$o->discount_amount)));
         $commission = round($totalRevenue * Setting::current()->commissionFraction(), 2);
         $shippingFees = (float) $completed->sum('shipping_amount');
-        $discounts = (float) $completed->sum('discount_amount');
+        $discounts = (float) $completed->sum(fn($o)=>(float)($o->commerce_snapshot['seller_discount']??$o->discount_amount));
         $netProfit = $totalRevenue - $commission;
         $ordersCompleted = $completed->count();
         $avgOrderValue = $ordersCompleted ? $totalRevenue / $ordersCompleted : 0;
@@ -1010,11 +1012,12 @@ class SellerController extends Controller
     /** Submits a profile-change request — nothing changes on the account until admin approves it. */
     public function updateProfile(Request $request)
     {
+        \App\Support\AccountDetails::normalize($request);
         $request->validate([
-            'given_names' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'middle_name' => 'nullable|string|max:255',
-            'contact_no' => 'nullable|string|max:11',
+            'given_names' => \App\Support\AccountDetails::name(),
+            'last_name' => \App\Support\AccountDetails::name(),
+            'middle_name' => \App\Support\AccountDetails::name(true),
+            'contact_no' => ['nullable','regex:/^09[0-9]{9}$/'],
             'sex' => 'required|in:male,female',
             'birthday' => 'nullable|date',
         ]);
@@ -1031,6 +1034,8 @@ class SellerController extends Controller
     public function updateAddress(Request $request)
     {
         $request->validate([
+            'region' => 'required|string|max:255',
+            'postal_code' => ['required','regex:/^[0-9]{4}$/D'],
             'province' => 'required|string|max:255',
             'municipality' => 'required|string|max:255',
             'barangay' => 'required|string|max:255',
@@ -1040,7 +1045,7 @@ class SellerController extends Controller
 
         return $this->submitAccountUpdateRequest(
             $request,
-            ['province', 'municipality', 'barangay', 'house_no', 'street'],
+            ['region','postal_code','province', 'municipality', 'barangay', 'house_no', 'street'],
             [],
             'address_success'
         );
@@ -1080,6 +1085,7 @@ class SellerController extends Controller
 
     public function vouchers()
     {
+        if (\App\Services\BuyerCommerce::installed()) return view('seller.vouchers-current');
         $vouchers = Voucher::where('seller_id', auth()->id())->latest('created_at')->get();
 
         return view('seller.vouchers', compact('vouchers'));
@@ -1087,13 +1093,15 @@ class SellerController extends Controller
 
     public function storeVoucher(Request $request)
     {
+        if (\App\Services\BuyerCommerce::installed()) return redirect()->route('seller.vouchers')->withErrors(['voucher'=>'Create vouchers using the promotion form with a start date and end date.']);
         $data = $request->validate([
             'code' => 'required|string|max:30|alpha_dash',
             'type' => 'required|in:amount,free_shipping',
             'discount_amount' => 'required_if:type,amount|nullable|numeric|min:1|max:99999.99',
             'minimum_spend' => 'nullable|numeric|min:0|max:99999.99',
             'usage_limit' => 'nullable|integer|min:1',
-            'expires_at' => 'nullable|date|after:today',
+            'starts_at' => 'nullable|date',
+            'expires_at' => 'nullable|date|after:today'.($request->filled('starts_at')?'|after:starts_at':''),
         ]);
         $data['code'] = strtoupper($data['code']);
         if ($data['type'] === 'free_shipping') {
@@ -1150,7 +1158,7 @@ class SellerController extends Controller
     {
         $request->validate([
             'current_password' => 'required',
-            'password' => ['required', 'confirmed', Password::min(8)],
+            'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
         ]);
 
         if (! Hash::check($request->current_password, auth()->user()->password)) {

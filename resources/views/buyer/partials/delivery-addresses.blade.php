@@ -1,16 +1,21 @@
 {{-- Shared between the cart page (radios, to pick one per order) and the account
      page (plain list, just managing them) — pass ['addresses' => ..., 'selectable' => bool]. --}}
 @php($selectable = $selectable ?? false)
+@php($selectedDeliveryAddress=$addresses->firstWhere('id',session('buyer_checkout_address'))?->id??$addresses->firstWhere('is_default',true)?->id)
 <div id="addressList" style="display:flex;flex-direction:column;gap:8px">
   @forelse($addresses as $addr)
     <label class="address-option" style="display:flex;gap:9px;align-items:flex-start;border:1px solid var(--border);border-radius:9px;padding:9px 11px;{{ $selectable ? 'cursor:pointer' : '' }}">
       @if($selectable)
-        <input type="radio" name="delivery_address_radio" value="{{ $addr->id }}" {{ $addr->is_default ? 'checked' : '' }} style="margin-top:3px;flex:none">
+        <input type="radio" name="delivery_address_radio" value="{{ $addr->id }}" @checked($addr->id===$selectedDeliveryAddress) style="margin-top:3px;flex:none">
       @endif
       <span style="flex:1;font-size:12.5px;line-height:1.5">
         <strong>{{ $addr->label ?: 'Address' }}</strong>{{ $addr->is_default ? ' · Default' : '' }}<br>
         {{ $addr->recipient_name }}{{ $addr->contact_no ? ' · ' . $addr->contact_no : '' }}<br>
         <span style="color:var(--muted)">{{ $addr->full_address }}</span>
+        @if(!filled($addr->region)||!preg_match('/^[0-9]{4}$/D',(string)$addr->postal_code))
+        <br><strong style="color:var(--danger,#a12236)">Region and four-digit postal code are required for checkout.</strong>
+        <br><a href="{{ route('buyer.account') }}#address-information">Update account address</a><span> or add a complete delivery address.</span>
+        @endif
         @if($addr->is_default)
           <br><span style="color:var(--muted);font-size:11px">Set from your account address — change it via an account update request</span>
         @endif
@@ -21,10 +26,27 @@
         </button>
       @endunless
     </label>
+    @if(!filled($addr->region)||!preg_match('/^[0-9]{4}$/D',(string)$addr->postal_code))
+    <form data-complete-delivery-address action="{{ route('buyer.addresses.complete',$addr) }}" method="POST" style="border:1px solid var(--border);border-radius:9px;padding:12px">
+      @csrf @method('PATCH')
+      <strong>Complete missing delivery details</strong>
+      <div class="form-row" style="margin-top:10px">
+      @if(filled($addr->region))<input type="hidden" name="region" value="{{ $addr->region }}"><span>Region: {{ $addr->region }}</span>
+      @else<label>Region<select class="select" name="region" data-completion-region required><option value="">Loading regions…</option></select></label>@endif
+      </div>
+      <div class="form-row">
+      @if(preg_match('/^[0-9]{4}$/D',(string)$addr->postal_code))<input type="hidden" name="postal_code" value="{{ $addr->postal_code }}"><span>Postal code: {{ $addr->postal_code }}</span>
+      @else<label>Postal code<input class="auth-input" type="text" name="postal_code" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" required placeholder="4-digit postal code" autocomplete="postal-code"></label>@endif
+      </div>
+      <p data-completion-feedback role="status" style="font-size:12px"></p><button class="btn btn-primary" type="submit">Save Delivery Details</button>
+    </form>
+    @endif
   @empty
     <p id="noAddressMessage" style="font-size:12px;color:var(--muted);margin:0">No saved addresses yet — add one below.</p>
   @endforelse
 </div>
+
+@once<script src="{{ asset('js/buyer-address-completion.js') }}?v={{ filemtime(public_path('js/buyer-address-completion.js')) }}"></script>@endonce
 
 <style>
 .buyer-pages .address-modal { z-index: 240; padding: 16px; }
@@ -61,7 +83,9 @@
     <div class="modal-body"><div class="address-form-grid">
       <div class="form-row"><label for="addrLabel">Label <span style="color:var(--muted);font-weight:400">(optional)</span></label><input class="auth-input" id="addrLabel" placeholder="e.g. Home, Work" maxlength="50"></div>
       <div class="form-row"><label for="addrRecipientName">Recipient name *</label><input class="auth-input" id="addrRecipientName" maxlength="150" autocomplete="name" required></div>
-      <div class="form-row address-form-wide"><label for="addrContactNo">Mobile number (optional)</label><input class="auth-input" id="addrContactNo" type="tel" placeholder="09XXXXXXXXX" maxlength="11" inputmode="numeric" pattern="09[0-9]{9}" autocomplete="tel-national" aria-describedby="addrContactHint"><p class="address-hint" id="addrContactHint">Use an 11-digit mobile number starting with 09.</p></div>
+      <div class="form-row address-form-wide"><label for="addrContactNo">Mobile number *</label><div style="display:flex;align-items:center;gap:8px"><span>+63</span><input class="auth-input" id="addrContactNo" type="tel" placeholder="9XXXXXXXXX" maxlength="10" inputmode="numeric" pattern="9[0-9]{9}" autocomplete="tel-national" required aria-describedby="addrContactHint"></div><p class="address-hint" id="addrContactHint">Enter 10 digits starting with 9.</p></div>
+      <div class="form-row"><label for="addrRegion">Region *</label><select id="addrRegion" required><option value="">Loading regions…</option></select></div>
+      <div class="form-row"><label for="addrPostalCode">Postal code *</label><input id="addrPostalCode" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" required></div>
       <div class="form-row"><label for="addrProvince">Province *</label><select class="select" id="addrProvince" required><option value="" disabled selected>Loading provinces…</option></select></div>
       <div class="form-row"><label for="addrMunicipality">City / municipality *</label><select class="select" id="addrMunicipality" disabled required><option value="" disabled selected>Select province first</option></select></div>
       <div class="form-row address-form-wide"><label for="addrBarangay">Barangay *</label><select class="select" id="addrBarangay" disabled required><option value="" disabled selected>Select municipality first</option></select></div>
@@ -95,13 +119,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const addrBarangay = document.getElementById('addrBarangay');
   const addrContactNo = document.getElementById('addrContactNo');
   addrContactNo.addEventListener('input', () => {
-    addrContactNo.value = addrContactNo.value.replace(/[^0-9]/g, '').slice(0, 11);
+    addrContactNo.value = addrContactNo.value.replace(/[^0-9]/g, '').slice(0, 10);
     const number = addrContactNo.value;
-    const message = number && !number.startsWith('09') && number.length >= 2
-      ? 'Mobile number must start with 09.'
-      : number && number.length !== 11 ? 'Enter exactly 11 digits starting with 09.' : '';
+    const message = number && !/^9[0-9]{9}$/.test(number) ? 'Enter exactly 10 digits starting with 9.' : '';
     addrContactNo.setCustomValidity(message);
-    document.getElementById('addrContactHint').textContent = message || 'Use an 11-digit mobile number starting with 09.';
+    document.getElementById('addrContactHint').textContent = message || 'Enter 10 digits after +63.';
     addrContactNo.setAttribute('aria-invalid', message ? 'true' : 'false');
   });
   const addModal = document.getElementById('addAddressModal');
@@ -116,6 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const opener = event.target.closest('[data-modal-open="addAddressModal"]');
     if (opener) {
       returnFocus = opener;
+      addModal.classList.add('open');
       addModal.setAttribute('aria-hidden', 'false');
       document.getElementById('addrLabel').focus();
       if (!addrProvince.dataset.loaded) loadProvinces();
@@ -148,6 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function loadProvinces() {
+    if(document.getElementById('addrRegion')) return;
     if (addrProvince.dataset.loading) return;
     addrProvince.dataset.loading = 'true';
     const retry = document.getElementById('retryAddressLocations');
@@ -167,8 +191,10 @@ document.addEventListener('DOMContentLoaded', () => {
       addrBarangay.innerHTML = '<option value="" disabled selected>Select municipality first</option>';
       addrBarangay.disabled = true;
       const code = this.options[this.selectedIndex]?.dataset.code ?? this.value;
-      fetchAddrJSON(`${PSGC}/provinces/${code}/cities-municipalities/`)
-        .then(data => populateAddrSelect(addrMunicipality, data, 'Select city / municipality'))
+      const parent=this.selectedOptions[0]?.dataset.isRegion==='1'?'regions':'provinces';
+      const selectedRegion=document.getElementById('addrRegion')?.value;
+      fetchAddrJSON(`${PSGC}/${parent}/${code}/cities-municipalities/`)
+        .then(data => {if((addrProvince.selectedOptions[0]?.dataset.code??addrProvince.value)===code && document.getElementById('addrRegion')?.value===selectedRegion)populateAddrSelect(addrMunicipality, data, 'Select city / municipality');})
         .catch(() => { addrMunicipality.innerHTML = '<option value="" disabled selected>Failed to load</option>'; addrMunicipality.disabled = false; });
     });
 
@@ -176,8 +202,10 @@ document.addEventListener('DOMContentLoaded', () => {
       addrBarangay.innerHTML = '<option value="" disabled selected>Loading…</option>';
       addrBarangay.disabled = true;
       const code = this.options[this.selectedIndex]?.dataset.code ?? this.value;
+      const selectedProvince=addrProvince.value;
+      const selectedRegion=document.getElementById('addrRegion')?.value;
       fetchAddrJSON(`${PSGC}/cities-municipalities/${code}/barangays/`)
-        .then(data => populateAddrSelect(addrBarangay, data, 'Select barangay'))
+        .then(data => {if((addrMunicipality.selectedOptions[0]?.dataset.code??addrMunicipality.value)===code && addrProvince.value===selectedProvince && document.getElementById('addrRegion')?.value===selectedRegion)populateAddrSelect(addrBarangay, data, 'Select barangay');})
         .catch(() => { addrBarangay.innerHTML = '<option value="" disabled selected>Failed to load</option>'; addrBarangay.disabled = false; });
     });
   }
@@ -191,6 +219,8 @@ document.addEventListener('DOMContentLoaded', () => {
       label: document.getElementById('addrLabel').value.trim(),
       recipient_name: document.getElementById('addrRecipientName').value.trim(),
       contact_no: document.getElementById('addrContactNo').value.trim(),
+      region: document.getElementById('addrRegion').value,
+      postal_code: document.getElementById('addrPostalCode').value,
       province: addrProvince.value,
       municipality: addrMunicipality.value,
       barangay: addrBarangay.value,

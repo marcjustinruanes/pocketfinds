@@ -1,9 +1,74 @@
 #products .pf-product-filters { margin-bottom: 16px; }
+#products .pf-catalog-layout { display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: 24px; align-items: start; }
+#products .pf-catalog-layout:has(.pf-catalog-sidebar[open]) { grid-template-columns: 240px minmax(0, 1fr); }
+#products .pf-catalog-sidebar { min-width: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+#products .pf-catalog-sidebar > summary { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 10px; color: #bf3c7d; font-size: 13px; font-weight: 600; cursor: pointer; list-style: none; }
+#products .pf-catalog-sidebar > summary::-webkit-details-marker { display: none; }
+#products .pf-catalog-sidebar > summary svg { flex: none; }
+#products .pf-catalog-sidebar[open] .pf-catalog-toggle-icon { transform: rotate(180deg); }
+#products .pf-catalog-collapse { margin-left: auto; font-size: 24px; line-height: 1; }
+#products .pf-catalog-sidebar:not([open]) > summary span { display: none; }
+#products .pf-catalog-sidebar .pf-product-filters { padding: 4px 14px 14px; margin: 0; border: 0; background: transparent; }
+#products .pf-catalog-categories { display: flex; flex-direction: column; gap: 4px; min-width: 0; margin: 0 0 20px; padding: 0; border: 0; }
+#products .pf-catalog-categories legend { margin-bottom: 10px; font-size: 13px; font-weight: 600; color: var(--ink); }
+#products .pf-catalog-categories label { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 6px; cursor: pointer; font-size: 12px; color: var(--ink-3); }
+#products .pf-catalog-categories label:hover, #products .pf-catalog-categories label:has(input:checked) { background: #fff0f8; color: #bf3c7d; }
+#products .pf-catalog-categories input { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; clip-path: inset(50%); overflow: hidden; }
+#products .pf-catalog-categories label:has(input:focus-visible) { outline: 2px solid #bf3c7d; outline-offset: 2px; }
+#products .pf-catalog-sidebar .pf-price-filter { grid-template-columns: minmax(0, 1fr); }
+#products .pf-catalog-sidebar .pf-price-filter > * { grid-column: 1; }
+#products .pf-catalog-sidebar .pf-price-filter label > span { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
+#products .pf-catalog-sidebar .pf-price-filter .pf-catalog-price-row { flex-direction: row; align-items: center; gap: 8px; }
+#products .pf-catalog-sidebar .pf-catalog-price-row > span:first-child { flex: 0 0 76px; white-space: nowrap; font-size: 12px; }
+#products .pf-catalog-sidebar .pf-catalog-price-row > .pf-number-field { flex: 1; min-width: 0; }
+#products .pf-catalog-sidebar .pf-catalog-price-row input { flex: 1; min-width: 0; width: 100%; height: 34px; min-height: 34px; font-size: 12px; padding-left: 8px; }
+#products .pf-catalog-sidebar .pf-catalog-price-row input::placeholder { font-size: 12px; }
+#products .pf-catalog-sidebar .pf-catalog-filter-actions { flex-wrap: wrap; justify-content: flex-start; }
+#products .pf-catalog-sidebar .pf-catalog-filter-actions > * { flex: 1; padding-inline: 10px; }
+#products .pf-catalog-sidebar .pf-price-filter .pf-catalog-sort { flex-direction: row; align-items: center; gap: 8px; }
+#products .pf-catalog-sidebar .pf-catalog-sort > span { flex: 0 0 76px; white-space: nowrap; font-size: 12px; }
+#products .pf-catalog-sidebar .pf-catalog-sort select { flex: 1; min-width: 0; width: 100%; height: 34px; min-height: 34px; padding: 6px 8px; font-size: 12px; }
+#products .pf-catalog-sidebar .pf-catalog-filter-actions > button,
+#products .pf-catalog-sidebar .pf-catalog-filter-actions > a { height: 34px; min-height: 34px; padding: 6px 8px; font-size: 12px; }
+#products .pf-catalog-results { min-width: 0; }
+#products .pf-catalog-sidebar-shell {
+  position: sticky;
+  top: calc(var(--guest-nav-height, 80px) + 12px);
+  align-self: start;
+  z-index: 20;
+  min-width: 0;
+  padding: 7px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(39, 39, 42, .05);
+}
+#products .pf-catalog-sidebar-shell .pf-catalog-sidebar { border: 0; }
+#products .pf-catalog-sidebar-shell:has(.pf-catalog-sidebar[open]) {
+  max-height: calc(100dvh - var(--guest-nav-height, 80px) - 32px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #d0b2c2 #fff;
+}
+#products .pf-catalog-icon-rail { display: flex; flex-direction: column; gap: 4px; padding-top: 8px; }
+#products .pf-catalog-sidebar[open] + .pf-catalog-icon-rail { display: none; }
+#products .pf-catalog-icon-rail a { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 8px; color: var(--ink-3); }
+#products .pf-catalog-icon-rail a:hover, #products .pf-catalog-icon-rail a[aria-current] { background: #fff0f8; color: #bf3c7d; }
+#products .pf-catalog-categories svg { flex: none; }
+#products .pf-catalog-results .pf-product-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 155px), 1fr)); }
+@media (max-width: 760px) {
+  #products .pf-catalog-sidebar-shell:has(.pf-catalog-sidebar[open]) { max-height: calc(100dvh - var(--guest-nav-height, 80px) - 100px); }
+  #products .pf-catalog-layout, #products .pf-catalog-layout:has(.pf-catalog-sidebar[open]) { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  #products .pf-catalog-sidebar:not([open]) > summary span { display: inline; }
+  #products .pf-catalog-sidebar:not([open]) .pf-catalog-collapse { transform: rotate(-90deg); }
+  #products .pf-catalog-icon-rail { flex-direction: row; flex-wrap: wrap; }
+  #products .pf-catalog-icon-rail a { flex: 0 0 44px; }
+}
 #products .pf-price-filter { display: grid; grid-template-columns: minmax(100px, 150px) minmax(100px, 150px) minmax(160px, 210px) auto; justify-content: start; align-items: end; gap: 12px; }
 #products .pf-price-filter label { display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 0; font-size: 12px; }
 #products .pf-price-filter input,
 #products .pf-catalog-sort select { width: 100%; height: 40px; min-height: 40px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--ink); font: inherit; font-size: 13px; padding: 8px 10px; }
-#products .pf-price-filter .pf-number-field input { padding-right: 34px; }
+#products .pf-price-filter .pf-number-field input { padding-right: 8px; }
 #products .pf-catalog-filter-actions { display: flex; align-items: center; gap: 8px; }
 #products .pf-catalog-filter-actions > button,
 #products .pf-catalog-filter-actions > a { display: inline-flex; align-items: center; justify-content: center; height: 40px; min-height: 40px; padding: 8px 16px; border-radius: 6px; font-size: 12px; text-decoration: none; white-space: nowrap; }

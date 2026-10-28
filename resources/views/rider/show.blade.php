@@ -32,7 +32,7 @@
       <div class="card-pad">
         <div style="display:flex;flex-direction:column;gap:6px;font-size:13px">
           <div><strong>{{ $seller?->business_name ?? trim(($seller?->given_names ?? '') . ' ' . ($seller?->last_name ?? '')) ?: 'Unknown seller' }}</strong></div>
-          <div style="color:var(--muted)">{{ collect([$seller?->house_no, $seller?->street, $seller?->barangay, $seller?->municipality, $seller?->province])->filter()->implode(', ') ?: 'No address on file' }}</div>
+          <div style="color:var(--muted)">{{ collect([$seller?->house_no, $seller?->street, $seller?->barangay, $seller?->municipality, $seller?->province, $seller?->region, $seller?->postal_code])->filter()->implode(', ') ?: 'No address on file' }}</div>
           <div style="color:var(--muted)">{{ $seller?->contact_no ?: 'No contact number on file' }}</div>
         </div>
       </div>
@@ -68,7 +68,7 @@
       <div class="card-pad">
         <div style="display:flex;flex-direction:column;gap:6px;font-size:13px">
           <div><strong>{{ trim(($buyer?->given_names ?? '') . ' ' . ($buyer?->last_name ?? '')) ?: 'Unknown buyer' }}</strong></div>
-          <div style="color:var(--muted)">{{ implode(', ', array_filter([$addr['house_no'] ?? null, $addr['street'] ?? null, $addr['barangay'] ?? null, $addr['municipality'] ?? null, $addr['province'] ?? null])) ?: 'No address on file' }}</div>
+          <div style="color:var(--muted)">{{ implode(', ', array_filter([$addr['house_no'] ?? null, $addr['street'] ?? null, $addr['barangay'] ?? null, $addr['municipality'] ?? null, $addr['province'] ?? null, $addr['region'] ?? null, $addr['postal_code'] ?? null])) ?: 'No address on file' }}</div>
           <div style="color:var(--muted)">{{ $buyer?->contact_no ?: 'No contact number on file' }}</div>
         </div>
       </div>

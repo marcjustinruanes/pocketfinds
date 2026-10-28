@@ -6,7 +6,7 @@
     <title>Create Your Account — PocketFinds</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/register.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/register.css') }}?v={{ @filemtime(public_path('css/register.css')) ?: 1 }}">
     <style>
         .prefilled-note {
             font-size: 11px;
@@ -219,6 +219,7 @@
                             <a href="{{ route('register.type') }}" title="Change account type" style="flex-shrink:0;margin-left:8px;color:var(--auth-muted);text-decoration:none;line-height:1" onmouseover="this.style.color='var(--auth-primary)'" onmouseout="this.style.color='var(--auth-muted)'"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg></a>
                         </div>
                         <div id="categoryIdsContainer"></div>
+                        @include('auth.partials.registration-business-details')
                         <div class="auth-field" id="businessNameField" style="margin:14px 0 12px">
                             <label class="auth-label" for="business_name">Business Name <span class="auth-required">*</span></label>
                             <input class="auth-input" id="business_name" name="business_name" type="text" placeholder="e.g. Dela Cruz Trading" required maxlength="150">
@@ -465,7 +466,7 @@
                             </div>
                             <div class="auth-field full">
                                 <label class="auth-label" for="contact_no">Contact number <span class="auth-required">*</span></label>
-                                <input class="auth-input" id="contact_no" name="contact_no" type="tel" placeholder="09XXXXXXXXX" maxlength="11" required>
+                                @include('auth.partials.registration-mobile')
                                 <span class="field-hint" id="contactHint"></span>
                             </div>
                         </div>
@@ -489,6 +490,7 @@
 
 
                         <div class="address-grid">
+                            @include('auth.partials.registration-region')
                             <div class="auth-field full">
                                 <label class="auth-label" for="province">Province <span class="auth-required">*</span></label>
                                 <select class="auth-input auth-select" id="province" name="province" required>
@@ -507,6 +509,7 @@
                                     <option value="" disabled selected>Select city / municipality first</option>
                                 </select>
                             </div>
+                            @include('auth.partials.registration-postal-code')
                             <div class="auth-field">
                                 <label class="auth-label" for="house_no">House No. / Unit</label>
                                 <input class="auth-input" id="house_no" name="house_no" type="text" placeholder="e.g. 123">

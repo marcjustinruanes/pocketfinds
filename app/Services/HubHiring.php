@@ -139,7 +139,7 @@ class HubHiring
             if ($role === 'hub_staff') {
                 $rules += ['interview_scheduled_at' => 'required|date', 'interview_location' => 'required|string|max:255'];
             } else {
-                $rules += ['license_file' => 'required|string', 'license_number' => 'required|string|max:50', 'license_expiry' => 'required|date',
+                $rules += ['license_file' => 'required|string', 'license_number' => 'required|string|max:50', 'license_expiry' => 'required|date|after_or_equal:today',
                     'vehicle_type' => 'required|exists:vehicle_types,slug', 'vehicle_ownership' => 'required|in:own,company'];
                 if ($user->vehicle_ownership === 'own') {
                     $rules += ['vehicle_brand' => 'required|string|max:100', 'vehicle_model' => 'required|string|max:100',
@@ -165,6 +165,10 @@ class HubHiring
                 $identity = DB::selectOne('SELECT HEX(WEIGHT_STRING(CONVERT(? USING utf8mb4) COLLATE '.$collation.')) AS identity_weight', [$identity])->identity_weight;
             }
             $keys = [$data['email'], $data['username'], $identity];
+            if (! empty($data['contact_no'])) {
+                $data['contact_no'] = \App\Support\PhilippineMobile::normalize($data['contact_no']);
+                $keys[] = 'mobile:'.$data['contact_no'];
+            }
             foreach (['license_number', 'plate_number'] as $field) {
                 if ($role === 'rider' && ! empty($data[$field])) {
                     $data[$field] = trim($data[$field]);
@@ -177,6 +181,10 @@ class HubHiring
             }
             $buckets = array_unique(array_map(fn ($v) => hexdec(substr(hash('sha256', mb_strtolower($v)), 0, 2)), $keys));
             DB::table('hiring_identity_locks')->whereIn('id', $buckets)->orderBy('id')->lockForUpdate()->get();
+            // The shared mobile lock serializes registrations with equivalent numbers.
+            if (! empty($data['contact_no']) && User::whereIn('contact_no', \App\Support\PhilippineMobile::variants($data['contact_no']))->lockForUpdate()->first()) {
+                throw ValidationException::withMessages(['contact_no' => 'This mobile number is already registered.']);
+            }
             $matchQuery = fn () => User::where(fn ($q) => $q->where('email', $data['email'])->orWhere('username', $data['username']));
             $preliminary = $matchQuery()->get();
             if ($role) {

@@ -1,3 +1,6 @@
+@php
+$storedUnread=\Illuminate\Support\Facades\DB::table('notifications')->where('user_id',auth()->id())->where('is_read',false)->count();
+@endphp
 <header class="topbar">
   <button class="menu-toggle" data-sidebar-toggle aria-label="Toggle navigation">
     <x-admin-icon name="menu" />
@@ -19,9 +22,9 @@
           $notifItems[] = ['text' => $openDisputes . ' open dispute' . ($openDisputes > 1 ? 's' : '') . ' need attention.', 'link' => route('admin.complaints'), 'read' => false];
       if (($pendingProducts ?? 0) > 0)
           $notifItems[] = ['text' => $pendingProducts . ' product' . ($pendingProducts > 1 ? 's' : '') . ' pending approval.', 'link' => route('admin.products'), 'read' => false];
-      if (empty($notifItems))
+      if (empty($notifItems) && !$storedUnread)
           $notifItems[] = ['text' => 'No new notifications.', 'link' => '#', 'read' => true];
-      $unreadCount = collect($notifItems)->where('read', false)->count();
+      $unreadCount = collect($notifItems)->where('read', false)->count()+$storedUnread;
     @endphp
 
     <div class="dropdown">
@@ -35,6 +38,7 @@
           @if($unreadCount > 0)<span style="font-size:11px;color:var(--pink-dark);font-weight:700">{{ $unreadCount }} new</span>@endif
         </div>
         <div class="notif-list">
+@include('account.partials.notifications')
           @foreach($notifItems as $notif)
           <a href="{{ $notif['link'] }}" class="notif-item {{ $notif['read'] ? 'read' : '' }}" style="text-decoration:none;color:inherit;display:flex">
             <div class="dot"></div>

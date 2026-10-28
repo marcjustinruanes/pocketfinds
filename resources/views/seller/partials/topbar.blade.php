@@ -22,7 +22,8 @@
       </button>
       <div class="dropdown-panel" id="sellerNotifPanel">
         <div class="dropdown-head"><h3>Notifications</h3>@if($unreadNotifCount > 0)<span class="notif-new-count">{{ $unreadNotifCount }} new</span>@endif</div>
-        <div class="notif-list">
+        <form method="POST" action="{{ route('account.notifications.read-all') }}" style="padding:8px">@csrf<button class="btn btn-outline">Mark all as read</button></form>
+<div class="notif-list">
           @forelse($notifRows as $notif)
             <a href="{{ route('seller.notifications.open', $notif->id) }}" class="notif-item {{ $notif->is_read ? 'read' : '' }}">
               <div class="dot"></div><div><p>{{ $notif->message }}</p><div class="notif-item-time">{{ \Carbon\Carbon::parse($notif->created_at)->diffForHumans() }}</div></div>

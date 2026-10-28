@@ -68,7 +68,7 @@ class AccountUpdateRequest extends Model
             return;
         }
 
-        $addressFields = ['province', 'municipality', 'barangay', 'house_no', 'street', 'given_names', 'last_name', 'contact_no'];
+        $addressFields = ['region', 'postal_code', 'province', 'municipality', 'barangay', 'house_no', 'street', 'given_names', 'last_name', 'contact_no'];
         if (! array_intersect(array_keys($data), $addressFields)) {
             return;
         }
@@ -86,7 +86,7 @@ class AccountUpdateRequest extends Model
         if (array_key_exists('given_names', $data) || array_key_exists('last_name', $data)) {
             $updates['recipient_name'] = trim($buyer->given_names.' '.$buyer->last_name);
         }
-        foreach (['contact_no', 'province', 'municipality', 'barangay', 'house_no', 'street'] as $field) {
+        foreach (['contact_no', 'region', 'postal_code', 'province', 'municipality', 'barangay', 'house_no', 'street'] as $field) {
             if (array_key_exists($field, $data)) {
                 $updates[$field] = $buyer->$field;
             }

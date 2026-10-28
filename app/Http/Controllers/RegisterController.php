@@ -10,6 +10,7 @@ use App\Models\LogisticsHub;
 use App\Models\User;
 use App\Services\HubHiring;
 use App\Services\MediaLifecycle;
+use App\Support\PhilippineMobile;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 class RegisterController extends Controller
@@ -51,11 +53,11 @@ class RegisterController extends Controller
         $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $key = 'otp_'.md5($email);
 
-        Cache::put($key, $otp, now()->addMinutes(10));
+        Cache::put($key, $otp, now()->addMinutes(5));
 
         try {
             Mail::raw(
-                "Your PocketFinds verification code is: {$otp}\n\nThis code expires in 10 minutes.",
+                "Your PocketFinds verification code is: {$otp}\n\nThis code expires in 5 minutes.",
                 fn ($m) => $m->to($email)->subject('PocketFinds — Email Verification Code')
             );
         } catch (\Exception $e) {
@@ -172,6 +174,10 @@ class RegisterController extends Controller
 
     public function store(Request $request)
     {
+        if (is_string($request->input('contact_no'))) {
+            $request->merge(['contact_no' => PhilippineMobile::normalize($request->input('contact_no'))]);
+        }
+        $minimumAge = in_array($request->input('account_type'), ['buyer', 'rider'], true) ? 18 : 16;
         $isSeller = $request->input('account_type') === 'seller';
         $isRider = $request->input('account_type') === 'rider';
         $isLogistics = $request->input('account_type') === 'logistics';
@@ -182,22 +188,36 @@ class RegisterController extends Controller
         $isLogisticsJoin = $isLogistics && $request->input('logistics_mode') === 'join';
         $isLogisticsFound = $isLogistics && ! $isLogisticsJoin;
 
-        // Letters, spaces, and the punctuation real names use (hyphen, apostrophe,
-        // period for suffixes like "Jr.") — no digits or other symbols. Mirrors the
-        // live input-stripping in public/js/register.js.
-        $nameRegex = "/^[\\p{L}\\s'.\\-]+$/u";
+        if (is_string($request->input('sec_registration_no'))) {
+            $request->merge(['sec_registration_no' => strtoupper(trim($request->input('sec_registration_no')))]);
+        }
+
+        // Match the registration fields: Unicode letters and hyphens only.
+        $nameRegex = '/^[\p{L}-]+$/u';
 
         $rules = [
-            'last_name' => ['required', 'string', 'max:100', 'regex:'.$nameRegex],
-            'given_names' => ['required', 'string', 'max:100', 'regex:'.$nameRegex],
-            'middle_name' => ['nullable', 'string', 'max:50', 'regex:'.$nameRegex],
+            'last_name' => ['required', 'string', 'min:2', 'max:50', 'regex:'.$nameRegex],
+            'given_names' => ['required', 'string', 'min:2', 'max:50', 'regex:'.$nameRegex],
+            'middle_name' => ['nullable', 'string', 'min:2', 'max:50', 'regex:'.$nameRegex],
             'suffix' => ['nullable', new Enum(Suffix::class)],
             'sex' => 'required|in:male,female',
-            'birthday' => 'required|date|before_or_equal:'.now()->subYears(16)->toDateString(),
+            'birthday' => 'required|date|before_or_equal:'.now()->subYears($minimumAge)->toDateString(),
             'age' => 'sometimes|integer|min:0',
             'email' => ['required', 'email', 'regex:/@gmail\.com$/i',
                 Rule::unique('users', 'email')->where(fn ($q) => $q->where('status', '!=', 'rejected'))],
-            'contact_no' => 'required|regex:/^09\d{9}$/',
+            'contact_no' => ['bail', 'required', 'string', 'regex:/^09\d{9}$/', function ($attribute, $value, $fail) {
+                if (User::whereIn('contact_no', PhilippineMobile::variants($value))->exists()) {
+                    $fail('This mobile number is already registered.');
+                }
+            }],
+            'region' => 'required|string|max:255',
+            'seller_type' => $isSeller ? ['required', new Enum(\App\Enums\SellerType::class)] : ['prohibited'],
+            'tin' => ($isSeller || $isLogisticsFound)
+                ? ['bail', 'required', 'string', 'regex:/^\d{12}$/D', Rule::unique('users', 'tin')]
+                : ['prohibited'],
+            'position' => $isLogisticsFound ? ['required', 'string', 'max:100'] : ['prohibited'],
+            'sec_registration_no' => $isLogisticsFound ? ['bail', 'required', 'string', 'regex:/^[A-Z]{2}[0-9]{9}$/D', Rule::unique('users', 'sec_registration_no')] : ['prohibited'],
+            'postal_code' => ($isSeller || $isLogisticsFound) ? ['required', 'string', 'regex:/^[0-9]{4}$/D'] : ['prohibited'],
             'province' => 'required|string',
             'municipality' => 'required|string',
             'barangay' => 'required|string',
@@ -207,7 +227,7 @@ class RegisterController extends Controller
                 Rule::unique('users', 'username')->where(fn ($q) => $q->where('status', '!=', 'rejected'))],
             // Google sign-ups still set a password, so the account can also
             // be logged into with a username/password later without Google.
-            'password' => 'required|string|min:8|confirmed',
+            'password' => ['required', 'string', Password::min(8)->mixedCase()->numbers()->symbols(), 'confirmed'],
             // Riders don't upload a separate government ID — their driver's
             // license (required below) already serves as identification.
             'id_file' => $isRider ? 'sometimes|nullable' : 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
@@ -239,7 +259,7 @@ class RegisterController extends Controller
                     $fail("This driver's license number is already registered to another account.");
                 }
             }];
-            $rules['license_expiry'] = 'required|date';
+            $rules['license_expiry'] = 'required|date|after_or_equal:today';
             $rules['license_file'] = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120';
             if ($request->input('vehicle_ownership') === 'own') {
                 $rules['vehicle_brand'] = 'required|string|max:100';
@@ -260,7 +280,7 @@ class RegisterController extends Controller
         // A rider, or logistics staff "joining" a company, instead pick one that already
         // exists and got admin-approved.
         if ($isSeller || $isLogisticsFound) {
-            $rules['business_name'] = ['required', 'string', 'max:150',
+            $rules['business_name'] = ['required', 'string', 'min:'.($isSeller ? 3 : 1), 'max:'.($isSeller ? 30 : 150),
                 Rule::unique('users', 'business_name')->where(fn ($q) => $q->where('status', '!=', 'rejected'))];
             $rules['business_permit_file'] = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120';
             if ($isLogisticsFound) {
@@ -282,10 +302,16 @@ class RegisterController extends Controller
         }
 
         $validator = Validator::make($request->all(), $rules, [
-            'birthday.before_or_equal' => 'You must be at least 16 years old to register.',
-            'last_name.regex' => 'Last name can only contain letters.',
-            'given_names.regex' => 'Given names can only contain letters.',
-            'middle_name.regex' => 'Middle name can only contain letters.',
+            'birthday.before_or_equal' => "You must be at least {$minimumAge} years old to register.",
+            'last_name.regex' => 'Last name can only contain letters and hyphens.',
+            'given_names.regex' => 'Given names can only contain letters and hyphens.',
+            'middle_name.regex' => 'Middle name can only contain letters and hyphens.',
+            'tin.regex' => 'Enter exactly 12 digits for the TIN, without hyphens.',
+            'tin.unique' => 'This TIN is already registered.',
+            'sec_registration_no.regex' => 'Enter two letters followed by nine digits, such as CS202012345.',
+            'sec_registration_no.unique' => 'This SEC registration number is already registered.',
+            'postal_code.regex' => 'Enter a four-digit postal code.',
+            'license_expiry.after_or_equal' => 'Your driver\'s license has expired. Enter today or a later expiry date.',
         ]);
 
         $validator->after(function ($validator) use ($request, $isSeller, $isRider, $isLogisticsFound, $isLogisticsJoin) {
@@ -295,7 +321,7 @@ class RegisterController extends Controller
                     $validator->errors()->add('hub_areas', 'Add at least one province and municipality your company covers.');
                 } else {
                     foreach ($hubAreas as $area) {
-                        if (empty($area['province']) || empty($area['municipality'])) {
+                        if (!is_array($area) || empty($area['region']) || !is_string($area['region']) || empty($area['province']) || empty($area['municipality'])) {
                             $validator->errors()->add('hub_areas', 'Each coverage area needs both a province and a municipality.');
                             break;
                         }
@@ -419,6 +445,13 @@ class RegisterController extends Controller
             'age' => $request->age,
             'email' => $request->email,
             'contact_no' => $request->contact_no,
+            'region' => $request->region,
+            'seller_type' => $isSeller ? $request->seller_type : null,
+            'tin' => ($isSeller || $isLogisticsFound) ? $request->tin : null,
+            'position' => $isLogisticsFound ? $request->position : null,
+            'sec_registration_no' => $isLogisticsFound ? $request->sec_registration_no : null,
+            'postal_code' => ($isSeller || $isLogisticsFound) ? $request->postal_code : null,
+            'service_regions' => $isLogisticsFound ? array_values(array_unique(array_column(json_decode($request->hub_areas, true), 'region'))) : null,
             'province' => $request->province,
             'municipality' => $request->municipality,
             'barangay' => $request->barangay,
@@ -515,7 +548,7 @@ class RegisterController extends Controller
                 }
                 $key = mb_strtolower($province).'|'.mb_strtolower($municipality);
                 if (! isset($deduped[$key])) {
-                    $deduped[$key] = ['province' => $province, 'municipality' => $municipality, 'is_regional' => ! empty($area['is_regional'])];
+                    $deduped[$key] = ['region' => trim($area['region']), 'province' => $province, 'municipality' => $municipality, 'is_regional' => ! empty($area['is_regional'])];
                 }
             }
 
@@ -538,6 +571,7 @@ class RegisterController extends Controller
             foreach ($deduped as $row) {
                 LogisticsHub::create([
                     'company_name' => $request->business_name,
+                    'region' => $row['region'],
                     'province' => $row['province'],
                     'municipality' => $row['municipality'],
                     'is_regional_hub' => $regionalPerProvince[mb_strtolower($row['province'])] === mb_strtolower($row['municipality']),

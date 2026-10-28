@@ -8,7 +8,7 @@ class BuyerAddress extends Model
 {
     protected $fillable = [
         'buyer_id', 'label', 'recipient_name', 'contact_no',
-        'province', 'municipality', 'barangay', 'house_no', 'street', 'is_default',
+        'region', 'postal_code', 'province', 'municipality', 'barangay', 'house_no', 'street', 'is_default',
     ];
 
     protected $casts = ['is_default' => 'boolean'];
@@ -32,6 +32,8 @@ class BuyerAddress extends Model
             'recipient_name' => trim($buyer->given_names . ' ' . $buyer->last_name),
             'contact_no'     => $buyer->contact_no,
             'province'       => $buyer->province,
+            'region'         => $buyer->region,
+            'postal_code'    => $buyer->postal_code,
             'municipality'   => $buyer->municipality,
             'barangay'       => $buyer->barangay,
             'house_no'       => $buyer->house_no,
@@ -42,7 +44,7 @@ class BuyerAddress extends Model
 
     public function getFullAddressAttribute(): string
     {
-        return collect([$this->house_no, $this->street, $this->barangay, $this->municipality, $this->province])
+        return collect([$this->house_no, $this->street, $this->barangay, $this->municipality, $this->province, $this->region, $this->postal_code])
             ->filter()->join(', ');
     }
 
@@ -55,6 +57,8 @@ class BuyerAddress extends Model
             'barangay'       => $this->barangay,
             'municipality'   => $this->municipality,
             'province'       => $this->province,
+            'region'         => $this->region,
+            'postal_code'    => $this->postal_code,
             'recipient_name' => $this->recipient_name,
             'contact_no'     => $this->contact_no,
         ];

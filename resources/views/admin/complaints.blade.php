@@ -117,4 +117,10 @@
     </div>
   </div>
 </div>
+@if(\App\Services\BuyerCommerce::installed())
+@include('commerce.messages')
+@include('account.partials.commerce-returns')
+@endif
 @endsection
+
+@push('scripts')<script src="{{ asset('js/commerce.js') }}?v={{ filemtime(public_path('js/commerce.js')) }}"></script>@endpush
