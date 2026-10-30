@@ -20,7 +20,7 @@
 <div class="form-row"><label>Description<textarea name="description" rows="3" minlength="10" maxlength="500" required placeholder="Describe the problem (10–500 characters)"></textarea></label></div>
 <div class="form-row"><label>Photo evidence<input type="file" name="photos[]" accept="image/jpeg,image/png" multiple required></label><small>Attach 1–5 JPG/PNG photos, up to 5 MB each.</small></div>
 @if($order->gcash_purchase_id)<input type="hidden" name="refund_destination" value="Original GCash payment"><p>Refunds go to the original GCash payment.</p>
-@else<div class="form-row"><label>Refund account<input type="text" name="refund_destination" maxlength="255" required placeholder="Provider / bank, account name and number"></label></div>@endif
+@else<div class="form-row"><label>GCash refund account name<input type="text" name="refund_account_name" minlength="2" maxlength="150" required></label><label>GCash mobile number<input type="tel" name="refund_gcash_number" inputmode="numeric" pattern="09[0-9]{9}" maxlength="11" required placeholder="09XXXXXXXXX"></label></div>@endif
 <p>Submit within seven days of delivery. Order completion pauses while the request is reviewed.</p><div class="order-modal-actions"><button class="btn btn-primary">Submit Return / Refund Request</button></div>
 </form></div></details>
 @endif

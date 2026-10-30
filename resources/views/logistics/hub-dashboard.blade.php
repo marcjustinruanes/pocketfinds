@@ -4,6 +4,8 @@
 @section('page-sub', $hub->is_regional_hub ? "{$hub->province}'s regional hub — also relays parcels for other municipality hubs in the province" : "Local hub for {$hub->municipality}, {$hub->province}")
 
 @section('content')
+@if(app(\App\Services\AssignmentReassignment::class)->installed())<div class="card card-pad"><a class="btn btn-primary" href="{{ route('logistics.assignments.review') }}">Assignment evidence & reassignment</a></div>@endif
+@if(app(\App\Services\AssignmentReassignment::class)->installed())<div class="card card-pad"><a class="btn btn-primary" href="{{ route('logistics.assignments.review') }}">Assignment evidence & reassignment</a></div>@endif
 @if(session('success'))<div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('success') }}</div>@endif
 @if(session('error'))<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('error') }}</div>@endif
 @if($errors->any())<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ $errors->first() }}</div>@endif
@@ -48,6 +50,7 @@
   </div>
   <div class="card-pad">
     @forelse($incomingPickups as $shipment)
+    @include('logistics.partials.parcel-custody',['parcel'=>$shipment])
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
       <span>
         <span class="mono">#{{ $shipment->order->order_number ?? substr($shipment->id, 0, 8) }}</span>
@@ -75,7 +78,7 @@
         <strong>&rarr; {{ $legs->first()->to_hub }}, {{ $legs->first()->to_province }}</strong>
         <div style="font-size:11.5px;color:var(--muted);margin-top:2px">
           {{ $legs->count() }} parcel(s) —
-          @foreach($legs as $leg)<span class="mono">#{{ optional($leg->shipment->order)->order_number ?? substr($leg->shipment_id, 0, 8) }}</span>@if(!$loop->last), @endif @endforeach
+          @foreach($legs as $leg)@include('logistics.partials.parcel-custody',['parcel'=>$leg->shipment])<span class="mono">#{{ optional($leg->shipment->order)->order_number ?? substr($leg->shipment_id, 0, 8) }}</span>@if(!$loop->last), @endif @endforeach
         </div>
       </div>
       <form method="POST" action="{{ route('logistics.hub.request-transfer') }}">
@@ -116,6 +119,7 @@
   </div>
   <div class="card-pad">
     @forelse($readyToAssign as $leg)
+    @include('logistics.partials.parcel-custody',['parcel'=>$leg->shipment])
     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
       <span><span class="mono">#{{ optional($leg->shipment->order)->order_number ?? substr($leg->shipment_id, 0, 8) }}</span> &rarr; {{ $leg->to_hub }}</span>
       <a href="{{ $leg->transfer_batch_id ? route('logistics.transfers.show', $leg->transfer_batch_id) : route('logistics.transfers') }}" class="btn btn-sm btn-outline">View transfer</a>
@@ -134,6 +138,7 @@
   </div>
   <div class="card-pad">
     @forelse($incoming as $leg)
+    @include('logistics.partials.parcel-custody',['parcel'=>$leg->shipment])
     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
       <span><span class="mono">#{{ optional($leg->shipment->order)->order_number ?? substr($leg->shipment_id, 0, 8) }}</span> from {{ $leg->from_hub }}</span>
       <span style="color:var(--muted)">{{ optional($leg->rider)->given_names }} {{ optional($leg->rider)->last_name }}</span>

@@ -41,6 +41,8 @@ trait WorkflowSchema
         }
         DB::statement('CREATE TABLE order_status_history (id TEXT PRIMARY KEY, order_id TEXT, status TEXT, changed_by INTEGER, notes TEXT, created_at TEXT)');
         (require database_path('migrations/2026_10_13_000001_add_logistics_operations.php'))->up();
+        (require database_path('migrations/2026_10_29_000008_add_operational_audit_context.php'))->up();
+        (require database_path('migrations/2026_10_29_000009_add_issue_investigation_context.php'))->up();
         if ($hiring) {
             (require database_path('migrations/2026_10_14_000002_add_role_hiring_management.php'))->up();
         }

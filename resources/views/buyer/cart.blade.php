@@ -138,7 +138,7 @@
         </div>
 
 </div>
-        @php($typeMeta = ['ewallet' => ['wallet', 'E-Wallet'], 'bank' => ['bank', 'Bank'], 'cod' => ['cash', 'Cash on Delivery'], 'other' => ['tag', 'Other']])
+        @php($typeMeta = ['ewallet' => ['wallet', 'E-Wallet'], 'cod' => ['cash', 'Cash on Delivery'], 'other' => ['tag', 'Other']])
         @php($firstAvailableType = collect($typeMeta)->keys()->first(fn ($type) => $paymentMethods->has($type)))
         <div class="form-row" style="margin:0">
           <h3 class="cart-section-title" id="cartPaymentHeading">Payment method</h3>
@@ -325,14 +325,13 @@
     </div>
     <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
       <input type="hidden" id="cartVerifyType">
-      <input type="hidden" id="cartVerifyBankName">
       <div class="form-row">
         <label for="cartVerifyAccountName">Account holder name</label>
         <input class="auth-input" id="cartVerifyAccountName" type="text">
       </div>
       <div class="form-row">
         <label for="cartVerifyAccountNumber" id="cartVerifyAccountNumberLabel">Account number</label>
-        <input class="auth-input" id="cartVerifyAccountNumber" type="text">
+        <input class="auth-input" id="cartVerifyAccountNumber" type="tel" inputmode="numeric" pattern="09[0-9]{9}" maxlength="11">
       </div>
       <div id="cartVerifyStep1">
         <button type="button" class="btn btn-primary btn-block" id="cartVerifySendBtn">Send verification code</button>
@@ -855,8 +854,7 @@ document.addEventListener('DOMContentLoaded', () => {
     list.forEach(pm => paymentNameSelect.add(new Option(pm.name, pm.id)));
   }
   function verificationKeyFor(type, name) {
-    if (type === 'ewallet') return name.toLowerCase();
-    if (type === 'bank') return 'bank:' + name.toLowerCase();
+    if (type === 'ewallet' && name.toLowerCase() === 'gcash') return 'gcash';
     return null;
   }
   function isGcashSelection() {
@@ -902,13 +900,13 @@ document.addEventListener('DOMContentLoaded', () => {
     paymentNameSelect.addEventListener('change', updateVerificationStatus);
   }
 
-  // ---- Verify e-wallet/bank account right from the cart ----
+  // ---- Verify GCash account right from the cart ----
   function openCartVerifyModal(type, name) {
-    const accountType = type === 'bank' ? 'bank' : name.toLowerCase();
+    if(type !== 'ewallet' || name.toLowerCase() !== 'gcash') return;
+    const accountType = 'gcash';
     document.getElementById('cartVerifyType').value = accountType;
-    document.getElementById('cartVerifyBankName').value = type === 'bank' ? name : '';
     document.getElementById('cartVerifyTitle').textContent = 'Verify ' + name;
-    document.getElementById('cartVerifyAccountNumberLabel').textContent = type === 'bank' ? 'Account number' : name + ' number';
+    document.getElementById('cartVerifyAccountNumberLabel').textContent = 'GCash mobile number';
     document.getElementById('cartVerifyAccountName').value = '';
     document.getElementById('cartVerifyAccountNumber').value = '';
     document.getElementById('cartVerifyOtp').value = '';
@@ -921,12 +919,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('cartVerifySendBtn')?.addEventListener('click', () => {
     const type = document.getElementById('cartVerifyType').value;
-    const bankName = document.getElementById('cartVerifyBankName').value;
     const accountName = document.getElementById('cartVerifyAccountName').value.trim();
     const accountNumber = document.getElementById('cartVerifyAccountNumber').value.trim();
     const msg = document.getElementById('cartVerifyMessage');
-    if (!accountName || !accountNumber) {
-      msg.hidden = false; msg.style.color = 'var(--danger)'; msg.textContent = 'Please fill in all fields.';
+    if (type !== 'gcash' || !accountName || !/^09[0-9]{9}$/.test(accountNumber)) {
+      msg.hidden = false; msg.style.color = 'var(--danger)'; msg.textContent = 'Enter the GCash account name and 11-digit mobile number starting with 09.';
       return;
     }
     const btn = document.getElementById('cartVerifySendBtn');
@@ -934,7 +931,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fetch('{{ route('buyer.payment-accounts.send-code') }}', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
-      body: JSON.stringify({ type, account_name: accountName, account_number: accountNumber, bank_name: bankName }),
+      body: JSON.stringify({ type, account_name: accountName, account_number: accountNumber }),
     })
     .then(r => r.json())
     .then(data => {
@@ -968,7 +965,7 @@ document.addEventListener('DOMContentLoaded', () => {
       msg.style.color = data.success ? 'var(--success)' : 'var(--danger)';
       msg.textContent = data.success ? 'Verified!' : data.message;
       if (data.success) {
-        const key = data.account.type === 'bank' ? 'bank:' + (data.account.bank_name || '').toLowerCase() : data.account.type;
+        const key = data.account.type;
         verifiedLookup[key] = true;
         updateVerificationStatus();
         setTimeout(() => document.getElementById('cartVerifyModal').classList.remove('open'), 800);

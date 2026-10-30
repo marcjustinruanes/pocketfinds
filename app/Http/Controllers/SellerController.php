@@ -82,7 +82,9 @@ class SellerController extends Controller
         $deliveredToday = Order::where('seller_id', $sellerId)->where('status', 'completed')->whereDate('updated_at', today())->count();
         $statusCounts = Order::where('seller_id', $sellerId)->selectRaw('status, count(*) as c')->groupBy('status')->pluck('c', 'status');
 
-        return view('seller.orders', compact('orders', 'status', 'pendingConfirmation', 'deliveredToday', 'statusCounts','returnRequests'));
+        $shippingObligations = app(\App\Services\LogisticsShipping::class)->installed()
+            ? DB::table('logistics_shipping_obligations')->where('seller_id', $sellerId)->whereIn('order_id', $orders->pluck('id'))->get()->keyBy('order_id') : collect();
+        return view('seller.orders', compact('orders', 'status', 'pendingConfirmation', 'deliveredToday', 'statusCounts','returnRequests', 'shippingObligations'));
     }
 
     /** Order stage transitions a seller drives on their own, before any shipment exists. */
@@ -362,17 +364,14 @@ class SellerController extends Controller
     public function reports(Request $request)
     {
         $sellerId = auth()->id();
+        $request->validate(['from'=>'nullable|date_format:Y-m-d','to'=>'nullable|date_format:Y-m-d']);
         $from = $request->filled('from') ? Carbon::parse($request->query('from'))->startOfDay() : now()->startOfMonth();
         $to = $request->filled('to') ? Carbon::parse($request->query('to'))->endOfDay() : now()->endOfDay();
 
-        $completed = Order::where('seller_id', $sellerId)->where('status', 'completed')
-            ->whereBetween('updated_at', [$from, $to])->get();
-
-        $totalRevenue = (float) $completed->sum(fn($o)=>(float)$o->total+max(0,(float)$o->discount_amount-(float)($o->commerce_snapshot['seller_discount']??$o->discount_amount)));
-        $commission = round($totalRevenue * Setting::current()->commissionFraction(), 2);
-        $shippingFees = (float) $completed->sum('shipping_amount');
-        $discounts = (float) $completed->sum(fn($o)=>(float)($o->commerce_snapshot['seller_discount']??$o->discount_amount));
-        $netProfit = $totalRevenue - $commission;
+        abort_if($from->gt($to),422,'The report start date must not follow its end date.');
+        $paymentReport=app(\App\Services\PaymentReporting::class)->snapshot((int)$sellerId,$from,$to);
+        $completed=$paymentReport['orders'];
+        $totalRevenue=$paymentReport['metrics']['buyer_order_value']/100;
         $ordersCompleted = $completed->count();
         $avgOrderValue = $ordersCompleted ? $totalRevenue / $ordersCompleted : 0;
 
@@ -406,8 +405,7 @@ class SellerController extends Controller
 
         return view('seller.reports', [
             'from' => $from, 'to' => $to,
-            'totalRevenue' => $totalRevenue, 'netProfit' => $netProfit, 'commission' => $commission,
-            'shippingFees' => $shippingFees, 'discounts' => $discounts,
+            'totalRevenue' => $totalRevenue, 'paymentReport'=>$paymentReport,
             'ordersCompleted' => $ordersCompleted, 'avgOrderValue' => $avgOrderValue,
             'revenueChart' => $revenueChart, 'chartMax' => $chartMax,
             'topProducts' => $topProducts,

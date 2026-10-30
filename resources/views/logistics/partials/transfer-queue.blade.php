@@ -1,12 +1,3 @@
-@extends('logistics.layout')
-@section('title', 'Hub Transfer Requests')
-@section('page-title', 'Hub Transfer Requests')
-@section('page-sub', "Batches your hubs want to move on — approve before a rider can be assigned")
-
-@section('content')
-@if(session('success'))<div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('success') }}</div>@endif
-@if($errors->any())<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ $errors->first() }}</div>@endif
-
 <div class="card" style="margin-bottom:16px">
   <div class="card-head">
     <h2>Not Yet Requested</h2>
@@ -46,7 +37,7 @@
 </div>
 
 <div class="card">
-  <div class="card-head"><h2>Pending Requests</h2><span class="stamp stamp-pending">{{ $pendingTransferPages->total() }} batch(es)</span></div>
+  <div class="card-head"><h2>Earlier requests awaiting approval</h2><span class="stamp stamp-pending">{{ $pendingTransferPages->total() }} batch(es)</span></div>
   <div class="table-wrap">
     <table class="dtable">
       <thead>
@@ -94,11 +85,10 @@
           </td>
         </tr>
         @empty
-        <tr><td colspan="5"><div class="empty"><h3>No pending requests</h3><p>Every hub's transfer requests have been handled.</p></div></td></tr>
+        <tr><td colspan="5"><div class="empty"><h3>No pending requests</h3><p>No earlier requests need approval. Use the Pending approval tab for current batches.</p></div></td></tr>
         @endforelse
       </tbody>
     </table>
   </div>
   {{ $pendingTransferPages->links() }}
 </div>
-@endsection

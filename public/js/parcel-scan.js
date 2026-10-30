@@ -65,6 +65,10 @@
     $('rArea').textContent     = s.delivery_area || 'Not determined';
     $('rCourier').textContent  = s.courier_name || 'Not assigned';
 
+    const custody = $('rCustody');
+    if (custody && meta.custody) {
+      custody.textContent = [meta.custody.label, meta.custody.responsible, meta.custody.at ? 'Evidence time: '+meta.custody.at : '', meta.custody.next, meta.custody.note].filter(Boolean).join(' / ');
+    }
     const actions = $('statusActions');
     actions.innerHTML = '';
 
@@ -261,7 +265,11 @@
       btn.type = 'button';
       btn.className = 'btn btn-success';
       btn.textContent = meta.next_label;
-      btn.addEventListener('click', () => runAction(btn, 'Updating…', () => updateStatus(s.id, meta.next_status, s.tracking_number)));
+      btn.addEventListener('click', () => {
+        const reason = meta.next_status === 'assigned_to_rider' ? prompt('Why is this delivery being retried?') : undefined;
+        if (reason === null) return;
+        runAction(btn, 'Updating…', () => updateStatus(s.id, meta.next_status, s.tracking_number, reason));
+      });
       actions.appendChild(btn);
     }
     if (meta.can_fail) {

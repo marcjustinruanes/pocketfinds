@@ -4,7 +4,27 @@
 @section('page-sub', "Approve/disapprove courier applications, activate or suspend riders")
 
 @section('content')
-<a href="{{ route('logistics.accounts',['role'=>'rider']) }}" class="btn btn-outline" style="margin-bottom:16px">Create or edit accounts and hub assignments</a>
+@include('logistics.partials.personnel-tabs')
+
+<details class="card card-pad acf-create-card" style="margin-bottom:20px" @if($errors->any()) open @endif>
+  <summary class="acf-create-summary">
+    <span class="acf-create-summary-inner">
+      <strong>+ Create rider account</strong>
+      <span>Add a new courier directly</span>
+    </span>
+  </summary>
+  <div class="acf-create-body">
+    @if($errors->any())
+      <div class="acf-alert" role="alert">{{ $errors->first() }}</div>
+    @endif
+    <form method="POST" enctype="multipart/form-data" action="{{ route('logistics.riders.accounts.store') }}">@csrf
+      @include('logistics.partials.account-form', ['account' => null, 'creationRole' => 'rider'])
+    </form>
+  </div>
+</details>
+
+<form method="GET" class="logistics-toolbar"><input name="search" value="{{ request('search') }}" placeholder="Search name, username or email" aria-label="Search personnel"><input type="hidden" name="status" value="{{ $status }}"><button class="btn btn-outline">Search</button></form>
+
 @if(session('success'))<div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('success') }}</div>@endif
 
 <div class="card">
@@ -13,10 +33,11 @@
   </div>
   <div class="card-pad">
     <div data-tabs id="riderTabs">
-      <a class="tab {{ $status === 'pending' ? 'active' : '' }}" href="{{ route('logistics.riders', ['status' => 'pending']) }}">Pending <span class="tab-count">{{ $statusCounts['pending'] ?? 0 }}</span></a>
-      <a class="tab {{ $status === 'approved' ? 'active' : '' }}" href="{{ route('logistics.riders', ['status' => 'approved']) }}">Approved <span class="tab-count">{{ $statusCounts['approved'] ?? 0 }}</span></a>
-      <a class="tab {{ $status === 'rejected' ? 'active' : '' }}" href="{{ route('logistics.riders', ['status' => 'rejected']) }}">Rejected <span class="tab-count">{{ $statusCounts['rejected'] ?? 0 }}</span></a>
-      <a class="tab {{ $status === 'suspended' ? 'active' : '' }}" href="{{ route('logistics.riders', ['status' => 'suspended']) }}">Suspended <span class="tab-count">{{ $statusCounts['suspended'] ?? 0 }}</span></a>
+      <a class="tab {{ $status === 'all' ? 'active' : '' }}" href="{{ route('logistics.riders', ['search'=>request('search'), 'status'=>'all']) }}">All <span class="tab-count">{{ $statusCounts->sum() }}</span></a>
+      <a class="tab {{ $status === 'pending' ? 'active' : '' }}" href="{{ route('logistics.riders', ['search' => request('search'), 'status' => 'pending']) }}">Pending <span class="tab-count">{{ $statusCounts['pending'] ?? 0 }}</span></a>
+      <a class="tab {{ $status === 'approved' ? 'active' : '' }}" href="{{ route('logistics.riders', ['search' => request('search'), 'status' => 'approved']) }}">Approved <span class="tab-count">{{ $statusCounts['approved'] ?? 0 }}</span></a>
+      <a class="tab {{ $status === 'rejected' ? 'active' : '' }}" href="{{ route('logistics.riders', ['search' => request('search'), 'status' => 'rejected']) }}">Rejected <span class="tab-count">{{ $statusCounts['rejected'] ?? 0 }}</span></a>
+      <a class="tab {{ $status === 'suspended' ? 'active' : '' }}" href="{{ route('logistics.riders', ['search' => request('search'), 'status' => 'suspended']) }}">Suspended <span class="tab-count">{{ $statusCounts['suspended'] ?? 0 }}</span></a>
     </div>
 
     <div class="table-wrap">
@@ -39,6 +60,7 @@
             <td><span class="stamp stamp-{{ $rider->status }}">{{ ucfirst($rider->status) }}</span></td>
             <td>
               <div class="row-actions">
+                <a class="btn btn-sm btn-outline" href="{{ route('logistics.accounts.edit', $rider->id) }}">Edit / hub assignment</a>
                 <button class="btn btn-sm btn-outline" data-modal-open="riderModal-{{ $rider->id }}">Review</button>
               </div>
             </td>
@@ -109,24 +131,15 @@
               <div class="modal-foot">
                 <button class="btn btn-outline" data-modal-close>Close</button>
                 @if($rider->status === 'pending')
-                  <form method="POST" action="{{ route('logistics.riders.reject', $rider->id) }}" style="display:inline">
-                    @csrf @method('PATCH')
-                    <button class="btn btn-outline-danger" type="submit">Reject</button>
-                  </form>
-                  <form method="POST" action="{{ route('logistics.riders.approve', $rider->id) }}" style="display:inline">
+                  <button type="button" class="btn btn-outline-danger" onclick="openReasonModal('reject', '{{ route('logistics.riders.reject', $rider->id) }}')">Reject</button>
+                  <form method="POST" enctype="multipart/form-data" action="{{ route('logistics.riders.approve', $rider->id) }}" style="display:inline">
                     @csrf @method('PATCH')
                     <button class="btn btn-success" type="submit">Approve</button>
                   </form>
                 @elseif($rider->status === 'approved')
-                  <form method="POST" action="{{ route('logistics.riders.suspend', $rider->id) }}" style="display:inline">
-                    @csrf @method('PATCH')
-                    <button class="btn btn-outline-danger" type="submit">Suspend</button>
-                  </form>
+                  <button type="button" class="btn btn-outline-danger" onclick="openReasonModal('suspend', '{{ route('logistics.riders.suspend', $rider->id) }}')">Suspend</button>
                 @elseif($rider->status === 'suspended')
-                  <form method="POST" action="{{ route('logistics.riders.activate', $rider->id) }}" style="display:inline">
-                    @csrf @method('PATCH')
-                    <button class="btn btn-success" type="submit">Activate</button>
-                  </form>
+                  <button type="button" class="btn btn-success" onclick="openReasonModal('activate', '{{ route('logistics.riders.activate', $rider->id) }}')">Reactivate</button>
                 @endif
               </div>
             </div>
@@ -141,5 +154,6 @@
 </div>
 
 @include('admin.partials.doc-lightbox')
+@include('admin.partials.reason-modals', ['reasonModalTypes'=>['reject','suspend','activate']])
 {{ $riders->links() }}
 @endsection

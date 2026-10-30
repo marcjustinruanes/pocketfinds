@@ -13,8 +13,9 @@
 </style>
 <link rel="stylesheet" href="{{ asset('css/navigation.css') }}?v={{ filemtime(public_path('css/navigation.css')) }}">
 @stack('head')
+<link rel="stylesheet" href="{{ asset('css/logistics-ui.css') }}?v={{ filemtime(public_path('css/logistics-ui.css')) }}">
 </head>
-<body class="admin">
+<body class="admin logistics-ui">
 <div class="shell" id="logisticsShell" data-navigation-shell data-collapse-key="logistics_sidebar_collapsed">
   @include('logistics.partials.sidebar')
   <div style="display:flex;flex-direction:column;min-width:0">
@@ -45,6 +46,7 @@
 
 <div class="toast-stack" id="toastStack"></div>
 <script src="/js/admin.js"></script>
+<script src="{{ asset('js/logistics-personnel-address.js') }}?v={{ filemtime(public_path('js/logistics-personnel-address.js')) }}"></script>
 @stack('scripts')
 <script src="{{ asset('js/navigation.js') }}?v={{ filemtime(public_path('js/navigation.js')) }}"></script>
 </body>

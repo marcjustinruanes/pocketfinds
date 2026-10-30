@@ -1,20 +1,21 @@
 @extends('seller.layout')
 @section('title', 'Reports')
 @section('page-title', 'Reports')
-@section('page-sub', 'Financial, profit and sales performance reports')
+@section('page-sub', 'Sales, verified payment activity and COD payouts')
 
 @section('content')
+<p>Sales use completed orders updated in the selected period. Payment activity uses its actual verification, collection or payment date. Shipping and discounts are already included in buyer order values; they are not deducted again. No platform commission is charged.</p>
 {{-- Date range picker --}}
 <div class="card" style="margin-bottom:18px">
   <form method="GET" action="{{ route('seller.reports') }}" class="card-pad" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <span style="font-size:13px;font-weight:650;color:var(--muted)">Date Range</span>
     <div class="form-row" style="margin:0;display:flex;align-items:center;gap:8px">
-      <label style="font-size:12px;color:var(--muted);margin:0">From</label>
-      <input type="date" name="from" value="{{ $from->format('Y-m-d') }}" style="border:1px solid var(--border);border-radius:9px;padding:8px 12px;font-size:13px;background:#fff">
+      <label for="report-from" style="font-size:12px;color:var(--muted);margin:0">From</label>
+      <input id="report-from" type="date" name="from" value="{{ $from->format('Y-m-d') }}" style="border:1px solid var(--border);border-radius:9px;padding:8px 12px;font-size:13px;background:#fff">
     </div>
     <div class="form-row" style="margin:0;display:flex;align-items:center;gap:8px">
-      <label style="font-size:12px;color:var(--muted);margin:0">To</label>
-      <input type="date" name="to" value="{{ $to->format('Y-m-d') }}" style="border:1px solid var(--border);border-radius:9px;padding:8px 12px;font-size:13px;background:#fff">
+      <label for="report-to" style="font-size:12px;color:var(--muted);margin:0">To</label>
+      <input id="report-to" type="date" name="to" value="{{ $to->format('Y-m-d') }}" style="border:1px solid var(--border);border-radius:9px;padding:8px 12px;font-size:13px;background:#fff">
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       @php
@@ -37,17 +38,17 @@
 </div>
 
 <div class="kpi-grid">
-  <div class="kpi"><div class="label">Total Revenue</div><div class="value">₱{{ number_format($totalRevenue, 2) }}</div><div class="delta up">This period</div></div>
-  <div class="kpi"><div class="label">Net Profit</div><div class="value">₱{{ number_format($netProfit, 2) }}</div><div class="delta up">After fees</div></div>
+  <div class="kpi"><div class="label">Buyer order value</div><div class="value">₱{{ number_format($totalRevenue, 2) }}</div><div class="delta up">This period</div></div>
+  <div class="kpi"><div class="label">Item sales before discounts</div><div class="value">PHP {{ number_format($paymentReport['metrics']['item_sales']/100, 2) }}</div><div class="delta">Excludes shipping</div></div>
   <div class="kpi"><div class="label">Orders Completed</div><div class="value">{{ number_format($ordersCompleted) }}</div><div class="delta">This period</div></div>
   <div class="kpi"><div class="label">Avg. Order Value</div><div class="value">₱{{ number_format($avgOrderValue, 2) }}</div><div class="delta">Per order</div></div>
 </div>
 
-<div class="dash-grid">
+<div class="dash-grid payment-report-layout">
   <div class="stack">
     {{-- Revenue chart --}}
     <div class="card">
-      <div class="card-head"><div><h2>Revenue Over Time</h2><p>Daily sales for selected period</p></div></div>
+      <div class="card-head"><div><h2>Completed order value over time</h2><p>Completed orders by last update date; not payment receipt dates</p></div></div>
       <div class="card-pad">
         <div class="chart-area">
           @foreach($revenueChart as $amount)
@@ -63,7 +64,7 @@
       <div class="card-pad" style="padding:0">
         <div class="table-wrap">
         <table class="tbl">
-          <thead><tr><th>#</th><th>Product</th><th>Units Sold</th><th>Revenue</th></tr></thead>
+          <thead><tr><th>#</th><th>Product</th><th>Units Sold</th><th>Item value before discounts</th></tr></thead>
           <tbody>
             @forelse($topProducts as $product)
             <tr>
@@ -88,28 +89,11 @@
   </div>
 
   <div class="stack">
-    {{-- Financial summary --}}
-    <div class="card">
-      <div class="card-head"><h2>Financial Summary</h2></div>
-      <div class="card-pad" style="display:flex;flex-direction:column;gap:10px">
-        @foreach([
-          ['Gross Revenue', '₱' . number_format($totalRevenue, 2), ''],
-          ['Platform Commission', '- ₱' . number_format($commission, 2), 'color:var(--danger)'],
-          ['Shipping Fees', '- ₱' . number_format($shippingFees, 2), 'color:var(--danger)'],
-          ['Voucher Discounts', '- ₱' . number_format($discounts, 2), 'color:var(--danger)'],
-          ['Net Profit', '₱' . number_format($netProfit, 2), 'color:var(--success);font-weight:700;font-size:15px'],
-        ] as [$label,$val,$style])
-        <div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;{{ $label==='Net Profit'?'border-top:2px solid var(--border);margin-top:4px;padding-top:12px':'' }}">
-          <span style="color:var(--muted)">{{ $label }}</span>
-          <span class="mono" style="{{ $style }}">{{ $val }}</span>
-        </div>
-        @endforeach
-      </div>
-    </div>
+    @include('reports.payment-summary',['report'=>$paymentReport])
 
     {{-- Sales by category --}}
     <div class="card">
-      <div class="card-head"><h2>Sales by Category</h2></div>
+      <div class="card-head"><h2>Item sales by category</h2></div>
       <div class="card-pad" style="display:flex;flex-direction:column;gap:8px">
         @forelse($salesByCategory as $cat => $amount)
         <div style="display:flex;align-items:center;gap:10px;font-size:12px">

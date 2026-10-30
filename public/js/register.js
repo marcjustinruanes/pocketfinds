@@ -59,7 +59,7 @@ function normalizeMobile(number) {
 function validateRegistrationName(value) {
     if (!value) return null;
     if ([...value].length < 2 || [...value].length > 50) return 'Name must be between 2 and 50 characters.';
-    return /^[\p{L}-]+$/u.test(value) ? null : 'Use only letters and hyphens.';
+    return /^[\p{L}-]+([\s][\p{L}-]+)*$/u.test(value) ? null : 'Use only letters, hyphens, and single spaces between words.';
 }
 
 if (isSeller) {
@@ -682,10 +682,11 @@ if (businessNameInput && !isLogistics) {
         // Show clock icon while waiting
         bnStatus.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;color:#94a3b8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
         businessNameTimer = setTimeout(() => {
-            fetch(`/register/check-business-name?business_name=${encodeURIComponent(value)}`)
+            fetch(`/register/check-business-name?business_name=${encodeURIComponent(value)}&account_type=${isSeller?'seller':isRider?'rider':'logistics'}`)
                 .then(r => r.json())
                 .then(data => {
-                    businessNameAvailable = data.available;
+                    businessNameAvailable = data.available || data.reapplication_only;
+                    if(data.reapplication_only){bnStatus.textContent="Reserved company: only the same rejected applicant may reapply.";return;}
                     if (data.available) {
                         bnStatus.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>';
                         bnStatus.style.color = '#16a34a';
@@ -1077,7 +1078,7 @@ const rules = {
     middle_name: validateRegistrationName,
     birthday: (v) => v && v > birthdayField.max ? `You must be at least ${minimumRegistrationAge} years old to register.` : null,
     password: (v) => {
-        if (v.length < 8 || !/[A-Z]/.test(v) || !/[a-z]/.test(v) || !/[0-9]/.test(v) || !/[^\p{L}\p{N}\s]/u.test(v)) {
+        if ([...v].length < 8 || !/\p{Lu}/u.test(v) || !/\p{Ll}/u.test(v) || !/\p{N}/u.test(v) || !/[\p{Z}\p{S}\p{P}]/u.test(v)) {
             return 'Use at least 8 characters with uppercase, lowercase, a number and a special character.';
         }
         return null;
@@ -1116,10 +1117,10 @@ mobileField?.addEventListener('paste', function (event) {
     this.dispatchEvent(new Event('input', { bubbles: true }));
 });
 
-// Name fields accept Unicode letters and hyphens only.
+// Name fields accept Unicode letters, hyphens, and single spaces between words.
 ['last_name', 'given_names', 'middle_name'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', function () {
-        this.value = this.value.replace(/[^\p{L}-]/gu, '');
+        this.value = this.value.replace(/[^\p{L}\s-]/gu, '').replace(/  +/g, ' ');
     });
 });
 
@@ -1371,7 +1372,7 @@ function validateStep(step) {
 
     panel.querySelectorAll('input, select').forEach(el => {
         clearError(el);
-        const val = el.value.trim();
+        const val = el.type === 'password' ? el.value : el.value.trim();
         if (rules[el.id]) { const msg = rules[el.id](val); if (msg) { showError(el, msg); valid = false; return; } }
         if (el.hasAttribute('required') && !val) { showError(el, 'This field is required.'); valid = false; }
     });

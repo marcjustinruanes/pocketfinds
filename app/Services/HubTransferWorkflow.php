@@ -32,6 +32,7 @@ class HubTransferWorkflow
             $actor = $this->actor($user);
             $leg = ShipmentHubLeg::forCompany($actor->business_name)->findOrFail($legId);
             $shipment = Shipment::whereKey($leg->shipment_id)->lockForUpdate()->firstOrFail();
+            app(LogisticsRecovery::class)->assertNotRecovered($shipment->id);
             $leg = ShipmentHubLeg::whereKey($legId)->lockForUpdate()->firstOrFail();
             if ($leg->transfer_batch_id) {
                 return $this->scope($actor)->findOrFail($leg->transfer_batch_id);
@@ -73,6 +74,7 @@ class HubTransferWorkflow
             $batch = HubTransferBatch::where('company_name', $rider->business_name)->where('rider_id', $rider->id)->whereKey($leg->transfer_batch_id)->lockForUpdate()->firstOrFail();
             abort_unless($batch->status === 'in_transit' && $batch->dispatched_at, 422);
             $shipment = Shipment::whereKey($leg->shipment_id)->lockForUpdate()->firstOrFail();
+            app(LogisticsRecovery::class)->assertNotRecovered($shipment->id);
             $leg = ShipmentHubLeg::whereKey($legId)->lockForUpdate()->firstOrFail();
             abort_unless($leg->status === 'in_transit' && ! $leg->rider_confirmed_pickup_at && $leg->rider_id === $rider->id && $shipment->shipping_status === 'hub_transfer', 422, 'This pickup is not available for confirmation.');
             $leg->update(['rider_confirmed_pickup_at' => now()]);
@@ -132,6 +134,7 @@ class HubTransferWorkflow
         abort_unless($ids && count($ids) === count(array_unique($ids)), 422, 'Select distinct parcels.');
         $parcels = Shipment::where('logistics_company', $actor->business_name)->whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get();
         abort_unless($parcels->count() === count($ids), 422, 'One or more parcels are unavailable in this company.');
+        foreach ($parcels as $parcel) app(LogisticsRecovery::class)->assertNotRecovered($parcel->id);
 
         return $parcels;
     }
@@ -250,7 +253,7 @@ class HubTransferWorkflow
             abort_unless($rider->account_type === 'rider' && ! $rider->is_admin && ! $rider->is_logistics && $rider->status === 'approved'
                 && (int) $rider->logistics_hub_id === $origin->id && $rider->vehicle_type === 'four_wheels' && in_array($rider->vehicle_ownership, ['own', 'company'], true), 422, 'Choose an approved four-wheel transfer rider assigned to the origin hub.');
             abort_if(HubTransferBatch::where('rider_id', $rider->id)->where('status', 'in_transit')->lockForUpdate()->first(['id'])
-                || DeliveryAssignment::where('courier_id', $rider->id)->whereNotIn('status', ['completed', 'cancelled', 'rejected'])->lockForUpdate()->first(['id']), 422, 'The rider has a conflicting active assignment.');
+                || app(AssignmentWork::class)->blocksRider($rider->id), 422, 'The rider has active or ambiguous work requiring review.');
             $vehicle = null;
             if ($rider->vehicle_ownership === 'company') {
                 $query = CompanyVehicle::where('company_name', $actor->business_name)->where('logistics_hub_id', $origin->id)->where('vehicle_type', 'four_wheels')->riderVisible();
@@ -268,6 +271,7 @@ class HubTransferWorkflow
             $members = $this->currentMembers($batch, $actor, $origin, $destination);
             $now = now();
             $batch->update(['status' => 'in_transit', 'dispatched_by' => $actor->id, 'dispatched_at' => $now, 'rider_id' => $rider->id, 'vehicle_id' => $vehicle?->id]);
+            app(LogisticsFinance::class)->snapshotTransfer($batch);
             foreach ($members as $member) {
                 $leg = ShipmentHubLeg::findOrFail($member->leg_id);
                 $shipment = Shipment::findOrFail($member->shipment_id);
@@ -293,11 +297,10 @@ class HubTransferWorkflow
             GcashLocks::operation([], [$id], [$user->id]);
             $actor = $this->actor($user);
             $batch = $this->scope($actor)->lockForUpdate()->findOrFail($id);
-            if ($actor->isHubStaff()) {
-                abort_unless((int) $actor->logistics_hub_id === (int) $batch->destination_hub_id, 403, 'Only the destination hub can receive this batch.');
-            }
+            [, $destination] = $this->hubs($actor, $batch->origin_hub_id, $batch->destination_hub_id, false);
+            app(LogisticsAccess::class)->receivingStaff($actor, $destination->municipality, $destination->province);
+            abort_unless((int) $actor->logistics_hub_id === (int) $batch->destination_hub_id, 403, 'Only the destination hub can receive this batch.');
             abort_unless($batch->status === 'in_transit' && $batch->dispatched_at, 422, 'Only a dispatched batch can be received.');
-            $this->hubs($actor, $batch->origin_hub_id, $batch->destination_hub_id, false);
             $members = $batch->members()->orderBy('shipment_id')->lockForUpdate()->get();
             $selected = $shipmentIds === null ? $members->whereNull('received_at') : $members->whereIn('shipment_id', $shipmentIds);
             abort_unless($selected->isNotEmpty() && ($shipmentIds === null || (count($shipmentIds) === count(array_unique($shipmentIds)) && $selected->count() === count($shipmentIds))), 422, 'Select distinct parcels in this batch.');
@@ -332,6 +335,7 @@ class HubTransferWorkflow
             if ($batch->members()->whereNull('received_at')->lockForUpdate()->get(['id'])->isEmpty()) {
                 $batch->update(['status' => 'completed', 'received_by' => $actor->id, 'received_at' => now()]);
                 $this->event($batch, $actor, 'received', 'in_transit');
+                app(RiderCompensation::class)->batchCompleted($batch->id);
             }
 
             return $batch;

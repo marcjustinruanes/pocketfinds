@@ -1358,6 +1358,7 @@ function validateRiderStep2() {
     // with no way forward; the actual uniqueness rule is still fully enforced server-side
     // at final submit (RegisterController), so this is just an early, best-effort warning.
     if (!ln.value.trim()) { showError(ln, 'License number is required.'); valid = false; }
+    else if (!/^[A-Z]\d{2}-\d{2}-\d{6}$/.test(ln.value.trim())) { showError(ln, 'Use the licence format N01-23-456789, with an uppercase letter.'); valid = false; }
     else if (licenseNumberAvailable === false) { showError(ln, "This license number is already registered."); valid = false; }
     if (!le.value) { showError(le, 'Expiry date is required.'); valid = false; }
     else if (le.value < le.min) { showError(le, 'Your driver\'s license has expired. Enter today or a later expiry date.'); valid = false; }

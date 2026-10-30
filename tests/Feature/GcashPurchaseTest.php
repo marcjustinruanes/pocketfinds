@@ -420,7 +420,7 @@ class GcashPurchaseTest extends TestCase
         $this->get(route('buyer.messages', ['seller' => $this->seller->username, 'purchase' => $p->id]))->assertOk()->assertSee('Open linked purchase')
             ->assertSee('css/messaging.css')->assertSee('aria-label="Message"', false)->assertSee('Shift+Enter')->assertSee('Back to conversations');
         $this->actingAs($this->seller)->get(route('gcash.show', $p->id))->assertOk()->assertSee('Send payment instructions');
-        $this->get(route('gcash.index'))->assertOk()->assertSee('Item')->assertSee('GCash payments');
+        $this->get(route('gcash.index'))->assertOk()->assertSee('Item')->assertSee('Buyer GCash Payments');
         $this->get(route('seller.messages', ['buyer' => $this->buyer->id, 'purchase' => $p->id]))->assertOk()
             ->assertSee('data-has-conversation="true"', false)->assertSee('Back to conversations')->assertSee('Shift+Enter')->assertSee('id="chatFeedback"', false);
     }
@@ -753,7 +753,7 @@ class GcashPurchaseTest extends TestCase
         $this->assertNull($shipment->fresh()->seller_confirmed_pickup_at);
     }
 
-    public function test_legitimate_post_handoff_return_releases_prepaid_stock_once(): void
+    public function test_generic_return_cannot_release_prepaid_stock_without_seller_receipt(): void
     {
         [$purchase, $order, $shipment] = $this->pickupFixture();
         DB::table('orders')->where('id', $order->id)->update(['status' => 'delivery_failed']);
@@ -761,12 +761,11 @@ class GcashPurchaseTest extends TestCase
         $this->product->fresh()->update(['status' => 'rejected']);
         $logistics = $this->person('buyer');
         DB::table('users')->where('id', $logistics->id)->update(['account_type' => 'logistics', 'is_logistics' => true, 'logistics_role' => 'admin', 'business_name' => 'Alpha']);
-        $this->actingAs($logistics->fresh())->patchJson(route('logistics.status.update', $shipment->id), ['status' => 'returned'])->assertRedirect();
-        $this->assertSame('returned', $order->fresh()->status);
-        $this->assertSame(10, $this->product->fresh()->stock);
-        $this->patchJson(route('logistics.status.update', $shipment->id), ['status' => 'returned'])->assertRedirect();
-        $this->assertSame(10, $this->product->fresh()->stock);
-        $this->assertSame('manual_resolution', $purchase->fresh()->payment_state);
+        $held=$this->product->fresh()->stock;
+        $this->actingAs($logistics->fresh())->patchJson(route('logistics.status.update', $shipment->id), ['status'=>'returned'])->assertStatus(422);
+        $this->assertSame('delivery_failed',$order->fresh()->status);$this->assertSame($held,$this->product->fresh()->stock);
+        $this->patchJson(route('logistics.status.update',$shipment->id),['status'=>'returned'])->assertStatus(422);
+        $this->assertSame($held,$this->product->fresh()->stock);$this->assertSame('manual_resolution',$purchase->fresh()->payment_state);
     }
 
     public function test_private_cleanup_on_rejected_upload_and_failed_transaction(): void

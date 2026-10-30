@@ -78,7 +78,36 @@ class Shipment extends Model
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
+        static::creating(function ($m) { $m->id = $m->id ?: (string) Str::uuid(); });
+        static::creating(function ($shipment) {
+            if (app(\App\Services\LogisticsShipping::class)->installed()) $shipment->shipping_finance_version = 1;
+        });
+        static::created(function ($shipment) {
+            if ((int) $shipment->shipping_finance_version === 1) app(\App\Services\LogisticsShipping::class)->createObligation($shipment);
+        });
+        static::updating(function ($shipment) {
+            // Only explicit operational fields; never copy request bodies or private evidence paths.
+            $fields=['shipping_status','pickup_rider_id','courier_id','hub_transfer_rider_id'];
+            if(request()->route() && $shipment->isDirty($fields)){
+                $context=request()->attributes->get('operational_changes',[]);
+                foreach($fields as $field)if($shipment->isDirty($field)){
+                    $context[$shipment->id][$field]=['old'=>array_key_exists($field,$context[$shipment->id]??[])?$context[$shipment->id][$field]['old']:$shipment->getOriginal($field),'new'=>$shipment->{$field}];
+                }
+                $reason=request()->input('reason');$context[$shipment->id]['reason']=is_string($reason)?mb_substr(trim($reason),0,500):null;
+                request()->attributes->set('operational_changes',$context);
+            }
+            if ($shipment->isDirty(['shipping_status','pickup_rider_id','courier_id','hub_transfer_rider_id','rider_confirmed_pickup_at','seller_confirmed_pickup_at','pickup_approved_at'])) {
+                app(\App\Services\AssignmentReassignment::class)->assertNoPending($shipment->id);
+            }
+            if ($shipment->isDirty(['logistics_company', 'order_id', 'shipping_finance_version', 'origin_hub', 'origin_province', 'destination_hub', 'destination_province']) && (int) $shipment->getOriginal('shipping_finance_version') === 1) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['shipping' => 'A financial shipment cannot change carrier, order or policy version.']);
+            }
+            if ($shipment->isDirty('pickup_approved_at') && $shipment->pickup_approved_at) app(\App\Services\LogisticsShipping::class)->gate($shipment);
+            if ($shipment->isDirty('shipping_status') && in_array($shipment->shipping_status, ['delivered', 'completed'], true)
+                && !($shipment->getOriginal('shipping_status') === 'delivered' && $shipment->shipping_status === 'completed')) {
+                app(\App\Services\CodCollection::class)->assertRecorded($shipment->order, $shipment->id);
+            }
+        });
     }
 
     public function order()
@@ -114,6 +143,9 @@ class Shipment extends Model
      */
     public function save(array $options = [])
     {
+        if (! $this->exists && app(\App\Services\LogisticsShipping::class)->installed()) {
+            return DB::transaction(fn () => parent::save($options), 3);
+        }
         $order = $this->order_id ? Order::find($this->order_id) : null;
         if (! $this->exists || ! $order?->gcash_purchase_id) {
             return parent::save($options);

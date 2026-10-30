@@ -1,33 +1,15 @@
 @extends('admin.layout')
-@section('title', 'Commission')
-@section('page-title', 'Commission')
-@section('page-sub', 'Platform commission ledger')
+@section('title', 'Historical Commission Archive')
+@section('page-title', 'Historical Commission Archive')
+@section('page-sub', 'Historical records only; current payments have no platform commission')
 
 @section('content')
-<div class="card" style="margin-bottom:18px">
-  <div class="card-pad">
-    <div class="ledger-hero">
-      <span class="modal-icon" style="width:52px;height:52px;border-radius:14px"><x-admin-icon name="peso" /></span>
-      <div>
-        <div style="font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Total Commission Collected</div>
-        <div class="ledger-num">₱{{ number_format($totalAmount, 2) }} <small>PHP</small></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="kpi-grid" style="margin-bottom:18px">
-  <div class="kpi"><div class="label">Total Records</div><div class="value">{{ $commissions->count() }}</div></div>
-  <div class="kpi tone-success"><div class="label">Total Commission</div><div class="value">₱{{ number_format($totalAmount, 2) }}</div></div>
-  <div class="kpi tone-info"><div class="label">Active Sellers</div><div class="value">{{ $sellers }}</div></div>
-  <div class="kpi tone-warning"><div class="label">Avg Rate</div><div class="value">{{ $commissions->avg('commission_rate') ? number_format($commissions->avg('commission_rate'), 1).'%' : '—' }}</div></div>
-</div>
-
+<p>These preserved legacy entries are not proof of collected fees, actual Seller payments or current platform revenue. No current commission deduction is calculated. Use <a href="{{ route('admin.reports') }}">Reports</a> for current sales and payment records.</p>
 <div class="card">
-  <div class="card-head"><div><h2>Commission Ledger</h2><p>Per-transaction commission breakdown</p></div></div>
+  <div class="card-head"><div><h2>Historical commission entries</h2><p>Stored values, not recalculated or applied to current payouts</p></div></div>
   <div class="table-wrap">
     <table class="dtable">
-      <thead><tr><th>Seller</th><th>Order ID</th><th>Sale Amount</th><th>Rate</th><th>Commission</th><th>Seller Earnings</th><th>Date</th></tr></thead>
+      <thead><tr><th>Seller</th><th>Order ID</th><th>Sale Amount</th><th>Rate</th><th>Stored legacy commission</th><th>Stored legacy allocation (not payment)</th><th>Date</th></tr></thead>
       <tbody>
         @forelse($commissions as $c)
         <tr class="rail-row rail-approved">

@@ -23,9 +23,19 @@ class LogisticsAuthorizationTest extends TestCase
     {
         parent::setUp();
         $this->assertSame('sqlite', config('database.default'));
+        \Illuminate\Support\Facades\Storage::fake('sensitive_documents');
+        foreach(['id_files/id.png','selfie_files/selfie.png','license_files/license.png','vehicle_docs/or.png','vehicle_docs/cr.png'] as $path) \Illuminate\Support\Facades\Storage::disk('sensitive_documents')->put($path,'private fixture');
+        \Illuminate\Support\Facades\Http::preventStrayRequests();
+        \Illuminate\Support\Facades\Http::fake([
+            'https://psgc.gitlab.io/api/regions/' => \Illuminate\Support\Facades\Http::response([['code'=>'040000000','name'=>'CALABARZON']]),
+            'https://psgc.gitlab.io/api/provinces/' => \Illuminate\Support\Facades\Http::response([['code'=>'043400000','name'=>'Laguna','regionCode'=>'040000000']]),
+            'https://psgc.gitlab.io/api/provinces/043400000/cities-municipalities/' => \Illuminate\Support\Facades\Http::response([['code'=>'043426000','name'=>'Santa Cruz'],['code'=>'043424000','name'=>'Pila']]),
+            'https://psgc.gitlab.io/api/cities-municipalities/*/barangays/' => \Illuminate\Support\Facades\Http::response([['code'=>'043426001','name'=>'Test']]),
+        ]);
+
         Schema::create('users', function (Blueprint $t) {
             $t->id();
-            foreach (['username', 'email', 'given_names', 'last_name', 'sex', 'birthday', 'contact_no', 'barangay', 'province', 'municipality', 'password', 'business_name', 'account_type', 'auth_method', 'logistics_role', 'vehicle_type', 'vehicle_ownership', 'status', 'id_file', 'id_type_id', 'selfie_file', 'license_file', 'license_number', 'license_expiry', 'vehicle_brand', 'vehicle_model', 'plate_number', 'or_file', 'cr_file'] as $column) {
+            foreach (['status_reason','region','suffix','middle_name','username', 'email', 'given_names', 'last_name', 'sex', 'birthday', 'contact_no', 'barangay', 'province', 'municipality', 'password', 'business_name', 'account_type', 'auth_method', 'logistics_role', 'vehicle_type', 'vehicle_ownership', 'status', 'id_file', 'id_type_id', 'selfie_file', 'license_file', 'license_number', 'license_expiry', 'vehicle_brand', 'vehicle_model', 'plate_number', 'or_file', 'cr_file'] as $column) {
                 $t->string($column)->nullable();
             }
             $t->integer('age')->nullable();
@@ -35,9 +45,10 @@ class LogisticsAuthorizationTest extends TestCase
             $t->timestamps();
         });
         Schema::create('id_types', fn (Blueprint $t) => [$t->id(), $t->string('name')]);
-        DB::table('id_types')->insert(['id' => 1, 'name' => 'License']);
+        DB::table('id_types')->insert(['id' => 1, 'name' => "Driver's License"]);
         Schema::create('vehicle_types', fn (Blueprint $t) => [$t->id(), $t->string('slug')]);
         DB::table('vehicle_types')->insert(['id' => 1, 'slug' => 'two_wheels']);
+        DB::table('vehicle_types')->insert(['id'=>2,'slug'=>'four_wheels']);
         Schema::create('logistics_hubs', function (Blueprint $t) {
             $t->id();
             $t->string('company_name');
@@ -117,8 +128,16 @@ class LogisticsAuthorizationTest extends TestCase
         });
         $migration = require database_path('migrations/2026_10_13_000001_add_logistics_operations.php');
         $migration->up();
+        (require database_path('migrations/2026_10_29_000008_add_operational_audit_context.php'))->up();
+        (require database_path('migrations/2026_10_29_000009_add_issue_investigation_context.php'))->up();
         (require database_path('migrations/2026_10_14_000002_add_role_hiring_management.php'))->up();
         (require database_path('migrations/2026_10_14_000001_add_hub_transfer_batches.php'))->up();
+    }
+
+    private function applicationEvidence(string $role): array
+    {
+        $image=fn()=>\Illuminate\Http\UploadedFile::fake()->createWithContent('document.png',base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aL1kAAAAASUVORK5CYII='));
+        return ['region'=>'CALABARZON','selfie_file'=>$image()]+($role==='rider'?['license_number'=>'M01-00-000001','license_expiry'=>'2030-01-01','license_file'=>$image(),'vehicle_brand'=>'Test','vehicle_model'=>'Test','plate_number'=>'MANAGED','or_file'=>$image(),'cr_file'=>$image()]:['id_type_id'=>1,'id_file'=>$image()]);
     }
 
     private function hub(string $company = 'Alpha', string $town = 'Santa Cruz', string $province = 'Laguna'): LogisticsHub
@@ -133,7 +152,7 @@ class LogisticsAuthorizationTest extends TestCase
         return User::create(['username' => $name, 'email' => $name.'@example.test', 'given_names' => 'Test', 'last_name' => 'Account', 'status' => $status,
             'business_name' => $hub->company_name, 'logistics_hub_id' => $hub->id, 'is_admin' => $role === 'admin', 'is_logistics' => in_array($role, ['hub_staff', 'logistics_admin']),
             'account_type' => in_array($role, ['hub_staff', 'logistics_admin']) ? 'logistics' : $role, 'logistics_role' => $role === 'hub_staff' ? 'hub_staff' : ($role === 'logistics_admin' ? 'admin' : null),
-            'id_file' => 'id.png', 'id_type_id' => 1, 'selfie_file' => 'selfie.png', 'license_file' => 'license.png', 'license_number' => $name, 'license_expiry' => '2030-01-01', 'vehicle_brand' => 'Test', 'vehicle_model' => 'Test', 'plate_number' => $name, 'or_file' => 'or.png', 'cr_file' => 'cr.png', 'vehicle_type' => 'two_wheels', 'vehicle_ownership' => 'own', 'password' => 'TestPassword!123']);
+            'id_file' => $role==='rider'?'license_files/license.png':'id_files/id.png', 'id_type_id' => 1, 'selfie_file' => 'selfie_files/selfie.png', 'license_file' => 'license_files/license.png', 'license_number' => $name, 'license_expiry' => '2030-01-01', 'vehicle_brand' => 'Test', 'vehicle_model' => 'Test', 'plate_number' => $name, 'or_file' => 'vehicle_docs/or.png', 'cr_file' => 'vehicle_docs/cr.png', 'vehicle_type' => 'two_wheels', 'vehicle_ownership' => 'own', 'password' => 'TestPassword!123']);
     }
 
     private function parcel(LogisticsHub $from, LogisticsHub $to, string $id = 'parcel', string $status = 'sorted'): Shipment
@@ -153,6 +172,18 @@ class LogisticsAuthorizationTest extends TestCase
         $access = app(LogisticsAccess::class);
         $this->assertSame(['own'], $access->shipments($this->user($a))->pluck('id')->all());
         $this->assertEqualsCanonicalizing(['own', 'other-province'], $access->shipments($this->user($a, 'logistics_admin'))->pluck('id')->all());
+    }
+
+    public function test_admin_scanner_redirects_to_scoped_monitor_lookup_while_staff_keeps_scanning(): void
+    {
+        $hub=$this->hub();$foreign=$this->hub('Beta');
+        $this->parcel($hub,$hub,'lookup-own','returned');
+        $this->parcel($foreign,$foreign,'lookup-foreign','returned');
+        $this->actingAs($this->user($hub,'logistics_admin'))->get('/logistics/scan')->assertRedirect(route('logistics.monitor',['lookup'=>1]));
+        $this->get('/logistics/monitor?search=lookup')->assertOk()->assertSee('TRACK-lookup-own')->assertDontSee('TRACK-lookup-foreign');
+        $this->get('/logistics/monitor')->assertOk()->assertDontSee('TRACK-lookup-own');
+        $this->postJson('/logistics/scan/lookup',['code'=>'TRACK-lookup-own'])->assertOk();
+        $this->actingAs($this->user($hub))->get('/logistics/scan')->assertOk()->assertSee('Universal Scanner');
     }
 
     public function test_suspended_staff_and_non_logistics_roles_cannot_use_logistics_routes(): void
@@ -219,10 +250,10 @@ class LogisticsAuthorizationTest extends TestCase
     {
         $hub = $this->hub();
         $admin = $this->user($hub, 'logistics_admin');
-        $data = ['role' => 'hub_staff', 'username' => 'new_staff', 'email' => 'new_staff@example.test', 'given_names' => 'New', 'last_name' => 'Staff',
+        $data = ['role' => 'hub_staff', 'username' => 'new_staff', 'email' => 'new_staff@gmail.com', 'given_names' => 'New', 'last_name' => 'Staff',
             'sex' => 'female', 'birthday' => '2000-01-01', 'contact_no' => '09123456789', 'barangay' => 'Test', 'password' => 'NewStaffPassword!123',
             'password_confirmation' => 'NewStaffPassword!123', 'status' => 'pending', 'logistics_hub_id' => $hub->id, 'is_admin' => true, 'business_name' => 'Beta'];
-        $this->actingAs($admin)->post('/logistics/accounts', $data)->assertRedirect();
+        $this->actingAs($admin)->post('/logistics/accounts', array_merge($this->applicationEvidence($data['role']),$data))->assertRedirect();
         $staff = User::where('username', 'new_staff')->firstOrFail();
         $this->assertFalse($staff->is_admin);
         $this->assertTrue($staff->isHubStaff());
@@ -238,32 +269,34 @@ class LogisticsAuthorizationTest extends TestCase
     {
         $hub = $this->hub();
         $admin = $this->user($hub, 'logistics_admin');
-        $this->actingAs($admin)->get('/logistics/accounts?role=rider')->assertOk()
+        $this->actingAs($admin)->get('/logistics/accounts?role=rider')->assertRedirect(route('logistics.riders'));
+        $this->get('/logistics/riders')->assertOk()
             ->assertSee('name="role" value="rider"', false)->assertSee('/logistics/riders/accounts', false)
             ->assertSee('name="vehicle_type"', false);
-        $this->get('/logistics/accounts?role=hub_staff')->assertOk()
+        $this->get('/logistics/accounts?role=hub_staff')->assertRedirect(route('logistics.staff'));
+        $this->get('/logistics/staff')->assertOk()
             ->assertSee('name="role" value="hub_staff"', false)->assertSee('/logistics/staff/accounts', false)
             ->assertDontSee('name="vehicle_type"', false);
-        $data = ['role' => 'hub_staff', 'username' => 'specific_staff', 'email' => 'specific_staff@example.test',
+        $data = ['role' => 'hub_staff', 'username' => 'specific_staff', 'email' => 'specific_staff@gmail.com',
             'given_names' => 'Specific', 'last_name' => 'Staff', 'sex' => 'female', 'birthday' => '2000-01-01',
             'contact_no' => '09123456789', 'barangay' => 'Test', 'password' => 'SpecificPassword!123',
             'password_confirmation' => 'SpecificPassword!123', 'status' => 'pending', 'logistics_hub_id' => $hub->id];
         $this->postJson('/logistics/riders/accounts', $data)->assertUnprocessable()->assertJsonValidationErrors('role');
         $this->assertDatabaseMissing('users', ['username' => 'specific_staff']);
-        $this->post('/logistics/staff/accounts', $data)->assertRedirect();
+        $this->post('/logistics/staff/accounts', array_merge($this->applicationEvidence('hub_staff'),$data))->assertRedirect();
         $this->assertTrue(User::where('username', 'specific_staff')->firstOrFail()->isHubStaff());
-        $data = array_merge($data, ['role' => 'rider', 'username' => 'specific_rider', 'email' => 'specific_rider@example.test',
-            'vehicle_type' => 'four_wheels', 'vehicle_ownership' => 'own']);
+        $data = array_merge($data, ['given_names'=>'Courier','role' => 'rider', 'username' => 'specific_rider', 'email' => 'specific_rider@gmail.com',
+            'vehicle_type' => 'four_wheels', 'vehicle_ownership' => 'own', 'license_expiry' => '2030-01-01', 'contact_no' => '09123456780']);
         $this->postJson('/logistics/staff/accounts', $data)->assertUnprocessable()->assertJsonValidationErrors('role');
         $this->postJson('/logistics/riders/accounts', array_diff_key($data, ['vehicle_type' => true]))
             ->assertUnprocessable()->assertJsonValidationErrors('vehicle_type');
-        $this->post('/logistics/riders/accounts', $data)->assertRedirect();
+        $this->post('/logistics/riders/accounts', array_merge($this->applicationEvidence('rider'),$data))->assertRedirect();
         $rider = User::where('username', 'specific_rider')->firstOrFail();
         $this->assertSame('rider', $rider->account_type);
         $this->assertFalse($rider->is_logistics);
         $this->assertSame('four_wheels', $rider->vehicle_type);
-        $this->get('/logistics/riders?status=pending')->assertSee('specific_rider@example.test')->assertDontSee('specific_staff@example.test');
-        $this->get('/logistics/staff?status=pending')->assertSee('specific_staff@example.test')->assertDontSee('specific_rider@example.test');
+        $this->get('/logistics/riders?status=pending')->assertSee('specific_rider@gmail.com')->assertDontSee('specific_staff@gmail.com');
+        $this->get('/logistics/staff?status=pending')->assertSee('specific_staff@gmail.com')->assertDontSee('specific_rider@gmail.com');
         $this->actingAs($this->user($hub))->postJson('/logistics/riders/accounts', $data)->assertForbidden();
         $this->postJson('/logistics/staff/accounts', $data)->assertForbidden();
     }
@@ -278,8 +311,8 @@ class LogisticsAuthorizationTest extends TestCase
         $this->actingAs($staff)->post('/logistics/issues', ['tracking_number' => 'TRACK-parcel', 'kind' => 'damaged', 'description' => 'Box torn'])->assertRedirect();
         $id = DB::table('logistics_issues')->value('id');
         $this->actingAs($other)->patchJson('/logistics/issues/'.$id, ['status' => 'resolved', 'resolution' => 'Checked'])->assertNotFound();
-        $this->actingAs($staff)->patchJson('/logistics/issues/'.$id, ['status' => 'resolved'])->assertUnprocessable();
-        $this->patch('/logistics/issues/'.$id, ['status' => 'resolved', 'resolution' => 'Repacked', 'assigned_to' => $staff->id])->assertRedirect();
+        $this->actingAs($staff)->patchJson('/logistics/issues/'.$id, ['status' => 'resolved','revision'=>0,'outcome'=>'damage_documented'])->assertUnprocessable();
+        $this->patch('/logistics/issues/'.$id, ['status' => 'resolved','revision'=>0,'outcome'=>'damage_documented', 'resolution' => 'Repacked', 'assigned_to' => $staff->id])->assertRedirect();
         $this->assertDatabaseHas('logistics_issues', ['id' => $id, 'status' => 'resolved', 'resolution' => 'Repacked']);
         $this->assertDatabaseCount('logistics_issue_events', 2);
     }
@@ -291,7 +324,7 @@ class LogisticsAuthorizationTest extends TestCase
         $rider = $this->user($hub, 'rider');
         $parcel = $this->parcel($hub, $hub);
         $parcel->update(['courier_id' => $rider->id]);
-        $this->actingAs($admin)->patch('/logistics/status/parcel', ['status' => 'assigned_to_rider'])->assertSessionHasErrors('status');
+        $this->actingAs($admin)->patch('/logistics/status/parcel', ['status' => 'assigned_to_rider','reason'=>'Retry requested after review'])->assertSessionHasErrors('status');
         $this->assertDatabaseCount('delivery_assignments', 0);
         $this->assertDatabaseCount('logistics_activity_logs', 0);
         $this->assertDatabaseHas('shipments', ['id' => 'parcel', 'shipping_status' => 'sorted']);
@@ -369,20 +402,22 @@ class LogisticsAuthorizationTest extends TestCase
         $this->parcel($hub, $hub);
         $this->actingAs($admin)->post('/logistics/issues', ['tracking_number' => 'TRACK-parcel', 'hub_id' => $hub->id, 'kind' => 'damaged', 'description' => 'Recorded torn parcel'])->assertRedirect();
         $id = DB::table('logistics_issues')->value('id');
-        $this->patch('/logistics/issues/'.$id, ['status' => 'in_progress', 'assigned_to' => $staff->id])->assertRedirect();
+        $this->patch('/logistics/issues/'.$id, ['status' => 'in_progress','revision'=>0, 'assigned_to' => $staff->id])->assertRedirect();
         $this->actingAs($staff)->get('/logistics/issues')->assertOk()->assertSee('Recorded torn parcel');
         $this->actingAs($other)->get('/logistics/issues')->assertOk()->assertDontSee('Recorded torn parcel');
     }
 
     public function test_every_logistics_route_rejects_platform_admin_buyer_seller_and_rider(): void
     {
+        // This enumerates hundreds of requests to test roles, not per-minute rate limits.
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
         $hub = $this->hub();
         $routes = collect(app('router')->getRoutes()->getRoutes())->filter(fn ($r) => str_starts_with($r->getName() ?? '', 'logistics.'));
         $this->assertGreaterThan(50, $routes->count());
         foreach (['admin', 'buyer', 'seller', 'rider'] as $role) {
             $this->actingAs($this->user($hub, $role));
             foreach ($routes as $route) {
-                $uri = '/'.preg_replace('/\{[^}]+\}/', '999999', str_replace('{token}', str_repeat('a', 64), $route->uri()));
+                $uri = '/'.preg_replace('/\{[^}]+\}/', '999999', str_replace(['{token}', '{action}'], [str_repeat('a', 64), 'in'], $route->uri()));
                 $this->call($route->methods()[0], $uri)->assertRedirect('/login');
             }
         }
@@ -390,19 +425,21 @@ class LogisticsAuthorizationTest extends TestCase
 
     public function test_every_company_admin_route_rejects_hub_staff(): void
     {
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
         $this->actingAs($this->user($this->hub()));
         foreach (app('router')->getRoutes() as $route) {
             if (! str_starts_with($route->getName() ?? '', 'logistics.') || ! in_array('logistics.admin', $route->gatherMiddleware(), true)) {
                 continue;
             }
-            $this->call($route->methods()[0], '/'.preg_replace('/\{[^}]+\}/', '999999', str_replace('{token}', str_repeat('a', 64), $route->uri())))->assertForbidden();
+            $this->call($route->methods()[0], '/'.preg_replace('/\{[^}]+\}/', '999999', str_replace(['{token}', '{action}'], [str_repeat('a', 64), 'in'], $route->uri())))->assertForbidden();
         }
     }
 
     public function test_unknown_logistics_subrole_cannot_become_company_admin(): void
     {
         $user = $this->user($this->hub(), 'logistics_admin');
-        $user->update(['logistics_role' => 'unexpected']);
+        // Deliberately corrupt an isolated fixture: normal founder writes now forbid ownership removal.
+        DB::table('users')->where('id',$user->id)->update(['logistics_role'=>'unexpected']);$user->refresh();
         $this->assertFalse($user->isLogisticsAdmin());
         $this->actingAs($user)->get('/logistics/accounts')->assertForbidden();
     }
@@ -463,14 +500,13 @@ class LogisticsAuthorizationTest extends TestCase
         $hub = $this->hub();
         $next = $this->hub('Alpha', 'Pila');
         $admin = $this->user($hub, 'logistics_admin');
-        $data = ['role' => 'rider', 'username' => 'audit_rider', 'email' => 'audit_rider@example.test', 'given_names' => 'Audit', 'last_name' => 'Rider', 'sex' => 'female',
+        $data = ['role' => 'rider', 'username' => 'audit_rider', 'email' => 'audit_rider@gmail.com', 'given_names' => 'Audit', 'last_name' => 'Rider', 'sex' => 'female',
             'birthday' => '2000-01-01', 'contact_no' => '09123456789', 'barangay' => 'Test', 'password' => 'AuditPassword!123', 'password_confirmation' => 'AuditPassword!123',
-            'status' => 'pending', 'logistics_hub_id' => $hub->id, 'vehicle_type' => 'two_wheels', 'vehicle_ownership' => 'own'];
-        $this->actingAs($admin)->post('/logistics/accounts', $data)->assertRedirect();
+            'status' => 'pending', 'logistics_hub_id' => $hub->id, 'vehicle_type' => 'two_wheels', 'vehicle_ownership' => 'own', 'license_expiry' => '2030-01-01'];
+        $this->actingAs($admin)->post('/logistics/accounts', array_merge($this->applicationEvidence($data['role']),$data))->assertRedirect();
         $rider = User::where('username', 'audit_rider')->firstOrFail();
-        $rider->update(['id_file' => 'id.png', 'id_type_id' => 1, 'selfie_file' => 'selfie.png', 'license_file' => 'license.png', 'license_number' => 'audit-license', 'license_expiry' => '2030-01-01', 'vehicle_brand' => 'Test', 'vehicle_model' => 'Test', 'plate_number' => 'AUDIT', 'or_file' => 'or.png', 'cr_file' => 'cr.png']);
         foreach (['approve' => 'approved', 'suspend' => 'suspended', 'activate' => 'approved'] as $action => $status) {
-            $this->patch('/logistics/riders/'.$rider->id.'/'.$action)->assertRedirect();
+            $this->patch('/logistics/riders/'.$rider->id.'/'.$action,['reason_preset'=>'other','reason_details'=>'Documented fixture decision'])->assertRedirect();
             $this->assertSame($status, $rider->fresh()->status);
         }
         $data['logistics_hub_id'] = $next->id;
@@ -543,7 +579,8 @@ class LogisticsAuthorizationTest extends TestCase
         $parcel = $this->parcel($foreign, $foreign, 'foreign-batch', 'at_sorting_center');
         ShipmentHubLeg::create(['shipment_id' => $parcel->id, 'sequence' => 1, 'leg_type' => 'direct', 'from_hub' => $foreign->municipality, 'from_province' => $foreign->province, 'to_hub' => $foreign->municipality, 'to_province' => $foreign->province, 'status' => 'pending']);
         $admin = $this->user($hub, 'logistics_admin');
-        $response = $this->actingAs($admin)->get('/logistics/hub-requests?unrequested_batch_page=2')->assertOk();
+        $this->actingAs($admin)->get('/logistics/hub-requests')->assertRedirect(route('logistics.transfers', ['queue' => 'awaiting']));
+        $response = $this->get('/logistics/transfers?queue=awaiting&unrequested_batch_page=2')->assertOk();
         $this->assertSame(21, $response->viewData('notYetRequestedPages')->total());
         $this->assertCount(10, $response->viewData('notYetRequested'));
         foreach ($response->viewData('notYetRequested') as $legs) {
@@ -560,7 +597,10 @@ class LogisticsAuthorizationTest extends TestCase
         foreach ($batch as $leg) {
             $this->assertNotNull($leg->fresh()->requested_at);
         }
-        $this->actingAs($admin)->get('/logistics/hub-requests')->assertOk()->assertViewHas('pendingTransferRequests', fn ($rows) => $rows->count() === 1 && $rows->first()->count() === 2);
+        $this->actingAs($admin)->get('/logistics/transfers?status=pending')->assertOk()
+            ->assertViewHas('batches', fn ($rows) => $rows->count() === 1 && $rows->first()->members_count === 2);
+        $this->get('/logistics/transfers?queue=awaiting')->assertOk()
+            ->assertViewHas('pendingTransferRequests', fn ($rows) => $rows->isEmpty());
     }
 
     public function test_report_query_count_does_not_grow_per_rider_or_hub_and_route_touches_are_distinct(): void
@@ -650,7 +690,7 @@ class LogisticsAuthorizationTest extends TestCase
         foreach (['approve', 'reject', 'assign-pickup'] as $action) {
             $this->patchJson('/logistics/requests/foreign/'.$action, ['courier_id' => $rider->id])->assertNotFound();
         }
-        $this->patchJson('/logistics/status/foreign', ['status' => 'delivered'])->assertNotFound();
+        $this->patchJson('/logistics/status/foreign', ['status' => 'delivered'])->assertForbidden();
         $this->getJson('/logistics/messages/poll?receiver_id='.$rider->id)->assertForbidden();
         $this->postJson('/logistics/messages/send', ['receiver_id' => $rider->id, 'body' => 'Forged'])->assertForbidden();
         $this->assertDatabaseCount('logistics_activity_logs', 0);
@@ -679,11 +719,11 @@ class LogisticsAuthorizationTest extends TestCase
     {
         $hub = $this->hub();
         $admin = $this->user($hub, 'logistics_admin');
-        $this->actingAs($admin)->post('/logistics/accounts', [
-            'role' => 'hub_staff', 'username' => 'young_staff', 'email' => 'young_staff@example.test', 'given_names' => 'Young', 'last_name' => 'Staff', 'sex' => 'female',
+        $this->actingAs($admin)->post('/logistics/accounts', array_merge($this->applicationEvidence('hub_staff'),[
+            'role' => 'hub_staff', 'username' => 'young_staff', 'email' => 'young_staff@gmail.com', 'given_names' => 'Young', 'last_name' => 'Staff', 'sex' => 'female',
             'birthday' => now()->subYears(17)->toDateString(), 'contact_no' => '09123456789', 'barangay' => 'Test', 'password' => 'YoungPassword!123', 'password_confirmation' => 'YoungPassword!123',
             'status' => 'pending', 'logistics_hub_id' => $hub->id,
-        ])->assertRedirect();
+        ]))->assertRedirect();
         $this->assertDatabaseHas('users', ['username' => 'young_staff', 'age' => 17]);
     }
 
@@ -761,4 +801,20 @@ class LogisticsAuthorizationTest extends TestCase
         $this->assertSame('completed', $leg->fresh()->status);
         $this->assertDatabaseHas('delivery_assignments', ['shipment_id' => 'transfer', 'leg' => 'hub_transfer', 'status' => 'completed']);
     }
+    public function test_personnel_search_keeps_company_and_role_boundaries(): void
+    {
+        $hub = $this->hub();
+        $admin = $this->user($hub, 'logistics_admin');
+        $rider = $this->user($hub, 'rider', 'approved');
+        $rider->update(['given_names' => 'Searchable']);
+        $this->user($hub, 'hub_staff')->update(['given_names' => 'Searchable']);
+        $this->user($this->hub('Beta'), 'rider')->update(['given_names' => 'Searchable']);
+        $response = $this->actingAs($admin)->get('/logistics/riders?search=Searchable')->assertOk();
+        $this->assertSame([$rider->id], $response->viewData('riders')->pluck('id')->all());
+        $this->get('/logistics/riders?search=Missing')->assertOk()->assertViewHas('riders', fn ($rows) => $rows->isEmpty());
+        $this->get('/logistics/accounts?role=hub_staff&search=Searchable&status=approved')
+            ->assertRedirect(route('logistics.staff', ['search' => 'Searchable', 'status' => 'approved']));
+        $this->actingAs($this->user($hub))->get('/logistics/transfers?queue=awaiting')->assertForbidden();
+    }
+
 }

@@ -6,6 +6,16 @@ use Illuminate\Database\Eloquent\Model;
 
 class Complaint extends Model
 {
+    public function save(array $options = [])
+    {
+        if ($this->order_id && app(\App\Services\LogisticsTreasury::class)->installed()) {
+            return \Illuminate\Support\Facades\DB::transaction(function () use ($options) {
+                \App\Services\GcashLocks::order($this->order_id);
+                return parent::save($options);
+            }, 3);
+        }
+        return parent::save($options);
+    }
     public $incrementing = false;
     protected $keyType = 'string';
     public $timestamps = false;

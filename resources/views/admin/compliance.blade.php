@@ -45,10 +45,10 @@
             <td>
               <div style="display:flex;gap:5px;flex-wrap:wrap">
                 @if($seller->id_file)
-                  <button type="button" class="doc-chip" style="padding:4px 8px;font-size:11px;cursor:pointer" data-doc-trigger data-src="{{ Storage::url($seller->id_file) }}" data-type="{{ str_ends_with(strtolower($seller->id_file), '.pdf') ? 'pdf' : 'image' }}" data-title="Government ID"><x-admin-icon name="eye" /> ID</button>
+                  <button type="button" class="doc-chip" style="padding:4px 8px;font-size:11px;cursor:pointer" data-doc-trigger data-src="{{ app(\App\Services\SensitiveDocuments::class)->url($seller->id_file) }}" data-type="{{ str_ends_with(strtolower($seller->id_file), '.pdf') ? 'pdf' : 'image' }}" data-title="Government ID"><x-admin-icon name="eye" /> ID</button>
                 @endif
                 @if($seller->selfie_file)
-                  <button type="button" class="doc-chip" style="padding:4px 8px;font-size:11px;cursor:pointer" data-doc-trigger data-src="{{ Storage::url($seller->selfie_file) }}" data-type="{{ str_ends_with(strtolower($seller->selfie_file), '.pdf') ? 'pdf' : 'image' }}" data-title="Selfie with ID"><x-admin-icon name="eye" /> Selfie</button>
+                  <button type="button" class="doc-chip" style="padding:4px 8px;font-size:11px;cursor:pointer" data-doc-trigger data-src="{{ app(\App\Services\SensitiveDocuments::class)->url($seller->selfie_file) }}" data-type="{{ str_ends_with(strtolower($seller->selfie_file), '.pdf') ? 'pdf' : 'image' }}" data-title="Selfie with ID"><x-admin-icon name="eye" /> Selfie</button>
                 @endif
                 @if($seller->business_permit_file)
                   <button type="button" class="doc-chip" style="padding:4px 8px;font-size:11px;cursor:pointer" data-doc-trigger data-src="{{ Storage::url($seller->business_permit_file) }}" data-type="{{ str_ends_with(strtolower($seller->business_permit_file), '.pdf') ? 'pdf' : 'image' }}" data-title="Business Permit"><x-admin-icon name="eye" /> Permit</button>

@@ -121,9 +121,10 @@ class RegisterController extends Controller
             return response()->json(['available' => false, 'message' => 'Enter a business name.']);
         }
 
-        $exists = User::whereRaw('LOWER(business_name) = ?', [mb_strtolower($businessName)])->where('status', '!=', 'rejected')->exists();
-
-        return response()->json(['available' => ! $exists]);
+        $owners=User::whereRaw('LOWER(TRIM(business_name)) = ?',[mb_strtolower($businessName)])->where('account_type','logistics')->where('is_logistics',true)->where(fn($q)=>$q->where('logistics_role','admin')->orWhereNull('logistics_role'))->get();
+        $exists=User::whereRaw('LOWER(TRIM(business_name)) = ?',[mb_strtolower($businessName)])->where('status','!=','rejected')->exists() || $owners->isNotEmpty();
+        $reapply=$request->input('account_type')==='logistics' && $owners->count()===1 && $owners->first()->status==='rejected';
+        return response()->json(['available'=>!$exists,'reapplication_only'=>$reapply]);
     }
 
     /** A driver's license belongs to one person — block a second rider account reusing it. */
@@ -187,14 +188,16 @@ class RegisterController extends Controller
         // by this one internal field so nothing else in the app needs to know about it.
         $isLogisticsJoin = $isLogistics && $request->input('logistics_mode') === 'join';
         $isLogisticsFound = $isLogistics && ! $isLogisticsJoin;
+        if($isLogisticsFound && is_string($request->input('business_name'))) $request->merge(['business_name'=>trim($request->business_name)]);
 
         if (is_string($request->input('sec_registration_no'))) {
             $request->merge(['sec_registration_no' => strtoupper(trim($request->input('sec_registration_no')))]);
         }
 
-        // Match the registration fields: Unicode letters and hyphens only.
-        $nameRegex = '/^[\p{L}-]+$/u';
+        // Match the registration fields: Unicode letters, hyphens, and single internal spaces.
+        $nameRegex = '/^[\p{L}-]+(\s[\p{L}-]+)*$/u';
 
+        $returningFounder=$isLogisticsFound?User::where('account_type','logistics')->where('is_logistics',true)->where(fn($q)=>$q->where('logistics_role','admin')->orWhereNull('logistics_role'))->where('status','rejected')->where('email',$request->email)->where('username',$request->username)->whereRaw('LOWER(TRIM(business_name)) = ?',[mb_strtolower(trim((string)$request->business_name))])->first():null;
         $rules = [
             'last_name' => ['required', 'string', 'min:2', 'max:50', 'regex:'.$nameRegex],
             'given_names' => ['required', 'string', 'min:2', 'max:50', 'regex:'.$nameRegex],
@@ -205,18 +208,18 @@ class RegisterController extends Controller
             'age' => 'sometimes|integer|min:0',
             'email' => ['required', 'email', 'regex:/@gmail\.com$/i',
                 Rule::unique('users', 'email')->where(fn ($q) => $q->where('status', '!=', 'rejected'))],
-            'contact_no' => ['bail', 'required', 'string', 'regex:/^09\d{9}$/', function ($attribute, $value, $fail) {
-                if (User::whereIn('contact_no', PhilippineMobile::variants($value))->exists()) {
+            'contact_no' => ['bail', 'required', 'string', 'regex:/^09\d{9}$/', function ($attribute, $value, $fail) use ($request) {
+                if (User::whereIn('contact_no', PhilippineMobile::variants($value))->whereNot(fn($q)=>$q->where('status','rejected')->where('email',is_string($request->input('email'))?$request->input('email'):'')->where('username',is_string($request->input('username'))?$request->input('username'):''))->exists()) {
                     $fail('This mobile number is already registered.');
                 }
             }],
             'region' => 'required|string|max:255',
             'seller_type' => $isSeller ? ['required', new Enum(\App\Enums\SellerType::class)] : ['prohibited'],
             'tin' => ($isSeller || $isLogisticsFound)
-                ? ['bail', 'required', 'string', 'regex:/^\d{12}$/D', Rule::unique('users', 'tin')]
+                ? ['bail', 'required', 'string', 'regex:/^\d{12}$/D', Rule::unique('users', 'tin')->ignore($returningFounder?->id)]
                 : ['prohibited'],
             'position' => $isLogisticsFound ? ['required', 'string', 'max:100'] : ['prohibited'],
-            'sec_registration_no' => $isLogisticsFound ? ['bail', 'required', 'string', 'regex:/^[A-Z]{2}[0-9]{9}$/D', Rule::unique('users', 'sec_registration_no')] : ['prohibited'],
+            'sec_registration_no' => $isLogisticsFound ? ['bail', 'required', 'string', 'regex:/^[A-Z]{2}[0-9]{9}$/D', Rule::unique('users', 'sec_registration_no')->ignore($returningFounder?->id)] : ['prohibited'],
             'postal_code' => ($isSeller || $isLogisticsFound) ? ['required', 'string', 'regex:/^[0-9]{4}$/D'] : ['prohibited'],
             'province' => 'required|string',
             'municipality' => 'required|string',
@@ -254,7 +257,7 @@ class RegisterController extends Controller
             // same LOWER() comparison the live /register/check-license endpoint uses —
             // otherwise a differently-cased duplicate could pass the live check yet still
             // collide here, or vice versa).
-            $rules['license_number'] = ['required', 'string', 'max:50', function ($attribute, $value, $fail) {
+            $rules['license_number'] = ['required', 'string', 'regex:/^[A-Z]\d{2}-\d{2}-\d{6}$/D', function ($attribute, $value, $fail) {
                 if (User::whereRaw('LOWER(license_number) = ?', [mb_strtolower(trim($value))])->where('status', '!=', 'rejected')->exists()) {
                     $fail("This driver's license number is already registered to another account.");
                 }
@@ -274,6 +277,11 @@ class RegisterController extends Controller
             }
         }
 
+        if ($isRider || $isLogisticsJoin) {
+            app(\App\Services\PersonnelApplication::class)->normalize($request);
+            $rules = array_replace($rules, app(\App\Services\PersonnelApplication::class)->rules($isRider?'rider':'hub_staff',$request->input('vehicle_ownership')));
+        }
+
         // A seller or a "found a company" logistics registration both stand up something
         // brand new (a "company" isn't its own table — it's just a users.business_name
         // shared by every staff/rider row that joined it later, see App\Models\LogisticsCompany).
@@ -281,7 +289,7 @@ class RegisterController extends Controller
         // exists and got admin-approved.
         if ($isSeller || $isLogisticsFound) {
             $rules['business_name'] = ['required', 'string', 'min:'.($isSeller ? 3 : 1), 'max:'.($isSeller ? 30 : 150),
-                Rule::unique('users', 'business_name')->where(fn ($q) => $q->where('status', '!=', 'rejected'))];
+                Rule::unique('users', 'business_name')->where(fn($q)=>$q->where('status','!=','rejected')->orWhere(fn($q)=>$q->where('account_type','logistics')->where('is_logistics',true)->where(fn($q)=>$q->where('logistics_role','admin')->orWhereNull('logistics_role'))))->ignore($returningFounder?->id)];
             $rules['business_permit_file'] = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120';
             if ($isLogisticsFound) {
                 $rules['company_logo'] = 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048';
@@ -303,9 +311,9 @@ class RegisterController extends Controller
 
         $validator = Validator::make($request->all(), $rules, [
             'birthday.before_or_equal' => "You must be at least {$minimumAge} years old to register.",
-            'last_name.regex' => 'Last name can only contain letters and hyphens.',
-            'given_names.regex' => 'Given names can only contain letters and hyphens.',
-            'middle_name.regex' => 'Middle name can only contain letters and hyphens.',
+            'given_names.regex' => 'Given names can only contain letters, hyphens, and single spaces between words.',
+            'middle_name.regex' => 'Middle name can only contain letters, hyphens, and single spaces between words.',
+            'last_name.regex' => 'Last name can only contain letters, hyphens, and single spaces between words.',
             'tin.regex' => 'Enter exactly 12 digits for the TIN, without hyphens.',
             'tin.unique' => 'This TIN is already registered.',
             'sec_registration_no.regex' => 'Enter two letters followed by nine digits, such as CS202012345.',
@@ -569,11 +577,10 @@ class RegisterController extends Controller
             }
 
             foreach ($deduped as $row) {
-                LogisticsHub::create([
-                    'company_name' => $request->business_name,
+                LogisticsHub::firstOrCreate([
+                    'company_name'=>$request->business_name,'province'=>$row['province'],'municipality'=>$row['municipality'],
+                ],[
                     'region' => $row['region'],
-                    'province' => $row['province'],
-                    'municipality' => $row['municipality'],
                     'is_regional_hub' => $regionalPerProvince[mb_strtolower($row['province'])] === mb_strtolower($row['municipality']),
                 ]);
             }

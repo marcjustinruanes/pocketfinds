@@ -62,7 +62,7 @@
               <div style="display:flex;gap:6px;flex-wrap:wrap">
                 @if($req->id_file)
                   <button type="button" class="btn btn-sm btn-outline" data-doc-trigger
-                    data-src="{{ asset('storage/'.$req->id_file) }}"
+                    data-src="{{ app(\App\Services\SensitiveDocuments::class)->url($req->id_file) }}"
                     data-type="{{ in_array(strtolower(pathinfo($req->id_file,PATHINFO_EXTENSION)),['jpg','jpeg','png']) ? 'image' : 'pdf' }}"
                     data-title="ID File"><x-admin-icon name="eye" /> ID File</button>
                 @endif

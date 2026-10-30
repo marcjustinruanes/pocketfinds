@@ -15,6 +15,11 @@ class CommerceInsightsTest extends TestCase
     {
         parent::setUp();
         $this->assertSame('sqlite', config('database.default'));
+        Schema::create('notifications', function (Blueprint $table) {
+            $table->string('id')->primary(); $table->integer('user_id'); $table->boolean('is_read')->default(false);
+            $table->text('message'); $table->timestamp('created_at')->nullable();
+        });
+
         Schema::create('orders', function (Blueprint $table) {
             $table->string('id')->primary(); $table->integer('buyer_id'); $table->integer('seller_id'); $table->string('status');
             $table->decimal('total'); $table->text('items'); $table->timestamps();

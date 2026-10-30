@@ -1,7 +1,7 @@
 @props(['path' => null, 'label'])
 @php
     $isPdf = $path && str_ends_with(strtolower($path), '.pdf');
-    $url = $path ? \Illuminate\Support\Facades\Storage::url($path) : null;
+    $url = $path ? app(\App\Services\SensitiveDocuments::class)->url($path) : null;
     $type = $isPdf ? 'pdf' : 'image';
 @endphp
 @if($path)

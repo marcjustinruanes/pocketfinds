@@ -21,37 +21,12 @@
     <h1>PocketFinds — Sales Summary Report</h1>
     <p class="sub">Generated {{ now()->format('F j, Y g:i A') }}</p>
 
-    <table class="summary">
-        <tr>
-            <td><div class="label">Total Sales</div><div class="value">₱{{ number_format($totalAmount, 2) }}</div></td>
-            <td><div class="label">Total Commission</div><div class="value">₱{{ number_format($totalCommission, 2) }}</div></td>
-            <td><div class="label">Transactions</div><div class="value">{{ number_format($commissions->count()) }}</div></td>
-        </tr>
-    </table>
-
-    <table class="data">
-        <thead>
-            <tr>
-                <th>Order ID</th><th>Seller</th><th class="right">Sale Amount</th>
-                <th class="right">Rate</th><th class="right">Commission</th>
-                <th class="right">Seller Earnings</th><th>Date</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($commissions as $c)
-            <tr>
-                <td>{{ strtoupper(substr($c->order_id ?? $c->id, 0, 8)) }}</td>
-                <td>{{ $c->seller ? $c->seller->given_names.' '.$c->seller->last_name : 'Unknown' }}</td>
-                <td class="right">₱{{ number_format($c->order_amount, 2) }}</td>
-                <td class="right">{{ $c->commission_rate }}%</td>
-                <td class="right">₱{{ number_format($c->commission_amount, 2) }}</td>
-                <td class="right">₱{{ number_format($c->seller_earnings, 2) }}</td>
-                <td>{{ $c->created_at?->format('Y-m-d') }}</td>
-            </tr>
-            @empty
-            <tr><td colspan="7">No transactions yet.</td></tr>
-            @endforelse
-        </tbody>
-    </table>
-</body>
-</html>
+    <p>All completed orders. Order values include shipping and applied discounts; they are not profit or proof of payment. No platform commission is deducted.</p>
+    @include('reports.payment-summary',['report'=>$paymentReport,'tableClass'=>'data'])
+    <h2>Completed order sales</h2>
+    <table class="data"><thead><tr><th>Order ID</th><th>Seller ID</th><th>Items PHP</th><th>Shipping PHP</th><th>Discount PHP</th><th>Buyer value PHP</th><th>Updated</th></tr></thead><tbody>
+    @forelse($paymentReport['orders'] as $o)
+    <tr><td>{{ $o->id }}</td><td>{{ $o->seller_id }}</td><td>{{ $o->subtotal }}</td><td>{{ $o->shipping_amount }}</td><td>{{ $o->discount_amount }}</td><td>{{ $o->total }}</td><td>{{ $o->updated_at?->format('Y-m-d') }}</td></tr>
+    @empty<tr><td colspan="7">No completed orders.</td></tr>@endforelse
+    </tbody></table>
+</body></html>

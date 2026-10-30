@@ -82,7 +82,7 @@ class AdminController extends Controller
                     return back()->withErrors(['email' => 'Invalid credentials.'])->withInput();
                 }
                 $message = 'Your account application was rejected.';
-                if ($user->status_reason) {
+                if ($user->status_reason && $user->account_type!=='rider') {
                     $message .= ' Reason: '.$user->status_reason;
                 }
                 return back()->withErrors(['email' => $message])
@@ -180,11 +180,7 @@ class AdminController extends Controller
     {
         abort_if(app(HubHiring::class)->role($user) !== null, 403, 'Personnel recruitment belongs to the company Logistics Admin.');
         $reason = $this->resolveReason($request);
-        // If a logistics company founder is rejected, remove their registered hubs so
-        // that the company name is fully free for re-use (either by them or someone else).
-        if ($user->is_logistics && $user->logistics_role === 'admin' && $user->business_name) {
-            LogisticsHub::where('company_name', $user->business_name)->delete();
-        }
+        // Founder names remain reserved; hubs/personnel and operational history are preserved.
         $user->update(['status' => 'rejected', 'status_reason' => $reason]);
         $this->sendStatusEmail($user, 'rejected', $reason);
 
@@ -240,11 +236,12 @@ class AdminController extends Controller
         }
     }
 
-    public function activateUser(User $user)
+    public function activateUser(Request $request, User $user)
     {
         if (app(HubHiring::class)->role($user) !== null) {
             abort_unless($user->status === 'suspended', 422, 'Only suspended personnel can be reactivated.');
         }
+        if(app(HubHiring::class)->role($user)==='rider') $user->hiringDecision=['action'=>'activate','reason'=>app(\App\Services\PersonnelReasons::class)->resolve($request,'activate')];
         $user->update(['status' => 'approved', 'status_reason' => null]);
         $this->sendStatusEmail($user, 'activated');
 
@@ -256,9 +253,9 @@ class AdminController extends Controller
         if (app(HubHiring::class)->role($user) !== null) {
             abort_unless($user->status === 'approved', 422, 'Only approved personnel can be suspended.');
         }
-        $reason = $this->resolveReason($request);
+        $reason = app(HubHiring::class)->role($user)==='rider'?app(\App\Services\PersonnelReasons::class)->resolve($request,'suspend'):$this->resolveReason($request);
         $user->update(['status' => 'suspended', 'status_reason' => $reason]);
-        $this->sendStatusEmail($user, 'suspended', $reason);
+        $this->sendStatusEmail($user, 'suspended', $user->account_type==='rider'?null:$reason);
 
         return back()->with('success', 'Account suspended.');
     }
@@ -381,10 +378,7 @@ class AdminController extends Controller
     {
         $counts = $this->sidebarCounts();
         $commissions = Commission::with('seller')->latest('created_at')->get();
-        $totalAmount = $commissions->sum('commission_amount');
-        $sellers = User::where('account_type', 'seller')->where('is_admin', false)->count();
-
-        return view('admin.commission', array_merge($counts, compact('commissions', 'totalAmount', 'sellers')));
+        return view('admin.commission', array_merge($counts, compact('commissions')));
     }
 
     public function reports()
@@ -397,70 +391,44 @@ class AdminController extends Controller
         $pending = User::where('status', 'pending')->where('is_admin', false)->count();
         $approved = User::where('status', 'approved')->where('is_admin', false)->count();
         $rejected = User::where('status', 'rejected')->where('is_admin', false)->count();
-        $totalCommission = Commission::sum('commission_amount');
-        $commissionCount = Commission::count();
-        $commissionRate = Setting::current()->commission_rate;
+        $paymentReport=app(\App\Services\PaymentReporting::class)->snapshot(null);
 
         return view('admin.reports', array_merge($counts, compact(
             'totalUsers', 'buyerCount', 'sellerCount', 'riderCount',
-            'pending', 'approved', 'rejected', 'totalCommission', 'commissionCount', 'commissionRate'
+            'pending', 'approved', 'rejected', 'paymentReport'
         )));
     }
 
     public function exportSalesReport()
     {
-        $commissions = Commission::with('seller')->latest()->get();
-        $csv = "Order ID,Seller,Sale Amount,Commission Rate,Commission,Seller Earnings,Date\n";
-        foreach ($commissions as $c) {
-            $seller = $c->seller ? $c->seller->given_names.' '.$c->seller->last_name : 'Unknown';
-            $csv .= implode(',', [
-                strtoupper(substr($c->order_id ?? $c->id, 0, 8)),
-                $seller,
-                $c->order_amount,
-                $c->commission_rate.'%',
-                $c->commission_amount,
-                $c->seller_earnings,
-                $c->created_at?->format('Y-m-d'),
-            ])."\n";
-        }
-
-        return response($csv, 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="sales_report_'.now()->format('Ymd').'.csv"',
-        ]);
+        $report=app(\App\Services\PaymentReporting::class)->snapshot(null);
+        $rows=[['Order ID','Seller ID','Completed order last updated','Item subtotal PHP','Quoted shipping PHP','Discount already applied PHP','Buyer order value PHP','Payment method']];
+        foreach($report['orders'] as $o)$rows[]=[$o->id,$o->seller_id,$o->updated_at?->toIso8601String(),$o->subtotal,$o->shipping_amount,$o->discount_amount,$o->total,$o->payment_method];
+        return $this->reportCsv($rows,'sales_report');
     }
 
     public function exportSalesReportPdf()
     {
-        $commissions = Commission::with('seller')->latest()->get();
-        $totalAmount = $commissions->sum('order_amount');
-        $totalCommission = $commissions->sum('commission_amount');
-        $pdf = Pdf::loadView('admin.reports-sales-pdf', compact('commissions', 'totalAmount', 'totalCommission'))
-            ->setPaper('a4', 'portrait');
-
-        return $pdf->download('sales_report_'.now()->format('Ymd').'.pdf');
+        $paymentReport=app(\App\Services\PaymentReporting::class)->snapshot(null);
+        return Pdf::loadView('admin.reports-sales-pdf',compact('paymentReport'))->setPaper('a4','portrait')
+            ->download('sales_report_'.now()->format('Ymd').'.pdf')->header('Cache-Control','private, no-store');
     }
 
+    // Keep the established route URL; its current report is payment activity, not a fee ledger.
     public function exportCommissionReport()
     {
-        $commissions = Commission::with('seller')->latest()->get();
-        $csv = "Seller,Total Orders,Total Commission,Date\n";
-        $grouped = $commissions->groupBy('seller_id');
-        foreach ($grouped as $sellerId => $items) {
-            $seller = $items->first()->seller;
-            $name = $seller ? $seller->given_names.' '.$seller->last_name : 'Unknown';
-            $csv .= implode(',', [
-                $name,
-                $items->count(),
-                number_format($items->sum('commission_amount'), 2),
-                now()->format('Y-m-d'),
-            ])."\n";
-        }
+        $report=app(\App\Services\PaymentReporting::class)->snapshot(null);
+        $rows=[['Metric','PHP','Basis']];
+        foreach($report['metrics'] as $key=>$value)$rows[]=[$key,(!$report['available'] && !in_array($key,['item_sales','quoted_shipping','discounts','buyer_order_value']))?'Unavailable':\App\Services\LogisticsReconciliation::money($value),in_array($key,['pending_cod_payouts','held_cod_payouts','unverified_platform_claims'])?'Current snapshot':(in_array($key,['item_sales','quoted_shipping','discounts','buyer_order_value'])?'Completed orders':'All recorded payment activity')];
+        return $this->reportCsv($rows,'payment_summary');
+    }
 
-        return response($csv, 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="commission_report_'.now()->format('Ymd').'.csv"',
-        ]);
+    private function reportCsv(array $rows,string $name)
+    {
+        $stream=fopen('php://temp','r+');
+        foreach($rows as $row)fputcsv($stream,array_map([\App\Services\LogisticsReconciliation::class,'csvCell'],$row),',','"','');
+        rewind($stream);$csv=stream_get_contents($stream);fclose($stream);
+        return response($csv,200,['Content-Type'=>'text/csv; charset=UTF-8','Content-Disposition'=>'attachment; filename="'.$name.'_'.now()->format('Ymd').'.csv"','Cache-Control'=>'private, no-store','X-Content-Type-Options'=>'nosniff']);
     }
 
     public function settings()

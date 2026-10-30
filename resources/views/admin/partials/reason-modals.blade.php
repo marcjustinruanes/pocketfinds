@@ -25,6 +25,7 @@
 
 @foreach(array_intersect_key([
           'suspend' => ['label' => 'Suspend Account', 'reasons' => $suspendReasons, 'btn' => 'btn-outline', 'submitLabel' => 'Suspend Account'],
+          'activate' => ['label'=>'Reactivate Account','reasons'=>\App\Services\PersonnelReasons::ACTIVATE,'btn'=>'btn-success','submitLabel'=>'Record reactivation'],
           'reject'  => ['label' => 'Reject Application', 'reasons' => $rejectReasons, 'btn' => 'btn-danger', 'submitLabel' => 'Reject Application'],
         ], array_flip($reasonModalTypes)) as $type => $cfg)
 <div class="modal-overlay" id="{{ $type }}ReasonModal">
@@ -32,7 +33,7 @@
     <div class="modal-head">
       <div class="modal-head-main">
         <span class="modal-icon"><x-admin-icon name="flag" /></span>
-        <div class="modal-head-copy"><h3>{{ $cfg['label'] }}</h3><p>The reason you pick here is emailed to the account holder</p></div>
+        <div class="modal-head-copy"><h3>{{ $cfg['label'] }}</h3><p>Record a meaningful decision reason. Notifications use the applicable account policy.</p></div>
       </div>
       <button class="modal-close" data-modal-close aria-label="Close"><x-admin-icon name="close" /></button>
     </div>
@@ -41,19 +42,19 @@
       <div class="modal-body">
         <div style="display:flex;flex-direction:column;gap:10px">
           @foreach($cfg['reasons'] as $reason)
-          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;min-height:44px">
             <input type="radio" name="reason_preset" value="{{ $reason }}" required>
             {{ $reason }}
           </label>
           @endforeach
-          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;min-height:44px">
             <input type="radio" name="reason_preset" value="other" required>
             Other
           </label>
         </div>
         <div class="form-row" style="margin-top:14px">
-          <label>Additional details</label>
-          <textarea name="reason_details" id="{{ $type }}ReasonDetails" rows="3" placeholder="Add any extra context for the account holder — required if you selected &quot;Other&quot;" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
+          <label for="{{ $type }}ReasonDetails">Additional details (required for Other)</label>
+          <textarea name="reason_details" id="{{ $type }}ReasonDetails" rows="3" placeholder="Document the decision without unnecessary sensitive information — required if you selected &quot;Other&quot;" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
           <span id="{{ $type }}ReasonError" style="display:none;color:var(--danger);font-size:11.5px;margin-top:4px">Please select a reason, and add details for "Other".</span>
         </div>
       </div>
@@ -63,7 +64,7 @@
         @if($type !== 'suspend')
         <button type="button" class="btn btn-outline" data-modal-close>Cancel</button>
         @endif
-        <button type="submit" class="{{ $cfg['btn'] }}">{{ $cfg['submitLabel'] }}</button>
+        <button type="submit" class="btn {{ $cfg['btn'] }}" style="min-height:44px">{{ $cfg['submitLabel'] }}</button>
       </div>
     </form>
   </div>
@@ -86,7 +87,7 @@ function validateReasonForm(type) {
   const checked = document.querySelector(`#${type}ReasonForm input[name="reason_preset"]:checked`);
   const details = document.getElementById(type + 'ReasonDetails');
   const errEl = document.getElementById(type + 'ReasonError');
-  if (!checked || (checked.value === 'other' && !details.value.trim())) {
+  if (!checked || (checked.value === 'other' && details.value.trim().length < 3)) {
     errEl.style.display = 'block';
     return false;
   }

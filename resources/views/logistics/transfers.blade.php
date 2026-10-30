@@ -5,6 +5,15 @@
 @section('content')
 @if($errors->any())<div class="card card-pad">{{ $errors->first() }}</div>@endif
 <a href="{{ route('logistics.transfers.create') }}" class="btn btn-primary">Request a transfer</a>
+<nav class="tabs" aria-label="Transfer stages" style="margin:16px 0">
+@if(auth()->user()->isLogisticsAdmin())<a class="tab {{ request('queue') === 'awaiting' ? 'active' : '' }}" href="{{ route('logistics.transfers', ['queue'=>'awaiting']) }}">Awaiting request</a>@endif
+@foreach([''=>'All transfers', 'pending'=>'Pending approval', 'approved'=>'Approved', 'in_transit'=>'In transit', 'completed'=>'Received'] as $key=>$label)
+<a class="tab {{ !request('queue') && (string)request('status', '') === $key ? 'active' : '' }}" href="{{ route('logistics.transfers', ['status'=>$key]) }}">{{ $label }}</a>
+@endforeach
+</nav>
+@if(request('queue') === 'awaiting')
+@include('logistics.partials.transfer-queue')
+@else
 <form method="GET" class="card card-pad logistics-form-grid" style="margin-top:16px">
   <label>Search<input name="search" value="{{ request('search') }}" placeholder="Tracking, batch, or municipality"></label>
   <label>Status<select name="status"><option value="">All statuses</option>@foreach(['pending'=>'Pending approval','approved'=>'Approved','rejected'=>'Rejected','in_transit'=>'Dispatched / in transit','completed'=>'Received','cancelled'=>'Cancelled'] as $key=>$label)<option value="{{ $key }}" @selected(request('status') === $key)>{{ $label }}</option>@endforeach</select></label>
@@ -27,4 +36,5 @@
 <td><a class="btn btn-sm btn-outline" href="{{ route('logistics.transfers.show',$batch->id) }}">Details</a></td>
 </tr>@empty<tr><td colspan="10">No transfers match these filters.</td></tr>@endforelse</tbody></table></div></div>
 {{ $batches->links() }}
+@endif
 @endsection

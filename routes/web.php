@@ -1,5 +1,8 @@
 <?php
 
+\Illuminate\Support\Facades\Route::get('/private-documents/{token}', [\App\Http\Controllers\SensitiveDocumentController::class, 'show'])
+    ->middleware(['auth', 'throttle:240,1'])->name('sensitive-documents.show');
+
 use App\Http\Controllers\AdminAssistantController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\BuyerAssistantController;
@@ -204,12 +207,21 @@ Route::prefix('buyer')->name('buyer.')->middleware(['web', 'buyer'])->group(func
 
 // Seller routes
 Route::prefix('seller')->name('seller.')->middleware(['web', 'seller'])->group(function () {
+    Route::get('/orders/assignment-review', [\App\Http\Controllers\LogisticsOperationsController::class,'index'])->name('assignments.review');
+    Route::post('/orders/assignments/{id}/decision', [\App\Http\Controllers\LogisticsOperationsController::class,'decideReassignment'])->middleware('throttle:20,1')->name('assignments.decide');
+    Route::get('/payouts', [\App\Http\Controllers\SellerPayoutController::class, 'index'])->name('payouts');
+    Route::post('/payouts/destination', [\App\Http\Controllers\SellerPayoutController::class, 'destination'])->middleware('throttle:10,1')->name('payouts.destination');
+    Route::post('/payouts/{id}/acknowledge', [\App\Http\Controllers\SellerPayoutController::class, 'acknowledge'])->middleware('throttle:10,1')->name('payouts.acknowledge');
+    Route::get('/shipping', [\App\Http\Controllers\LogisticsShippingController::class, 'sellerIndex'])->name('shipping');
+    Route::get('/shipping/{id}', [\App\Http\Controllers\LogisticsShippingController::class, 'show'])->name('shipping.show');
+    Route::post('/shipping/{id}/payment', [\App\Http\Controllers\LogisticsShippingController::class, 'submit'])->middleware('throttle:10,1')->name('shipping.submit');
     Route::get('/dashboard', [SellerController::class, 'dashboard'])->name('dashboard');
     Route::get('/orders', [SellerController::class, 'orders'])->name('orders');
     Route::patch('/orders/{order}/confirm', [SellerController::class, 'confirmOrder'])->name('orders.confirm');
     Route::patch('/orders/{order}/cancel', [SellerController::class, 'cancelOrder'])->name('orders.cancel');
     Route::patch('/orders/{order}/preparing', [SellerController::class, 'startPreparing'])->name('orders.preparing');
     Route::patch('/orders/{order}/ready', [SellerController::class, 'readyForPickup'])->name('orders.ready');
+    Route::post('/orders/rts/{id}', [LogisticsManagementController::class,'rts'])->middleware('throttle:20,1')->name('orders.rts');
     Route::patch('/orders/{order}/confirm-pickup', [SellerController::class, 'confirmPickup'])->name('orders.confirm-pickup');
     Route::get('/inventory', [SellerController::class, 'inventory'])->name('inventory');
     Route::post('/inventory', [SellerController::class, 'storeProduct'])->name('inventory.store');
@@ -312,6 +324,14 @@ Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
 
 // Logistics routes
 Route::prefix('logistics')->name('logistics.')->middleware(['logistics', 'logistics.activity'])->group(function () {
+    Route::get('/cash-desk', [\App\Http\Controllers\LogisticsCashDeskController::class, 'index'])->name('cash-desk');
+    Route::post('/cash-desk/recovery', [\App\Http\Controllers\LogisticsCashDeskController::class,'recoverySubmission'])->middleware('throttle:20,1')->name('cash-desk.recovery');
+    Route::post('/cash-desk/treasury/{id}/release', [\App\Http\Controllers\SellerPayoutController::class, 'release'])->middleware('throttle:10,1')->name('cash-desk.treasury.release');
+    Route::post('/cash-desk/{id}/count', [\App\Http\Controllers\LogisticsCashDeskController::class, 'count'])->middleware('throttle:20,1')->name('cash-desk.count');
+    Route::post('/cash-desk/transfers', [\App\Http\Controllers\LogisticsCashDeskController::class, 'authorize'])->middleware('throttle:20,1')->name('cash-desk.authorize');
+    Route::post('/cash-desk/{id}/transfer/{action}', [\App\Http\Controllers\LogisticsCashDeskController::class, 'transfer'])->middleware('throttle:20,1')->name('cash-desk.transfer');
+    Route::post('/cash-desk/{id}/resolve', [\App\Http\Controllers\LogisticsCashDeskController::class, 'resolve'])->middleware('throttle:20,1')->name('cash-desk.resolve');
+    Route::post('/cash-desk/cutoff', [\App\Http\Controllers\LogisticsCashDeskController::class, 'cutoff'])->middleware('throttle:10,1')->name('cash-desk.cutoff');
     Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [LogisticsController::class, 'dashboard'])->name('dashboard');
     Route::get('/transfers', [HubTransferController::class, 'index'])->name('transfers');
@@ -327,6 +347,9 @@ Route::prefix('logistics')->name('logistics.')->middleware(['logistics', 'logist
         Route::patch('/transfers/{id}/dispatch', [HubTransferController::class, 'dispatch'])->name('transfers.dispatch');
     });
     Route::get('/assignments', [LogisticsController::class, 'assignments'])->name('assignments');
+    Route::get('/assignments/review', [\App\Http\Controllers\LogisticsOperationsController::class,'index'])->name('assignments.review');
+    Route::post('/assignments/{id}/reassignment', [\App\Http\Controllers\LogisticsOperationsController::class,'requestReassignment'])->middleware('throttle:20,1')->name('assignments.reassign');
+    Route::post('/assignments/{id}/reassignment/decision', [\App\Http\Controllers\LogisticsOperationsController::class,'decideReassignment'])->middleware('throttle:20,1')->name('assignments.decide');
     Route::patch('/assignments/{id}/assign', [LogisticsController::class, 'assignCourier'])->name('assignments.assign');
     Route::patch('/assignments/{id}/assign-hub-transfer', [LogisticsController::class, 'assignHubTransferRider'])->middleware('logistics.admin')->name('assignments.assign-hub-transfer');
     Route::get('/scan', [LogisticsController::class, 'scan'])->name('scan');
@@ -346,7 +369,9 @@ Route::prefix('logistics')->name('logistics.')->middleware(['logistics', 'logist
     Route::post('/hub/request-transfer', [LogisticsController::class, 'requestHubTransfer'])->name('hub.request-transfer');
     Route::get('/monitor', [LogisticsController::class, 'monitor'])->name('monitor');
     Route::patch('/status/{id}', [LogisticsController::class, 'updateStatus'])->name('status.update');
+    Route::post('/issues/rts/{id}', [LogisticsManagementController::class,'rts'])->middleware('throttle:20,1')->name('rts');
     Route::get('/issues', [LogisticsManagementController::class, 'issues'])->name('issues');
+    Route::post('/issues/recovery', [\App\Http\Controllers\LogisticsOperationsController::class,'receiveRecovery'])->middleware('throttle:20,1')->name('issues.recovery');
     Route::post('/issues', [LogisticsManagementController::class, 'storeIssue'])->name('issues.store');
     Route::patch('/issues/{id}', [LogisticsManagementController::class, 'updateIssue'])->name('issues.update');
     Route::get('/history', [LogisticsController::class, 'history'])->name('history');
@@ -357,7 +382,8 @@ Route::prefix('logistics')->name('logistics.')->middleware(['logistics', 'logist
     Route::get('/messages/{userId}', [LogisticsController::class, 'messagesThread'])->name('messages.thread');
     Route::get('/account', [LogisticsController::class, 'account'])->name('account');
     Route::post('/account/update', [LogisticsController::class, 'accountUpdate'])->name('account.update');
-    Route::post('/account/address', [LogisticsController::class, 'accountAddressUpdate'])->name('account.address');
+    Route::post('/account/address', [LogisticsController::class, 'accountAddressUpdate'])->middleware('throttle:20,1,logistics-address-write:')->name('account.address');
+    Route::get('/address-locations/{level}/{code?}', [LogisticsController::class, 'addressLocations'])->middleware('throttle:60,1,logistics-address:')->name('address.locations');
     Route::post('/account/password', [LogisticsController::class, 'passwordUpdate'])->name('account.password');
 
     // Company-wide oversight — the admin account only, never hub staff (see LogisticsAdminMiddleware).
@@ -378,9 +404,52 @@ Route::prefix('logistics')->name('logistics.')->middleware(['logistics', 'logist
         Route::get('/accounts/{id}/edit', [LogisticsManagementController::class, 'editAccount'])->name('accounts.edit');
         Route::patch('/accounts/{id}', [LogisticsManagementController::class, 'updateAccount'])->name('accounts.update');
         Route::get('/activity', [LogisticsManagementController::class, 'activity'])->name('activity');
-        Route::post('/hubs', [LogisticsManagementController::class, 'storeHub'])->name('hubs.store');
-        Route::get('/hub-locations/{level}/{code?}', [LogisticsManagementController::class, 'hubLocations'])->name('hubs.locations');
-        Route::patch('/hubs/{id}', [LogisticsManagementController::class, 'updateHub'])->name('hubs.update');
+        Route::get('/finance', [\App\Http\Controllers\LogisticsFinanceController::class, 'index'])->name('finance');
+        Route::get('/finance/reconciliation', [\App\Http\Controllers\LogisticsReconciliationController::class, 'index'])->name('finance.reconciliation');
+        Route::get('/finance/reconciliation/export', [\App\Http\Controllers\LogisticsReconciliationController::class, 'export'])->middleware('throttle:10,1')->name('finance.reconciliation.export');
+        Route::get('/finance/riders', [\App\Http\Controllers\RiderPayoutController::class, 'index'])->name('finance.riders');
+        Route::post('/finance/riders/funding', [\App\Http\Controllers\RiderPayoutController::class, 'funding'])->middleware('throttle:10,1')->name('finance.riders.funding');
+        Route::post('/finance/riders/prepare', [\App\Http\Controllers\RiderPayoutController::class, 'prepare'])->middleware('throttle:10,1')->name('finance.riders.prepare');
+        Route::post('/finance/riders/{id}/recognize', [\App\Http\Controllers\RiderPayoutController::class, 'recognize'])->middleware('throttle:20,1')->name('finance.riders.recognize');
+        Route::post('/finance/riders/{id}/action', [\App\Http\Controllers\RiderPayoutController::class, 'action'])->middleware('throttle:20,1')->name('finance.riders.action');
+        Route::post('/finance/riders/{id}/pay', [\App\Http\Controllers\RiderPayoutController::class, 'pay'])->middleware('throttle:10,1')->name('finance.riders.pay');
+        Route::get('/finance/payouts', [\App\Http\Controllers\SellerPayoutController::class, 'index'])->name('finance.payouts');
+        Route::post('/finance/payouts/prepare', [\App\Http\Controllers\SellerPayoutController::class, 'prepare'])->middleware('throttle:10,1')->name('finance.payouts.prepare');
+        Route::post('/finance/payouts/{id}/action', [\App\Http\Controllers\SellerPayoutController::class, 'action'])->middleware('throttle:20,1')->name('finance.payouts.action');
+        Route::post('/finance/payouts/{id}/pay', [\App\Http\Controllers\SellerPayoutController::class, 'pay'])->middleware('throttle:10,1')->name('finance.payouts.pay');
+        Route::post('/finance/treasury/accounts', [\App\Http\Controllers\SellerPayoutController::class, 'treasuryAccount'])->middleware('throttle:10,1')->name('finance.treasury.account');
+        Route::post('/finance/treasury/transfers', [\App\Http\Controllers\SellerPayoutController::class, 'transfer'])->middleware('throttle:10,1')->name('finance.treasury.transfer');
+        Route::post('/finance/treasury/{id}/receipt', [\App\Http\Controllers\SellerPayoutController::class, 'receipt'])->middleware('throttle:10,1')->name('finance.treasury.receipt');
+        Route::post('/finance/treasury/funding', [\App\Http\Controllers\SellerPayoutController::class, 'funding'])->middleware('throttle:10,1')->name('finance.treasury.funding');
+        Route::get('/finance/staff/hubs/{hub}', [\App\Http\Controllers\StaffSalaryController::class,'hubHistory'])->name('finance.staff.hub-history');
+        Route::post('/finance/staff/hub-salary', [\App\Http\Controllers\StaffSalaryController::class,'configureHub'])->middleware('throttle:20,1')->name('finance.staff.hub');
+        Route::post('/finance/staff/use-hub', [\App\Http\Controllers\StaffSalaryController::class,'useHub'])->middleware('throttle:20,1')->name('finance.staff.use-hub');
+        Route::get('/attendance', [\App\Http\Controllers\StaffAttendanceController::class,'index'])->name('attendance');
+        Route::get('/attendance/export', [\App\Http\Controllers\StaffAttendanceController::class,'export'])->name('attendance.export');
+        Route::post('/attendance/marks', [\App\Http\Controllers\StaffAttendanceController::class,'mark'])->middleware('throttle:20,1')->name('attendance.mark');
+        Route::post('/attendance/corrections/{id}', [\App\Http\Controllers\StaffAttendanceController::class,'decide'])->middleware('throttle:20,1')->name('attendance.decide');
+        Route::post('/attendance/records/{id}', [\App\Http\Controllers\StaffAttendanceController::class,'review'])->middleware('throttle:20,1')->name('attendance.review');
+        Route::get('/attendance/records/{id}', [\App\Http\Controllers\StaffAttendanceController::class,'show'])->name('attendance.show');
+        Route::get('/finance/staff/export', [\App\Http\Controllers\StaffSalaryController::class, 'export'])->name('finance.staff.export');
+        Route::match(['get','post'], '/finance/staff/bulk/preview', [\App\Http\Controllers\StaffSalaryController::class, 'bulkPreview'])->middleware('throttle:20,1')->name('finance.staff.bulk.preview');
+        Route::post('/finance/staff/bulk/execute', [\App\Http\Controllers\StaffSalaryController::class, 'bulkExecute'])->middleware('throttle:10,1')->name('finance.staff.bulk.execute');
+        Route::get('/finance/staff/salaries/{staff}', [\App\Http\Controllers\StaffSalaryController::class, 'salaryHistory'])->name('finance.staff.history');
+        Route::get('/finance/staff/payouts/{id}', [\App\Http\Controllers\StaffSalaryController::class, 'show'])->name('finance.staff.show');
+        Route::get('/finance/staff', [\App\Http\Controllers\StaffSalaryController::class, 'index'])->name('finance.staff');
+        Route::post('/finance/staff/configure', [\App\Http\Controllers\StaffSalaryController::class, 'configure'])->middleware('throttle:20,1')->name('finance.staff.configure');
+        Route::post('/finance/staff/periods', [\App\Http\Controllers\StaffSalaryController::class, 'generatePeriod'])->middleware('throttle:20,1')->name('finance.staff.periods');
+        Route::post('/finance/staff/funding', [\App\Http\Controllers\StaffSalaryController::class, 'funding'])->middleware('throttle:10,1')->name('finance.staff.funding');
+        Route::post('/finance/staff/prepare', [\App\Http\Controllers\StaffSalaryController::class, 'prepare'])->middleware('throttle:10,1')->name('finance.staff.prepare');
+        Route::post('/finance/staff/{id}/action', [\App\Http\Controllers\StaffSalaryController::class, 'action'])->middleware('throttle:20,1')->name('finance.staff.action');
+        Route::post('/finance/staff/{id}/pay', [\App\Http\Controllers\StaffSalaryController::class, 'pay'])->middleware('throttle:10,1')->name('finance.staff.pay');
+        Route::get('/finance/shipping/{id}', [\App\Http\Controllers\LogisticsShippingController::class, 'show'])->name('finance.shipping.show');
+        Route::post('/finance/shipping/{id}/review', [\App\Http\Controllers\LogisticsShippingController::class, 'review'])->middleware('throttle:10,1')->name('finance.shipping.review');
+        Route::post('/finance/shipping-account', [\App\Http\Controllers\LogisticsShippingController::class, 'shippingAccount'])->middleware('throttle:10,1')->name('finance.shipping.account');
+        Route::post('/finance/shipping-rate', [\App\Http\Controllers\LogisticsShippingController::class, 'rate'])->middleware('throttle:10,1')->name('finance.shipping.rate');
+        Route::post('/finance/settings', [\App\Http\Controllers\LogisticsFinanceController::class, 'settings'])->middleware('throttle:10,1')->name('finance.settings');
+        Route::post('/hubs', [LogisticsManagementController::class, 'storeHub'])->middleware('throttle:20,1,logistics-address-write:')->name('hubs.store');
+        Route::get('/hub-locations/{level}/{code?}', [LogisticsManagementController::class, 'hubLocations'])->middleware('throttle:60,1,logistics-hub-address:')->name('hubs.locations');
+        Route::patch('/hubs/{id}', [LogisticsManagementController::class, 'updateHub'])->middleware('throttle:20,1,logistics-address-write:')->name('hubs.update');
         Route::patch('/vehicles/{id}', [LogisticsManagementController::class, 'updateVehicle'])->name('vehicles.update');
         Route::get('/riders', [LogisticsController::class, 'riders'])->name('riders');
         Route::patch('/riders/{id}/approve', [LogisticsController::class, 'approveRider'])->name('riders.approve');
@@ -407,6 +476,15 @@ Route::prefix('logistics')->name('logistics.')->middleware(['logistics', 'logist
         Route::delete('/vehicles/{id}', [LogisticsController::class, 'destroyVehicle'])->name('vehicles.destroy');
     });
 
+    // Hub Staff salary — own records and GCash receiving account.
+    Route::get('/my-attendance', [\App\Http\Controllers\StaffAttendanceController::class,'mine'])->name('my-attendance');
+    Route::post('/my-attendance/clock/{action}', [\App\Http\Controllers\StaffAttendanceController::class,'clock'])->whereIn('action',['in','out'])->middleware('throttle:20,1')->name('my-attendance.clock');
+    Route::post('/my-attendance/corrections', [\App\Http\Controllers\StaffAttendanceController::class,'requestCorrection'])->middleware('throttle:20,1')->name('my-attendance.correction');
+    Route::get('/my-attendance/records/{id}', [\App\Http\Controllers\StaffAttendanceController::class,'show'])->name('my-attendance.show');
+    Route::get('/my-salary', [\App\Http\Controllers\StaffSalaryController::class, 'myIndex'])->name('my-salary');
+    Route::post('/my-salary/destination', [\App\Http\Controllers\StaffSalaryController::class, 'destination'])->middleware('throttle:10,1')->name('my-salary.destination');
+    Route::post('/my-salary/{id}/acknowledge', [\App\Http\Controllers\StaffSalaryController::class, 'acknowledge'])->middleware('throttle:10,1')->name('my-salary.acknowledge');
+
     // Hub staff's own hub fleet — view vehicles assigned to their hub and toggle availability.
     // Guarded inside the controller (isHubStaff()) rather than LogisticsAdminMiddleware.
     Route::get('/hub/vehicles', [LogisticsController::class, 'hubVehicles'])->name('hub.vehicles');
@@ -420,6 +498,9 @@ Route::prefix('logistics')->name('logistics.')->middleware(['logistics', 'logist
 
 // Rider (courier) routes
 Route::prefix('rider')->name('rider.')->middleware(['rider', 'logistics.activity'])->group(function () {
+    Route::get('/remittances', [\App\Http\Controllers\LogisticsCashDeskController::class, 'index'])->name('remittances');
+    Route::post('/remittances/{id}/withdraw', [\App\Http\Controllers\LogisticsCashDeskController::class, 'withdraw'])->middleware('throttle:20,1')->name('remittances.withdraw');
+    Route::post('/remittances', [\App\Http\Controllers\LogisticsCashDeskController::class, 'submit'])->middleware('throttle:20,1')->name('remittances.submit');
     Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [RiderController::class, 'dashboard'])->name('dashboard');
     Route::get('/pickup-requests', [RiderController::class, 'pickupRequests'])->name('pickup-requests');
@@ -430,11 +511,14 @@ Route::prefix('rider')->name('rider.')->middleware(['rider', 'logistics.activity
     Route::patch('/hub-transfers/{id}/confirm', [RiderController::class, 'confirmHubTransferPickup'])->name('hub-transfers.confirm');
     Route::get('/requests', [RiderController::class, 'requests'])->name('requests');
     Route::patch('/requests/{id}/accept', [RiderController::class, 'acceptRequest'])->name('requests.accept');
+    Route::post('/deliveries/{id}/rts', [LogisticsManagementController::class,'rts'])->middleware('throttle:20,1')->name('rts');
     Route::get('/deliveries', [RiderController::class, 'deliveries'])->name('deliveries');
     Route::get('/deliveries/{id}', [RiderController::class, 'show'])->name('deliveries.show');
     Route::patch('/deliveries/{id}/advance', [RiderController::class, 'advance'])->name('deliveries.advance');
     Route::patch('/deliveries/{id}/failed', [RiderController::class, 'markFailed'])->name('deliveries.failed');
     Route::get('/history', [RiderController::class, 'history'])->name('history');
+    Route::post('/earnings/destination', [\App\Http\Controllers\RiderPayoutController::class, 'destination'])->middleware('throttle:10,1')->name('earnings.destination');
+    Route::post('/earnings/{id}/acknowledge', [\App\Http\Controllers\RiderPayoutController::class, 'acknowledge'])->middleware('throttle:10,1')->name('earnings.acknowledge');
     Route::get('/profit', [RiderController::class, 'profit'])->name('profit');
     Route::get('/messages', [RiderController::class, 'messages'])->name('messages');
     Route::get('/messages/poll', [RiderController::class, 'messagesPoll'])->name('messages.poll');
@@ -448,6 +532,10 @@ Route::prefix('rider')->name('rider.')->middleware(['rider', 'logistics.activity
 });
 
 // GCash endpoints: services enforce approved Buyer/Seller ownership independently of generic role middleware.
+Route::get('/shipping-payments/{id}/proof', [\App\Http\Controllers\LogisticsShippingController::class, 'proof'])
+    ->middleware(['web', 'auth', 'throttle:30,1'])->name('shipping.proof');
+Route::get('/finance-evidence/{id}', [\App\Http\Controllers\SellerPayoutController::class, 'evidence'])
+    ->middleware(['web','auth','throttle:30,1'])->name('finance.evidence');
 Route::middleware(['web', 'auth', 'throttle:60,1'])->prefix('gcash-purchases')->name('gcash.')->group(function () {
     Route::get('/', [GcashPurchaseController::class, 'index'])->name('index');
     Route::post('/cart-prices', [GcashPurchaseController::class, 'refreshPrices'])->name('refreshPrices');

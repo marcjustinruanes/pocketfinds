@@ -15,8 +15,17 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
+    // Per-operation audit context, never mass assignable or persisted as an account field.
+    public array $hiringDecision = [];
     public function save(array $options = [])
     {
+        $wasFounder=$this->exists && $this->getRawOriginal('account_type')==='logistics' && (bool)$this->getRawOriginal('is_logistics') && in_array($this->getRawOriginal('logistics_role'),[null,'admin'],true);
+        if($wasFounder && (!\App\Services\CompanyOwnership::founder($this) || $this->business_name!==$this->getRawOriginal('business_name'))) throw ValidationException::withMessages(['business_name'=>'Company ownership changes require explicit reviewed transfer. Existing company membership and history cannot be retargeted.']);
+        if (\App\Services\CompanyOwnership::founder($this)
+            && (!$this->exists || $this->isDirty(['status','business_name','account_type','is_logistics','logistics_role']))
+            && Schema::hasTable('hiring_identity_locks')) {
+            return app(\App\Services\CompanyOwnership::class)->persist($this, fn () => parent::save($options));
+        }
         if (Schema::hasTable('hiring_application_history')
             && ($this->account_type === 'rider' || $this->logistics_role === 'hub_staff')) {
             try {
@@ -51,7 +60,8 @@ class User extends Authenticatable
         'theme', 'preferred_language',
     ];
 
-    protected $hidden = ['password', 'remember_token'];
+    protected $hidden = ['password', 'remember_token', 'company_owner_key', 'id_file', 'selfie_file', 'license_file', 'or_file', 'cr_file', 'resume_file',
+        'id_photo_path', 'selfie_photo_path', 'license_photo_path', 'or_cr_path'];
 
     protected function casts(): array
     {

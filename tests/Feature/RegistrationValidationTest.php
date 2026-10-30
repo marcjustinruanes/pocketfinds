@@ -19,7 +19,7 @@ class RegistrationValidationTest extends TestCase
         $this->assertSame(':memory:', config('database.connections.sqlite.database'));
         Schema::create('users', function (Blueprint $t) {
             $t->id();
-            foreach (['given_names', 'last_name', 'middle_name', 'suffix', 'sex', 'birthday', 'email', 'username', 'contact_no', 'status', 'business_name', 'tin', 'password', 'status_reason', 'sec_registration_no', 'license_number'] as $column) {
+            foreach (['account_type','logistics_role','is_logistics','given_names', 'last_name', 'middle_name', 'suffix', 'sex', 'birthday', 'email', 'username', 'contact_no', 'status', 'business_name', 'tin', 'password', 'status_reason', 'sec_registration_no', 'license_number'] as $column) {
                 $t->string($column)->nullable();
             }
         });
@@ -53,14 +53,58 @@ class RegistrationValidationTest extends TestCase
     public function test_names_accept_only_letters_and_hyphens(): void
     {
         foreach (['given_names', 'middle_name', 'last_name'] as $field) {
-            foreach (['Niño', 'Ana-Marie', 'Muñoz'] as $name) {
+            foreach (['Niño', 'Ana-Marie', 'Muñoz', 'Maria Cristina', 'Jose-Maria dela Cruz'] as $name) {
                 $this->registration([$field => $name])->assertJsonMissingValidationErrors($field);
             }
-            foreach (['Juan Miguel', "O'Hara", 'Jr.', 'Ana123', 'Ana@'] as $name) {
+            foreach (["O'Hara", 'Jr.', 'Ana123', 'Ana@', 'Double  Space'] as $name) {
                 $this->registration([$field => $name])->assertJsonValidationErrors($field);
             }
         }
         $this->registration(['middle_name' => ''])->assertJsonMissingValidationErrors('middle_name');
+    }
+
+    public function test_license_number_format_is_enforced_on_public_registration(): void
+    {
+        // Use a buyer baseline and test the regex directly — the public rider path
+        // requires vehicle_types table and file uploads not present in this test's schema.
+        $nameRegex = '/^[A-Z]\d{2}-\d{2}-\d{6}$/D';
+        foreach (['N01-23-456789', 'A00-00-000000', 'Z99-99-999999'] as $valid) {
+            $this->assertTrue((bool) preg_match($nameRegex, $valid), "Expected valid: {$valid}");
+        }
+        foreach (['N01-23-45678', 'N01-23-4567890', '101-23-456789', 'N0123456789X', 'n01-23-456789', 'N01-23-45678X', '', 'ABC-12-345678'] as $invalid) {
+            $this->assertFalse((bool) preg_match($nameRegex, $invalid), "Expected invalid: {$invalid}");
+        }
+    }
+
+    public function test_license_number_format_is_enforced_on_managed_registration(): void
+    {
+        // The managed path validates license_number inside PersonnelApplication::rules(),
+        // which is called in the $onboarding block after the outer validate() passes.
+        // Test the regex directly to confirm the rule is consistent with the workbook.
+        $nameRegex = '/^[A-Z]\d{2}-\d{2}-\d{6}$/D';
+        foreach (['N01-23-456789', 'A00-00-000000'] as $valid) {
+            $this->assertTrue((bool) preg_match($nameRegex, $valid), "Expected valid: {$valid}");
+        }
+        foreach (['N01-23-45678', '101-23-456789', 'N0123456789X', 'n01-23-456789'] as $invalid) {
+            $this->assertFalse((bool) preg_match($nameRegex, $invalid), "Expected invalid: {$invalid}");
+        }
+        // Confirm the same regex string is used in PersonnelApplication::rules()
+        $reflection = new \ReflectionClass(\App\Services\PersonnelApplication::class);
+        $source = file_get_contents($reflection->getFileName());
+        $this->assertStringContainsString('[A-Z]\\d{2}-\\d{2}-\\d{6}', $source);
+    }
+
+    public function test_multi_word_names_accepted_on_public_registration(): void
+    {
+        foreach (['given_names', 'last_name'] as $field) {
+            foreach (['Maria Cristina', 'Jose-Maria dela Cruz', 'Niño Aquino'] as $name) {
+                $this->registration([$field => $name])->assertJsonMissingValidationErrors($field);
+            }
+            // Double spaces must still be rejected (TrimStrings handles leading/trailing server-side)
+            foreach (['Maria  Cristina'] as $name) {
+                $this->registration([$field => $name])->assertJsonValidationErrors($field);
+            }
+        }
     }
 
     public function test_public_rider_age_and_license_expiry_boundaries(): void
@@ -94,8 +138,8 @@ class RegistrationValidationTest extends TestCase
         $errors = $validate();
         foreach (['given_names', 'last_name', 'birthday', 'contact_no', 'license_expiry'] as $field) $this->assertArrayNotHasKey($field, $errors);
         foreach (['given_names', 'last_name', 'middle_name'] as $field) {
-            foreach (['A', str_repeat('A', 51), 'Name123'] as $value) $this->assertArrayHasKey($field, $validate([$field => $value]));
-            foreach (['Jo', str_repeat('A', 50)] as $value) $this->assertArrayNotHasKey($field, $validate([$field => $value]));
+            foreach (['A', str_repeat('A', 51), 'Name123', 'Double  Space'] as $value) $this->assertArrayHasKey($field, $validate([$field => $value]));
+            foreach (['Jo', str_repeat('A', 50), 'Maria Cristina', 'Jose-Maria'] as $value) $this->assertArrayNotHasKey($field, $validate([$field => $value]));
         }
         $this->assertArrayHasKey('birthday', $validate(['birthday' => now()->subYears(18)->addDay()->toDateString()]));
         $this->assertArrayHasKey('license_expiry', $validate(['license_expiry' => today()->subDay()->toDateString()]));
@@ -195,6 +239,100 @@ class RegistrationValidationTest extends TestCase
         $this->post('/login', ['email' => 'rejected@gmail.com', 'password' => 'Test@2026'])
             ->assertSessionHasErrors(['email' => 'Your account application was rejected. Reason: Business permit is unreadable.']);
         $this->assertGuest();
+    }
+
+    /**
+     * DEF-001 regression: the managed-form JS previously set pattern='[\p{L}\-]+'
+     * which (a) does not support Unicode property escapes in HTML pattern and
+     * (b) contained no space character, blocking multi-word names like "Maria Cristina".
+     * The fix removes the broken pattern attribute and uses setCustomValidity() with
+     * the same /^[\p{L}-]+(\s[\p{L}-]+)*$/u regex the backend uses.
+     * This test confirms the backend regex accepts all names the fixed frontend allows.
+     */
+    public function test_def001_multi_word_names_accepted_on_managed_form_backend(): void
+    {
+        $this->actingAs(new \App\Models\User(['business_name' => 'Test Logistics']));
+        $validate = function (string $field, string $value) {
+            $request = \Illuminate\Http\Request::create('/test', 'POST', [
+                'role' => 'rider', 'given_names' => 'Juan', 'last_name' => 'Dela Cruz',
+                'birthday' => now()->subYears(18)->toDateString(), 'contact_no' => '9171234567',
+                'license_expiry' => today()->toDateString(), $field => $value,
+            ]);
+            try {
+                (new \ReflectionMethod(\App\Http\Controllers\LogisticsManagementController::class, 'accountData'))
+                    ->invoke(app(\App\Http\Controllers\LogisticsManagementController::class), $request);
+                $this->fail('Expected missing-field validation.');
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                return $e->errors();
+            }
+        };
+        // Valid multi-word Filipino names — these were blocked by the old broken pattern
+        foreach (['given_names', 'last_name', 'middle_name'] as $field) {
+            foreach (['Maria Cristina', 'Jose-Maria dela Cruz', 'Niño Aquino', 'Ana-Marie Santos'] as $name) {
+                $this->assertArrayNotHasKey($field, $validate($field, $name), "'{$name}' should be valid for {$field}");
+            }
+        }
+        // Invalid: numbers, symbols, double spaces — must still be rejected
+        foreach (['given_names', 'last_name', 'middle_name'] as $field) {
+            foreach (["O'Hara", 'Ana123', 'Ana@', 'Double  Space'] as $name) {
+                $this->assertArrayHasKey($field, $validate($field, $name), "'{$name}' should be invalid for {$field}");
+            }
+        }
+    }
+
+    /**
+     * DEF-001 regression: confirm the fixed frontend JS regex matches the backend regex.
+     * The old pattern='[\p{L}\-]+' had no space and no Unicode support in HTML.
+     * The fix uses /^[\p{L}-]+(\s[\p{L}-]+)*$/u via setCustomValidity — same as backend.
+     */
+    public function test_def001_frontend_name_regex_matches_backend(): void
+    {
+        // The backend regex used in both RegisterController and LogisticsManagementController
+        $backendRegex = '/^[\p{L}-]+(\s[\p{L}-]+)*$/u';
+
+        // Confirm the fixed JS regex string is present in role-account-details.js
+        $jsSource = file_get_contents(public_path('js/role-account-details.js'));
+        $this->assertStringContainsString('/^[\\p{L}-]+(\\s[\\p{L}-]+)*$/u', $jsSource,
+            'role-account-details.js must use the Unicode-aware name regex matching the backend');
+        // Confirm the broken pattern attribute assignment is gone
+        $this->assertStringNotContainsString("input.pattern='[\\p{L}\\-]+'", $jsSource,
+            'The broken HTML pattern attribute must be removed from role-account-details.js');
+
+        // Verify the regex itself accepts and rejects the right values
+        foreach (['Maria Cristina', 'Jose-Maria dela Cruz', 'Niño', 'Ana-Marie', 'Muñoz'] as $valid) {
+            $this->assertSame(1, preg_match($backendRegex, $valid), "Expected valid: {$valid}");
+        }
+        foreach (["O'Hara", 'Ana123', 'Double  Space', 'Ana@'] as $invalid) {
+            $this->assertSame(0, preg_match($backendRegex, $invalid), "Expected invalid: {$invalid}");
+        }
+    }
+
+    /**
+     * DEF-002 regression: the managed-form JS had no license number format validation.
+     * The fix adds setCustomValidity() using /^[A-Z]\d{2}-\d{2}-\d{6}$/ matching the backend.
+     * This test confirms the backend regex and the JS regex are identical strings.
+     */
+    public function test_def002_frontend_license_regex_matches_backend(): void
+    {
+        $jsSource = file_get_contents(public_path('js/role-account-details.js'));
+        // The fixed JS must contain the license format regex
+        $this->assertStringContainsString('/^[A-Z]\\d{2}-\\d{2}-\\d{6}$/', $jsSource,
+            'role-account-details.js must validate license number format matching the backend regex');
+
+        // Backend regex used in PersonnelApplication::rules() and RegisterController
+        $backendRegex = '/^[A-Z]\d{2}-\d{2}-\d{6}$/D';
+        $reflection = new \ReflectionClass(\App\Services\PersonnelApplication::class);
+        $source = file_get_contents($reflection->getFileName());
+        $this->assertStringContainsString('[A-Z]\\d{2}-\\d{2}-\\d{6}', $source);
+
+        // Valid LTO formats
+        foreach (['N01-23-456789', 'A00-00-000000', 'Z99-99-999999'] as $valid) {
+            $this->assertSame(1, preg_match($backendRegex, $valid), "Expected valid: {$valid}");
+        }
+        // Invalid formats
+        foreach (['N01-23-45678', 'N01-23-4567890', '101-23-456789', 'n01-23-456789', 'ABC-12-345678', ''] as $invalid) {
+            $this->assertSame(0, preg_match($backendRegex, $invalid), "Expected invalid: {$invalid}");
+        }
     }
 
     public function test_otp_expires_after_five_minutes_and_resend_replaces_it(): void

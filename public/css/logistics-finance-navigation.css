@@ -1,0 +1,610 @@
+/* ─── Finance navigation tabs ─────────────────────────────────────────────── */
+.finance-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+  min-width: 0;
+}
+.finance-navigation a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid rgba(145,145,165,.22);
+  border-radius: 10px;
+  color: var(--text, #242329);
+  background: var(--surface, #fff);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  transition: background .15s, border-color .15s;
+}
+.finance-navigation a[aria-current=page] {
+  color: var(--pink-dark, #b42d72);
+  background: rgba(200,56,131,.08);
+  border-color: rgba(200,56,131,.25);
+}
+.finance-navigation a:hover { background: rgba(200,56,131,.06); }
+.finance-navigation a:focus-visible,
+.finance-guidance a:focus-visible { outline: 2px solid #c83883; outline-offset: 3px; }
+
+/* ─── Guidance banner ─────────────────────────────────────────────────────── */
+.finance-guidance {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px 20px;
+  border: 1px solid rgba(145,145,165,.18);
+  border-left: 3px solid #c83883;
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  font: 14px/1.65 Inter, system-ui, sans-serif;
+  color: var(--text, #242329);
+}
+.fin-guidance-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: rgba(200,56,131,.09);
+  color: #c83883;
+  margin-top: 1px;
+}
+.fin-guidance-body { min-width: 0; }
+.fin-guidance-body strong { display: block; margin-bottom: 4px; font-weight: 600; color: var(--text, #242329); }
+.fin-guidance-body p { margin: 0 0 8px; color: var(--muted, #61616b); overflow-wrap: anywhere; }
+.fin-guidance-body p:last-child { margin-bottom: 0; }
+.fin-guidance-body a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  color: var(--pink-dark, #b42d72);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* ─── Finance overview grid ───────────────────────────────────────────────── */
+.finance-overview {
+  min-width: 0;
+  display: grid;
+  gap: 20px;
+  font: 15px/1.6 Inter, system-ui, sans-serif;
+}
+.finance-overview .finance-navigation,
+.finance-overview .finance-guidance { margin-bottom: 0; }
+.finance-overview .table-wrap { max-width: 100%; }
+
+/* ─── Workspace cards ─────────────────────────────────────────────────────── */
+.fin-workspaces {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.fin-workspace-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 18px 20px 16px;
+  border: 1px solid rgba(145,145,165,.2);
+  border-radius: 16px;
+  background: var(--surface, #fff);
+  color: var(--text, #242329);
+  text-decoration: none;
+  transition: border-color .18s, box-shadow .18s, transform .18s;
+  position: relative;
+}
+.fin-workspace-card:hover {
+  border-color: rgba(200,56,131,.3);
+  box-shadow: 0 4px 18px rgba(200,56,131,.09);
+  transform: translateY(-2px);
+}
+.fin-workspace-card:focus-visible {
+  outline: 2px solid #c83883;
+  outline-offset: 3px;
+  border-radius: 16px;
+}
+.fin-workspace-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: rgba(200,56,131,.08);
+  color: #c83883;
+  margin-bottom: 6px;
+  flex-shrink: 0;
+}
+.fin-workspace-card strong {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text, #242329);
+}
+.fin-workspace-card > span:not(.fin-workspace-icon):not(.fin-workspace-arrow) {
+  font-size: 12px;
+  color: var(--muted, #61616b);
+  line-height: 1.5;
+}
+.fin-workspace-arrow {
+  font-size: 13px;
+  color: #c83883;
+  margin-top: 6px;
+  font-weight: 600;
+  opacity: .35;
+  transition: opacity .15s;
+}
+.fin-workspace-card:hover .fin-workspace-arrow,
+.fin-workspace-card:focus-visible .fin-workspace-arrow { opacity: 1; }
+
+/* ─── Compensation settings card ─────────────────────────────────────────── */
+.fin-settings-card {
+  border: 1px solid rgba(145,145,165,.2);
+  border-radius: 16px;
+  padding: 24px;
+  background: var(--surface, #fff);
+  min-width: 0;
+}
+.fin-settings-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.fin-settings-head > div { min-width: 0; }
+.fin-settings-head h2 {
+  margin: 4px 0 6px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  color: var(--text, #242329);
+}
+
+/* Compensation rate grid */
+.fin-comp-form { min-width: 0; }
+.fin-comp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.fin-comp-label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.fin-comp-label-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text, #242329);
+  line-height: 1.4;
+}
+.fin-comp-hint {
+  font-size: 11px;
+  color: var(--muted, #61616b);
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+.fin-comp-footer {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.fin-save-btn { min-height: 44px; }
+
+/* ─── Currency input ──────────────────────────────────────────────────────── */
+.fin-currency-wrap {
+  display: flex;
+  align-items: stretch;
+  margin-top: 2px;
+}
+.fin-currency-prefix {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid var(--line, #dedee5);
+  border-right: 0;
+  border-radius: 10px 0 0 10px;
+  background: rgba(145,145,165,.06);
+  color: var(--muted, #61616b);
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+  min-height: 44px;
+}
+.fin-currency-input {
+  border-radius: 0 10px 10px 0 !important;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  min-height: 44px;
+}
+
+/* ─── Shared typography ───────────────────────────────────────────────────── */
+.fin-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted, #61616b);
+  margin: 0 0 4px;
+}
+.fin-note {
+  font-size: 13px;
+  color: var(--muted, #61616b);
+  line-height: 1.65;
+  margin: 6px 0;
+}
+.fin-note strong { color: var(--text, #242329); }
+.fin-note a { color: #b42d72; font-weight: 500; }
+.fin-note--info {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(145,145,165,.06);
+  border: 1px solid rgba(145,145,165,.14);
+  margin-top: 4px;
+  font-size: 12.5px;
+}
+
+/* ─── Badges ──────────────────────────────────────────────────────────────── */
+.fin-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.fin-badge--editable {
+  background: rgba(200,56,131,.09);
+  color: #b42d72;
+  border: 1px solid rgba(200,56,131,.2);
+}
+.fin-badge--readonly {
+  background: rgba(145,145,165,.1);
+  color: var(--muted, #61616b);
+  border: 1px solid rgba(145,145,165,.18);
+}
+
+/* ─── Reference accordions ────────────────────────────────────────────────── */
+.fin-reference-details {
+  border: 1px solid rgba(145,145,165,.18);
+  border-radius: 16px;
+  background: var(--surface, #fff);
+  min-width: 0;
+  overflow: hidden;
+}
+.fin-reference-details > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text, #242329);
+  min-height: 52px;
+  user-select: none;
+}
+.fin-reference-details > summary::-webkit-details-marker { display: none; }
+.fin-reference-details > summary::after {
+  content: "+";
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--muted, #61616b);
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: transform .2s;
+}
+.fin-reference-details[open] > summary::after { content: "\2212"; }
+.fin-reference-details > summary:focus-visible { outline: 2px solid #c83883; outline-offset: -2px; }
+.fin-reference-summary-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.fin-reference-summary-inner svg { flex-shrink: 0; color: var(--muted, #61616b); }
+.fin-reference-body {
+  padding: 16px 20px 20px;
+  border-top: 1px solid rgba(145,145,165,.14);
+}
+.fin-reference-body .table-wrap { margin-top: 12px; }
+
+/* ─── Table data styles ───────────────────────────────────────────────────── */
+.fin-amount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.fin-ref { font-size: 12px; color: var(--muted, #61616b); overflow-wrap: anywhere; }
+.fin-date { font-size: 13px; color: var(--muted, #61616b); }
+
+/* ─── Status pills ────────────────────────────────────────────────────────── */
+.fin-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(145,145,165,.1);
+  color: var(--muted, #61616b);
+  white-space: nowrap;
+}
+.fin-status-pill--pending { background: rgba(234,179,8,.12); color: #92400e; }
+.fin-status-pill--earned,
+.fin-status-pill--verified,
+.fin-status-pill--received { background: rgba(200,56,131,.09); color: #b42d72; }
+.fin-status-pill--paid { background: rgba(22,163,74,.1); color: #15803d; }
+.fin-status-pill--cancelled { background: rgba(239,68,68,.08); color: #b91c1c; }
+.fin-status-pill--discrepancy { background: rgba(234,88,12,.1); color: #9a3412; }
+
+/* ─── Empty states ────────────────────────────────────────────────────────── */
+.fin-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 32px 20px;
+  text-align: center;
+  color: var(--muted, #61616b);
+}
+.fin-empty svg { opacity: .35; }
+.fin-empty strong { font-size: 14px; color: var(--text, #242329); }
+.fin-empty p { font-size: 13px; margin: 0; max-width: 360px; line-height: 1.6; }
+/* fin-empty--section kept for standalone use outside cards */
+.fin-empty--section {
+  padding: 40px 24px;
+  border: 1px dashed rgba(145,145,165,.25);
+  border-radius: 12px;
+  margin: 4px 0;
+}
+/* fin-empty--card: compact empty state inside an already-padded card */
+.fin-empty--card {
+  padding: 28px 16px;
+  text-align: center;
+}
+.fin-empty--inline {
+  flex-direction: row;
+  padding: 14px 16px;
+  border: 1px dashed rgba(145,145,165,.22);
+  border-radius: 10px;
+  gap: 10px;
+  text-align: left;
+  font-size: 13px;
+  color: var(--muted, #61616b);
+}
+.fin-empty--inline svg { flex-shrink: 0; opacity: .4; }
+
+/* ─── Obligations table ───────────────────────────────────────────────────── */
+.fin-obligations-table { margin: 12px 0 4px; }
+.fin-obligations-pagination { margin-top: 12px; padding-bottom: 4px; }
+.fin-card-head { padding: 0 0 16px; margin-bottom: 4px; }
+.fin-card-head h2 { margin: 0 0 4px; font-size: 17px; font-weight: 700; letter-spacing: -.02em; }
+
+.fin-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  background: rgba(145,145,165,.1);
+  color: var(--muted, #61616b);
+}
+.fin-mode-badge--gcash { background: rgba(0,120,255,.08); color: #0050b3; }
+.fin-mode-badge--cod { background: rgba(234,179,8,.12); color: #92400e; }
+.fin-amount-sm {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 600;
+  display: block;
+}
+.fin-claim-status { font-size: 11px; color: var(--muted, #61616b); display: block; margin-top: 2px; }
+.fin-claim-status--unverified { color: #92400e; }
+.fin-claim-status--verified { color: #15803d; }
+
+/* ─── Shipping configuration ──────────────────────────────────────────────── */
+.fin-shipping-config > summary { align-items: center; gap: 12px; }
+.fin-config-summary-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.fin-config-summary-inner svg { flex-shrink: 0; color: #c83883; }
+.fin-config-summary-inner > span:first-of-type { font-size: 14px; font-weight: 600; color: var(--text, #242329); }
+.fin-config-subtitle { font-size: 12px; font-weight: 400; color: var(--muted, #61616b); margin-left: 2px; }
+
+.fin-config-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+.fin-config-panel {
+  padding: 20px;
+  border: 1px solid rgba(145,145,165,.16);
+  border-radius: 14px;
+  background: rgba(145,145,165,.02);
+}
+.fin-config-panel h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+
+/* Config form inputs */
+.fin-config-form label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  margin: 14px 0 2px;
+  color: var(--text, #242329);
+}
+.fin-config-form label:first-of-type { margin-top: 0; }
+.fin-config-form input {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1px solid var(--line, #dedee5);
+  border-radius: 10px;
+  font: inherit;
+  color: inherit;
+  background: var(--surface, #fff);
+  box-sizing: border-box;
+}
+.fin-config-form input:focus-visible { outline: 2px solid #c83883; outline-offset: 2px; }
+.fin-config-btn { margin-top: 16px; min-height: 42px; }
+
+.fin-field-hint {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted, #61616b);
+  margin-top: 1px;
+  line-height: 1.5;
+}
+
+/* Current account display */
+.fin-current-account {
+  display: grid;
+  gap: 3px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(200,56,131,.05);
+  border: 1px solid rgba(200,56,131,.12);
+  margin-bottom: 16px;
+}
+.fin-account-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: #b42d72;
+}
+.fin-current-account strong { font-size: 14px; font-weight: 600; }
+.fin-account-number {
+  font-size: 13px;
+  color: var(--muted, #61616b);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Approved rates section */
+.fin-config-rates { padding-top: 20px; border-top: 1px solid rgba(145,145,165,.14); }
+.fin-config-rates-head { margin-bottom: 4px; }
+.fin-config-rates h3 { margin: 4px 0 6px; font-size: 15px; font-weight: 600; }
+
+.fin-rates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.fin-rate-card {
+  padding: 18px;
+  border: 1px solid rgba(145,145,165,.18);
+  border-radius: 14px;
+  background: var(--surface, #fff);
+}
+.fin-rate-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.fin-rate-header strong { font-size: 14px; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.fin-rate-amounts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(145,145,165,.04);
+}
+.fin-rate-amounts dt { font-size: 11px; color: var(--muted, #61616b); margin-bottom: 3px; }
+.fin-rate-amounts dd { margin: 0; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* Rate form inside rate card */
+.fin-rate-form label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  margin: 12px 0 4px;
+  color: var(--text, #242329);
+}
+.fin-rate-form input {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 11px;
+  border: 1px solid var(--line, #dedee5);
+  border-radius: 9px;
+  font: inherit;
+  color: inherit;
+  background: var(--surface, #fff);
+  box-sizing: border-box;
+}
+.fin-rate-form input[readonly] { background: rgba(145,145,165,.06); color: var(--muted, #61616b); }
+.fin-rate-form input:focus-visible { outline: 2px solid #c83883; outline-offset: 2px; }
+.fin-rate-submit { margin-top: 14px; width: 100%; min-height: 40px; }
+
+/* ─── Shared button/form states ───────────────────────────────────────────── */
+.finance-overview button:disabled,
+.settlement-workspace form[aria-busy=true] button { opacity: .65; cursor: wait; }
+
+/* ─── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .fin-workspaces { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+  .fin-comp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fin-config-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 650px) {
+  .finance-navigation { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .finance-navigation a { font-size: 13px; padding: 10px; }
+  .finance-guidance { padding: 14px 16px; }
+  .fin-guidance-icon { display: none; }
+  .fin-settings-card { padding: 18px; }
+  .fin-settings-head { flex-direction: column; gap: 10px; }
+  .fin-reference-details > summary { padding: 14px 16px; }
+  .fin-reference-body { padding: 14px 16px 16px; }
+  .fin-comp-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 500px) {
+  .fin-workspaces { grid-template-columns: minmax(0, 1fr); }
+  .fin-rates-grid { grid-template-columns: minmax(0, 1fr); }
+  .fin-rate-amounts { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fin-workspace-card { transition: none; }
+  .fin-workspace-card:hover { transform: none; }
+}
+
+/* ─── Finance guidance on settlement workspaces ───────────────────────────── */
+.finance-guidance ~ .settlement-workspace { font-size: 15px; }
+.finance-guidance ~ .settlement-workspace label { font-size: 14px; }
+.finance-guidance ~ .settlement-workspace .cash-page-nav,
+.finance-guidance ~ .settlement-workspace .cash-handover,
+.finance-guidance ~ .settlement-workspace details,
+.finance-guidance ~ .settlement-workspace .cash-table th,
+.finance-guidance ~ .settlement-workspace .cash-table td { border-color: rgba(145,145,165,.22); }

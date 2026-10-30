@@ -11,6 +11,16 @@ use Illuminate\Database\Eloquent\Builder;
 
 class LogisticsAccess
 {
+    public function receivingStaff(User $user, ?string $municipality, ?string $province): User
+    {
+        $actor = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+        abort_unless($actor->isHubStaff() && $actor->status === 'approved', 403, 'Only assigned Hub Staff may attest physical hub receipt.');
+        $hub = LogisticsHub::whereKey($actor->logistics_hub_id)->lockForUpdate()->firstOrFail();
+        abort_unless($hub->is_operational && $hub->company_name === $actor->business_name
+            && $this->matches($hub, $municipality, $province), 403, 'Only the receiving hub staff may receive these parcels.');
+        return $actor;
+    }
+
     public function hub(User $user): LogisticsHub
     {
         $hub = $user->logisticsHub;

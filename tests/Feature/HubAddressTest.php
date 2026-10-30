@@ -25,7 +25,8 @@ class HubAddressTest extends TestCase
         $this->admin = User::create(['account_type' => 'logistics', 'is_logistics' => true, 'is_admin' => false, 'logistics_role' => 'admin',
             'business_name' => 'Alpha', 'status' => 'approved', 'username' => 'address_admin', 'email' => 'address_admin@example.test', 'password' => 'FixturePassword123']);
         Http::fake([
-            'https://psgc.gitlab.io/api/provinces/' => Http::response([['code' => '043400000', 'name' => 'Laguna']]),
+            'https://psgc.gitlab.io/api/regions/' => Http::response([['code' => '040000000', 'name' => 'CALABARZON']]),
+            'https://psgc.gitlab.io/api/provinces/' => Http::response([['code' => '043400000', 'name' => 'Laguna', 'regionCode' => '040000000']]),
             'https://psgc.gitlab.io/api/provinces/043400000/cities-municipalities/' => Http::response([
                 ['code' => '043426000', 'name' => 'Santa Cruz'], ['code' => '043425000', 'name' => 'San Pablo']]),
             'https://psgc.gitlab.io/api/cities-municipalities/043426000/barangays/' => Http::response([['code' => '043426001', 'name' => 'Central']]),
@@ -108,4 +109,63 @@ class HubAddressTest extends TestCase
             $this->assertContains($this->getJson('/logistics/hub-locations/provinces')->status(), [302, 403]);
         }
     }
+    public function test_profile_proxy_requires_approved_logistics_access_and_rejects_invalid_paths(): void
+    {
+        $this->getJson('/logistics/address-locations/regions')->assertOk()
+            ->assertHeader('X-Content-Type-Options', 'nosniff')->assertJsonPath('0.name', 'CALABARZON');
+        $this->getJson('/logistics/address-locations/provinces')->assertOk()->assertJsonPath('0.regionCode', '040000000');
+        $this->getJson('/logistics/address-locations/unknown')->assertUnprocessable();
+        $this->getJson('/logistics/address-locations/regions/043400000')->assertUnprocessable();
+        $this->getJson('/logistics/address-locations/barangays/invalid')->assertUnprocessable();
+        $buyer = User::create(['account_type' => 'buyer', 'status' => 'approved', 'password' => 'FixturePassword!123']);
+        $this->actingAs($buyer)->getJson('/logistics/address-locations/regions')->assertRedirect(route('login'));
+        app('auth')->forgetGuards();
+        $this->getJson('/logistics/address-locations/regions')->assertRedirect(route('login'));
+    }
+
+    public function test_profile_address_names_are_verified_against_api_hierarchy(): void
+    {
+        $service = app(\App\Services\HubAddress::class);
+        $data = ['region' => 'CALABARZON', 'province' => 'laguna', 'municipality' => 'Santa Cruz', 'barangay' => 'Central'];
+        $this->assertSame(['region' => 'CALABARZON', 'province' => 'Laguna', 'municipality' => 'Santa Cruz', 'barangay' => 'Central'], $service->validateAccount($data));
+        $this->postJson('/logistics/account/address', array_merge($data, ['postal_code' => '4009', 'barangay' => 'Other']))
+            ->assertUnprocessable()->assertJsonValidationErrors('address');
+        $this->postJson('/logistics/account/address', array_merge($data, ['postal_code' => '4009', 'region' => 'Forged']))
+            ->assertUnprocessable()->assertJsonValidationErrors('region');
+    }
+
+    public function test_profile_lookup_is_rate_limited_before_additional_upstream_requests(): void
+    {
+        for ($i = 0; $i < 60; $i++) {
+            $this->getJson('/logistics/address-locations/regions')->assertOk();
+        }
+        $this->getJson('/logistics/address-locations/regions')->assertStatus(429);
+        Http::assertSentCount(1);
+    }
+
+    public function test_malformed_upstream_rows_fail_closed_without_leaking_response(): void
+    {
+        Http::swap(new Factory);
+        Http::fake(['*' => Http::response([['code' => ['invalid'], 'name' => 'Unsafe']])]);
+        $this->getJson('/logistics/address-locations/regions')->assertUnprocessable()
+            ->assertDontSee('Unsafe')->assertJsonValidationErrors('address');
+    }
+
+    public function test_valid_profile_address_is_canonical_and_still_requires_admin_approval(): void
+    {
+        $this->post('/logistics/account/address', ['region'=>'CALABARZON','province'=>'laguna','municipality'=>'Santa Cruz','barangay'=>'Central','postal_code'=>'4009'])->assertRedirect();
+        $change = \App\Models\AccountUpdateRequest::where('user_id', $this->admin->id)->firstOrFail();
+        $this->assertSame('pending', $change->status);
+        $this->assertSame('Laguna', $change->requested_changes['province']);
+        $this->assertSame('Central', $change->requested_changes['barangay']);
+    }
+
+    public function test_personnel_barangay_must_belong_to_assigned_hub(): void
+    {
+        $hub = LogisticsHub::create(['company_name'=>'Alpha','province'=>'Laguna','municipality'=>'Santa Cruz','is_operational'=>true]);
+        $this->assertSame('Central', app(\App\Services\HubAddress::class)->validateBarangay($hub, 'central'));
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        app(\App\Services\HubAddress::class)->validateBarangay($hub, 'Other');
+    }
+
 }

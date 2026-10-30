@@ -4,6 +4,7 @@
 @section('page-sub', 'Failed and cancelled deliveries requiring attention')
 
 @section('content')
+@include('logistics.partials.recovery-custody')
 @include('logistics.partials.issue-management')
 <div class="card">
   <div class="card-head"><h2>Problem Deliveries</h2><span class="stamp stamp-rejected">{{ $shipments->count() }} issues</span></div>
@@ -43,14 +44,10 @@
             <div class="row-actions">
               <form method="POST" action="{{ route('logistics.status.update', $s->id) }}">
                 @csrf @method('PATCH')
-                <input type="hidden" name="status" value="assigned_to_rider">
+                <input type="hidden" name="status" value="assigned_to_rider"><label>Retry reason<input name="reason" required minlength="3" maxlength="500" style="min-height:44px;max-width:180px"></label>
                 <button class="btn btn-sm btn-outline">Retry Delivery</button>
               </form>
-              <form method="POST" action="{{ route('logistics.status.update', $s->id) }}">
-                @csrf @method('PATCH')
-                <input type="hidden" name="status" value="returned">
-                <button class="btn btn-sm btn-outline">Return to Seller</button>
-              </form>
+              @include('logistics.partials.rts-custody',['shipment'=>$s])
             </div>
             @else
             <span style="color:var(--muted);font-size:12px">No action needed</span>

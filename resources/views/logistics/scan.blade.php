@@ -78,7 +78,7 @@
       <div id="shipmentResult" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
           <h2 class="mono" id="rTracking" style="margin:0;font-size:18px"></h2>
-          <span class="stamp" id="rStatus"></span>
+          <span class="stamp" id="rStatus"></span><p id="rCustody" role="status" style="font-size:14px;line-height:1.6;overflow-wrap:anywhere"></p>
         </div>
         <div class="detail-grid">
           <div><div class="field-label">Order #</div><div class="field-value mono" id="rOrder"></div></div>

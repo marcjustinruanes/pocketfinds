@@ -4,7 +4,27 @@
 @section('page-sub', "Approve/disapprove hub staff applications, activate or suspend accounts")
 
 @section('content')
-<a href="{{ route('logistics.accounts',['role'=>'hub_staff']) }}" class="btn btn-outline" style="margin-bottom:16px">Create or edit accounts and hub assignments</a>
+@include('logistics.partials.personnel-tabs')
+
+<details class="card card-pad acf-create-card" style="margin-bottom:20px" @if($errors->any()) open @endif>
+  <summary class="acf-create-summary">
+    <span class="acf-create-summary-inner">
+      <strong>+ Create hub staff account</strong>
+      <span>Add a new hub staff member directly</span>
+    </span>
+  </summary>
+  <div class="acf-create-body">
+    @if($errors->any())
+      <div class="acf-alert" role="alert">{{ $errors->first() }}</div>
+    @endif
+    <form method="POST" enctype="multipart/form-data" action="{{ route('logistics.staff.accounts.store') }}">@csrf
+      @include('logistics.partials.account-form', ['account' => null, 'creationRole' => 'hub_staff'])
+    </form>
+  </div>
+</details>
+
+<form method="GET" class="logistics-toolbar"><input name="search" value="{{ request('search') }}" placeholder="Search name, username or email" aria-label="Search personnel"><input type="hidden" name="status" value="{{ $status }}"><button class="btn btn-outline">Search</button></form>
+
 @if(session('success'))<div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('success') }}</div>@endif
 
 <div class="card">
@@ -14,7 +34,7 @@
   <div class="card-pad">
     <div class="tabs" id="staffTabs">
       @foreach(['all' => 'All', 'pending' => 'Pending', 'interview' => 'Interview', 'approved' => 'Approved', 'rejected' => 'Rejected', 'suspended' => 'Suspended'] as $key => $label)
-      <a class="tab {{ $status === $key ? 'active' : '' }}" href="{{ route('logistics.staff', ['status' => $key]) }}">{{ $label }} <span class="tab-count">{{ $key === 'all' ? $statusCounts->sum() : ($statusCounts[$key] ?? 0) }}</span></a>
+      <a class="tab {{ $status === $key ? 'active' : '' }}" href="{{ route('logistics.staff', ['search' => request('search'), 'status' => $key]) }}">{{ $label }} <span class="tab-count">{{ $key === 'all' ? $statusCounts->sum() : ($statusCounts[$key] ?? 0) }}</span></a>
       @endforeach
     </div>
 
@@ -44,6 +64,7 @@
             <td><span class="stamp stamp-{{ $member->status }}">{{ ucfirst($member->status) }}</span></td>
             <td>
               <div class="row-actions">
+                <a class="btn btn-sm btn-outline" href="{{ route('logistics.accounts.edit', $member->id) }}">Edit / hub assignment</a>
                 <button class="btn btn-sm btn-outline" data-modal-open="staffModal-{{ $member->id }}">Review</button>
               </div>
             </td>
@@ -122,14 +143,6 @@
                 </div>
                 @endif
               </div>
-              {{--
-                Buttons per status — every one of these emails the applicant:
-                  pending   -> Interview, Reject
-                  interview -> Approve, Reject
-                  approved  -> Suspend
-                  rejected  -> (none)
-                  suspended -> Activate
-              --}}
               <div class="modal-foot">
                 <button class="btn btn-outline" data-modal-close>Cancel</button>
                 @if($member->status === 'pending')
@@ -141,7 +154,7 @@
                 @elseif($member->status === 'approved')
                 <button type="button" class="btn btn-outline" onclick="openReasonModal('suspend', '{{ route('logistics.staff.suspend', $member->id) }}')">Suspend</button>
                 @elseif($member->status === 'suspended')
-                <form method="POST" action="{{ route('logistics.staff.activate', $member->id) }}" style="display:inline">
+                <form method="POST" enctype="multipart/form-data" action="{{ route('logistics.staff.activate', $member->id) }}" style="display:inline">
                   @csrf @method('PATCH')
                   <button class="btn btn-success" type="submit">Activate</button>
                 </form>
@@ -163,7 +176,7 @@
                 </div>
                 <button class="modal-close" data-modal-close aria-label="Close"><x-admin-icon name="close" /></button>
               </div>
-              <form method="POST" action="{{ route('logistics.staff.approve', $member->id) }}">
+              <form method="POST" enctype="multipart/form-data" action="{{ route('logistics.staff.approve', $member->id) }}">
                 @csrf @method('PATCH')
                 <div class="modal-body">
                   <p style="margin:0 0 14px;font-size:12.5px;color:var(--muted)">Set when and where to meet {{ $member->given_names }} — these details go straight into their invitation email.</p>
@@ -204,6 +217,7 @@
               </div>
               <div class="modal-body">
                 <p style="margin:0 0 14px;font-size:13px;color:var(--text)">Confirm that the face-to-face interview below has actually happened and {{ $member->given_names }} should be approved.</p>
+                <label style="display:flex;align-items:center;gap:12px;min-height:44px"><input type="checkbox" form="staff-approval-{{ $member->id }}" name="interview_completed" value="1" required> I attest that this applicant's interview has actually been completed.</label>
                 <div class="detail-grid">
                   <div><div class="field-label">Date</div><div class="field-value">{{ $member->interview_scheduled_at?->format('M d, Y') ?? '—' }}</div></div>
                   <div><div class="field-label">Time</div><div class="field-value">{{ $member->interview_scheduled_at?->format('g:i A') ?? '—' }}</div></div>
@@ -211,7 +225,7 @@
                 </div>
                 <p style="margin:12px 0 0;font-size:12px;color:var(--muted)">This immediately enables their account — they'll be able to log in right after.</p>
               </div>
-              <form method="POST" action="{{ route('logistics.staff.confirm', $member->id) }}">
+              <form method="POST" enctype="multipart/form-data" id="staff-approval-{{ $member->id }}" action="{{ route('logistics.staff.confirm', $member->id) }}">
                 @csrf @method('PATCH')
                 <div class="modal-foot">
                   <button type="button" class="btn btn-outline" data-modal-close>Cancel</button>

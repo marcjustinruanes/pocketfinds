@@ -222,13 +222,13 @@ class BuyerController extends Controller
             }
         }
 
-        // Which of the buyer's own verified e-wallet/bank accounts match a
+        // Which of the buyer's own verified GCash accounts match a
         // payment method offered here, so the cart can show a "Verified"
         // badge (or a prompt to verify) once a specific method is chosen.
-        $paymentAccounts = BuyerPaymentAccount::where('buyer_id', auth()->id())->get();
+        $paymentAccounts = BuyerPaymentAccount::where('buyer_id', auth()->id())->where('type','gcash')->get();
         $verifiedLookup = [];
         foreach ($paymentAccounts as $account) {
-            $key = $account->type === 'bank' ? 'bank:'.strtolower($account->bank_name ?? '') : $account->type;
+            $key = $account->type;
             $verifiedLookup[$key] = true;
         }
 
@@ -624,6 +624,9 @@ class BuyerController extends Controller
             $locked = Order::lockFresh($order->id);
             if ($locked->status !== 'delivered') {
                 return false;
+            }
+            if (app(\App\Services\LogisticsTreasury::class)->installed()) {
+                $locked->buyer_confirmed_at = now();
             }
             $locked->update(['status' => 'completed']);
             if ($locked->shipment && ! $locked->shipment->delivered_at) {
@@ -1415,21 +1418,21 @@ class BuyerController extends Controller
         return back()->with('password_success', 'Password updated.');
     }
 
-    /** Send a real verification code to the buyer's own registered email before saving a GCash/bank account. */
+    /** Send a real verification code to the buyer's own registered email before saving a GCash account. */
     public function sendPaymentAccountCode(Request $request)
     {
         $data = $request->validate([
-            'type' => 'required|in:gcash,paymaya,bank',
+            'type' => 'required|in:gcash',
             'account_name' => 'required|string|max:150',
-            'account_number' => 'required|string|max:50',
-            'bank_name' => 'required_if:type,bank|nullable|string|max:150',
+            'account_number' => ['required','string','regex:/^09[0-9]{9}$/D'],
+            'bank_name' => 'prohibited',
         ]);
 
         $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $key = 'payment_otp_'.auth()->id();
         Cache::put($key, ['otp' => $otp, 'data' => $data], now()->addMinutes(10));
 
-        $typeLabel = ['gcash' => 'GCash', 'paymaya' => 'PayMaya', 'bank' => 'bank'][$data['type']];
+        $typeLabel = 'GCash';
         try {
             Mail::raw(
                 "Your PocketFinds verification code is: {$otp}\n\nThis code confirms you want to add this {$typeLabel} account to your PocketFinds profile. It expires in 10 minutes.",
@@ -1455,6 +1458,10 @@ class BuyerController extends Controller
             return response()->json(['success' => false, 'message' => 'Invalid or expired code.']);
         }
 
+        if(($stored['data']['type']??null)!=='gcash' || !preg_match('/^09[0-9]{9}$/D',(string)($stored['data']['account_number']??''))){
+            Cache::forget($key);
+            return response()->json(['success'=>false,'message'=>'Only GCash accounts can be connected. Request a new code.'],422);
+        }
         $account = BuyerPaymentAccount::create(array_merge($stored['data'], [
             'buyer_id' => auth()->id(),
             'verified' => true,

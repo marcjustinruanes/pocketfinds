@@ -45,6 +45,15 @@ class Order extends Model
     protected static function booted(): void
     {
         static::updating(function ($order) {
+            if ($order->isDirty(['shipping_amount', 'subtotal', 'discount_amount', 'total', 'items', 'shipping_address', 'commerce_snapshot', 'seller_id', 'payment_method', 'payment_method_id', 'gcash_purchase_id'])
+                && app(\App\Services\LogisticsShipping::class)->installed()
+                && DB::table('logistics_shipping_obligations')->where('order_id', $order->id)->exists()) {
+                throw ValidationException::withMessages(['shipping' => 'This order has a snapshotted shipping obligation. Its financial basis cannot be silently changed.']);
+            }
+            if ($order->isDirty('status') && in_array($order->status, ['delivered', 'completed'], true)
+                && !($order->getOriginal('status') === 'delivered' && $order->status === 'completed')) {
+                app(\App\Services\CodCollection::class)->assertRecorded($order);
+            }
             if ($order->gcash_purchase_id && $order->isDirty('status') && in_array($order->status, ['confirmed', 'preparing', 'ready_for_pickup'])) {
                 $purchase = GcashPurchase::whereKey($order->gcash_purchase_id)->lockForUpdate()->firstOrFail();
                 if ($purchase->payment_state === 'manual_resolution') {

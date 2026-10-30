@@ -192,7 +192,8 @@ class BuyerCommerce
             $shares = $this->split((int) round($amount * 100), array_map(fn ($o) => (int) round(($v->kind === 'shipping' ? $o['shipping_amount'] : $o['subtotal']) * 100), $eligible));
             foreach ($shares as $id => $cents) {
                 $order = &$orders[$id];
-                $order['vouchers'][] = ['id' => $v->id, 'code' => $v->code, 'kind' => $v->kind, 'amount' => $cents / 100];
+                $order['vouchers'][] = ['id' => $v->id, 'code' => $v->code, 'kind' => $v->kind, 'amount' => $cents / 100,
+                    'funding_source' => $v->seller_id === null ? 'platform' : 'seller'];
                 $order['discount_amount'] += $cents / 100;
                 if ($v->kind === 'store') {
                     $order['seller_discount'] += $cents / 100;
@@ -222,6 +223,10 @@ class BuyerCommerce
             $order['total'] = round($order['subtotal'] + $order['shipping_amount'] - $order['discount_amount'], 2);
         }unset($order);
 
+        foreach ($orders as $sellerId => $details) {
+            $warning = app(LogisticsShipping::class)->preflight(User::findOrFail($sellerId), $address, $details, $preview);
+            if ($warning) $warnings[] = $warning;
+        }
         return ['orders' => $orders, 'address' => $address, 'total' => round(array_sum(array_column($orders, 'total')), 2), 'warnings' => array_values(array_unique($warnings))];
     }
 

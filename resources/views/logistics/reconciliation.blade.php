@@ -1,0 +1,54 @@
+@extends('logistics.layout')
+@section('title','Reconciliation & Reports')
+@section('page-title','Reconciliation & Reports')
+@section('page-sub','Company cash custody, obligations and financial history')
+@push('head')<link rel="stylesheet" href="{{ asset('css/logistics-cash-desk.css') }}?v={{ filemtime(public_path('css/logistics-cash-desk.css')) }}">@endpush
+@section('content')
+@if(auth()->user()->isLogisticsAdmin())
+@push('head')<link rel="stylesheet" href="{{ asset('css/logistics-finance-navigation.css') }}?v={{ filemtime(public_path('css/logistics-finance-navigation.css')) }}">@endpush
+@push('scripts')<script src="{{ asset('js/logistics-finance-feedback.js') }}" defer></script>@endpush
+@endif
+<div class="cash-desk settlement-workspace reconciliation-workspace">
+  <section class="cash-card"><h2>{{ $report['company'] }}</h2><p>Snapshot {{ $report['generated_at'] }}. Balances and manual-review cases are current, across all recorded history. The date filter applies only to activity rows; it does not reconstruct a past closing balance.</p>
+    <form method="GET" action="{{ route('logistics.finance.reconciliation') }}" class="reconciliation-filters">
+      <div><label for="recon-from">Activity from (Asia/Manila)</label><input id="recon-from" type="date" name="from" value="{{ $filters['from'] }}" required></div>
+      <div><label for="recon-to">Activity to (Asia/Manila)</label><input id="recon-to" type="date" name="to" value="{{ $filters['to'] }}" required></div>
+      <div><label for="recon-dataset">History dataset</label><select id="recon-dataset" name="dataset">@foreach(\App\Services\LogisticsReconciliation::DATASETS as $key=>$label)<option value="{{ $key }}" @selected($filters['dataset']===$key)>{{ $label }}</option>@endforeach</select></div>
+      <button class="btn btn-primary">Apply filters</button>
+    </form>
+  </section>
+  <section class="cash-card" id="custody"><h2>Cash custody and verified funds</h2><p>Counted cash moves between locations. A remittance, treasury receipt and ledger payment are different records of that flow, not additional buyer payments.</p>
+    <div class="cash-stats">
+      @foreach(['hub_cash'=>'Physical cash at hubs','in_transit'=>'Released cash in transit'] as $key=>$label)<div><span>{{ $label }}</span><strong>PHP {{ \App\Services\LogisticsReconciliation::money($report['metrics'][$key]) }}</strong></div>@endforeach
+      <div><span>COD treasury balance</span><strong>PHP {{ \App\Services\LogisticsReconciliation::money($report['buckets']['cod']) }}</strong><small>Includes retained shipping; not all available for payouts</small></div>
+    </div>
+    <div class="reconciliation-check"><strong>Counted-cash equation: {{ $report['conservation']['residual_cents']===0 ? 'balanced' : 'requires review' }}</strong><p>Expected PHP {{ \App\Services\LogisticsReconciliation::money($report['conservation']['expected_cents']) }} / Located PHP {{ \App\Services\LogisticsReconciliation::money($report['conservation']['actual_cents']) }} / Difference PHP {{ \App\Services\LogisticsReconciliation::money($report['conservation']['residual_cents']) }}</p><small>Counted remittances + actual transfer differences less seller COD disbursements = hub cash + cash in transit + COD and unallocated treasury. A balanced equation does not clear shortages, disputes or legacy exceptions.</small></div>
+    <details><summary>Hub cash custody</summary><div class="cash-table" tabindex="0" role="region" aria-label="Hub custody"><table><thead><tr><th scope="col">Hub</th><th scope="col">Operational</th><th scope="col">Physical cash</th><th scope="col">Qualified COD (still at hub)</th></tr></thead><tbody>@forelse($report['hubs'] as $hub)<tr><td>{{ $hub['name'] }}</td><td>{{ $hub['operational'] ? 'Yes' : 'No' }}</td><td>PHP {{ \App\Services\LogisticsReconciliation::money($hub['cash_cents']) }}</td><td>PHP {{ \App\Services\LogisticsReconciliation::money($hub['qualified_cod_cents']) }}</td></tr>@empty<tr><td colspan="4">No company hubs recorded.</td></tr>@endforelse</tbody></table></div></details>
+    <details><summary>Treasury buckets and reservations</summary><div class="cash-table" tabindex="0" role="region" aria-label="Treasury balances"><table><thead><tr><th scope="col">Account</th><th scope="col">Bucket</th><th scope="col">Verified balance</th><th scope="col">Reserved</th><th scope="col">Available after reservations</th></tr></thead><tbody>
+      @forelse($report['accounts'] as $a)@foreach(['cod'=>'COD','adjustment'=>'Seller adjustments','rider_payroll'=>'Rider payroll','unallocated'=>'Unallocated (excluded from payouts)'] as $bucket=>$label)<tr><td>{{ $a['name'] }}</td><td>{{ $label }}</td><td>PHP {{ \App\Services\LogisticsReconciliation::money($a['balances'][$bucket]) }}</td><td>PHP {{ \App\Services\LogisticsReconciliation::money($a['reserved'][$bucket]) }}</td><td>{{ $bucket==='unallocated' ? 'Not spendable' : 'PHP '.\App\Services\LogisticsReconciliation::money($a['balances'][$bucket]-$a['reserved'][$bucket]) }}</td></tr>@endforeach @empty<tr><td colspan="5">No treasury accounts recorded. No opening balances are inferred.</td></tr>@endforelse
+    </tbody></table></div></details>
+  </section>
+  <section class="cash-card" id="obligations"><h2>Revenue, liabilities and expenses</h2><p>These categories overlap the custody balances and must not be added into a single cash total. Shipping entitlement is an operational settlement view, not a new accounting recognition or profit policy.</p>
+    @php($groups=[
+      'COD collection and remittance'=>['cod_collected'=>'Recorded buyer COD collections','cod_verified'=>'Allocated cash verified by Hub Staff','cod_outstanding'=>'Outstanding rider remittance','cod_reserved'=>'Submitted for counting (part of outstanding)','cod_overdue'=>'Overdue remittance (part of outstanding)','remittance_overages'=>'Counted remittance overages (unallocated)'],
+      'Shipping receipts and entitlement'=>['gcash_receipts'=>'Verified GCash shipping receipts','gcash_pending_proofs'=>'GCash proofs awaiting review (not verified funds)','gcash_unpaid_obligations'=>'Unverified GCash shipping obligations','cod_shipping_retained'=>'COD shipping retained on actual seller payout','cod_shipping_open'=>'COD shipping entitlement not yet retained','seller_vouchers'=>'Seller-funded shipping vouchers','platform_claims'=>'Platform-funded claims (unverified and unpaid)'],
+      'Seller settlement exposure'=>['seller_product_unpaid'=>'Known COD product proceeds not yet paid (conditional exposure)','seller_eligible_unpaid'=>'Eligible unpaid product proceeds (funding still required)','seller_adjustment_reserved'=>'Approved additions reserved from separate funding','held_seller'=>'Documented seller payout holds (within unpaid/reserved)','seller_paid'=>'Actual seller payments recorded'],
+      'Rider compensation'=>['rider_earned'=>'Earned assignment compensation (expense)','rider_unpaid'=>'Unpaid earned compensation (liability)','held_rider'=>'Documented rider payout holds (within unpaid/reserved)','rider_pending'=>'Pending snapshots (not earned expense)','rider_paid'=>'Actual rider payments recorded']
+    ])
+    <div class="cash-grid">@foreach($groups as $title=>$metrics)<div class="reconciliation-category"><h3>{{ $title }}</h3><dl>@foreach($metrics as $key=>$label)<div><dt>{{ $label }}</dt><dd>PHP {{ \App\Services\LogisticsReconciliation::money($report['metrics'][$key]) }}</dd></div>@endforeach</dl></div>@endforeach</div>
+    <p>GCash shipping receipts are manually verified historical inflows. Their receiving-provider balance and subsequent external spending are not tracked in treasury, so they are not shown as payroll or seller funding. Platform claims and company payroll contributions are not shipping revenue. Rider payments settle earned compensation; they do not create the expense a second time.</p>
+  </section>
+  <section class="cash-card"><h2>Discrepancies and historical review</h2><div class="cash-stats"><div><span>Open cash discrepancies</span><strong>{{ $report['metrics']['discrepancies_open'] }}</strong></div><div><span>Documented discrepancy resolutions</span><strong>{{ $report['metrics']['discrepancies_resolved'] }}</strong></div><div><span>Legacy shipments</span><strong>{{ $report['metrics']['legacy_shipments'] }}</strong><small>{{ $report['metrics']['legacy_delivered_cod'] }} delivered COD shipments without collection evidence</small></div></div>
+    <p>{{ count($report['issues']) }} review entries. Resolved investigations retain their original cash differences. Eligibility holds are reported without forgiving debts, moving funds or changing payment/delivery statuses.</p>
+    <div class="cash-page-nav"><a class="btn" href="{{ route('logistics.cash-desk') }}">Cash Desk</a><a class="btn" href="{{ route('logistics.finance.payouts') }}">Seller Settlements</a><a class="btn" href="{{ route('logistics.finance.riders') }}">Rider Earnings & Payouts</a><a class="btn" href="{{ route('logistics.finance') }}">Shipping & Settings</a><a class="btn" href="{{ route('logistics.finance.reconciliation',array_merge($filters,['dataset'=>'exceptions','page'=>1])) }}#history">View manual-review entries</a></div>
+  </section>
+  <section class="cash-card" id="history"><header class="reconciliation-history-head"><div><h2>{{ \App\Services\LogisticsReconciliation::DATASETS[$filters['dataset']] }}</h2><p>Amounts in exported columns ending in cents are integer centavos. Summary rows include their unit. Export access is audited; account numbers and private proof paths are excluded.</p></div><a class="btn btn-primary" href="{{ route('logistics.finance.reconciliation.export',array_diff_key($filters,['page'=>true])) }}">Export CSV</a></header>
+    <p>Record timestamps use {{ config('app.timezone') }}. Lifecycle rows use the latest recorded count, dispatch, verification or payment timestamp, falling back to creation. Audit history records individual actions. Manual review and summary rows are current and ignore the activity date filter.</p>
+    @php($columns=[])
+    @foreach($records as $record)@php($columns=array_values(array_unique(array_merge($columns,array_keys($record)))))@endforeach
+    <div class="cash-table" tabindex="0" role="region" aria-label="Financial report history"><table><thead><tr>@foreach($columns as $column)<th scope="col">{{ ucfirst(str_replace('_',' ',$column)) }}</th>@endforeach</tr></thead><tbody>
+      @forelse($records as $record)<tr>@foreach($columns as $column)@php($value=$record[$column]??null)<td>@if($value===null || $value==='')Not recorded@elseif(str_ends_with($column,'_cents'))PHP {{ \App\Services\LogisticsReconciliation::money((int)$value) }}@else{{ $value }}@endif</td>@endforeach</tr>@empty<tr><td>No records for this dataset and activity period.</td></tr>@endforelse
+    </tbody></table></div>{{ $records->links() }}
+  </section>
+</div>
+@endsection

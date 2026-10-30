@@ -159,6 +159,10 @@ class AdminAssistantTest extends TestCase
 
     public function test_workspace_view_escapes_names_and_does_not_expose_the_api_key(): void
     {
+        Schema::create('notifications', function (Blueprint $table) {
+            $table->string('id')->primary(); $table->integer('user_id'); $table->boolean('is_read')->default(false);
+            $table->text('message'); $table->timestamp('created_at')->nullable();
+        });
         config(['services.groq.key' => 'test-secret-key']);
         $this->actingAs($this->admin());
         $this->view('admin.ai-workspace', [

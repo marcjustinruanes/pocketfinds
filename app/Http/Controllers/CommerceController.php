@@ -68,6 +68,13 @@ class CommerceController extends Controller
         $user = $this->emailAccount($r);
         $notification = DB::table('notifications')->where('id', $id)->where('user_id', $user->id)->first();
         abort_unless($notification, 404);
+        if($notification->notification_type==='cash_handover'){
+            $actor=app(\App\Services\LogisticsCashDesk::class)->actor($user);
+            $handover=app(\App\Services\LogisticsCashDesk::class)->scope(DB::table('logistics_cash_handovers'),$actor)->where('id',$notification->reference_id)->firstOrFail();
+            DB::table('notifications')->where('id',$id)->where('user_id',$actor->id)->update(['is_read'=>true]);
+            if($actor->isLogisticsAdmin() && $handover->kind==='treasury')return redirect(route('logistics.finance.payouts').'#treasury');
+            return redirect()->route($actor->account_type==='rider'?'rider.remittances':'logistics.cash-desk',['handover'=>$handover->id]);
+        }
         DB::table('notifications')->where('id', $id)->where('user_id', $user->id)->update(['is_read' => true]);
         if ($user->is_admin) {
             return redirect(route('admin.complaints').'#returns-refunds');
@@ -407,7 +414,7 @@ class CommerceController extends Controller
     {
         $u = $this->buyer($r);
         abort_unless($order->buyer_id === $u->id, 403);
-        $d = $r->validate(['item_keys' => 'required|array|min:1', 'item_keys.*' => 'required|integer|min:0|distinct', 'reason' => 'required|in:Damaged item,Wrong item,Missing item,Not as described', 'description' => 'required|string|min:10|max:500', 'photos' => 'required|array|min:1|max:5', 'photos.*' => 'required|image|mimes:jpg,jpeg,png|max:5120', 'refund_destination' => 'required|string|max:255']);
+        $d = $r->validate(['item_keys' => 'required|array|min:1', 'item_keys.*' => 'required|integer|min:0|distinct', 'reason' => 'required|in:Damaged item,Wrong item,Missing item,Not as described', 'description' => 'required|string|min:10|max:500', 'photos' => 'required|array|min:1|max:5', 'photos.*' => 'required|image|mimes:jpg,jpeg,png|max:5120', 'refund_destination' => 'nullable|string|max:255', 'refund_account_name' => ($order->gcash_purchase_id ? 'nullable' : 'required').'|string|min:2|max:150', 'refund_gcash_number' => [$order->gcash_purchase_id ? 'nullable' : 'required','string','regex:/^09[0-9]{9}$/D']]);
         DB::transaction(function () use ($u, $order, $d, $r) {
             $order = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
             $delivered = $order->shipment?->delivered_at ?? DB::table('order_status_history')->where('order_id', $order->id)->where('status', 'delivered')->max('created_at') ?? $order->updated_at;
@@ -434,7 +441,7 @@ class CommerceController extends Controller
             foreach ($r->file('photos') as $file) {
                 $photos[] = app(MediaLifecycle::class)->store($file, 'return-evidence', 'local');
             }$id = (string) Str::uuid();
-            DB::table('commerce_returns')->insert(['id' => $id, 'order_id' => $order->id, 'buyer_id' => $u->id, 'seller_id' => $order->seller_id, 'item_keys' => json_encode($d['item_keys']), 'reason' => $d['reason'], 'description' => $d['description'], 'photos' => json_encode($photos), 'amount' => max(0, $cents) / 100, 'refund_destination' => $order->gcash_purchase_id ? 'Original GCash payment: '.$order->gcash_purchase_id : $d['refund_destination'], 'created_at' => now(), 'updated_at' => now()]);
+            DB::table('commerce_returns')->insert(['id' => $id, 'order_id' => $order->id, 'buyer_id' => $u->id, 'seller_id' => $order->seller_id, 'item_keys' => json_encode($d['item_keys']), 'reason' => $d['reason'], 'description' => $d['description'], 'photos' => json_encode($photos), 'amount' => max(0, $cents) / 100, 'refund_destination' => $order->gcash_purchase_id ? 'Original GCash payment: '.$order->gcash_purchase_id : 'GCash: '.$d['refund_account_name'].' / '.$d['refund_gcash_number'], 'created_at' => now(), 'updated_at' => now()]);
             Order::notifyUser($order->seller_id, 'Return requested', 'Return/refund requested for '.$order->order_number, 'order_status', $order->id);
         });
 

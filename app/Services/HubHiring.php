@@ -89,7 +89,7 @@ class HubHiring
                 }
                 $this->validateTransition($review, $role, $fresh->status);
             }
-            $historyChanged = $changed || $user->isDirty(['status_reason', 'interview_scheduled_at', 'interview_location']);
+            $historyChanged = $changed || $user->hiringDecision || $user->isDirty(['status_reason', 'interview_scheduled_at', 'interview_location']);
             if ($role && $changed && $user->status === 'approved') {
                 $hub = $hubs->get($user->logistics_hub_id);
                 if (! $hub || ! $hub->is_operational || $hub->company_name !== $user->business_name) {
@@ -102,24 +102,27 @@ class HubHiring
                 }
             }
             $result = $save();
+            if ($result && $role === 'hub_staff' && $changed) app(HubStaffSalary::class)->membershipChanged($user, $before);
             if ($result && $role && $historyChanged) {
                 $previous = DB::table('hiring_application_history')->where('user_id', $user->id)->orderByDesc('id')->first();
                 $attempt = ! $previous || ($before?->status === 'rejected' && $user->status === 'pending') ? (string) Str::uuid() : $previous->attempt_id;
                 DB::table('hiring_application_history')->insert(['user_id' => $user->id, 'attempt_id' => $attempt, 'company_name' => $user->business_name ?? '',
-                    'hub_id' => $user->logistics_hub_id, 'role' => $role, 'status' => $user->status, 'reason' => $user->status_reason,
-                    'review_details' => json_encode(($review ?? $user)->only(['interview_scheduled_at', 'interview_location'])),
+                    'hub_id' => $user->logistics_hub_id, 'role' => $role, 'status' => $user->status, 'reason' => $user->hiringDecision['reason'] ?? $user->status_reason,
+                    'review_details' => json_encode(array_merge(($review ?? $user)->only(['interview_scheduled_at', 'interview_location']), $user->hiringDecision, ['from_status'=>$before?->status,'to_status'=>$user->status])),
                     'actor_id' => auth()->id(), 'occurred_at' => now(), 'recorded_at' => now(), 'legacy_snapshot' => false]);
             }
 
+            $user->hiringDecision = [];
             return $result;
         });
     }
 
     private function validateTransition(User $user, string $role, string $from): void
     {
-        $actor = auth()->user();
+        $actor = User::whereKey(auth()->id())->lockForUpdate()->firstOrFail();
+        abort_unless($actor->status === 'approved',403);
         $platform = (bool) $actor->is_admin;
-        abort_unless($platform || ($actor->isLogisticsAdmin() && $actor->status === 'approved'
+        abort_unless($platform || ($actor->account_type==='logistics' && $actor->is_logistics && $actor->isLogisticsAdmin() && $actor->status === 'approved'
             && $actor->business_name === $user->business_name), 403);
         $allowed = $platform ? ['approved' => ['suspended'], 'suspended' => ['approved']]
             : ['pending' => $role === 'hub_staff' ? ['interview', 'rejected'] : ['approved', 'rejected'],
@@ -128,9 +131,10 @@ class HubHiring
         if (! in_array($user->status, $allowed[$from] ?? [], true)) {
             throw ValidationException::withMessages(['status' => 'This recruitment status transition is not permitted.']);
         }
-        if ($role === 'hub_staff' && in_array($user->status, ['rejected', 'suspended'], true)) {
-            validator($user->getAttributes(), ['status_reason' => 'required|string|max:1200'])->validate();
+        if (in_array($user->status, ['rejected', 'suspended'], true)) {
+            validator(['status_reason'=>trim((string)$user->status_reason)], ['status_reason' => 'required|string|min:3|max:1200|regex:/[\p{L}\p{N}]/u'])->validate();
         }
+        if ($role === 'rider' && $from === 'suspended' && $user->status === 'approved') validator(['reason'=>$user->hiringDecision['reason']??null],['reason'=>'required|string|min:3|max:1200|regex:/[\p{L}\p{N}]/u'])->validate();
         if ($role === 'hub_staff' && $user->status === 'interview') {
             validator($user->getAttributes(), ['interview_scheduled_at' => 'required|date', 'interview_location' => 'required|string|max:255'])->validate();
         }
@@ -149,12 +153,23 @@ class HubHiring
                 }
             }
             validator($user->getAttributes(), $rules)->validate();
+            app(PersonnelApplication::class)->assertReadable($user,$role);
+            if($role==='hub_staff') validator($user->hiringDecision,['interview_completed'=>'required|accepted'])->validate();
         }
     }
 
-    public function register(array $data, ?string $role): User
+    public function identityQuery(array $data)
     {
-        return DB::transaction(function () use ($data, $role) {
+        $same = User::where('status', '!=', 'rejected');
+        $same->whereDate('birthday', $data['birthday']);
+        foreach (['given_names', 'last_name', 'middle_name', 'suffix', 'sex'] as $key) {
+            $same->whereRaw("LOWER(TRIM(COALESCE($key, ''))) = ?", [mb_strtolower(trim((string) ($data[$key] ?? '')))]);
+        }
+        return $same;
+    }
+
+    public function lockApplicationIdentity(array $data, ?string $role): array
+    {
             $identity = implode('|', array_map(fn ($k) => mb_strtolower(trim((string) ($data[$k] ?? ''))), ['given_names', 'last_name', 'middle_name', 'suffix', 'birthday', 'sex']));
             if (DB::connection()->getDriverName() === 'mysql') {
                 // Match the actual name collation, including accent equivalence, for the mutex.
@@ -164,7 +179,8 @@ class HubHiring
                 }
                 $identity = DB::selectOne('SELECT HEX(WEIGHT_STRING(CONVERT(? USING utf8mb4) COLLATE '.$collation.')) AS identity_weight', [$identity])->identity_weight;
             }
-            $keys = [$data['email'], $data['username'], $identity];
+            $keys = [$data['email'] ?? '', $data['username'] ?? '', $identity];
+            if(($data['account_type']??null)==='logistics' && ($data['is_logistics']??false) && in_array($data['logistics_role']??null,[null,'admin'],true)) $keys[]=CompanyOwnership::mutex((string)$data['business_name']);
             if (! empty($data['contact_no'])) {
                 $data['contact_no'] = \App\Support\PhilippineMobile::normalize($data['contact_no']);
                 $keys[] = 'mobile:'.$data['contact_no'];
@@ -181,8 +197,16 @@ class HubHiring
             }
             $buckets = array_unique(array_map(fn ($v) => hexdec(substr(hash('sha256', mb_strtolower($v)), 0, 2)), $keys));
             DB::table('hiring_identity_locks')->whereIn('id', $buckets)->orderBy('id')->lockForUpdate()->get();
-            // The shared mobile lock serializes registrations with equivalent numbers.
-            if (! empty($data['contact_no']) && User::whereIn('contact_no', \App\Support\PhilippineMobile::variants($data['contact_no']))->lockForUpdate()->first()) {
+        return $data;
+    }
+
+    public function register(array $data, ?string $role): User
+    {
+        return DB::transaction(function () use ($data, $role) {
+            $data = $this->lockApplicationIdentity($data, $role);
+            // Only the candidate rejected row may retain its own mobile. Full identity,
+            // role/company and attempt matching below must still succeed before reuse.
+            if (! empty($data['contact_no']) && User::whereIn('contact_no', \App\Support\PhilippineMobile::variants($data['contact_no']))->whereNot(fn($q)=>$q->where('status','rejected')->where('email',$data['email'])->where('username',$data['username']))->lockForUpdate()->first()) {
                 throw ValidationException::withMessages(['contact_no' => 'This mobile number is already registered.']);
             }
             $matchQuery = fn () => User::where(fn ($q) => $q->where('email', $data['email'])->orWhere('username', $data['username']));
@@ -209,11 +233,7 @@ class HubHiring
             if ($matches->isNotEmpty() && $preliminary->firstWhere('id', $matches->first()->id)?->logistics_hub_id != $matches->first()->logistics_hub_id) {
                 throw ValidationException::withMessages(['email' => 'This application changed. Refresh before reapplying.']);
             }
-            $same = User::where('status', '!=', 'rejected');
-            $same->whereDate('birthday', $data['birthday']);
-            foreach (['given_names', 'last_name', 'middle_name', 'suffix', 'sex'] as $key) {
-                $same->whereRaw("LOWER(TRIM(COALESCE($key, ''))) = ?", [mb_strtolower(trim((string) ($data[$key] ?? '')))]);
-            }
+            $same = $this->identityQuery($data);
             if ($same->lockForUpdate()->first() || $matches->count() > 1 || ($matches->isNotEmpty() && ($matches->first()->status !== 'rejected'
                 || strcasecmp($matches->first()->email, $data['email']) !== 0 || strcasecmp($matches->first()->username, $data['username']) !== 0
                 || $this->role($matches->first()) !== $role || $matches->first()->account_type !== $data['account_type'] || $matches->first()->business_name !== $data['business_name']))) {

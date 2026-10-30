@@ -114,11 +114,13 @@ class RiderController extends Controller
         $riderId = auth()->id();
         $shipment = app(LogisticsAccess::class)->openParcelsForRider(auth()->user(), 'pickup')->whereKey($id)->firstOrFail();
         GcashLocks::shipment((string) $id);
+        $freshRider=app(\App\Services\AssignmentReassignment::class)->approvedRider(auth()->user(),$shipment);
+        app(\App\Services\AssignmentReassignment::class)->assertNoPending($shipment->id);
         if ($shipment->order) {
             GcashLocks::order($shipment->order_id);
             app(GcashWorkflow::class)->assertOrderOperation($shipment->order, true);
         }
-        $claimed = app(LogisticsAccess::class)->openParcelsForRider(auth()->user(), 'pickup')->where('id', $id)
+        $claimed = app(LogisticsAccess::class)->openParcelsForRider($freshRider, 'pickup')->where('id', $id)
             ->where('shipping_status', 'ready_for_pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')
             ->update(['pickup_rider_id' => $riderId]);
 
@@ -169,25 +171,18 @@ class RiderController extends Controller
      */
     public function confirmPickupReceipt($id)
     {
-        $shipment = Shipment::with('order')->where('pickup_rider_id', auth()->id())->findOrFail($id);
-        abort_unless($shipment->shipping_status === 'ready_for_pickup', 422, 'This pickup has already moved on.');
-        abort_if($shipment->rider_confirmed_pickup_at, 422, 'You already confirmed receiving this parcel.');
-
-        $shipment->update(['rider_confirmed_pickup_at' => now()]);
-
-        if ($shipment->order?->seller_id) {
-            DB::table('notifications')->insert([
-                'id' => (string) Str::uuid(), 'user_id' => $shipment->order->seller_id,
-                'title' => 'Rider Confirmed Pickup', 'message' => 'The rider confirmed receiving order #'.$shipment->order->order_number.'. Please confirm the handover in your Seller account.',
-                'notification_type' => 'order_status', 'reference_id' => $shipment->order_id,
-                'is_read' => false, 'created_at' => now(),
-            ]);
-        }
-
-        return back()->with('success', 'Receipt confirmed — waiting for the seller to confirm the handover.');
+        DB::transaction(function () use ($id) {
+            GcashLocks::shipment((string)$id);
+            $shipment=Shipment::with('order')->where('pickup_rider_id',auth()->id())->whereKey($id)->lockForUpdate()->firstOrFail();
+            $guard=app(\App\Services\AssignmentReassignment::class);
+            $guard->approvedRider(auth()->user(),$shipment);$guard->assertNoPending($shipment->id,'pickup');
+            abort_unless($shipment->shipping_status==='ready_for_pickup',422,'This pickup has already moved on.');
+            abort_if($shipment->rider_confirmed_pickup_at,422,'You already confirmed receiving this parcel.');
+            $shipment->update(['rider_confirmed_pickup_at'=>now()]);
+            if($shipment->order?->seller_id) Order::notifyUser($shipment->order->seller_id,'Rider Confirmed Pickup','The rider confirmed receiving order #'.$shipment->order->order_number.'. Please confirm the handover.','order_status',$shipment->order_id);
+        },3);
+        return back()->with('success','Receipt confirmed ? waiting for the seller to confirm the handover.');
     }
-
-    // ── Hub transfer leg: hub -> hub ───────────────────────────────────────────────────────
 
     /**
      * "My Hub Transfers" — every leg this rider is currently carrying. Confirming pickup here
@@ -283,7 +278,11 @@ class RiderController extends Controller
         $stageIndex = array_search($shipment->shipping_status, self::STAGE_ORDER, true);
         $nextStage = $stageIndex !== false ? (self::STAGE_ORDER[$stageIndex + 1] ?? null) : null;
 
-        return view('rider.show', array_merge($counts, compact('shipment', 'nextStage')));
+        $cash = app(\App\Services\CodCollection::class);
+        $codRequired = $cash->installed() && $cash->isCod($shipment->order);
+        $codCollection = $codRequired ? $cash->find($shipment->id) : null;
+
+        return view('rider.show', array_merge($counts, compact('shipment', 'nextStage', 'codRequired', 'codCollection')));
     }
 
     /**
@@ -300,9 +299,12 @@ class RiderController extends Controller
         // further (a second "Out for delivery" tap would otherwise mark it Delivered).
         $from = $request->input('from');
 
-        $outcome = DB::transaction(function () use ($id, $from) {
+        $outcome = DB::transaction(function () use ($id, $from, $request) {
             GcashLocks::shipment((string) $id);
+            $actor = User::whereKey(auth()->id())->lockForUpdate()->firstOrFail();
+            abort_unless($actor->account_type === 'rider' && $actor->status === 'approved' && ! $actor->is_admin && ! $actor->is_logistics, 403, 'An approved assigned rider must confirm delivery.');
             $shipment = Shipment::where('courier_id', auth()->id())->lockForUpdate()->findOrFail($id);
+            abort_unless($actor->business_name === $shipment->logistics_company, 403);
             $order = $shipment->order_id ? Order::lockFresh($shipment->order_id) : null;
 
             if ($from !== null && $from !== $shipment->shipping_status) {
@@ -316,16 +318,28 @@ class RiderController extends Controller
                 return ['error' => 'This delivery has no further action to take.'];
             }
 
+            $assignment = DeliveryAssignment::where('shipment_id', $shipment->id)->where('leg', 'delivery')
+                ->where('courier_id', $actor->id)->whereNotIn('status', ['cancelled', 'rejected'])->lockForUpdate()->first();
+            abort_unless($assignment, 422, 'A current delivery assignment is required.');
+            app(\App\Services\AssignmentReassignment::class)->assertNoPending($shipment->id,'delivery');
+
+            $cash = app(\App\Services\CodCollection::class);
+            if ($next === 'delivered' && $cash->installed() && $cash->isCod($order)) {
+                $cash->record(auth()->user(), $shipment, $request->only(['cod_amount', 'cod_confirmed', 'collection_key']));
+            }
+
             $updates = ['shipping_status' => $next];
             if (isset(self::STAGE_TIMESTAMPS[$next])) {
                 $updates[self::STAGE_TIMESTAMPS[$next]] = now();
             }
             $shipment->update($updates);
 
-            DeliveryAssignment::where('shipment_id', $shipment->id)->where('leg', 'delivery')->update(array_filter([
+            DeliveryAssignment::where('shipment_id', $shipment->id)->where('leg', 'delivery')->where('courier_id', $actor->id)->whereNotIn('status', ['cancelled', 'rejected'])->update(array_filter([
                 'status' => $next,
                 'delivered_at' => $next === 'delivered' ? now() : null,
             ]));
+
+            app(\App\Services\RiderCompensation::class)->shipmentCompleted($shipment->id);
 
             // Order.status shares the exact same vocabulary as shipping_status now (see
             // Shipment::STATUSES) — no remapping table needed, it's a direct passthrough. The one
@@ -399,23 +413,10 @@ class RiderController extends Controller
         return view('rider.history', array_merge($counts, compact('shipments')));
     }
 
-    /** Earnings: the shipping fee collected on every order this rider has completed. */
-    public function profit()
+    /** Retain the existing URL while replacing shipping revenue with fixed assignment earnings. */
+    public function profit(\Illuminate\Http\Request $request, \App\Services\RiderCompensation $flow)
     {
-        $counts = $this->sidebarCounts();
-        $riderId = auth()->id();
-
-        $completed = Shipment::with('order')
-            ->where('courier_id', $riderId)
-            ->whereIn('shipping_status', ['delivered', 'completed'])
-            ->latest('delivered_at')->get();
-
-        $total = $completed->sum(fn ($s) => (float) ($s->order?->shipping_amount ?? 0));
-        $thisMonth = $completed->filter(fn ($s) => $s->delivered_at && $s->delivered_at->isCurrentMonth())
-            ->sum(fn ($s) => (float) ($s->order?->shipping_amount ?? 0));
-        $deliveryCount = $completed->count();
-
-        return view('rider.profit', array_merge($counts, compact('completed', 'total', 'thisMonth', 'deliveryCount')));
+        return app(RiderPayoutController::class)->index($request, $flow);
     }
 
     /** Everyone this rider is allowed to chat with: admins, logistics staff, and the buyer/seller on any of their shipments. */

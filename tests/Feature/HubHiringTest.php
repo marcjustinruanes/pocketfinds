@@ -29,9 +29,12 @@ class HubHiringTest extends TestCase
     {
         parent::setUp();
         $this->createWorkflowSchema();
+        foreach(['2026_10_16_000001_add_registration_business_details','2026_10_16_000002_add_logistics_registration_details'] as $m)(require database_path('migrations/'.$m.'.php'))->up();
         Http::preventStrayRequests();
+        Http::fake(['https://psgc.gitlab.io/api/regions/'=>Http::response([['code'=>'040000000','name'=>'CALABARZON']]),'https://psgc.gitlab.io/api/provinces/'=>Http::response([['code'=>'043400000','name'=>'Laguna','regionCode'=>'040000000']]),'https://psgc.gitlab.io/api/provinces/043400000/cities-municipalities/'=>Http::response([['code'=>'043426000','name'=>'Santa Cruz'],['code'=>'043422000','name'=>'Pila']]),'https://psgc.gitlab.io/api/cities-municipalities/043426000/barangays/'=>Http::response([['code'=>'043426001','name'=>'Central']]),'https://psgc.gitlab.io/api/cities-municipalities/043422000/barangays/'=>Http::response([['code'=>'043422001','name'=>'Central']])]);
         Mail::fake();
-        Storage::fake('public');
+        Storage::fake('public'); Storage::fake('sensitive_documents');
+        foreach(['id_files/fixture-id.png','selfie_files/fixture-selfie.png','license_files/fixture-license.png','vehicle_docs/fixture-or.png','vehicle_docs/fixture-cr.png'] as $path) Storage::disk('sensitive_documents')->put($path,'private fixture');
         $this->hub = LogisticsHub::create(['company_name' => 'Alpha', 'province' => 'Laguna', 'municipality' => 'Santa Cruz', 'is_operational' => true, 'is_hiring' => true]);
         $this->admin = $this->person('logistics_admin');
         DB::table('id_types')->insert(['id' => 1, 'name' => "Driver's License"]);
@@ -44,7 +47,7 @@ class HubHiringTest extends TestCase
         $n = ++$this->serial;
 
         return User::create(['username' => 'person_'.$n, 'email' => 'person_'.$n.'@gmail.com', 'given_names' => 'Fixture', 'last_name' => 'Person'.$n,
-            'id_file' => 'fixture-id.png', 'selfie_file' => 'fixture-selfie.png', 'id_type_id' => 1, 'license_file' => 'fixture-license.png', 'license_number' => 'LICENSE-'.$n, 'license_expiry' => '2030-01-01', 'vehicle_type' => 'two_wheels', 'vehicle_ownership' => 'own', 'vehicle_brand' => 'Test', 'vehicle_model' => 'Test', 'plate_number' => 'PLATE'.$n, 'or_file' => 'fixture-or.png', 'cr_file' => 'fixture-cr.png', 'birthday' => '1990-01-01', 'sex' => 'male', 'password' => 'FixturePassword123', 'account_type' => in_array($role, ['hub_staff', 'logistics_admin']) ? 'logistics' : $role,
+            'id_file' => $role==='rider'?'license_files/fixture-license.png':'id_files/fixture-id.png', 'selfie_file' => 'selfie_files/fixture-selfie.png', 'id_type_id' => 1, 'license_file' => 'license_files/fixture-license.png', 'license_number' => 'LICENSE-'.$n, 'license_expiry' => '2030-01-01', 'vehicle_type' => 'two_wheels', 'vehicle_ownership' => 'own', 'vehicle_brand' => 'Test', 'vehicle_model' => 'Test', 'plate_number' => 'PLATE'.$n, 'or_file' => 'vehicle_docs/fixture-or.png', 'cr_file' => 'vehicle_docs/fixture-cr.png', 'birthday' => '1990-01-01', 'sex' => 'male', 'password' => 'FixturePassword123!', 'account_type' => in_array($role, ['hub_staff', 'logistics_admin']) ? 'logistics' : $role,
             'logistics_role' => $role === 'hub_staff' ? 'hub_staff' : ($role === 'logistics_admin' ? 'admin' : null), 'is_admin' => $role === 'admin',
             'is_logistics' => in_array($role, ['hub_staff', 'logistics_admin']), 'business_name' => $hub->company_name, 'logistics_hub_id' => $hub->id, 'status' => $status]);
     }
@@ -61,11 +64,11 @@ class HubHiringTest extends TestCase
         $image = fn () => UploadedFile::fake()->createWithContent('document.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aL1kAAAAASUVORK5CYII='));
         $data = ['account_type' => $role === 'rider' ? 'rider' : 'logistics', 'logistics_mode' => 'join', 'auth_method' => 'manual', 'username' => 'applicant_'.$role,
             'email' => $role.'@gmail.com', 'given_names' => 'New', 'last_name' => $role === 'rider' ? 'Rider' : 'Staff', 'birthday' => '2000-01-01', 'sex' => 'male',
-            'password' => 'FixturePassword123', 'password_confirmation' => 'FixturePassword123', 'contact_no' => '09123456789', 'province' => 'Laguna',
+            'password' => 'FixturePassword123!', 'password_confirmation' => 'FixturePassword123!', 'contact_no' => '09123456789', 'region'=>'CALABARZON', 'province' => 'Laguna',
             'municipality' => 'Santa Cruz', 'barangay' => 'Central', 'business_name' => 'Alpha', 'logistics_hub_id' => $this->hub->id, 'selfie_file' => $image()];
 
         return $role === 'rider' ? $data + ['vehicle_type' => 'two_wheels', 'vehicle_ownership' => 'own', 'vehicle_brand' => 'Test', 'vehicle_model' => 'Test',
-            'plate_number' => 'TEST001', 'license_number' => 'TEST-LICENSE', 'license_expiry' => '2030-01-01', 'license_file' => $image(), 'or_file' => $image(), 'cr_file' => $image()]
+            'plate_number' => 'TEST001', 'license_number' => 'H01-00-000001', 'license_expiry' => '2030-01-01', 'license_file' => $image(), 'or_file' => $image(), 'cr_file' => $image()]
             : $data + ['id_type_id' => 1, 'id_file' => $image()];
     }
 
@@ -80,7 +83,7 @@ class HubHiringTest extends TestCase
         $this->patchJson('/logistics/staff/'.$staff->id.'/activate')->assertUnprocessable();
         $this->patch('/logistics/staff/'.$staff->id.'/approve', ['interview_date' => now()->toDateString(), 'interview_time' => '12:00', 'interview_location' => 'Company hub'])->assertRedirect();
         $this->assertSame('interview', $staff->fresh()->status);
-        $this->patch('/logistics/staff/'.$staff->id.'/confirm')->assertRedirect();
+        $this->patch('/logistics/staff/'.$staff->id.'/confirm',['interview_completed'=>'1'])->assertRedirect();
         $this->assertSame('approved', $staff->fresh()->status);
         $this->patchJson('/logistics/staff/'.$staff->id.'/confirm')->assertUnprocessable();
         $this->assertSame(['pending', 'interview', 'approved'], DB::table('hiring_application_history')->where('user_id', $staff->id)->orderBy('id')->pluck('status')->all());
@@ -94,13 +97,13 @@ class HubHiringTest extends TestCase
                 $person = $this->person($role, $state);
                 $this->actingAs($platform)->patchJson('/admin/registrations/'.$person->id.'/approve')->assertForbidden();
                 $this->patchJson('/admin/users/'.$person->id.'/approve')->assertUnprocessable();
-                $this->patchJson('/admin/users/'.$person->id.'/suspend', ['reason_preset' => 'Review'])->assertUnprocessable();
+                $this->patchJson('/admin/users/'.$person->id.'/suspend', ['reason_preset' => 'other','reason_details'=>'Administrative review required'])->assertUnprocessable();
                 $this->assertSame($state, $person->fresh()->status);
             }
             $person = $this->person($role);
-            $this->patch('/admin/users/'.$person->id.'/suspend', ['reason_preset' => 'Review'])->assertRedirect();
+            $this->patch('/admin/users/'.$person->id.'/suspend', ['reason_preset' => 'other','reason_details'=>'Administrative review required'])->assertRedirect();
             $this->assertSame('suspended', $person->fresh()->status);
-            $this->patch('/admin/users/'.$person->id.'/approve')->assertRedirect();
+            $this->patch('/admin/users/'.$person->id.'/approve',['reason_preset'=>'other','reason_details'=>'Review complete and access restored'])->assertRedirect();
             $this->assertSame('approved', $person->fresh()->status);
             $this->assertSame(['approved', 'suspended', 'approved'], DB::table('hiring_application_history')->where('user_id', $person->id)->orderBy('id')->pluck('status')->all());
         }
@@ -111,21 +114,22 @@ class HubHiringTest extends TestCase
         $this->postJson('/register', $this->application('hub_staff'))->assertOk();
         $staff = User::where('username', 'applicant_hub_staff')->firstOrFail();
         $this->actingAs($this->admin)->patchJson('/logistics/staff/'.$staff->id.'/reject')->assertUnprocessable();
-        $this->patch('/logistics/staff/'.$staff->id.'/reject', ['reason_preset' => 'Incomplete application'])->assertRedirect();
+        $this->patch('/logistics/staff/'.$staff->id.'/reject', ['reason_preset'=>'Incomplete or unclear documents'])->assertRedirect();
         $this->assertSame('rejected', $staff->fresh()->status);
         $this->patchJson('/logistics/staff/'.$staff->id.'/activate')->assertUnprocessable();
         auth()->logout();
         $this->postJson('/register', $this->application('hub_staff'))->assertOk();
         $this->assertSame('pending', $staff->fresh()->status);
-        $this->assertDatabaseHas('hiring_application_history', ['user_id' => $staff->id, 'status' => 'rejected', 'reason' => 'Incomplete application']);
+        $this->assertDatabaseHas('hiring_application_history', ['user_id' => $staff->id, 'status' => 'rejected', 'reason' => 'Incomplete or unclear documents']);
         $this->actingAs($this->admin)->patchJson('/logistics/staff/'.$staff->id.'/confirm')->assertUnprocessable();
     }
 
     public function test_generic_staff_creation_and_edits_cannot_establish_recruitment_states(): void
     {
         $data = ['role' => 'hub_staff', 'username' => 'managed_staff', 'email' => 'managed.staff@gmail.com', 'given_names' => 'Managed', 'last_name' => 'Staff',
-            'sex' => 'female', 'birthday' => '2000-01-01', 'contact_no' => '09123456789', 'barangay' => 'Central', 'password' => 'FixturePassword123',
-            'password_confirmation' => 'FixturePassword123', 'logistics_hub_id' => $this->hub->id];
+            'sex' => 'female', 'birthday' => '2000-01-01', 'contact_no' => '09123456789', 'barangay' => 'Central', 'password' => 'FixturePassword123!',
+            'password_confirmation' => 'FixturePassword123!', 'logistics_hub_id' => $this->hub->id];
+        $data=array_merge($this->application('hub_staff'),$data);
         $this->actingAs($this->admin);
         foreach (['interview', 'approved', 'rejected', 'suspended'] as $status) {
             $this->postJson('/logistics/staff/accounts', $data + ['status' => $status])->assertUnprocessable()->assertJsonValidationErrors('status');
@@ -156,7 +160,7 @@ class HubHiringTest extends TestCase
         }
         $this->actingAs($this->admin)->patchJson('/logistics/riders/'.$person->id.'/approve')->assertUnprocessable()->assertJsonValidationErrors('license_file');
         $this->assertSame('pending', $person->fresh()->status);
-        $person->update(['license_file' => 'license.png']);
+        $person->update(['license_file' => 'license_files/fixture-license.png']);
         $stale = $person->fresh();
         $this->patch('/logistics/riders/'.$person->id.'/approve')->assertRedirect();
         try {
@@ -316,8 +320,9 @@ class HubHiringTest extends TestCase
     public function test_management_creation_status_changes_and_moves_enforce_capacity(): void
     {
         $data = ['role' => 'rider', 'username' => 'managed_rider', 'email' => 'managed@gmail.com', 'given_names' => 'Managed', 'last_name' => 'Rider',
-            'sex' => 'male', 'birthday' => '2000-01-01', 'contact_no' => '09123456789', 'barangay' => 'Central', 'password' => 'FixturePassword123',
-            'password_confirmation' => 'FixturePassword123', 'status' => 'approved', 'logistics_hub_id' => $this->hub->id, 'vehicle_type' => 'two_wheels', 'vehicle_ownership' => 'own'];
+            'sex' => 'male', 'birthday' => '2000-01-01', 'contact_no' => '09123456789', 'barangay' => 'Central', 'password' => 'FixturePassword123!',
+            'password_confirmation' => 'FixturePassword123!', 'status' => 'approved', 'logistics_hub_id' => $this->hub->id, 'vehicle_type' => 'two_wheels', 'vehicle_ownership' => 'own'];
+        $data=array_merge($this->application('rider'),$data);
         $this->settings('rider', ['limit' => 0])->assertRedirect();
         $this->postJson('/logistics/riders/accounts', $data)->assertUnprocessable();
         $data['status'] = 'pending';
@@ -329,17 +334,17 @@ class HubHiringTest extends TestCase
         $editing = $data;
         unset($editing['status']);
         $editing['given_names'] = 'Updated';
-        $editing['password'] = $editing['password_confirmation'] = 'ReplacementPassword123';
+        $editing['password'] = $editing['password_confirmation'] = 'ReplacementPassword123!';
         $events = DB::table('hiring_application_history')->where('user_id', $user->id)->count();
         $this->patch('/logistics/accounts/'.$user->id, $editing)->assertRedirect();
         $this->assertSame('pending', $user->fresh()->status);
-        $this->assertTrue(Hash::check('ReplacementPassword123', $user->fresh()->password));
-        $this->assertSame($events, DB::table('hiring_application_history')->where('user_id', $user->id)->count());
+        $this->assertTrue(Hash::check('ReplacementPassword123!', $user->fresh()->password));
+        $this->assertSame($events+1, DB::table('hiring_application_history')->where('user_id', $user->id)->count());
         $this->settings('rider', ['limit' => 1])->assertRedirect();
         $this->patchJson('/logistics/accounts/'.$user->id, $data)->assertUnprocessable();
-        $user->update(['id_file' => 'id.png', 'id_type_id' => 1, 'selfie_file' => 'selfie.png', 'license_file' => 'license.png', 'license_number' => 'managed-license', 'license_expiry' => '2030-01-01', 'vehicle_brand' => 'Test', 'vehicle_model' => 'Test', 'plate_number' => 'MANAGED', 'or_file' => 'or.png', 'cr_file' => 'cr.png']);
         $this->patch('/logistics/riders/'.$user->id.'/approve')->assertRedirect();
         unset($data['status']);
+        foreach(['id_file','selfie_file','license_file','or_file','cr_file','id_type_id','license_number','plate_number','vehicle_brand','vehicle_model'] as $field) unset($data[$field]);
         $other = LogisticsHub::create(['company_name' => 'Alpha', 'province' => 'Laguna', 'municipality' => 'Pila', 'is_operational' => true]);
         $other->rider_hire_limit = 0;
         $other->save();

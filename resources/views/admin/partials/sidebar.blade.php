@@ -47,7 +47,7 @@
 <a class="nav-item" href="{{ route('admin.complaints') }}#returns-refunds">Returns & Refunds</a>
 <x-navigation-group id="admin-finance-reports" label="Finance & Reports" :active="request()->routeIs('admin.commission', 'admin.reports')">
 <a @if(request()->routeIs('admin.commission')) aria-current="page" @endif href="{{ route('admin.commission') }}" class="nav-item {{ request()->routeIs('admin.commission') ? 'active' : '' }}">
-      <span class="ic"><x-admin-icon name="peso" /></span> Commission
+      <span class="ic"><x-admin-icon name="peso" /></span> Historical Commissions
     </a>
 <a @if(request()->routeIs('admin.reports')) aria-current="page" @endif href="{{ route('admin.reports') }}" class="nav-item {{ request()->routeIs('admin.reports') ? 'active' : '' }}">
       <span class="ic"><x-admin-icon name="chart" /></span> Reports

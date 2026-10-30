@@ -14,8 +14,10 @@ class HubTransferController extends LogisticsController
 {
     public function index(Request $request, HubTransferWorkflow $flow)
     {
-        $data = $request->validate(['search' => 'nullable|string|max:100', 'status' => 'nullable|in:'.implode(',', HubTransferBatch::STATUSES), 'direction' => 'nullable|in:incoming,outgoing', 'hub_id' => 'nullable|integer', 'from' => 'nullable|date', 'to' => 'nullable|date'.($request->filled('from') ? '|after_or_equal:from' : '')]);
+        $data = $request->validate(['queue' => 'nullable|in:awaiting', 'search' => 'nullable|string|max:100', 'status' => 'nullable|in:'.implode(',', HubTransferBatch::STATUSES), 'direction' => 'nullable|in:incoming,outgoing', 'hub_id' => 'nullable|integer', 'from' => 'nullable|date', 'to' => 'nullable|date'.($request->filled('from') ? '|after_or_equal:from' : '')]);
         $user = $request->user();
+        abort_if($request->filled('queue') && ! $user->isLogisticsAdmin(), 403);
+        $queueData = $request->query('queue') === 'awaiting' ? $this->transferQueueData() : [];
         $query = $flow->scope($user)->with(['requester', 'approver', 'rider', 'dispatcher', 'receiver'])->withCount('members');
         if ($request->filled('hub_id')) {
             $hub = LogisticsHub::where('company_name', $user->business_name)->findOrFail($request->integer('hub_id'));
@@ -34,13 +36,13 @@ class HubTransferController extends LogisticsController
         $batches = $query->latest('created_at')->orderByDesc('id')->paginate(20)->withQueryString();
         $hubs = LogisticsHub::where('company_name', $user->business_name)->where('is_operational', true)->orderBy('province')->orderBy('municipality')->get();
 
-        return view('logistics.transfers', array_merge($this->sidebarCounts(), compact('batches', 'hubs')));
+        return view('logistics.transfers', array_merge($this->sidebarCounts(), compact('batches', 'hubs'), $queueData));
     }
 
     public function show(Request $request, string $id, HubTransferWorkflow $flow)
     {
         $batch = $flow->scope($request->user())->with(['requester', 'approver', 'dispatcher', 'receiver', 'rider', 'vehicle', 'origin', 'destination'])->findOrFail($id);
-        $members = $batch->members()->with(['leg', 'receiver'])->orderBy('id')->paginate(30)->withQueryString();
+        $members = $batch->members()->with(['leg', 'receiver', 'shipment.hubLegs.transferBatch.members', 'shipment.courier', 'shipment.pickupRider', 'shipment.deliveryAssignment'])->orderBy('id')->paginate(30)->withQueryString();
         $events = $batch->events()->with('actor')->reorder()->orderByDesc('id')->paginate(30, ['*'], 'event_page')->withQueryString();
         $riders = $request->user()->isLogisticsAdmin() && $batch->status === 'approved'
             ? User::where('account_type', 'rider')->where('business_name', $batch->company_name)->where('status', 'approved')->where('logistics_hub_id', $batch->origin_hub_id)->where('vehicle_type', 'four_wheels')->orderBy('username')->get() : collect();

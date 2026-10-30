@@ -14,19 +14,21 @@
 <a @if(request()->routeIs('seller.dashboard')) aria-current="page" @endif href="{{ route('seller.dashboard') }}" class="nav-item {{ request()->routeIs('seller.dashboard') ? 'active' : '' }}">
       <span class="ic">@include('seller.partials.icon', ['name' => 'dashboard', 'size' => 16])</span> Dashboard
     </a>
-<x-navigation-group id="seller-orders" label="Orders" :active="request()->routeIs('seller.notifications', 'seller.orders*', 'gcash.*')">
+<x-navigation-group id="seller-orders" label="Orders" :active="request()->routeIs('seller.notifications', 'seller.orders*', 'seller.assignments.*', 'gcash.*', 'seller.shipping*', 'seller.payouts*')">
 <a @if(request()->routeIs('seller.notifications')) aria-current="page" @endif href="{{ route('seller.notifications') }}" class="nav-item {{ request()->routeIs('seller.notifications') ? 'active' : '' }}">
       <span class="ic">@include('seller.partials.icon', ['name' => 'bell', 'size' => 16])</span> Notifications
       @if($unreadNotifCount > 0)<span class="badge">{{ $unreadNotifCount }}</span>@endif
     </a>
-<a @if(request()->routeIs('seller.orders*')) aria-current="page" @endif href="{{ route('seller.orders') }}" class="nav-item {{ request()->routeIs('seller.orders*') ? 'active' : '' }}">
+<a @if(request()->routeIs('seller.orders*','seller.assignments.*')) aria-current="page" @endif href="{{ route('seller.orders') }}" class="nav-item {{ request()->routeIs('seller.orders*','seller.assignments.*') ? 'active' : '' }}">
       <span class="ic">@include('seller.partials.icon', ['name' => 'orders', 'size' => 16])</span> Order Management
     </a>
 @if(\App\Services\GcashInventory::installed())
 <a @if(request()->routeIs('gcash.*')) aria-current="page" @endif href="{{ route('gcash.index') }}" class="nav-item {{ request()->routeIs('gcash.*') ? 'active' : '' }}">
-      <span class="ic">@include('seller.partials.icon', ['name' => 'orders', 'size' => 16])</span> GCash payments
+      <span class="ic">@include('seller.partials.icon', ['name' => 'orders', 'size' => 16])</span> Buyer GCash Payments
     </a>
 @endif
+<a href="{{ route('seller.shipping') }}" class="nav-item {{ request()->routeIs('seller.shipping*') ? 'active' : '' }}" @if(request()->routeIs('seller.shipping*')) aria-current="page" @endif><span class="ic">@include('seller.partials.icon', ['name' => 'truck', 'size' => 16])</span> Shipping Payments</a>
+<a href="{{ route('seller.payouts') }}" class="nav-item {{ request()->routeIs('seller.payouts*') ? 'active' : '' }}" @if(request()->routeIs('seller.payouts*')) aria-current="page" @endif><span class="ic">@include('seller.partials.icon', ['name' => 'orders', 'size' => 16])</span> COD Payouts</a>
 </x-navigation-group>
 <x-navigation-group id="seller-store" label="Store" :active="request()->routeIs('seller.inventory', 'seller.vouchers', 'seller.feedback')">
 <a @if(request()->routeIs('seller.inventory')) aria-current="page" @endif href="{{ route('seller.inventory') }}" class="nav-item {{ request()->routeIs('seller.inventory') ? 'active' : '' }}">

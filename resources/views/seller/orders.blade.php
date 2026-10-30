@@ -4,6 +4,7 @@
 @section('page-sub', 'Prepare, ship, and confirm delivery — all in one place')
 
 @section('content')
+@if(app(\App\Services\AssignmentReassignment::class)->installed())<a class="btn btn-primary" href="{{ route('seller.assignments.review') }}">Pickup possession reviews</a>@endif
 @include('commerce.messages')
 @if(session('order_success'))<div class="auth-success" style="margin-bottom:16px">{{ session('order_success') }}</div>@endif
 @if(session('error'))<div style="background:var(--danger-soft,#fef2f2);border:1px solid var(--danger-line,#fecaca);color:var(--danger,#dc2626);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('error') }}</div>@endif
@@ -166,6 +167,7 @@
         </div>
 
         @if($returnRequests->has($order->id))@include('account.partials.return-case',['return'=>$returnRequests->get($order->id)])@endif
+        @include('logistics.partials.rts-custody')
         <div class="order-card-s-foot">
           <div class="order-card-s-shipment">
             @if($shipment)
@@ -208,6 +210,7 @@
               </button>
             @endif
             @if($shipment && $shipment->shipping_status === 'ready_for_pickup' && is_null($shipment->pickup_approved_at))
+              @if(isset($shippingObligations[$order->id]))<a class="btn btn-sm btn-primary" href="{{ route('seller.shipping.show', $shippingObligations[$order->id]->id) }}">Shipping payment · {{ str_replace('_', ' ', $shippingObligations[$order->id]->status) }}</a>@endif
               <span style="color:var(--muted);font-size:11.5px">Waiting for {{ $shipment->logistics_company }}'s admin to confirm handoff</span>
             @endif
             @if($shipment && $shipment->shipping_status === 'ready_for_pickup' && $shipment->pickup_rider_id && $shipment->rider_confirmed_pickup_at)

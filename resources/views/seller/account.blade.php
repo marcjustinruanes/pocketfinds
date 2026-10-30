@@ -213,7 +213,7 @@
             @php $ext = strtolower(pathinfo($u->id_file, PATHINFO_EXTENSION)); $isImg = in_array($ext, ['jpg','jpeg','png']); @endphp
             <div style="margin-bottom:12px">
               <div style="font-size:12px;font-weight:650;margin-bottom:6px">Current ID on File</div>
-              <button type="button" class="doc-preview-btn" data-src="{{ asset('storage/'.$u->id_file) }}" data-type="{{ $isImg ? 'image' : 'pdf' }}"
+              <button type="button" class="doc-preview-btn" data-src="{{ app(\App\Services\SensitiveDocuments::class)->url($u->id_file) }}" data-type="{{ $isImg ? 'image' : 'pdf' }}"
                 style="background:none;border:1px solid var(--border);border-radius:9px;padding:8px 12px;display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
                 @include('seller.partials.icon',['name'=>'file','size'=>14]) View Current ID
               </button>
@@ -291,7 +291,7 @@
           ['Username',       $u->username ?: 'Not provided'],
           ['Shop Category',  $u->category_id ? ($categories->firstWhere('id', $u->category_id)->name ?? 'Not provided') : 'Not provided'],
           ['ID Type',        $u->id_type_id ? ($idTypes->firstWhere('id', $u->id_type_id)->name ?? 'Not provided') : 'Not provided'],
-          ['ID File',        $u->id_file ? '<button type="button" class="doc-preview-btn" data-src="'.asset('storage/'.$u->id_file).'" data-type="'.(in_array(strtolower(pathinfo($u->id_file,PATHINFO_EXTENSION)),['jpg','jpeg','png'])?'image':'pdf').'" style="background:none;border:none;padding:0;color:var(--pink);font-weight:600;cursor:pointer;font-size:13px">View File</button>' : 'Not provided'],
+          ['ID File',        $u->id_file ? '<button type="button" class="doc-preview-btn" data-src="'.app(\App\Services\SensitiveDocuments::class)->url($u->id_file).'" data-type="'.(in_array(strtolower(pathinfo($u->id_file,PATHINFO_EXTENSION)),['jpg','jpeg','png'])?'image':'pdf').'" style="background:none;border:none;padding:0;color:var(--pink);font-weight:600;cursor:pointer;font-size:13px">View File</button>' : 'Not provided'],
           ['Business Permit',$u->business_permit_file ? '<button type="button" class="doc-preview-btn" data-src="'.asset('storage/'.$u->business_permit_file).'" data-type="'.(in_array(strtolower(pathinfo($u->business_permit_file,PATHINFO_EXTENSION)),['jpg','jpeg','png'])?'image':'pdf').'" style="background:none;border:none;padding:0;color:var(--pink);font-weight:600;cursor:pointer;font-size:13px">View File</button>' : 'Not provided'],
         ] as [$label, $val])
         <div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border)">

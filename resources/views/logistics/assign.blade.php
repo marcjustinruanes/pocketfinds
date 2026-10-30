@@ -4,6 +4,7 @@
 @section('page-sub', 'Sorted parcels ready for a rider — assign directly, or let riders self-accept first come, first served')
 
 @section('content')
+@if(app(\App\Services\AssignmentReassignment::class)->installed())<div class="card card-pad"><a class="btn btn-primary" href="{{ route('logistics.assignments.review') }}">Assignment evidence & reassignment</a></div>@endif
 @if($errors->any())<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ $errors->first() }}</div>@endif
 <div class="card">
   <div class="card-head">
@@ -29,7 +30,7 @@
         @forelse($shipments as $s)
         @php $courier = optional(optional($s->assignment)->courier) @endphp
         <tr>
-          <td class="mono">{{ $s->tracking_number ?? substr($s->id, 0, 8) }}</td>
+          <td class="mono"><a href="{{ route('logistics.monitor', ['search'=>$s->tracking_number ?? $s->order?->order_number]) }}">{{ $s->tracking_number ?? substr($s->id, 0, 8) }}</a>@include('logistics.partials.parcel-custody',['parcel'=>$s])</td>
           <td>{{ optional(optional($s->order)->buyer)->given_names }} {{ optional(optional($s->order)->buyer)->last_name }}</td>
           <td><span class="stamp stamp-{{ $s->shipping_status }}">{{ ucfirst(str_replace('_',' ',$s->shipping_status)) }}</span></td>
           <td>
@@ -44,7 +45,7 @@
             @elseif($s->shipping_status === 'sorted')
               <form method="POST" action="{{ route('logistics.assignments.assign', $s->id) }}" style="display:flex;gap:6px">
                 @csrf @method('PATCH')
-                <select name="courier_id" class="select" required>
+                <select name="courier_id" class="select" aria-label="Delivery Rider for {{ $s->tracking_number ?? $s->id }}" style="min-height:44px" required>
                   <option value="" selected disabled>Select courier…</option>
                   @foreach($couriers as $rider)
                   <option value="{{ $rider->id }}">{{ $rider->given_names }} {{ $rider->last_name }}</option>

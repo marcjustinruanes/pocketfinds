@@ -28,7 +28,7 @@ class NavigationTest extends TestCase
     private function renderNavigation(string $role, string $routeName, ?string $viewOverride = null): DOMXPath
     {
         $hub = LogisticsHub::firstOrCreate(['company_name' => 'Navigation Company', 'province' => 'Laguna', 'municipality' => 'Pila'], ['is_operational' => true]);
-        $user = User::create(['email' => uniqid().'@example.test', 'username' => uniqid('nav'), 'given_names' => 'Navigation', 'last_name' => 'Fixture',
+        $user = User::firstOrCreate(['username'=>'nav_'.$role],['email' => uniqid().'@example.test', 'username' => 'nav_'.$role, 'given_names' => 'Navigation', 'last_name' => 'Fixture',
             'account_type' => in_array($role, ['logistics_admin', 'hub_staff']) ? 'logistics' : $role,
             'is_admin' => $role === 'admin', 'is_logistics' => in_array($role, ['logistics_admin', 'hub_staff']),
             'logistics_role' => $role === 'logistics_admin' ? 'admin' : ($role === 'hub_staff' ? 'hub_staff' : null),
@@ -55,8 +55,8 @@ class NavigationTest extends TestCase
     {
         $groups = ['admin' => ['Accounts & Recruitment', 'Marketplace & Resources', 'Compliance', 'Finance & Reports', 'Communications', 'System'],
             'buyer' => ['Shopping', 'Orders', 'Communications', 'Support'], 'seller' => ['Orders', 'Store', 'Tracking & Reports', 'Communications'],
-            'logistics_admin' => ['Operations', 'Personnel & Resources', 'Tracking & Reports', 'Administration'],
-            'hub_staff' => ['Operations', 'Hub Resources', 'Tracking', 'Communications'],
+            'logistics_admin' => ['Operations', 'Personnel & Resources', 'Tracking & Reports', 'Finance', 'Administration'],
+            'hub_staff' => ['Operations', 'Hub Resources', 'Tracking', 'Finance', 'Communications'],
             'rider' => ['Pickup Operations', 'Transfer Operations', 'Delivery Operations', 'Earnings & History', 'Communications']];
         foreach ($groups as $role => $expected) {
             $prefix = in_array($role, ['hub_staff', 'logistics_admin']) ? 'logistics' : $role;
@@ -88,11 +88,29 @@ class NavigationTest extends TestCase
     public function test_hub_staff_cannot_see_company_admin_navigation_and_counts_are_retained(): void
     {
         $xpath = $this->renderNavigation('hub_staff', 'logistics.transfers.show');
-        foreach (['requests', 'hub-requests', 'riders', 'staff', 'hubs', 'vehicles', 'accounts', 'activity', 'reports'] as $path) {
+        foreach (['requests', 'hub-requests', 'riders', 'staff', 'hubs', 'vehicles', 'accounts', 'activity', 'reports', 'finance.reconciliation', 'finance.riders', 'finance.payouts'] as $path) {
             $this->assertSame(0, $xpath->query('//a[@href="'.route('logistics.'.$path).'"]')->length);
         }
         $this->assertSame(1, $xpath->query('//a[@href="'.route('logistics.hub.vehicles').'"]')->length);
         $this->assertSame(1, $xpath->query('//span[@class="count" and text()="2"]')->length);
+    }
+
+    public function test_scanner_navigation_is_staff_only_and_admin_retains_monitor(): void
+    {
+        $admin=$this->renderNavigation('logistics_admin','logistics.monitor');
+        $this->assertSame(0,$admin->query('//a[@href="'.route('logistics.scan').'"]')->length);
+        $this->assertSame(1,$admin->query('//a[@href="'.route('logistics.monitor').'"]')->length);
+        $staff=$this->renderNavigation('hub_staff','logistics.scan');
+        $this->assertSame(1,$staff->query('//a[@href="'.route('logistics.scan').'"]')->length);
+    }
+
+    public function test_admin_finance_navigation_follows_workflow_without_duplicate_destinations(): void
+    {
+        $xpath=$this->renderNavigation('logistics_admin','logistics.cash-desk');
+        $expected=array_map(fn($name)=>route($name),['logistics.finance','logistics.cash-desk','logistics.finance.payouts','logistics.finance.riders','logistics.finance.reconciliation']);
+        $actual=[];
+        foreach($xpath->query('//a[@href]') as $link)if(in_array($link->getAttribute('href'),$expected,true))$actual[]=$link->getAttribute('href');
+        $this->assertSame($expected,$actual);
     }
 
     public function test_buyer_navigation_does_not_offer_restricted_support_to_platform_admin(): void
@@ -109,7 +127,10 @@ class NavigationTest extends TestCase
     public function test_contextual_pages_expand_their_parent_and_mark_the_parent_link(): void
     {
         foreach ([['admin', 'admin.ai.order', 'admin-system', 'admin.ai'], ['admin', 'admin.compliance', 'admin-compliance', 'admin.compliance'],
-            ['seller', 'seller.orders.waybill', 'seller-orders', 'seller.orders'], ['logistics_admin', 'logistics.accounts.edit', 'logistics-administration', 'logistics.accounts'],
+            ['seller', 'seller.orders.waybill', 'seller-orders', 'seller.orders'], ['logistics_admin', 'logistics.accounts.edit', 'logistics-personnel-resources', 'logistics.riders'],
+            ['logistics_admin', 'logistics.finance.reconciliation.export', 'logistics-finance', 'logistics.finance.reconciliation'],
+            ['logistics_admin', 'logistics.finance.riders.action', 'logistics-finance', 'logistics.finance.riders'],
+            ['rider', 'rider.earnings.acknowledge', 'rider-earnings-history', 'rider.profit'],
             ['hub_staff', 'logistics.transfers.show', 'hub-staff-operations', 'logistics.transfers'], ['rider', 'rider.deliveries.show', 'rider-delivery-operations', 'rider.deliveries'],
             ['buyer', 'buyer.announcements.show', 'buyer-communications', 'buyer.announcements'],
             ['buyer', 'buyer.product', 'buyer-shopping', 'buyer.browse'], ['buyer', 'buyer.shop', 'buyer-shopping', 'buyer.browse']] as [$role, $route, $group, $parent]) {

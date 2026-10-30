@@ -44,7 +44,7 @@ class BuyerCommerceTest extends TestCase
         foreach (['2026_10_14_000004_add_gcash_purchases', '2026_10_16_000001_add_registration_business_details', '2026_10_16_000002_add_logistics_registration_details', '2026_10_17_000001_add_buyer_commerce_features'] as $file) {
             (require database_path('migrations/'.$file.'.php'))->up();
         }
-        Storage::fake('public');
+        Storage::fake('public'); Storage::fake('sensitive_documents');
         Storage::fake('local');
         $this->buyer = $this->person('buyer');
         $this->seller = $this->person('seller');
@@ -261,7 +261,7 @@ class BuyerCommerceTest extends TestCase
     {
         $order = Order::create(['buyer_id' => $this->buyer->id, 'seller_id' => $this->seller->id, 'status' => 'delivered', 'order_number' => 'RETURN1', 'items' => [['product_id' => $this->product->id, 'name' => 'Basket', 'price' => 100, 'qty' => 1]], 'subtotal' => 100, 'total' => 100]);
         $order->logStatus('delivered', $this->buyer->id);
-        $d = ['item_keys' => [0], 'reason' => 'Damaged item', 'description' => 'The basket arrived broken.', 'refund_destination' => 'My COD refund account'];
+        $d = ['item_keys' => [0], 'reason' => 'Damaged item', 'description' => 'The basket arrived broken.', 'refund_account_name'=>'Synthetic Buyer','refund_gcash_number'=>'09123456789'];
         $this->actingAs($this->buyer)->post(route('buyer.commerce.return', $order), $d)->assertSessionHasErrors('photos');
         $this->post(route('buyer.commerce.return', $order), $d + ['photos' => [$this->image('evidence.png')]])->assertRedirect()->assertSessionHasNoErrors();
         $row = DB::table('commerce_returns')->first();
@@ -309,6 +309,17 @@ class BuyerCommerceTest extends TestCase
 
     public function test_all_other_roles_enforce_profile_and_password_rules(): void
     {
+        // Controlled geography fixtures exercise the real hierarchy validation without live network calls.
+        Cache::flush();
+        \Illuminate\Support\Facades\Http::preventStrayRequests();
+        \Illuminate\Support\Facades\Http::fake([
+            'https://psgc.gitlab.io/api/regions/' => \Illuminate\Support\Facades\Http::response([['code'=>'040000000','name'=>'Test Region'],['code'=>'050000000','name'=>'Another Region']]),
+            'https://psgc.gitlab.io/api/provinces/' => \Illuminate\Support\Facades\Http::response([['code'=>'043400000','name'=>'Laguna','regionCode'=>'040000000'],['code'=>'053400000','name'=>'Another Province','regionCode'=>'050000000']]),
+            'https://psgc.gitlab.io/api/provinces/043400000/cities-municipalities/' => \Illuminate\Support\Facades\Http::response([['code'=>'043425000','name'=>'Pila']]),
+            'https://psgc.gitlab.io/api/provinces/053400000/cities-municipalities/' => \Illuminate\Support\Facades\Http::response([['code'=>'053425000','name'=>'Pila']]),
+            'https://psgc.gitlab.io/api/cities-municipalities/043425000/barangays/' => \Illuminate\Support\Facades\Http::response([['code'=>'043425001','name'=>'B']]),
+            'https://psgc.gitlab.io/api/cities-municipalities/053425000/barangays/' => \Illuminate\Support\Facades\Http::response([['code'=>'053425001','name'=>'B']]),
+        ]);
         foreach (['seller', 'admin', 'logistics', 'rider'] as $role) {
             $user = $this->roleAccount($role);
             $profileRoute = $role === 'seller' ? 'seller.account.profile' : $role.'.account.update';
@@ -323,7 +334,7 @@ class BuyerCommerceTest extends TestCase
                 $this->assertSame('09171234567', $changes['contact_no']);
             }
             if ($role !== 'admin') {
-                $this->post(route($role.'.account.address'), ['region' => 'Another Region', 'postal_code' => '0456', 'province' => 'Laguna', 'municipality' => 'Pila', 'barangay' => 'B'])->assertSessionHasNoErrors();
+                $this->post(route($role.'.account.address'), ['region' => 'Another Region', 'postal_code' => '0456', 'province' => 'Another Province', 'municipality' => 'Pila', 'barangay' => 'B'])->assertSessionHasNoErrors();
                 $changes = json_decode(DB::table('account_update_requests')->where('user_id', $user->id)->value('requested_changes'), true);
                 $this->assertSame('Another Region', $changes['region']);
                 $this->assertSame('0456', $changes['postal_code']);
@@ -353,7 +364,7 @@ class BuyerCommerceTest extends TestCase
         $admin=$this->roleAccount('admin');
         $order=Order::create(['buyer_id'=>$this->buyer->id,'seller_id'=>$this->seller->id,'status'=>'delivered','order_number'=>'NATIVE-RETURN','items'=>[['product_id'=>$this->product->id,'name'=>'Basket','price'=>100,'qty'=>1]],'subtotal'=>100,'total'=>100]);
         $order->logStatus('delivered',$this->buyer->id);
-        $this->actingAs($this->buyer)->post(route('buyer.commerce.return',$order),['item_keys'=>[0],'reason'=>'Damaged item','description'=>'Broken basket requiring review.','photos'=>[$this->image('evidence.png')],'refund_destination'=>'COD refund account'])->assertSessionHasNoErrors();
+        $this->actingAs($this->buyer)->post(route('buyer.commerce.return',$order),['item_keys'=>[0],'reason'=>'Damaged item','description'=>'Broken basket requiring review.','photos'=>[$this->image('evidence.png')],'refund_account_name'=>'Synthetic Buyer','refund_gcash_number'=>'09123456789'])->assertSessionHasNoErrors();
         $request=DB::table('commerce_returns')->first();
         $this->actingAs($this->seller)->get(route('seller.orders',['status'=>'refunds']))->assertOk()->assertSee('Broken basket requiring review.')->assertSee('Submit decision');
         $other=$this->roleAccount('seller');
@@ -371,7 +382,7 @@ class BuyerCommerceTest extends TestCase
     {
         $order=Order::create(['buyer_id'=>$this->buyer->id,'seller_id'=>$this->seller->id,'status'=>'delivered','order_number'=>'AUTO-RETURN','items'=>[['product_id'=>$this->product->id,'name'=>'Basket','price'=>100,'qty'=>1]],'subtotal'=>100,'total'=>100]);
         $order->logStatus('delivered',$this->buyer->id);
-        $this->actingAs($this->buyer)->post(route('buyer.commerce.return',$order),['item_keys'=>[0],'reason'=>'Wrong item','description'=>'The delivered basket is incorrect.','photos'=>[$this->image('wrong.png')],'refund_destination'=>'COD refund account'])->assertSessionHasNoErrors();
+        $this->actingAs($this->buyer)->post(route('buyer.commerce.return',$order),['item_keys'=>[0],'reason'=>'Wrong item','description'=>'The delivered basket is incorrect.','photos'=>[$this->image('wrong.png')],'refund_account_name'=>'Synthetic Buyer','refund_gcash_number'=>'09123456789'])->assertSessionHasNoErrors();
         $before=DB::table('notifications')->count();$this->travel(4)->days();
         app(BuyerCommerce::class)->sweep();$this->assertDatabaseHas('commerce_returns',['order_id'=>$order->id,'status'=>'approved']);
         $this->assertSame($before+2,DB::table('notifications')->count());app(BuyerCommerce::class)->sweep();$this->assertSame($before+2,DB::table('notifications')->count());

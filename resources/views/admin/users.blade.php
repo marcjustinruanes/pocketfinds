@@ -82,10 +82,12 @@
                 <button type="button" class="btn btn-outline" onclick="openReasonModal('suspend', '{{ route('admin.users.suspend', $user->id) }}')">Suspend</button>
                 @endif
                 @if($user->status !== 'approved' && (!$personnel || $user->status === 'suspended'))
-                <form method="POST" action="{{ route('admin.users.approve', $user->id) }}" style="display:inline">
+                @if($user->account_type==='rider')<button type="button" class="btn btn-success" onclick="openReasonModal('activate', '{{ route('admin.users.approve',$user->id) }}')">Reactivate</button>@else
+<form method="POST" action="{{ route('admin.users.approve', $user->id) }}" style="display:inline">
                   @csrf @method('PATCH')
                   <button class="btn btn-success" type="submit">Activate</button>
                 </form>
+                @endif
                 @endif
               </div>
             </div>
@@ -99,6 +101,6 @@
   </div>
 </div>
 
-@include('admin.partials.reason-modals', ['reasonModalTypes' => ['suspend']])
+@include('admin.partials.reason-modals', ['reasonModalTypes' => ['suspend','activate']])
 @include('admin.partials.doc-lightbox')
 @endsection

@@ -215,7 +215,7 @@ class GcashWorkflow
             if ($cart->isEmpty() || $cart->count() !== count($ids) || $cart->contains(fn ($row) => ! $products->has($row->product_id))) {
                 $this->fail('Your cart changed. Refresh before retrying.');
             }
-            $address = $addressId ? BuyerAddress::where('buyer_id', $buyer->id)->findOrFail($addressId)->toShippingArray() : collect(['house_no', 'street', 'barangay', 'municipality', 'province'])->mapWithKeys(fn ($f) => [$f => $buyer->$f])->all();
+            $address = $addressId ? BuyerAddress::where('buyer_id', $buyer->id)->findOrFail($addressId)->toShippingArray() : collect(['house_no', 'street', 'barangay', 'municipality', 'province', 'region', 'postal_code'])->mapWithKeys(fn ($f) => [$f => $buyer->$f])->all();
             $missing = fn ($value) => ! filled($value) || strcasecmp(trim((string) $value), 'Not provided') === 0;
             foreach (['barangay', 'municipality', 'province'] as $f) {
                 if ($missing($address[$f] ?? null)) {
@@ -242,7 +242,7 @@ class GcashWorkflow
                 if (!$commerceQuote && $price !== $this->cents($row->price)) {
                     $this->fail('The cart price changed. Refresh and acknowledge the new amount before reserving.');
                 }
-                $grouped[$seller->id][] = ['product_id' => $product->id, 'name' => $product->name, 'price' => $this->money($price), 'qty' => (int) $row->qty, 'variation_group' => $group, 'variation_value' => $value, 'img' => $row->img, 'seller_slug' => $seller->username, 'cart_id' => $row->id];
+                $grouped[$seller->id][] = ['product_id' => $product->id, 'name' => $product->name, 'price' => $this->money($price), 'qty' => (int) $row->qty, 'variation_group' => $group, 'variation_value' => $value, 'img' => $row->img, 'seller_slug' => $seller->username, 'cart_id' => $row->id, 'weight_grams' => $product->weight_grams];
             }
             $created = [];
             $voucherApplied = false;
@@ -263,6 +263,9 @@ class GcashWorkflow
                     }
                 }
                 $snapshot = ['items' => $items, 'shipping_address' => $address, 'buyer_note' => $note, 'subtotal' => $this->money($subtotal), 'shipping_amount' => $this->money($shipping), 'discount_amount' => $this->money($discount), 'voucher_id' => $voucher?->id, 'voucher_code' => $voucher?->code];
+                $snapshot['shipping_voucher_funding'] = $voucher?->isFreeShipping()
+                    ? [['voucher_id' => $voucher->id, 'code' => $voucher->code, 'source' => 'seller', 'amount_cents' => $shipping]] : [];
+                if (! $commerceQuote && app(LogisticsShipping::class)->installed()) app(LogisticsShipping::class)->preflight($seller, $address, $snapshot, false);
                 if($commerceQuote){
                     $details=$commerceQuote['orders'][$sellerId];$subtotal=$this->cents($details['subtotal']);$shipping=$this->cents($details['shipping_amount']);$discount=$this->cents($details['discount_amount']);
                     $snapshot=['items'=>$details['items'],'shipping_address'=>$commerceQuote['address'],'buyer_note'=>$note,'subtotal'=>$this->money($subtotal),'shipping_amount'=>$this->money($shipping),'discount_amount'=>$this->money($discount),'voucher_id'=>null,'voucher_code'=>null,'commerce'=>$details];
@@ -674,6 +677,7 @@ class GcashWorkflow
         if (GcashPurchase::where('payment_reference', $reference)->where('id', '!=', $p->id)->exists()) {
             throw ValidationException::withMessages(['reference' => 'This reference number has already been submitted. Check your transaction details.']);
         }
+        if (app(LogisticsShipping::class)->installed()) app(LogisticsShipping::class)->reserveReference($reference, 'buyer_gcash', $p->id);
     }
 
     public function abandon(User $buyer, string $id, int $revision): GcashPurchase

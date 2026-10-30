@@ -20,7 +20,7 @@ class MediaLifecycleTest extends TestCase
     {
         parent::setUp();
         $this->createWorkflowSchema();
-        foreach (['public', 'messages', 'profile_images'] as $disk) {
+        foreach (['public', 'messages', 'profile_images', 'sensitive_documents'] as $disk) {
             Storage::fake($disk);
         }
     }
@@ -92,18 +92,18 @@ class MediaLifecycleTest extends TestCase
     {
         $user = $this->seller();
         $request = AccountUpdateRequest::create(['user_id' => $user->id, 'status' => 'pending', 'requested_documents' => ['id_file' => 'id_files/draft.jpg']]);
-        Storage::disk('public')->put('id_files/draft.jpg', 'old draft');
+        Storage::disk('sensitive_documents')->put('id_files/draft.jpg', 'old draft');
         $this->actingAs($user);
         DB::beginTransaction();
         $this->post(route('seller.account.documents'), ['id_file' => $this->image('id.jpg')])->assertRedirect();
         $new = $request->fresh()->requested_documents['id_file'];
         DB::rollBack();
-        Storage::disk('public')->assertExists('id_files/draft.jpg');
-        Storage::disk('public')->assertMissing($new);
+        Storage::disk('sensitive_documents')->assertExists('id_files/draft.jpg');
+        Storage::disk('sensitive_documents')->assertMissing($new);
         $this->assertSame('id_files/draft.jpg', $request->fresh()->requested_documents['id_file']);
         $this->post(route('seller.account.documents'), ['id_file' => $this->image('id.jpg')])->assertRedirect();
-        Storage::disk('public')->assertMissing('id_files/draft.jpg');
-        Storage::disk('public')->assertExists($request->fresh()->requested_documents['id_file']);
+        Storage::disk('sensitive_documents')->assertMissing('id_files/draft.jpg');
+        Storage::disk('sensitive_documents')->assertExists($request->fresh()->requested_documents['id_file']);
     }
 
     public function test_failed_storage_cleanup_is_logged_without_sensitive_details(): void
@@ -164,19 +164,19 @@ class MediaLifecycleTest extends TestCase
         $admin = $this->seller('admin');
         $admin->update(['account_type' => 'admin', 'is_admin' => true]);
         foreach (['id_files/current.png', 'id_files/replacement.png'] as $path) {
-            Storage::disk('public')->put($path, 'document');
+            Storage::disk('sensitive_documents')->put($path, 'document');
         }
         $request = AccountUpdateRequest::create(['user_id' => $user->id, 'status' => 'pending', 'requested_documents' => ['id_file' => 'id_files/replacement.png']]);
         DB::unprepared("CREATE TRIGGER reject_notification BEFORE INSERT ON notifications BEGIN SELECT RAISE(ABORT, 'fixture failure'); END");
         $this->actingAs($admin)->patchJson(route('admin.update-requests.approve', $request->id))->assertStatus(500);
         $this->assertSame('id_files/current.png', $user->fresh()->id_file);
         $this->assertSame('pending', $request->fresh()->status);
-        Storage::disk('public')->assertExists(['id_files/current.png', 'id_files/replacement.png']);
+        Storage::disk('sensitive_documents')->assertExists(['id_files/current.png', 'id_files/replacement.png']);
         DB::unprepared('DROP TRIGGER reject_notification');
         $this->patch(route('admin.update-requests.approve', $request->id))->assertRedirect();
         $this->assertSame('id_files/replacement.png', $user->fresh()->id_file);
-        Storage::disk('public')->assertMissing('id_files/current.png');
-        Storage::disk('public')->assertExists('id_files/replacement.png');
+        Storage::disk('sensitive_documents')->assertMissing('id_files/current.png');
+        Storage::disk('sensitive_documents')->assertExists('id_files/replacement.png');
     }
 
     public function test_shared_document_in_another_accounts_json_is_not_deleted_by_replacement(): void
@@ -186,9 +186,9 @@ class MediaLifecycleTest extends TestCase
         foreach ([$user, $other] as $owner) {
             AccountUpdateRequest::create(['user_id' => $owner->id, 'status' => 'pending', 'requested_documents' => ['id_file' => 'id_files/shared.png']]);
         }
-        Storage::disk('public')->put('id_files/shared.png', 'shared valid document');
+        Storage::disk('sensitive_documents')->put('id_files/shared.png', 'shared valid document');
         $this->actingAs($user)->post(route('seller.account.documents'), ['id_file' => $this->image('new.png'), 'user_id' => $other->id])->assertRedirect();
-        Storage::disk('public')->assertExists('id_files/shared.png');
+        Storage::disk('sensitive_documents')->assertExists('id_files/shared.png');
         $this->assertSame('id_files/shared.png', AccountUpdateRequest::where('user_id', $other->id)->firstOrFail()->requested_documents['id_file']);
     }
 

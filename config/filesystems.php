@@ -29,6 +29,13 @@ return [
     */
 
     'disks' => [
+        'sensitive_documents' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/sensitive-documents'),
+            'visibility' => 'private',
+            'serve' => false,
+            'throw' => true,
+        ],
 
         'local' => [
             'driver' => 'local',

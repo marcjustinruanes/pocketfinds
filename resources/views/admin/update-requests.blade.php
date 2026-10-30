@@ -84,7 +84,7 @@
                 <div style="display:flex;gap:6px;flex-wrap:wrap">
                   @foreach($req->requested_documents ?? [] as $docKey => $docPath)
                     <button type="button" class="btn btn-sm btn-outline" data-doc-trigger
-                      data-src="{{ asset('storage/'.$docPath) }}"
+                      data-src="{{ app(\App\Services\SensitiveDocuments::class)->url($docPath) }}"
                       data-type="{{ in_array(strtolower(pathinfo($docPath,PATHINFO_EXTENSION)),['jpg','jpeg','png']) ? 'image' : 'pdf' }}"
                       data-title="{{ $documentLabels[$docKey] ?? \Illuminate\Support\Str::headline($docKey) }}">
                       <x-admin-icon name="eye" /> {{ $documentLabels[$docKey] ?? \Illuminate\Support\Str::headline($docKey) }}

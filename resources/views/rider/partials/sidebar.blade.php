@@ -37,9 +37,10 @@
       @if(($activeDeliveries ?? 0) > 0)<span class="count">{{ $activeDeliveries }}</span>@endif
     </a>
 </x-navigation-group>
-<x-navigation-group id="rider-earnings-history" label="Earnings & History" :active="request()->routeIs('rider.profit', 'rider.history')">
-<a @if(request()->routeIs('rider.profit')) aria-current="page" @endif href="{{ route('rider.profit') }}" class="nav-item {{ request()->routeIs('rider.profit') ? 'active' : '' }}">
-      <span class="ic"><x-admin-icon name="peso" /></span> Profit
+<x-navigation-group id="rider-earnings-history" label="Earnings & History" :active="request()->routeIs('rider.profit', 'rider.earnings*', 'rider.history', 'rider.remittances*')">
+<a href="{{ route('rider.remittances') }}" class="nav-item {{ request()->routeIs('rider.remittances*') ? 'active' : '' }}" @if(request()->routeIs('rider.remittances*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="peso" /></span> Cash Remittances</a>
+<a @if(request()->routeIs('rider.profit', 'rider.earnings*')) aria-current="page" @endif href="{{ route('rider.profit') }}" class="nav-item {{ request()->routeIs('rider.profit', 'rider.earnings*') ? 'active' : '' }}">
+      <span class="ic"><x-admin-icon name="peso" /></span> Earnings & Payouts
     </a>
 <a @if(request()->routeIs('rider.history')) aria-current="page" @endif href="{{ route('rider.history') }}" class="nav-item {{ request()->routeIs('rider.history') ? 'active' : '' }}">
       <span class="ic"><x-admin-icon name="clock" /></span> Delivery History

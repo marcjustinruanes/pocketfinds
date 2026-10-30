@@ -2,6 +2,12 @@
 @section('title', 'Delivery Detail')
 @section('page-title', 'Delivery Detail')
 @section('page-sub', $shipment->tracking_number ?? substr($shipment->id, 0, 8))
+@push('head')
+<style>
+.cod-collection{min-width:0;border:1px solid var(--border);border-radius:16px;padding:20px;margin:0 0 20px;background:var(--surface);font-size:14px;line-height:1.6}.cod-collection legend{font-size:15px;font-weight:600;padding:0 6px}.cod-collection input[type=number]{min-height:44px;width:100%;font-size:14px;border-radius:10px}.cod-collection input:focus-visible{outline:2px solid var(--pink);outline-offset:3px}.cod-collection .form-row{margin-bottom:16px}.cod-collection .form-row label{font-size:12px}.cod-collection p{overflow-wrap:anywhere}
+.rider-delivery-detail{min-width:0;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.rider-delivery-detail>.stack{min-width:0}.rider-delivery-detail .card{min-width:0}.rider-delivery-detail .table-wrap{max-width:100%;overflow-x:auto}@media(max-width:900px){.rider-delivery-detail{grid-template-columns:minmax(0,1fr)}}
+</style>
+@endpush
 
 @php
   $order  = $shipment->order;
@@ -18,6 +24,7 @@
 @endphp
 
 @section('content')
+@include('logistics.partials.rts-custody')
 <div class="card">
   <div class="card-head">
     <div><h2>{{ $info['title'] }}</h2><p>{{ $info['hint'] }}</p></div>
@@ -25,7 +32,7 @@
   </div>
 </div>
 
-<div class="dash-grid">
+<div class="dash-grid rider-delivery-detail">
   <div class="stack">
     <div class="card">
       <div class="card-head"><h2>Seller — Origin</h2></div>
@@ -79,10 +86,26 @@
     <div class="card">
       <div class="card-head"><h2>Actions</h2></div>
       <div class="card-pad">
+        @if($codCollection ?? null)
+        <div role="status" style="padding:14px;border:1px solid var(--border);border-radius:12px;margin-bottom:16px;font-size:13px">COD collection recorded: <strong>?{{ number_format($codCollection->amount_cents / 100, 2) }}</strong><br>Hub cash verification: {{ ucfirst($codCollection->verification_state) }}.</div>
+        @elseif(($codRequired ?? false) && in_array($shipment->shipping_status, ['delivered','completed']))
+        <p class="hint">Legacy delivery: no cash collection record is available. Payment or remittance has not been inferred.</p>
+        @endif
         @if($info['button'])
         <form method="POST" action="{{ route('rider.deliveries.advance', $shipment->id) }}">
           @csrf @method('PATCH')
           <input type="hidden" name="from" value="{{ $shipment->shipping_status }}">
+          @if(($codRequired ?? false) && $shipment->shipping_status === 'out_for_delivery')
+          @if($errors->any())<div role="alert" style="padding:12px;border:1px solid var(--danger-line);border-radius:10px;color:var(--danger);margin-bottom:16px;font-size:13px"><ul style="margin:0;padding-left:18px">@foreach($errors->all() as $message)<li>{{ $message }}</li>@endforeach</ul></div>@endif
+          <fieldset class="cod-collection">
+            <legend>Cash on delivery</legend>
+            <p style="font-size:14px">Collect <strong>?{{ number_format($order->total, 2) }}</strong> from the buyer.</p>
+            <input type="hidden" name="collection_key" value="{{ old('collection_key', (string) \Illuminate\Support\Str::uuid()) }}">
+            <div class="form-row"><label for="cod-amount">Amount collected (PHP)</label><input id="cod-amount" name="cod_amount" type="number" step="0.01" min="0" value="{{ old('cod_amount') }}" required inputmode="decimal" aria-describedby="cod-help"></div>
+            <label style="display:flex;gap:10px;align-items:flex-start;font-size:13px"><input type="checkbox" name="cod_confirmed" value="1" required @checked(old('cod_confirmed')) style="width:18px;height:18px;flex:none"> I received the full cash amount and handed the parcel to the buyer.</label>
+            <p id="cod-help" style="font-size:12px;color:var(--muted);margin-bottom:0">Collection is recorded with delivery. Hub Staff must separately verify your cash remittance. Do not deduct rider earnings.</p>
+          </fieldset>
+          @endif
           <button class="btn btn-primary" style="width:100%">{{ $info['button'] }}</button>
         </form>
         @else

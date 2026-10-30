@@ -16,7 +16,7 @@
       <p>Manage pickups, hub transfers and deliveries across your company.</p>
     </div>
     <div class="dashboard-actions">
-      <a href="{{ route('logistics.scan') }}" class="btn btn-primary"><x-admin-icon name="scan" /> Scan parcel</a>
+      <a href="{{ route('logistics.monitor') . '#parcel-lookup' }}" class="btn btn-primary"><x-admin-icon name="scan" /> Find parcel</a>
       <a href="{{ route('logistics.transfers') }}" class="btn btn-outline"><x-admin-icon name="truck" /> Hub transfers</a>
     </div>
   </section>
@@ -40,13 +40,13 @@
     <div class="card-head"><div><h2 id="pipeline-title">Shipment pipeline</h2><p class="dashboard-caption">Current workload across your network</p></div><a href="{{ route('logistics.monitor') }}" class="btn btn-sm btn-outline">Open live monitor</a></div>
     <div class="dashboard-pipeline-grid">
       @foreach([
-        ['Awaiting review', $pending, 'Pickup requests to review', 'logistics.requests', 'edit'],
-        ['Awaiting pickup rider', $forVerify, 'Approved pickups without a rider', 'logistics.requests', 'users'],
-        ['Parcels in transit', $inTransit, 'Picked up, at a hub or transferring', 'logistics.monitor', 'truck'],
-        ['Sorted', $available, 'Parcels at the sorted stage', 'logistics.assignments', 'layers'],
-        ['Deliveries in progress', $inProgress, 'Assigned or out for delivery', 'logistics.monitor', 'pin'],
-      ] as [$label, $value, $description, $destination, $icon])
-      <a class="dashboard-stage" href="{{ route($destination) }}">
+        ['Awaiting review', $pending, 'Pickup requests to review', 'logistics.requests', 'edit',[]],
+        ['Awaiting pickup rider', $forVerify, 'Approved pickups without a rider', 'logistics.requests', 'users',['queue'=>'assignment']],
+        ['Parcels in transit', $inTransit, 'Picked up, at a hub or transferring', 'logistics.monitor', 'truck',['stage'=>'transit']],
+        ['Sorted', $available, 'Parcels at the sorted stage', 'logistics.assignments', 'layers',['stage'=>'sorted']],
+        ['Deliveries in progress', $inProgress, 'Assigned or out for delivery', 'logistics.monitor', 'pin',['stage'=>'delivery']],
+      ] as [$label, $value, $description, $destination, $icon,$destinationFilters])
+      <a class="dashboard-stage" href="{{ route($destination,$destinationFilters) }}">
         <span class="dashboard-stage-icon"><x-admin-icon :name="$icon" /></span>
         <strong>{{ number_format($value) }}</strong>
         <span class="dashboard-stage-label">{{ $label }}</span>

@@ -181,7 +181,7 @@
 
     <div class="card">
       <div class="card-head">
-        <div><h2>Payment Methods</h2><p>Verify a GCash or bank account once, then use it at checkout</p></div>
+        <div><h2>Payment Methods</h2><p>Connect a GCash account. Email verification confirms this profile entry, not receipt of a payment.</p></div>
       </div>
       <div class="card-pad" style="display:flex;flex-direction:column;gap:10px">
         @forelse($paymentAccounts as $account)
@@ -191,7 +191,7 @@
             <div style="font-size:12.5px;color:var(--muted);margin-top:2px">{{ $account->account_name }} · {{ $account->account_number }}</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
-            <span class="stamp stamp-approved">Verified</span>
+            <span class="stamp stamp-approved">{{ $account->type === 'gcash' ? 'Email verified' : 'Historical account (unavailable)' }}</span>
             <form method="POST" action="{{ route('buyer.payment-accounts.destroy', $account->id) }}" onsubmit="return confirm('Remove this payment account?')">
               @csrf
               @method('DELETE')
@@ -206,8 +206,6 @@
         @endforelse
         <div class="buyer-payment-actions">
           <button type="button" class="btn btn-outline" onclick="openPaymentAccountModal('gcash')">Connect GCash</button>
-          <button type="button" class="btn btn-outline" onclick="openPaymentAccountModal('paymaya')">Connect PayMaya</button>
-          <button type="button" class="btn btn-outline" onclick="openPaymentAccountModal('bank')">Connect Bank Account</button>
         </div>
       </div>
     </div>
@@ -222,17 +220,13 @@
     </div>
     <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
       <input type="hidden" id="paymentAccountType" value="gcash">
-      <div class="form-row" id="paymentBankNameRow" hidden>
-        <label for="paymentBankName">Bank name</label>
-        <input class="auth-input" id="paymentBankName" type="text" placeholder="e.g. BDO, BPI">
-      </div>
       <div class="form-row">
         <label for="paymentAccountName">Account holder name</label>
         <input class="auth-input" id="paymentAccountName" type="text">
       </div>
       <div class="form-row">
         <label for="paymentAccountNumber" id="paymentAccountNumberLabel">GCash number</label>
-        <input class="auth-input" id="paymentAccountNumber" type="text">
+        <input class="auth-input" id="paymentAccountNumber" type="tel" inputmode="numeric" pattern="09[0-9]{9}" maxlength="11" placeholder="09XXXXXXXXX">
       </div>
       <div id="paymentAccountStep1">
         <button type="button" class="btn btn-primary btn-block" id="paymentSendCodeBtn" onclick="sendPaymentAccountCode()">Send verification code</button>
@@ -250,18 +244,17 @@
 
 @push('head')
 <script>
-const paymentTypeLabels = { gcash: 'GCash', paymaya: 'PayMaya', bank: 'Bank Account' };
+const paymentTypeLabels = { gcash: 'GCash' };
 
 function openPaymentAccountModal(type) {
+  if (type !== 'gcash') return;
   document.getElementById('paymentAccountType').value = type;
   document.getElementById('paymentAccountTitle').textContent = 'Connect ' + paymentTypeLabels[type];
-  document.getElementById('paymentAccountNumberLabel').textContent = type === 'bank' ? 'Account number' : paymentTypeLabels[type] + ' number';
-  document.getElementById('paymentBankNameRow').hidden = type !== 'bank';
+  document.getElementById('paymentAccountNumberLabel').textContent = 'GCash mobile number';
   document.getElementById('paymentAccountStep1').hidden = false;
   document.getElementById('paymentAccountStep2').hidden = true;
   document.getElementById('paymentAccountName').value = '';
   document.getElementById('paymentAccountNumber').value = '';
-  document.getElementById('paymentBankName').value = '';
   document.getElementById('paymentAccountOtp').value = '';
   const msg = document.getElementById('paymentAccountMessage');
   msg.hidden = true;
@@ -272,11 +265,10 @@ function sendPaymentAccountCode() {
   const type = document.getElementById('paymentAccountType').value;
   const accountName = document.getElementById('paymentAccountName').value.trim();
   const accountNumber = document.getElementById('paymentAccountNumber').value.trim();
-  const bankName = document.getElementById('paymentBankName').value.trim();
   const msg = document.getElementById('paymentAccountMessage');
 
-  if (!accountName || !accountNumber || (type === 'bank' && !bankName)) {
-    msg.hidden = false; msg.style.color = 'var(--danger)'; msg.textContent = 'Please fill in all fields.';
+  if (type !== 'gcash' || !accountName || !/^09[0-9]{9}$/.test(accountNumber)) {
+    msg.hidden = false; msg.style.color = 'var(--danger)'; msg.textContent = 'Enter the GCash account name and an 11-digit mobile number starting with 09.';
     return;
   }
 
@@ -286,7 +278,7 @@ function sendPaymentAccountCode() {
   fetch('{{ route('buyer.payment-accounts.send-code') }}', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
-    body: JSON.stringify({ type, account_name: accountName, account_number: accountNumber, bank_name: bankName }),
+    body: JSON.stringify({ type, account_name: accountName, account_number: accountNumber }),
   })
   .then(r => r.json())
   .then(data => {

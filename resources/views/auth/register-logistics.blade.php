@@ -843,11 +843,12 @@ if (bnInput) {
         if (value.length < 2) return;
         bnStatus.innerHTML = ICON_CLOCK;
         businessNameTimer = setTimeout(() => {
-            fetch(`/register/check-business-name?business_name=${encodeURIComponent(value)}`)
+            fetch(`/register/check-business-name?business_name=${encodeURIComponent(value)}&account_type=logistics`)
                 .then(r => r.json())
                 .then(data => {
                     if (bnInput.value.trim() !== value) return;
-                    businessNameAvailable = data.available;
+                    businessNameAvailable = data.available || data.reapplication_only;
+                    if(data.reapplication_only){bnStatus.textContent="Reserved company: only the same rejected applicant may reapply.";return;}
                     if (data.available) {
                         bnStatus.innerHTML = ICON_CHECK;
                         bnError.style.display = 'none';
