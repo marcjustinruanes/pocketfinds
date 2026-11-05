@@ -70,3 +70,44 @@
 @media(max-width:1100px) { .ai-workbench { grid-template-columns: 270px minmax(0,1fr); gap: 20px; } .ai-inputs { padding-right: 20px; } }
 @media(max-width:760px) { .ai-workbench { grid-template-columns: minmax(0,1fr); } .ai-inputs { border-right: 0; border-bottom: 1px solid var(--border); padding: 0 0 20px; } .admin-ai textarea, .admin-ai select, .admin-ai input:not([type="checkbox"]) { font-size: 16px; } }
 @media(prefers-reduced-motion:reduce) { .admin-ai * { animation: none !important; transition: none !important; } }
+
+/* Admin AI workspace refinement */
+.admin-ai{display:grid;gap:15px}
+.admin-ai .ai-heading{padding:15px 17px;border:1px solid var(--border);border-radius:13px;background:#fff;box-shadow:0 2px 8px rgba(35,24,33,.025)}
+.admin-ai h2{margin:0 0 3px;font-size:16px;font-weight:750}
+.admin-ai .ai-heading p{font-size:10.5px}
+.admin-ai .ai-connection{padding:5px 9px;border-radius:999px;font-size:9.5px;font-weight:700;background:var(--warning-soft)}
+.admin-ai .ai-connection.is-ready{background:var(--success-soft)}
+.admin-ai .ai-tabs{gap:4px;margin:0;padding:5px;border:1px solid var(--border);border-radius:12px;background:#fff;scrollbar-width:thin}
+.admin-ai .ai-tabs button{min-height:34px;padding:7px 11px;border:1px solid transparent;border-radius:8px;font:700 10px var(--font-body);white-space:nowrap}
+.admin-ai .ai-tabs button[aria-selected="true"]{border-color:#f4d5e5;background:#fff4f9;color:var(--pink-dark)}
+.admin-ai .ai-tabs button:hover{border-color:var(--border);background:#fcfafb}
+.admin-ai .ai-workbench{grid-template-columns:minmax(300px,.78fr) minmax(0,1.22fr);gap:15px;align-items:start}
+.admin-ai .ai-inputs,.admin-ai .ai-output{min-width:0;margin:0;padding:17px;border:1px solid var(--border);border-radius:13px;background:#fff;box-shadow:0 2px 8px rgba(35,24,33,.025)}
+.admin-ai .ai-inputs{display:grid;align-content:start;gap:0}
+.admin-ai .ai-inputs>h3,.admin-ai .ai-result-head h3,.admin-ai .ai-conversation h3{font-size:13px;font-weight:750}
+.admin-ai .ai-field{margin-top:14px}
+.admin-ai label,.admin-ai .ai-chat-engine legend{font-size:10px;font-weight:700}
+.admin-ai select,.admin-ai textarea,.admin-ai input:not([type="checkbox"]):not([type="hidden"]){border-radius:9px;font-size:11px}
+.admin-ai select{height:38px}
+.admin-ai textarea{min-height:92px;line-height:1.55}
+.admin-ai .ai-field .btn{display:inline-flex;align-items:center;gap:6px;margin-top:8px;min-height:33px;padding:7px 10px;border-radius:8px;font-size:9.5px}
+.admin-ai .ai-note{font-size:9.5px;line-height:1.55}
+.admin-ai .ai-check{font-size:10px}
+.admin-ai .ai-consent{margin:13px 0 5px;padding-top:12px}
+.admin-ai #aiRun{margin-top:12px;min-height:38px;border-radius:9px;font-size:10px}
+.admin-ai #aiStatus{font-size:10px}
+.admin-ai .ai-output{min-height:290px;padding:19px}
+.admin-ai .ai-empty{min-height:250px;gap:10px;padding:20px;border:1px dashed var(--border);border-radius:10px;background:#fcfafb;text-align:center}
+.admin-ai .ai-empty img{width:34px;height:34px;opacity:.8}
+.admin-ai .ai-empty h3{font-size:12px;color:var(--text)}
+.admin-ai .ai-result-head{padding-bottom:11px;border-bottom:1px solid var(--border)}
+.admin-ai #aiSummary,.admin-ai .ai-finding p{font-size:11px;line-height:1.7}
+.admin-ai .ai-result-section{padding-top:12px;margin-top:10px}
+.admin-ai .ai-draft{margin-top:17px;padding-top:15px}
+.admin-ai .ai-draft h3{font-size:13px}
+.admin-ai .ai-draft-actions .btn{min-height:34px;padding:7px 10px;border-radius:8px;font-size:9.5px}
+.admin-ai .ai-conversation{margin-top:16px;padding-top:14px}
+.admin-ai .ai-question-suggestions button{padding:7px 9px;border-radius:8px;font-size:9.5px}
+@media(max-width:900px){.admin-ai .ai-workbench{grid-template-columns:minmax(0,1fr)}.admin-ai .ai-output{min-height:220px}}
+@media(max-width:760px){.admin-ai .ai-inputs,.admin-ai .ai-output{padding:14px}.admin-ai .ai-empty{min-height:180px}.admin-ai select,.admin-ai textarea,.admin-ai input:not([type="checkbox"]):not([type="hidden"]){font-size:16px}}

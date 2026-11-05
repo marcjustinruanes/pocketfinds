@@ -1,11 +1,10 @@
 @extends('seller.layout')
 @section('title', 'Inventory')
 @section('page-title', 'Inventory')
-@section('page-sub', 'Manage your product listings')
 @php use Illuminate\Support\Facades\Storage; @endphp
 
 @section('content')
-<p><a href="{{ route('seller.shop-categories.index') }}">Manage shop categories and subcategories</a></p>
+<div class="inventory-page-intro"><a class="orders-secondary-action" href="{{ route('seller.shop-categories.index') }}">@include('seller.partials.icon',['name'=>'tag','size'=>14]) Manage shop categories</a></div>
 @if($errors->has('product'))<div role="alert" style="padding:12px;border:1px solid #d77;margin-bottom:12px">{{ $errors->first('product') }}</div>@endif
 
 @if(!$seller->category_id)
@@ -17,7 +16,7 @@
 
 @include('seller.partials.product-result-modal')
 
-<div class="filter-bar">
+<div class="filter-bar inventory-toolbar">
   <div class="search-mini">
     <span class="ic">@include('seller.partials.icon',['name'=>'search','size'=>13])</span>
     <input type="text" placeholder="Search products…" id="productSearch">
@@ -34,7 +33,7 @@
   </button>
 </div>
 
-<div class="card">
+<div class="card inventory-table-card">
   <div class="card-pad" style="padding:0">
     <div class="table-wrap">
     <table class="tbl" id="productTable" style="table-layout:fixed">

@@ -44,6 +44,9 @@
           @if($unreadNotifCount > 0)<span style="font-size:11px;font-weight:700;color:var(--pink-dark)">{{ $unreadNotifCount }} new</span>@endif
         </div>
         <div class="notif-list">
+          @if($unreadNotifCount > 0)
+          <form method="POST" action="{{ route('account.notifications.read-all') }}">@csrf<button type="submit" class="btn btn-outline">Mark all as read</button></form>
+          @endif
           @forelse($notifRows as $notif)
             <a href="{{ route('buyer.notifications.open', $notif->id) }}" class="notif-item {{ $notif->is_read ? 'read' : '' }}">
               <div class="dot"></div>
@@ -53,10 +56,10 @@
               </div>
             </a>
           @empty
-            <a href="#" class="notif-item read" style="pointer-events:none">
+            <div class="notif-item read">
               <div class="dot"></div>
-              <div><p>No notifications yet.</p></div>
-            </a>
+              <div><p>You're all caught up.</p><small>Order and account updates will appear here.</small></div>
+            </div>
           @endforelse
         </div>
       </div>

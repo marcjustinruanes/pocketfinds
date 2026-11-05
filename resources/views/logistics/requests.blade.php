@@ -4,8 +4,9 @@
 @section('page-sub', ($queue??'review')==='assignment'?'Approved pickups awaiting an eligible origin-hub Rider':'Incoming seller pickup requests awaiting your approval')
 
 @section('content')
-<nav class="logistics-toolbar" aria-label="Pickup queues"><a class="btn btn-outline" href="{{ route('logistics.requests') }}">Awaiting review</a><a class="btn btn-outline" href="{{ route('logistics.requests',['queue'=>'assignment']) }}">Awaiting pickup Rider</a></nav>
-<div class="card">
+<section class="pickup-requests-page">
+<nav class="pickup-queue-tabs" aria-label="Pickup queues"><a class="{{ ($queue??'review')==='review'?'active':'' }}" @if(($queue??'review')==='review') aria-current="page" @endif href="{{ route('logistics.requests') }}">Awaiting review</a><a class="{{ ($queue??'review')==='assignment'?'active':'' }}" @if(($queue??'review')==='assignment') aria-current="page" @endif href="{{ route('logistics.requests',['queue'=>'assignment']) }}">Awaiting pickup Rider</a></nav>
+<div class="card pickup-requests-card">
   <div class="card-head"><h2>{{ ($queue??'review')==='assignment'?'Awaiting Pickup Rider':'Pending Requests' }}</h2><span class="stamp stamp-pending">{{ $shipments->total() }} pending</span></div>
   <div class="table-wrap">
     <table class="dtable">
@@ -65,4 +66,5 @@
   </div>
 </div>
 {{ $shipments->links() }}
+</section>
 @endsection

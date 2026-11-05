@@ -5,18 +5,19 @@
 @php use Illuminate\Support\Facades\Storage; @endphp
 
 @section('content')
+<div class="admin-registrations-page">
 @include('admin.partials.ai-link', ['aiMode' => 'seller', 'aiLabel' => 'AI seller review'])
 @if(session('success'))
 <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px">
   {{ session('success') }}
 </div>
 @endif
-<div class="card">
+<div class="card registration-table-card">
   <div class="card-head">
     <div><h2>Applications</h2><p>{{ $users->count() }} total submissions</p></div>
   </div>
   <div class="card-pad">
-    <div class="filter-bar">
+    <div class="filter-bar registration-filters">
       <div class="search-mini">
         <span class="ic"><x-admin-icon name="search" /></span>
         <input type="text" placeholder="Search name or email..." data-table-search="regTable">
@@ -242,6 +243,7 @@
       </table>
     </div>
   </div>
+</div>
 </div>
 
 <script>

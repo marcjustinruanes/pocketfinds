@@ -6,6 +6,7 @@
 @section('content')
 @if(session('success'))<div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('success') }}</div>@endif
 
+<div class="hub-vehicles-page">
 <div class="card">
   <div class="card-head">
     <div>
@@ -74,4 +75,5 @@
   </div>
 </div>
 {{ $vehicles->links() }}
+</div>
 @endsection

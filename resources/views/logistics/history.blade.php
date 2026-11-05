@@ -4,8 +4,9 @@
 @section('page-sub', 'Completed, failed, returned, and cancelled delivery records')
 
 @section('content')
+<section class="delivery-history-page">
 @include('logistics.partials.filters')
-<div class="card">
+<div class="card history-table-card">
   <div class="card-head"><h2>Delivery Records</h2><span class="stamp stamp-approved">{{ $shipments->total() }} records</span></div>
   <div class="table-wrap">
     <table class="dtable">
@@ -46,4 +47,5 @@
   </div>
 </div>
 <div class="logistics-pagination">{{ $shipments->links() }}</div>
+</section>
 @endsection

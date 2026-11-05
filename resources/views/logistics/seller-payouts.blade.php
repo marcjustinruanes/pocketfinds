@@ -8,7 +8,7 @@
 @push('head')<link rel="stylesheet" href="{{ asset('css/logistics-finance-navigation.css') }}?v={{ filemtime(public_path('css/logistics-finance-navigation.css')) }}">@endpush
 @push('scripts')<script src="{{ asset('js/logistics-finance-feedback.js') }}" defer></script>@endpush
 @endif
-<div class="cash-desk settlement-workspace">
+<div class="cash-desk settlement-workspace seller-cod-payouts">
   @if($seller && session('success'))<p class="settlement-success" role="status">{{ session('success') }}</p>@endif
   @if($errors->any())<div class="cash-alert" role="alert"><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
   @unless(auth()->user()->isLogisticsAdmin())

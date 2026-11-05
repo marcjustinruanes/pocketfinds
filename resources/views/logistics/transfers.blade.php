@@ -3,6 +3,7 @@
 @section('page-title', 'Hub Transfers')
 @section('page-sub', auth()->user()->isHubStaff() ? 'Outgoing and incoming transfers for your assigned hub' : 'Company transfer requests, decisions, dispatches and arrivals')
 @section('content')
+<section class="hub-transfer-page">
 @if($errors->any())<div class="card card-pad">{{ $errors->first() }}</div>@endif
 <a href="{{ route('logistics.transfers.create') }}" class="btn btn-primary">Request a transfer</a>
 <nav class="tabs" aria-label="Transfer stages" style="margin:16px 0">
@@ -37,4 +38,5 @@
 </tr>@empty<tr><td colspan="10">No transfers match these filters.</td></tr>@endforelse</tbody></table></div></div>
 {{ $batches->links() }}
 @endif
+</section>
 @endsection

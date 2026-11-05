@@ -4,9 +4,10 @@
 @section('page-sub', 'Failed and cancelled deliveries requiring attention')
 
 @section('content')
+<section class="delivery-issues-page">
 @include('logistics.partials.recovery-custody')
 @include('logistics.partials.issue-management')
-<div class="card">
+<div class="card issues-table-card">
   <div class="card-head"><h2>Problem Deliveries</h2><span class="stamp stamp-rejected">{{ $shipments->count() }} issues</span></div>
   <div class="table-wrap">
     <table class="dtable">
@@ -62,4 +63,5 @@
   </div>
 </div>
 <div class="logistics-pagination">{{ $shipments->links() }}</div>
+</section>
 @endsection

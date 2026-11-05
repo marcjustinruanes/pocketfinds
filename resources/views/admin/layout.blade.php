@@ -7,6 +7,7 @@
 <title>@yield('title', 'Admin') - Console</title>
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <link rel="stylesheet" href="/css/admin.css">
+<link rel="stylesheet" href="{{ asset('css/notifications.css') }}?v={{ filemtime(public_path('css/notifications.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/navigation.css') }}?v={{ filemtime(public_path('css/navigation.css')) }}">
 @stack('head')
 </head>

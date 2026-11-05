@@ -3,17 +3,6 @@
 @section('page-title', 'My Account')
 @section('page-sub', 'Manage your admin profile')
 
-@push('head')
-<style>
-  .card-head h2, .card-head h3 { font-family: var(--font-body); font-weight: 600; font-size: 14px; }
-  .form-row label { font-family: var(--font-body); font-size: 13px; }
-  .form-row input { font-family: var(--font-body); font-size: 13px; }
-  .stamp { font-family: var(--font-body); font-size: 11px; letter-spacing: 0; text-transform: none; }
-  .profile-upload { border:1px dashed var(--line); border-radius:8px; padding:12px; background:var(--panel-soft); }
-  .profile-upload input[type=file] { width:100%; border:0; padding:0; background:transparent; }
-</style>
-@endpush
-
 @section('content')
 @include('commerce.messages')
 @php($admin = auth()->user())
@@ -28,7 +17,7 @@
 </div>
 @endif
 
-<div class="account-grid">
+<div class="account-grid admin-account-page">
   <div class="card">
     <div class="card-head"><div><h2>Account Information</h2><p>Your profile as shown to the platform</p></div></div>
     <div class="card-pad">

@@ -20,6 +20,33 @@
   .scan-msg.danger{background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger)}
   .scan-result-empty{padding:50px 20px;text-align:center;color:var(--muted);font-size:13px}
   .scan-actions{display:flex;gap:10px;margin-top:16px}
+  .logistics-ui .scan-grid{grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:12px;align-items:stretch}
+  .logistics-ui .scan-grid>.card{min-width:0;overflow:hidden;border:1px solid var(--border);border-radius:13px;background:#fff;box-shadow:0 2px 8px rgba(35,24,33,.025)}
+  .logistics-ui .scan-grid>.card>.card-head{min-height:44px;padding:11px 13px;border-bottom:1px solid var(--border)}
+  .logistics-ui .scan-grid>.card>.card-head h2{font-size:12.5px;font-weight:750}
+  .logistics-ui .scan-grid>.card>.card-pad{padding:13px}
+  .logistics-ui .scan-grid h3{margin:0 0 5px;font-size:10.5px;font-weight:750}
+  .logistics-ui .scan-grid p.hint{margin:4px 0 9px;font-size:9px;line-height:1.55}
+  .logistics-ui .scan-grid .reader{min-height:180px;margin:8px 0 10px;border:1px dashed var(--border);border-radius:10px;background:#faf9fa}
+  .logistics-ui .scan-grid .reader:empty:before{height:180px;font-size:9px}
+  .logistics-ui .scan-grid .scan-actions{gap:6px;margin-top:10px}
+  .logistics-ui .scan-grid .scan-actions .btn,
+  .logistics-ui .scan-grid .btn{min-height:33px;padding:7px 10px;border-radius:8px;font-size:9px;font-weight:700}
+  .logistics-ui .scan-grid .scan-input-row{gap:6px}
+  .logistics-ui .scan-grid .scan-input-row input,
+  .logistics-ui .scan-grid input:not([type=hidden]):not([type=file]){min-height:34px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:10px}
+  .logistics-ui .scan-grid .phone-connection{margin-top:14px;padding-top:12px}
+  .logistics-ui .scan-grid .phone-connection p{font-size:9px;line-height:1.5}
+  .logistics-ui .scan-grid .phone-connection #phonePairPanel{padding:10px;border:1px solid var(--border);border-radius:9px;background:#faf9fa}
+  .logistics-ui .scan-grid .phone-connection #phonePairQr{max-width:100%;margin-bottom:8px;padding:8px;border:1px solid var(--border);border-radius:8px}
+  .logistics-ui .scan-grid .scan-result-empty{padding:38px 14px;font-size:10px}
+  .logistics-ui .scan-grid .detail-grid{gap:8px}
+  .logistics-ui .scan-grid .detail-grid>div{min-width:0;padding:9px;border:1px solid var(--border);border-radius:9px;background:#fff}
+  .logistics-ui .scan-grid .field-label{font-size:8px;font-weight:700}
+  .logistics-ui .scan-grid .field-value{font-size:9.5px;overflow-wrap:anywhere}
+  .logistics-ui .scan-grid #scanMessage:empty{display:none}
+  @media(max-width:900px){.logistics-ui .scan-grid{grid-template-columns:minmax(0,1fr)}}
+  @media(max-width:640px){.logistics-ui .scan-grid>.card>.card-pad{padding:11px}.logistics-ui .scan-grid .scan-actions{flex-wrap:wrap}.logistics-ui .scan-grid .scan-actions .btn{flex:1 1 130px}}
 </style>
 @endpush
 

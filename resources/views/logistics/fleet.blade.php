@@ -4,11 +4,12 @@
 @section('page-sub', 'Add vehicles for your hubs — PocketFinds reviews each one before it appears to riders')
 
 @section('content')
+<section class="vehicle-fleet-page">
 @if(session('success'))<div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('success') }}</div>@endif
 @if($errors->any())<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ $errors->first() }}</div>@endif
 
 {{-- Add a vehicle --}}
-<div class="card" style="margin-bottom:20px">
+<div class="card fleet-add-card" style="margin-bottom:20px">
   <div class="card-head">
     <div>
       <h2>Add a Vehicle</h2>
@@ -16,7 +17,7 @@
     </div>
   </div>
   <div class="card-pad">
-    <form method="POST" action="{{ route('logistics.vehicles.store') }}">
+    <form class="fleet-entry-form" method="POST" action="{{ route('logistics.vehicles.store') }}">
       @csrf
       <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;align-items:end">
         <div class="form-row">
@@ -57,7 +58,7 @@
 </div>
 
 {{-- Vehicle list --}}
-<div class="card">
+<div class="card fleet-list-card">
   <div class="card-head">
     <div><h2>Company Vehicles</h2><p>{{ $vehicles->total() }} total across {{ $hubs->count() }} hub{{ $hubs->count() === 1 ? '' : 's' }}</p></div>
   </div>
@@ -129,6 +130,7 @@
     </div>
   </div>
 </div>
-<div class="card"><div class="card-head"><h2>Vehicle availability and maintenance</h2></div><div class="table-wrap"><table class="dtable"><thead><tr><th>Vehicle</th><th>Hub</th><th>Maintenance / availability</th></tr></thead><tbody>@forelse($vehicles as $vehicle)<tr><td>{{ $vehicle->plate_number }}<br>{{ $vehicle->brand }} {{ $vehicle->model }}</td><td>{{ $vehicle->hub?->municipality }}</td><td><form method="POST" action="{{ route('logistics.vehicles.update',$vehicle->id) }}">@csrf @method('PATCH')<div class="logistics-form-grid"><label>Availability<select name="is_available"><option value="1" @selected($vehicle->is_available)>Available</option><option value="0" @selected(!$vehicle->is_available)>Maintenance / unavailable</option></select></label><label>Maintenance note<input name="status_reason" value="{{ $vehicle->status_reason }}" maxlength="500"></label></div><button class="btn btn-sm btn-outline">Save condition</button></form></td></tr>@empty<tr><td colspan="3"><div class="empty"><h3>No company vehicles</h3></div></td></tr>@endforelse</tbody></table></div></div>
+<div class="card fleet-condition-card"><div class="card-head"><h2>Vehicle availability and maintenance</h2></div><div class="table-wrap"><table class="dtable"><thead><tr><th>Vehicle</th><th>Hub</th><th>Maintenance / availability</th></tr></thead><tbody>@forelse($vehicles as $vehicle)<tr><td>{{ $vehicle->plate_number }}<br>{{ $vehicle->brand }} {{ $vehicle->model }}</td><td>{{ $vehicle->hub?->municipality }}</td><td><form method="POST" action="{{ route('logistics.vehicles.update',$vehicle->id) }}">@csrf @method('PATCH')<div class="logistics-form-grid"><label>Availability<select name="is_available"><option value="1" @selected($vehicle->is_available)>Available</option><option value="0" @selected(!$vehicle->is_available)>Maintenance / unavailable</option></select></label><label>Maintenance note<input name="status_reason" value="{{ $vehicle->status_reason }}" maxlength="500"></label></div><button class="btn btn-sm btn-outline">Save condition</button></form></td></tr>@empty<tr><td colspan="3"><div class="empty"><h3>No company vehicles</h3></div></td></tr>@endforelse</tbody></table></div></div>
 {{ $vehicles->links() }}
+</section>
 @endsection

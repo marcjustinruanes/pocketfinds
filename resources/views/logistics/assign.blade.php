@@ -4,9 +4,10 @@
 @section('page-sub', 'Sorted parcels ready for a rider — assign directly, or let riders self-accept first come, first served')
 
 @section('content')
+<section class="delivery-assignment-page">
 @if(app(\App\Services\AssignmentReassignment::class)->installed())<div class="card card-pad"><a class="btn btn-primary" href="{{ route('logistics.assignments.review') }}">Assignment evidence & reassignment</a></div>@endif
 @if($errors->any())<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ $errors->first() }}</div>@endif
-<div class="card">
+<div class="card delivery-assignment-card">
   <div class="card-head">
     <h2>Delivery Assignments</h2>
     <div style="display:flex;gap:8px">
@@ -81,4 +82,5 @@
   </div>
 </div>
 {{ $shipments->links() }}
+</section>
 @endsection

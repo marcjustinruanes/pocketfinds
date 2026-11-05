@@ -54,3 +54,271 @@
 @media(max-width:800px){.cash-workspace .cash-settings-grid{grid-template-columns:minmax(0,1fr)}}
 .cash-workspace .cash-receipt{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding:18px;border-radius:12px;background:rgba(200,56,131,.05);margin:18px 0}.cash-workspace .cash-receipt dt{font-size:13px;color:var(--muted,#61616b)}.cash-workspace .cash-receipt dd{margin:4px 0 0;font-weight:600;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.cash-workspace [data-count-preview]{padding:12px;border-radius:8px;background:rgba(145,145,165,.06)}
 @media(max-width:600px){.cash-workspace .cash-receipt{grid-template-columns:minmax(0,1fr)}}
+
+/* Logistics cash desk and seller settlement workspaces use the shared admin/seller surface system. */
+.logistics-ui .cash-workspace,
+.logistics-ui .settlement-workspace { gap: 16px; color: var(--text,#242329); }
+.logistics-ui .cash-workspace .cash-card,
+.logistics-ui .settlement-workspace .cash-card { padding: 20px; border: 1px solid rgba(145,145,165,.2); border-radius: 14px; background: #fff; box-shadow: 0 1px 3px rgba(25,25,35,.04); }
+.logistics-ui .cash-workspace h2,
+.logistics-ui .settlement-workspace h2 { margin-bottom: 6px; font-size: 18px; letter-spacing: -.2px; }
+.logistics-ui .cash-workspace p,
+.logistics-ui .settlement-workspace p { margin: 6px 0 12px; line-height: 1.55; }
+.logistics-ui .cash-workspace .cash-stats { gap: 12px; margin: 16px 0; }
+.logistics-ui .cash-workspace .cash-stats > div,
+.logistics-ui .cash-workspace #cash-overview > .cash-grid > div { padding: 16px; border: 1px solid rgba(145,145,165,.18); border-radius: 12px; background: #fff; }
+.logistics-ui .cash-workspace .cash-stats strong { font-size: 24px; }
+.logistics-ui .cash-workspace .cash-page-nav,
+.logistics-ui .settlement-workspace .cash-page-nav { gap: 6px; padding: 5px; border: 1px solid rgba(145,145,165,.2); border-radius: 12px; background: #fff; }
+.logistics-ui .cash-workspace .cash-page-nav a,
+.logistics-ui .settlement-workspace .cash-page-nav .btn { min-height: 40px; padding: 8px 13px; border-radius: 9px; background: #fff; }
+.logistics-ui .cash-workspace .cash-page-nav a[aria-current="page"],
+.logistics-ui .settlement-workspace .cash-page-nav .btn[aria-current="page"] { color: #b42d72; border-color: rgba(200,56,131,.25); background: rgba(200,56,131,.08); }
+.logistics-ui .cash-workspace .cash-handover,
+.logistics-ui .settlement-workspace .cash-handover { padding: 18px; margin-top: 14px; border: 1px solid rgba(145,145,165,.2); border-radius: 12px; background: #fff; }
+.logistics-ui .settlement-workspace .settlement-amount { font-size: 25px; }
+.logistics-ui .settlement-workspace .settlement-breakdown { gap: 14px; margin: 16px 0; padding: 16px 0; }
+.logistics-ui .settlement-workspace .cash-grid > div { padding: 16px; border-radius: 12px; background: #fff; }
+.logistics-ui .cash-workspace details,
+.logistics-ui .settlement-workspace details { border-color: rgba(145,145,165,.2); }
+.logistics-ui .cash-workspace details[open],
+.logistics-ui .settlement-workspace details[open] { padding: 12px 14px; border: 1px solid rgba(145,145,165,.18); border-radius: 10px; background: #fff; }
+.logistics-ui .cash-workspace .cash-table th,
+.logistics-ui .cash-workspace .cash-table td,
+.logistics-ui .settlement-workspace .cash-table th,
+.logistics-ui .settlement-workspace .cash-table td { padding: 11px 12px; border-color: rgba(145,145,165,.18); }
+.logistics-ui .cash-workspace input,
+.logistics-ui .cash-workspace select,
+.logistics-ui .cash-workspace textarea,
+.logistics-ui .settlement-workspace input,
+.logistics-ui .settlement-workspace select,
+.logistics-ui .settlement-workspace textarea { border-radius: 9px; background: #fff; }
+@media (max-width: 600px) {
+  .logistics-ui .cash-workspace .cash-card,
+  .logistics-ui .settlement-workspace .cash-card { padding: 16px; }
+  .logistics-ui .cash-workspace .cash-handover,
+  .logistics-ui .settlement-workspace .cash-handover { padding: 14px; }
+  .logistics-ui .cash-workspace .cash-page-nav a { flex: 1 1 42%; }
+}
+
+/* Cash Desk compact Logistics styling, aligned with the other white admin workspaces. */
+.logistics-ui .cash-workspace { gap: 12px; font-size: 11px; }
+.logistics-ui .cash-workspace .cash-card { padding: 14px; border: 1px solid var(--border,#e7e3e8); border-radius: 13px; background: #fff; box-shadow: 0 2px 8px rgba(35,24,33,.025); }
+.logistics-ui .cash-workspace h2 { margin: 0 0 5px; font-size: 12.5px; font-weight: 750; letter-spacing: 0; }
+.logistics-ui .cash-workspace h3 { margin: 12px 0 7px; font-size: 10.5px; font-weight: 700; }
+.logistics-ui .cash-workspace p { margin: 5px 0 10px; font-size: 9.5px; line-height: 1.55; }
+.logistics-ui .cash-workspace small { font-size: 8.5px; line-height: 1.5; }
+.logistics-ui .cash-workspace .cash-stats { gap: 9px; margin: 12px 0; }
+.logistics-ui .cash-workspace .cash-stats > div,
+.logistics-ui .cash-workspace #cash-overview > .cash-grid > div { padding: 12px; border: 1px solid var(--border,#e7e3e8); border-radius: 10px; background: #fff; }
+.logistics-ui .cash-workspace .cash-stats span { font-size: 9px; font-weight: 700; line-height: 1.45; }
+.logistics-ui .cash-workspace .cash-stats strong { margin-top: 6px; font-size: 20px; letter-spacing: -.03em; }
+.logistics-ui .cash-workspace .cash-balance { font-size: 17px; }
+.logistics-ui .cash-workspace .cash-grid { gap: 10px; }
+.logistics-ui .cash-workspace .cash-page-nav { gap: 4px; padding: 4px; border: 1px solid var(--border,#e7e3e8); border-radius: 10px; background: #faf9fa; }
+.logistics-ui .cash-workspace .cash-page-nav a { min-height: 33px; padding: 7px 10px; border: 1px solid transparent; border-radius: 7px; font-size: 9px; font-weight: 700; }
+.logistics-ui .cash-workspace .cash-page-nav a:hover,
+.logistics-ui .cash-workspace .cash-page-nav a[aria-current="page"] { border-color: #f4d5e5; background: #fff4f9; color: var(--pink-dark,#b42d72); }
+.logistics-ui .cash-workspace .cash-table { margin: 8px 0 12px; border: 1px solid var(--border,#e7e3e8); border-radius: 9px; }
+.logistics-ui .cash-workspace .cash-table table { min-width: 760px; }
+.logistics-ui .cash-workspace .cash-table th { padding: 9px 10px; background: #faf9fa; font-size: 8px; font-weight: 700; letter-spacing: .04em; }
+.logistics-ui .cash-workspace .cash-table td { padding: 9px 10px; font-size: 9px; line-height: 1.45; }
+.logistics-ui .cash-workspace .cash-table td small { margin-top: 3px; }
+.logistics-ui .cash-workspace .cash-handover { padding: 13px; margin-top: 10px; border: 1px solid var(--border,#e7e3e8); border-radius: 11px; background: #fff; }
+.logistics-ui .cash-workspace .cash-handover h3 { margin: 0 0 4px; font-size: 10.5px; }
+.logistics-ui .cash-workspace .cash-status { padding: 4px 8px; border: 1px solid var(--border,#e7e3e8); border-radius: 999px; font-size: 8px; font-weight: 700; }
+.logistics-ui .cash-workspace label { margin: 10px 0 4px; font-size: 9px; font-weight: 700; }
+.logistics-ui .cash-workspace :is(input,select,textarea) { min-height: 35px; padding: 7px 9px; border: 1px solid var(--border,#e7e3e8); border-radius: 8px; background: #fff; font-size: 10px; }
+.logistics-ui .cash-workspace textarea { min-height: 66px; }
+.logistics-ui .cash-workspace button { min-height: 34px; margin-top: 10px; padding: 7px 11px; border-radius: 8px; font-size: 9px; font-weight: 700; }
+.logistics-ui .cash-workspace .cash-settings-grid { gap: 12px; }
+.logistics-ui .cash-workspace #cash-settings form { margin-top: 12px; }
+.logistics-ui .cash-workspace .cash-unavailable { padding: 12px; margin-top: 12px; border-radius: 9px; }
+.logistics-ui .cash-workspace .cash-empty { padding: 18px 14px; border-radius: 10px; background: #faf9fa; }
+.logistics-ui .cash-workspace .cash-empty strong { font-size: 10px; }
+.logistics-ui .cash-workspace .cash-alert { padding: 12px 14px; border-radius: 10px; font-size: 10px; }
+@media (max-width: 700px) {
+  .logistics-ui .cash-workspace .cash-stats { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .logistics-ui .cash-workspace .cash-settings-grid { grid-template-columns: minmax(0,1fr); }
+}
+@media (max-width: 480px) {
+  .logistics-ui .cash-workspace .cash-card { padding: 11px; }
+  .logistics-ui .cash-workspace .cash-stats { grid-template-columns: minmax(0,1fr); }
+  .logistics-ui .cash-workspace .cash-page-nav a { flex: 1 1 46%; }
+  .logistics-ui .cash-workspace .cash-handover header { gap: 8px; }
+}
+
+/* Seller Settlements: compact Logistics admin layout. */
+.logistics-ui .seller-cod-payouts { gap: 12px; font-size: 11px; }
+.logistics-ui .seller-cod-payouts > .cash-card { padding: 14px; border-color: var(--border,#e7e3e8); border-radius: 13px; background: #fff; box-shadow: 0 2px 8px rgba(35,24,33,.025); }
+.logistics-ui .seller-cod-payouts .cash-card > h2 { margin: 0 0 5px; font-size: 12.5px; font-weight: 750; letter-spacing: 0; }
+.logistics-ui .seller-cod-payouts .cash-card > p { margin: 5px 0 9px; font-size: 9.5px; line-height: 1.55; }
+.logistics-ui .seller-cod-payouts .cash-page-nav { justify-self: start; gap: 4px; padding: 4px; border: 1px solid var(--border,#e7e3e8); border-radius: 10px; background: #faf9fa; }
+.logistics-ui .seller-cod-payouts .cash-page-nav .btn { min-height: 33px; padding: 7px 10px; border: 1px solid transparent; border-radius: 7px; font-size: 9px; font-weight: 700; }
+.logistics-ui .seller-cod-payouts .cash-page-nav .btn:hover,
+.logistics-ui .seller-cod-payouts .cash-page-nav .btn:focus-visible { border-color: #f4d5e5; background: #fff4f9; color: var(--pink-dark,#b42d72); }
+.logistics-ui .seller-cod-payouts .cash-handover { padding: 13px; margin: 10px 0 0; border: 1px solid var(--border,#e7e3e8); border-radius: 11px; background: #fff; }
+.logistics-ui .seller-cod-payouts .cash-handover h3 { margin: 0 0 5px; font-size: 10.5px; font-weight: 750; }
+.logistics-ui .seller-cod-payouts .settlement-amount { margin: 0 0 7px; font-size: 21px; line-height: 1.25; letter-spacing: -.03em; }
+.logistics-ui .seller-cod-payouts .settlement-status { padding: 3px 7px; margin: 0 6px 4px 0; border-radius: 999px; font-size: 8px; }
+.logistics-ui .seller-cod-payouts .settlement-acknowledgement { font-size: 8.5px; }
+.logistics-ui .seller-cod-payouts .settlement-breakdown { gap: 10px; margin: 12px 0; padding: 11px 0; }
+.logistics-ui .seller-cod-payouts .settlement-breakdown dt { margin-bottom: 3px; font-size: 8.5px; }
+.logistics-ui .seller-cod-payouts .settlement-breakdown dd { font-size: 10px; }
+.logistics-ui .seller-cod-payouts .cash-reference,
+.logistics-ui .seller-cod-payouts .cash-handover p { font-size: 9px; line-height: 1.5; }
+.logistics-ui .seller-cod-payouts details { margin: 10px 0 0; padding-top: 6px; }
+.logistics-ui .seller-cod-payouts details summary { min-height: 34px; padding: 8px 0; font-size: 9.5px; }
+.logistics-ui .seller-cod-payouts details[open] { padding: 9px 11px; border: 1px solid rgba(145,145,165,.18); border-radius: 9px; background: #fff; }
+.logistics-ui .seller-cod-payouts details[open] > summary { margin-bottom: 7px; }
+.logistics-ui .seller-cod-payouts label { margin: 9px 0 4px; font-size: 9px; font-weight: 700; }
+.logistics-ui .seller-cod-payouts :is(input,select,textarea) { min-height: 35px; padding: 7px 9px; border: 1px solid var(--border,#e7e3e8); border-radius: 8px; background: #fff; font-size: 10px; }
+.logistics-ui .seller-cod-payouts textarea { min-height: 64px; }
+.logistics-ui .seller-cod-payouts button,
+.logistics-ui .seller-cod-payouts a.btn { min-height: 33px; padding: 7px 10px; border-radius: 8px; font-size: 9px; font-weight: 700; }
+.logistics-ui .seller-cod-payouts .cash-grid { gap: 10px; }
+.logistics-ui .seller-cod-payouts .cash-grid > div { padding: 12px; border: 1px solid var(--border,#e7e3e8); border-radius: 10px; background: #fff; }
+.logistics-ui .seller-cod-payouts .cash-grid h3 { margin: 0 0 6px; font-size: 10px; }
+.logistics-ui .seller-cod-payouts .cash-empty { padding: 18px 14px; border: 1px dashed var(--border,#e7e3e8); border-radius: 10px; background: #faf9fa; }
+.logistics-ui .seller-cod-payouts .cash-empty strong { font-size: 10px; }
+.logistics-ui .seller-cod-payouts .settlement-success { padding: 10px 13px; border: 1px solid #d8efdf; border-radius: 9px; background: #f3fbf5; font-size: 9.5px; }
+@media (max-width: 700px) {
+  .logistics-ui .seller-cod-payouts > .cash-card { padding: 12px; }
+  .logistics-ui .seller-cod-payouts .cash-page-nav { justify-self: stretch; }
+  .logistics-ui .seller-cod-payouts .cash-page-nav .btn { flex: 1 1 auto; }
+}
+
+/* Rider earnings and payout administration, matching compact Logistics cards. */
+.logistics-ui .rider-finance-workspace { gap: 12px; font-size: 11px; }
+.logistics-ui .rider-finance-workspace > .cash-card { padding: 14px; border: 1px solid var(--border,#e7e3e8); border-radius: 13px; background: #fff; box-shadow: 0 2px 8px rgba(35,24,33,.025); }
+.logistics-ui .rider-finance-workspace .cash-card > h2 { margin: 0 0 5px; font-size: 12.5px; font-weight: 750; letter-spacing: 0; }
+.logistics-ui .rider-finance-workspace .cash-card > p { margin: 5px 0 9px; font-size: 9.5px; line-height: 1.55; }
+.logistics-ui .rider-finance-workspace .cash-stats { gap: 9px; margin: 0 0 8px; }
+.logistics-ui .rider-finance-workspace .cash-stats > div { padding: 12px; border: 1px solid var(--border,#e7e3e8); border-radius: 10px; background: #fff; }
+.logistics-ui .rider-finance-workspace .cash-stats span { font-size: 9px; font-weight: 700; }
+.logistics-ui .rider-finance-workspace .cash-stats strong { margin-top: 6px; font-size: 20px; letter-spacing: -.03em; }
+.logistics-ui .rider-finance-workspace .cash-page-nav { gap: 4px; padding: 4px; border: 1px solid var(--border,#e7e3e8); border-radius: 10px; background: #faf9fa; }
+.logistics-ui .rider-finance-workspace .cash-page-nav .btn { min-height: 33px; padding: 7px 10px; border: 1px solid transparent; border-radius: 7px; font-size: 9px; font-weight: 700; }
+.logistics-ui .rider-finance-workspace .cash-page-nav .btn:hover,
+.logistics-ui .rider-finance-workspace .cash-page-nav .btn:focus-visible { border-color: #f4d5e5; background: #fff4f9; color: var(--pink-dark,#b42d72); }
+.logistics-ui .rider-finance-workspace .cash-table { margin: 8px 0 10px; border: 1px solid var(--border,#e7e3e8); border-radius: 9px; }
+.logistics-ui .rider-finance-workspace .cash-table table { min-width: 760px; }
+.logistics-ui .rider-finance-workspace .cash-table th { padding: 9px 10px; background: #faf9fa; font-size: 8px; font-weight: 700; letter-spacing: .04em; }
+.logistics-ui .rider-finance-workspace .cash-table td { padding: 9px 10px; font-size: 9px; line-height: 1.45; }
+.logistics-ui .rider-finance-workspace .cash-table small { margin-top: 3px; font-size: 8px; }
+.logistics-ui .rider-finance-workspace .cash-handover { padding: 13px; margin: 10px 0 0; border: 1px solid var(--border,#e7e3e8); border-radius: 11px; background: #fff; }
+.logistics-ui .rider-finance-workspace .settlement-amount { margin: 0 0 7px; font-size: 21px; }
+.logistics-ui .rider-finance-workspace .settlement-status { padding: 3px 7px; border-radius: 999px; font-size: 8px; }
+.logistics-ui .rider-finance-workspace .settlement-breakdown { gap: 10px; margin: 12px 0; padding: 11px 0; }
+.logistics-ui .rider-finance-workspace .settlement-breakdown dt { font-size: 8.5px; }
+.logistics-ui .rider-finance-workspace .settlement-breakdown dd { font-size: 10px; }
+.logistics-ui .rider-finance-workspace details { margin: 9px 0 0; padding-top: 6px; }
+.logistics-ui .rider-finance-workspace details summary { min-height: 33px; padding: 8px 0; font-size: 9.5px; }
+.logistics-ui .rider-finance-workspace details[open] { padding: 9px 11px; border: 1px solid rgba(145,145,165,.18); border-radius: 9px; background: #fff; }
+.logistics-ui .rider-finance-workspace label { margin: 9px 0 4px; font-size: 9px; font-weight: 700; }
+.logistics-ui .rider-finance-workspace :is(input,select,textarea) { min-height: 35px; padding: 7px 9px; border: 1px solid var(--border,#e7e3e8); border-radius: 8px; background: #fff; font-size: 10px; }
+.logistics-ui .rider-finance-workspace textarea { min-height: 64px; }
+.logistics-ui .rider-finance-workspace button,
+.logistics-ui .rider-finance-workspace a.btn { min-height: 33px; padding: 7px 10px; border-radius: 8px; font-size: 9px; font-weight: 700; }
+.logistics-ui .rider-finance-workspace .cash-grid { gap: 10px; }
+.logistics-ui .rider-finance-workspace .cash-grid > div { padding: 12px; border: 1px solid var(--border,#e7e3e8); border-radius: 10px; background: #fff; }
+.logistics-ui .rider-finance-workspace .cash-grid h3 { margin: 0 0 6px; font-size: 10px; }
+.logistics-ui .rider-finance-workspace .cash-alert { padding: 12px 14px; border-radius: 10px; font-size: 10px; }
+@media (max-width: 700px) {
+  .logistics-ui .rider-finance-workspace > .cash-card { padding: 12px; }
+  .logistics-ui .rider-finance-workspace .cash-page-nav .btn { padding-inline: 8px; font-size: 8.5px; }
+}
+
+/* Reconciliation & Reports compact Logistics workspace. */
+.logistics-ui .reconciliation-workspace { gap:12px; font-size:11px; }
+.logistics-ui .reconciliation-workspace > .cash-card { min-width:0; padding:14px; border:1px solid var(--border,#e7e3e8); border-radius:13px; background:#fff; box-shadow:0 2px 8px rgba(35,24,33,.025); }
+.logistics-ui .reconciliation-workspace .cash-card > h2,
+.logistics-ui .reconciliation-workspace .reconciliation-history-head h2 { margin:0 0 5px; font-size:12.5px; font-weight:750; letter-spacing:0; }
+.logistics-ui .reconciliation-workspace .cash-card > p,
+.logistics-ui .reconciliation-workspace .reconciliation-history-head p { margin:5px 0 9px; font-size:9.5px; line-height:1.55; }
+.logistics-ui .reconciliation-workspace .reconciliation-filters { grid-template-columns:repeat(3,minmax(130px,1fr)) auto; gap:9px; align-items:end; margin-top:10px; }
+.logistics-ui .reconciliation-workspace .reconciliation-filters label { margin:0 0 4px; font-size:9px; font-weight:700; }
+.logistics-ui .reconciliation-workspace :is(input,select) { min-height:35px; padding:7px 9px; border:1px solid var(--border,#e7e3e8); border-radius:8px; background:#fff; font-size:10px; }
+.logistics-ui .reconciliation-workspace .btn { min-height:34px; padding:7px 10px; border-radius:8px; font-size:9px; font-weight:700; }
+.logistics-ui .reconciliation-workspace .cash-stats { gap:9px; margin:10px 0; }
+.logistics-ui .reconciliation-workspace .cash-stats > div { min-width:0; padding:12px; border:1px solid var(--border,#e7e3e8); border-radius:10px; background:#fff; }
+.logistics-ui .reconciliation-workspace .cash-stats span { font-size:9px; font-weight:700; line-height:1.45; }
+.logistics-ui .reconciliation-workspace .cash-stats strong { margin-top:6px; font-size:18px; letter-spacing:-.03em; }
+.logistics-ui .reconciliation-workspace .cash-stats small { margin-top:4px; font-size:8px; }
+.logistics-ui .reconciliation-workspace .reconciliation-check { padding:11px 13px; border:1px solid var(--border,#e7e3e8); border-radius:10px; background:#faf9fa; font-size:9.5px; }
+.logistics-ui .reconciliation-workspace .reconciliation-check strong { font-size:10px; }
+.logistics-ui .reconciliation-workspace .reconciliation-check p { margin:5px 0; font-size:9px; }
+.logistics-ui .reconciliation-workspace .reconciliation-check small { font-size:8px; line-height:1.5; }
+.logistics-ui .reconciliation-workspace .cash-grid { gap:9px; }
+.logistics-ui .reconciliation-workspace .reconciliation-category { padding:12px; border:1px solid var(--border,#e7e3e8); border-radius:10px; background:#fff; }
+.logistics-ui .reconciliation-workspace .reconciliation-category h3 { margin:0 0 5px; font-size:10px; font-weight:750; }
+.logistics-ui .reconciliation-workspace .reconciliation-category dl > div { gap:10px; padding:8px 0; border-color:rgba(145,145,165,.16); }
+.logistics-ui .reconciliation-workspace .reconciliation-category dt { font-size:8.5px; line-height:1.45; }
+.logistics-ui .reconciliation-workspace .reconciliation-category dd { font-size:9px; white-space:nowrap; }
+.logistics-ui .reconciliation-workspace details { margin:9px 0 0; padding-top:5px; border-color:var(--border,#e7e3e8); }
+.logistics-ui .reconciliation-workspace details summary { min-height:32px; padding:7px 0; font-size:9.5px; font-weight:700; }
+.logistics-ui .reconciliation-workspace details[open] { padding:8px 10px; border:1px solid rgba(145,145,165,.18); border-radius:9px; background:#fff; }
+.logistics-ui .reconciliation-workspace .cash-table { margin:8px 0; border:1px solid var(--border,#e7e3e8); border-radius:9px; }
+.logistics-ui .reconciliation-workspace .cash-table table { min-width:700px; }
+.logistics-ui .reconciliation-workspace .cash-table th { padding:9px 10px; background:#faf9fa; font-size:8px; font-weight:700; letter-spacing:.04em; }
+.logistics-ui .reconciliation-workspace .cash-table td { max-width:340px; padding:9px 10px; font-size:9px; line-height:1.45; overflow-wrap:anywhere; }
+.logistics-ui .reconciliation-workspace .reconciliation-history-head { gap:12px; align-items:center; }
+.logistics-ui .reconciliation-workspace .reconciliation-history-head .btn { flex-shrink:0; }
+.logistics-ui .reconciliation-workspace .cash-page-nav { gap:4px; margin-top:9px; padding:4px; border:1px solid var(--border,#e7e3e8); border-radius:10px; background:#faf9fa; }
+.logistics-ui .reconciliation-workspace .cash-page-nav .btn { min-height:32px; padding:6px 9px; border:1px solid transparent; border-radius:7px; }
+.logistics-ui .reconciliation-workspace .cash-page-nav .btn:hover { border-color:#f4d5e5; background:#fff4f9; color:var(--pink-dark,#b42d72); }
+@media(max-width:800px) {
+  .logistics-ui .reconciliation-workspace .reconciliation-filters { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .logistics-ui .reconciliation-workspace .reconciliation-filters > div:nth-child(3) { grid-column:auto; }
+  .logistics-ui .reconciliation-workspace .reconciliation-history-head { align-items:flex-start; flex-direction:column; }
+}
+@media(max-width:600px) {
+  .logistics-ui .reconciliation-workspace > .cash-card { padding:12px; }
+  .logistics-ui .reconciliation-workspace .reconciliation-filters { grid-template-columns:minmax(0,1fr); }
+  .logistics-ui .reconciliation-workspace .cash-stats { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .logistics-ui .reconciliation-workspace .reconciliation-category dl > div { grid-template-columns:minmax(0,1fr) auto; }
+  .logistics-ui .reconciliation-workspace .cash-page-nav { display:flex; flex-wrap:wrap; }
+}
+@media(max-width:380px) {
+  .logistics-ui .reconciliation-workspace .cash-stats { grid-template-columns:minmax(0,1fr); }
+}
+
+/* Hub Staff My Salary workspace */
+.logistics-ui .staff-salary-self-service { gap:12px; font-size:11px; }
+.logistics-ui .staff-salary-self-service > .cash-card { min-width:0; padding:14px; border:1px solid var(--border,#e7e3e8); border-radius:13px; background:#fff; box-shadow:0 2px 8px rgba(35,24,33,.025); }
+.logistics-ui .staff-salary-self-service .cash-card > h2 { margin:0 0 5px; font-size:12.5px; font-weight:750; letter-spacing:0; }
+.logistics-ui .staff-salary-self-service .cash-card > p { margin:5px 0 9px; font-size:9.5px; line-height:1.55; }
+.logistics-ui .staff-salary-self-service .cash-page-nav { gap:4px; padding:4px; border:1px solid var(--border,#e7e3e8); border-radius:10px; background:#faf9fa; }
+.logistics-ui .staff-salary-self-service .cash-page-nav .btn { min-height:33px; padding:7px 10px; border:1px solid transparent; border-radius:7px; font-size:9px; font-weight:700; }
+.logistics-ui .staff-salary-self-service .cash-page-nav .btn:hover { border-color:#f4d5e5; background:#fff4f9; color:var(--pink-dark,#b42d72); }
+.logistics-ui .staff-salary-self-service .cash-stats { gap:9px; margin:10px 0; }
+.logistics-ui .staff-salary-self-service .cash-stats > div { min-width:0; padding:12px; border:1px solid var(--border,#e7e3e8); border-radius:10px; background:#fff; }
+.logistics-ui .staff-salary-self-service .cash-stats span { font-size:9px; font-weight:700; line-height:1.45; }
+.logistics-ui .staff-salary-self-service .cash-stats strong { margin-top:6px; font-size:18px; letter-spacing:-.03em; overflow-wrap:anywhere; }
+.logistics-ui .staff-salary-self-service .cash-table { margin:8px 0; border:1px solid var(--border,#e7e3e8); border-radius:9px; }
+.logistics-ui .staff-salary-self-service .cash-table table { min-width:650px; }
+.logistics-ui .staff-salary-self-service .cash-table th { padding:9px 10px; background:#faf9fa; font-size:8px; font-weight:700; letter-spacing:.04em; }
+.logistics-ui .staff-salary-self-service .cash-table td { padding:9px 10px; font-size:9px; line-height:1.45; }
+.logistics-ui .staff-salary-self-service .cash-table td small { display:block; margin-top:3px; font-size:8px; }
+.logistics-ui .staff-salary-self-service .cash-table .stamp { padding:4px 8px; border-radius:999px; font-size:8px; }
+.logistics-ui .staff-salary-self-service .cash-confirmation { display:flex; align-items:flex-start; gap:7px; min-height:30px; margin:6px 0; font-size:9px; line-height:1.5; }
+.logistics-ui .staff-salary-self-service .cash-confirmation input { flex:0 0 15px; width:15px; min-height:15px; height:15px; margin:1px 0 0; accent-color:var(--pink); }
+.logistics-ui .staff-salary-self-service .cash-handover { padding:13px; margin:10px 0 0; border:1px solid var(--border,#e7e3e8); border-radius:11px; background:#fff; }
+.logistics-ui .staff-salary-self-service .settlement-amount { margin:0 0 6px; font-size:20px; }
+.logistics-ui .staff-salary-self-service .settlement-status { padding:3px 7px; border-radius:999px; font-size:8px; }
+.logistics-ui .staff-salary-self-service .settlement-acknowledgement { font-size:8.5px; }
+.logistics-ui .staff-salary-self-service .settlement-account { gap:3px; padding:10px 0; font-size:9px; }
+.logistics-ui .staff-salary-self-service .settlement-account strong { font-size:10px; }
+.logistics-ui .staff-salary-self-service .cash-card details { margin:8px 0 0; padding-top:6px; }
+.logistics-ui .staff-salary-self-service .cash-card details summary { min-height:32px; padding:6px 0; font-size:9px; font-weight:700; }
+.logistics-ui .staff-salary-self-service .cash-card details p { font-size:9px; }
+.logistics-ui .staff-salary-self-service .cash-card .btn { min-height:33px; padding:7px 10px; border-radius:8px; font-size:9px; font-weight:700; }
+.logistics-ui .staff-salary-self-service .cash-alert { padding:10px 12px; border-radius:9px; font-size:9px; }
+@media(max-width:700px) {
+  .logistics-ui .staff-salary-self-service > .cash-card { padding:12px; }
+  .logistics-ui .staff-salary-self-service .cash-stats { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:380px) {
+  .logistics-ui .staff-salary-self-service .cash-stats { grid-template-columns:minmax(0,1fr); }
+  .logistics-ui .staff-salary-self-service .cash-page-nav .btn { flex:1 1 45%; }
+}

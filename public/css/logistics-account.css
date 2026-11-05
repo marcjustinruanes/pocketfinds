@@ -105,3 +105,56 @@
 .logistics-ui .logistics-account .salary-account-confirmation{display:flex;align-items:center;gap:12px;min-height:44px;font-size:14px;line-height:1.6;margin:10px 0}
 .logistics-ui .logistics-account .salary-account-confirmation input{width:20px;min-height:20px;height:20px;flex:0 0 20px;margin:0;accent-color:#c83883}
 #salary-receiving summary{cursor:pointer;min-height:44px;padding-block:10px}
+
+/* My Account: compact standalone cards aligned with Logistics workspaces. */
+.logistics-ui .logistics-account { max-width:none; font-size:11px; line-height:1.5; }
+.logistics-ui .logistics-account .account-settings-intro { padding:0 0 10px; }
+.logistics-ui .logistics-account .account-settings-eyebrow { margin-bottom:3px; font-size:8.5px; }
+.logistics-ui .logistics-account .account-settings-intro h1 { font-size:17px; letter-spacing:0; font-weight:750; }
+.logistics-ui .logistics-account .account-settings-intro h1 + p { margin-top:3px; font-size:9.5px; }
+.logistics-ui .logistics-account .account-settings-nav { gap:4px; padding:4px; margin:0 0 12px; border-radius:10px; background:#faf9fa; }
+.logistics-ui .logistics-account .account-settings-nav a { min-height:33px; padding:7px 10px; border-radius:7px; font-size:9px; font-weight:700; }
+.logistics-ui .logistics-account .account-settings-grid { grid-template-columns:minmax(0,1.7fr) minmax(220px,.8fr); gap:12px; }
+.logistics-ui .logistics-account :is(.account-settings-main,.account-settings-sidebar) { gap:12px; }
+.logistics-ui .logistics-account .account-settings-main { border:0; border-radius:0; background:transparent; box-shadow:none; }
+.logistics-ui .logistics-account .account-settings-main > .card,
+.logistics-ui .logistics-account .account-settings-sidebar > .card { border:1px solid var(--border); border-radius:12px; background:#fff; box-shadow:0 2px 8px rgba(35,24,33,.025); }
+.logistics-ui .logistics-account .account-settings-main > .card + .card { border-top:1px solid var(--border); }
+.logistics-ui .logistics-account :is(.card-head,.card-pad) { padding:13px; }
+.logistics-ui .logistics-account .card-head { border-bottom:1px solid var(--border); }
+.logistics-ui .logistics-account .card h2 { font-size:12px; line-height:1.4; font-weight:750; }
+.logistics-ui .logistics-account .card-head p { margin-top:3px; font-size:9px; line-height:1.5; }
+.logistics-ui .logistics-account .account-settings-identity { gap:10px; padding:11px; margin-bottom:13px; border:1px solid var(--border); border-radius:10px; background:#faf9fa; }
+.logistics-ui .logistics-account .account-settings-identity img,
+.logistics-ui .logistics-account .account-settings-identity > div:first-child { width:42px!important; height:42px!important; font-size:15px!important; }
+.logistics-ui .logistics-account .account-settings-identity > div:last-child > div:first-child { font-size:11px!important; }
+.logistics-ui .logistics-account :is(small,.account-settings-help) { font-size:9px; line-height:1.5; }
+.logistics-ui .logistics-account .form-grid-2 { gap:10px; }
+.logistics-ui .logistics-account .form-row { gap:4px; margin:0 0 11px; }
+.logistics-ui .logistics-account label { font-size:9px; font-weight:700; }
+.logistics-ui .logistics-account :is(input,select,textarea) { min-height:35px; padding:7px 9px; border-radius:8px; background:#fff; font-size:10px; }
+.logistics-ui .logistics-account textarea { min-height:70px; }
+.logistics-ui .logistics-account input[type=file] { padding:6px 8px!important; }
+.logistics-ui .logistics-account .btn { min-height:33px; padding:7px 10px; border-radius:8px; font-size:9px; font-weight:700; }
+.logistics-ui .logistics-account .account-settings-overview-row { gap:8px; padding:8px 0; font-size:9px; }
+.logistics-ui .logistics-account #salary-receiving { margin-bottom:12px; padding:13px; border:1px solid var(--border); border-radius:12px; background:#fff; box-shadow:0 2px 8px rgba(35,24,33,.025); }
+.logistics-ui .logistics-account #salary-receiving h2 { font-size:12px; }
+.logistics-ui .logistics-account #salary-receiving p { margin:5px 0 8px; font-size:9px; }
+.logistics-ui .logistics-account #salary-receiving form { gap:8px; margin-top:10px; }
+.logistics-ui .logistics-account .salary-account-confirmation { gap:8px; min-height:30px; margin:6px 0; font-size:9px; }
+.logistics-ui .logistics-account .salary-account-confirmation input { width:15px; min-height:15px; height:15px; flex-basis:15px; }
+.logistics-ui .logistics-account #change-email { margin-top:12px; }
+.logistics-ui .logistics-account #change-email .card-pad { gap:16px; }
+.logistics-ui .logistics-account #change-email .card-pad > form + form { padding-left:16px; }
+@media(max-width:900px) {
+  .logistics-ui .logistics-account .account-settings-grid { grid-template-columns:minmax(0,1fr); }
+  .logistics-ui .logistics-account .account-settings-sidebar { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:600px) {
+  .logistics-ui .logistics-account :is(.card-head,.card-pad) { padding:11px; }
+  .logistics-ui .logistics-account .account-settings-sidebar { grid-template-columns:minmax(0,1fr); }
+  .logistics-ui .logistics-account .account-settings-nav { width:100%; overflow-x:auto; flex-wrap:nowrap; }
+  .logistics-ui .logistics-account .account-settings-nav a { flex:none; }
+  .logistics-ui .logistics-account #change-email .card-pad { gap:12px; }
+  .logistics-ui .logistics-account #change-email .card-pad > form + form { padding:12px 0 0; }
+}

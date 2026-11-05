@@ -1,24 +1,23 @@
 @extends('seller.layout')
 @section('title', 'Customer Feedback')
 @section('page-title', 'Customer Feedback')
-@section('page-sub', 'Reviews and ratings from your buyers')
 
 @section('content')
 @if(session('review_success'))<div class="auth-success" style="margin-bottom:16px">{{ session('review_success') }}</div>@endif
-<div class="kpi-grid" style="grid-template-columns:repeat(4,1fr)">
+<div class="kpi-grid feedback-kpis">
   <div class="kpi"><div class="label">Avg. Rating</div><div class="value">{{ $avgRating ?: '—' }}</div><div class="delta up">Out of 5</div></div>
   <div class="kpi"><div class="label">Total Reviews</div><div class="value">{{ $total }}</div><div class="delta">All time</div></div>
   <div class="kpi"><div class="label">5 Stars</div><div class="value">{{ $breakdown[5] }}%</div><div class="delta up">—</div></div>
   <div class="kpi"><div class="label">Needs Response</div><div class="value">{{ $needsResponse }}</div><div class="delta">Unanswered</div></div>
 </div>
 
-<div class="dash-grid">
+<div class="dash-grid feedback-layout">
   <div class="stack">
-    <div class="card">
-      <div class="card-head"><div><h2>All Reviews</h2><p>Customer feedback on your products</p></div></div>
+    <div class="card feedback-panel">
+      <div class="card-head"><div><h2>All Reviews</h2></div></div>
       <div class="card-pad">
         @forelse($reviews as $review)
-        <div style="padding:16px 0;border-bottom:1px solid var(--border)">
+        <div class="feedback-review" style="padding:16px 0;border-bottom:1px solid var(--border)">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
             <div style="display:flex;align-items:center;gap:8px">
               <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(145deg,var(--pink),#7a2a56);display:grid;place-items:center;color:#fff;font-weight:700;font-size:12px">{{ strtoupper(substr($review->buyer?->given_names ?: '?', 0, 1)) }}</div>
@@ -61,7 +60,7 @@
           @endif
         </div>
         @empty
-        <div class="empty" style="padding:40px 20px">
+        <div class="empty feedback-empty" style="padding:40px 20px">
           <div class="ic">@include('seller.partials.icon', ['name' => 'chat', 'size' => 28])</div>
           <h3>No reviews yet</h3><p>Reviews will appear here once buyers rate a completed order.</p>
         </div>
@@ -71,7 +70,7 @@
   </div>
 
   <div class="stack">
-    <div class="card">
+    <div class="card feedback-panel feedback-breakdown">
       <div class="card-head"><h2>Rating Breakdown</h2></div>
       <div class="card-pad" style="display:flex;flex-direction:column;gap:8px">
         @foreach([5,4,3,2,1] as $star)

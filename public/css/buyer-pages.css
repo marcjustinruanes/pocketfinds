@@ -12,6 +12,41 @@ body.buyer-pages {
 .buyer-page-heading > a { color: #b03370; }
 .buyer-page-heading h1 { margin: 12px 0 0; font-size: 26px; line-height: 1.3; color: #29222a; font-weight: 700; }
 .buyer-pages .card { border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.buyer-pages.refunds-page-layout .shell > div { min-height: 100vh; }
+.buyer-pages.refunds-page-layout main.content { flex: 1 0 auto; }
+.buyer-pages.refunds-page-layout .refund-card,
+.buyer-pages.refunds-page-layout .refunds-empty { border: 1px solid var(--border); border-radius: 12px; background: #fff; box-shadow: 0 2px 8px rgba(42, 28, 40, .05); }
+.buyer-pages.refunds-page-layout .refund-card .card-pad,
+.buyer-pages.refunds-page-layout .refunds-empty .card-pad { padding: 18px; }
+.buyer-pages.cart-page-layout .buyer-page-heading { margin-bottom: 16px; }
+.buyer-pages.cart-page-layout .cart-page-intro { margin: 0 0 14px; padding: 10px 13px; border: 1px solid #f0e2eb; border-radius: 9px; background: #fffafd; color: #756a77; font-size: 12px; line-height: 1.5; }
+.buyer-pages.cart-page-layout .cart-layout { gap: 18px; }
+.buyer-pages.cart-page-layout .cart-layout .cart-items-card,
+.buyer-pages.cart-page-layout .cart-layout .cart-summary-card { box-shadow: 0 2px 8px rgba(42, 28, 40, .045); }
+.buyer-pages.cart-page-layout .cart-layout .cart-items-card > .card-head,
+.buyer-pages.cart-page-layout .cart-layout .cart-summary-card > .card-head { min-height: 54px; padding: 14px 17px; border-bottom: 1px solid #eee7ed; }
+.buyer-pages.cart-page-layout .cart-layout .cart-items-card > .card-head h2,
+.buyer-pages.cart-page-layout .cart-layout .cart-summary-card > .card-head h2 { font-size: 15px; }
+.buyer-pages.cart-page-layout .cart-layout .cart-items-card > .card-pad,
+.buyer-pages.cart-page-layout .cart-layout .cart-summary-card > .card-pad { padding: 16px; }
+.buyer-pages.cart-page-layout .cart-layout .cart-shop { margin-bottom: 12px; border-radius: 9px; box-shadow: 0 1px 3px rgba(42, 28, 40, .025); }
+.buyer-pages.cart-page-layout .cart-layout .cart-shop-head { min-height: 44px; padding: 9px 12px; background: #faf8fa; }
+.buyer-pages.cart-page-layout .cart-layout .cart-items { padding: 0 12px; }
+.buyer-pages.cart-page-layout .cart-layout .cart-item { padding: 14px 0; }
+.buyer-pages.cart-page-layout .cart-layout .cart-item-image { width: 64px; height: 64px; border: 1px solid #eee8ed; background: #faf8fa; }
+.buyer-pages.cart-page-layout .cart-layout .cart-item-name { font-size: 13px; }
+.buyer-pages.cart-page-layout .cart-layout .cart-item-variant,
+.buyer-pages.cart-page-layout .cart-layout .cart-item-quantity { font-size: 11px; }
+.buyer-pages.cart-page-layout .cart-layout .cart-action-btn { min-height: 34px; border-radius: 7px; }
+.buyer-pages.cart-page-layout .cart-layout .cart-summary-card .card-pad { gap: 14px !important; }
+.buyer-pages.cart-page-layout .cart-layout .cart-address-picker,
+.buyer-pages.cart-page-layout .cart-layout .cart-payment-option { border-radius: 9px; }
+@media(max-width:560px) {
+ .buyer-pages.cart-page-layout .cart-layout .cart-items-card > .card-pad,
+ .buyer-pages.cart-page-layout .cart-layout .cart-summary-card > .card-pad { padding: 13px; }
+ .buyer-pages.cart-page-layout .cart-layout .cart-item-image { width: 54px; height: 54px; }
+ .buyer-pages.cart-page-layout .cart-layout .cart-item { padding: 12px 0; }
+}
 .buyer-pages .card-head { padding: 16px 0; border-bottom: 1px solid var(--border); }
 .buyer-pages .card-head h2 { font-size: 17px; font-weight: 700; }
 .buyer-pages .card-pad { padding: 20px 0; }
@@ -118,4 +153,65 @@ body.buyer-pages {
 }
 @media (prefers-reduced-motion: reduce) {
   .buyer-pages *, .buyer-pages *::before, .buyer-pages *::after { transition: none !important; animation: none !important; }
+}
+
+/* Restore and refine buyer account cards after the shared page reset. */
+.buyer-pages.buyer-account-page .account-layout { gap: 24px; margin-top: 4px; }
+.buyer-pages.buyer-account-page .account-sidebar { top: 88px; padding: 16px 13px; border: 1px solid #eadfe6; border-radius: 12px; background: #fff; box-shadow: 0 2px 8px rgba(42, 28, 40, .045); }
+.buyer-pages.buyer-account-page .account-sidebar .profile-summary { padding-bottom: 16px; border-bottom: 1px solid #eee7ed; }
+.buyer-pages.buyer-account-page .account-sidebar .account-section-nav { gap: 4px; margin: 12px 0; }
+.buyer-pages.buyer-account-page .account-sidebar .account-section-nav a { min-height: 38px; padding: 9px 10px; border-radius: 8px; }
+.buyer-pages.buyer-account-page .account-sidebar .account-section-nav a[aria-current] { border: 1px solid #efc5da; background: #fff3f9; color: #a52f6b; }
+.buyer-pages.buyer-account-page .account-sidebar-orders { min-height: 37px; padding: 12px 10px 0; border-top: 1px solid #eee7ed; color: #a52f6b; font-weight: 650; }
+.buyer-pages.buyer-account-page .account-panel-heading { margin: 2px 0 16px; padding-bottom: 14px; border-color: #eee7ed; }
+.buyer-pages.buyer-account-page .account-panel-heading h1 { font-size: 21px; color: #29222a; }
+.buyer-pages.buyer-account-page .account-main .card { margin-bottom: 14px; overflow: hidden; border: 1px solid #e9e2e9; border-radius: 11px; background: #fff; box-shadow: 0 2px 7px rgba(42, 28, 40, .04); }
+.buyer-pages.buyer-account-page .account-main .card-head { min-height: 50px; padding: 13px 16px; border-bottom: 1px solid #eee7ed; background: #fff; }
+.buyer-pages.buyer-account-page .account-main .card-head h2 { font-size: 14px; color: #302733; }
+.buyer-pages.buyer-account-page .account-main .card-head p { margin-top: 4px; font-size: 10.5px; }
+.buyer-pages.buyer-account-page .account-main .card-pad { padding: 16px; }
+.buyer-pages.buyer-account-page .account-main .form-grid-2 { gap: 12px; }
+.buyer-pages.buyer-account-page .account-main .form-row { margin-bottom: 12px; }
+.buyer-pages.buyer-account-page .account-main .form-row :is(input, select) { border-radius: 8px; }
+.buyer-pages.buyer-account-page .account-main :is(.account-following, .account-refund-link) { margin-top: 14px; }
+.buyer-pages.buyer-account-page .account-main .account-refund-link { border-top: 1px solid #eee7ed; }
+@media(max-width:600px) {
+ .buyer-pages.buyer-account-page .account-layout { gap: 16px; }
+ .buyer-pages.buyer-account-page .account-sidebar { top: auto; padding: 13px; }
+ .buyer-pages.buyer-account-page .account-main .card-head,
+ .buyer-pages.buyer-account-page .account-main .card-pad { padding: 13px; }
+}
+.buyer-pages.buyer-account-page #paymentAccountModal { padding: 16px; backdrop-filter: blur(3px); }
+.buyer-pages.buyer-account-page #paymentAccountModal .modal { width: min(440px, 100%); max-height: min(90dvh, 620px); overflow-y: auto; border: 1px solid #eadfe6; border-radius: 12px; }
+.buyer-pages.buyer-account-page #paymentAccountModal .modal-head { padding: 17px 19px; }
+.buyer-pages.buyer-account-page #paymentAccountModal .modal-head h3 { color: #593346; font-size: 17px; }
+.buyer-pages.buyer-account-page #paymentAccountModal .modal-body { padding: 18px 19px 20px; gap: 12px !important; }
+.buyer-pages.buyer-account-page #paymentAccountModal .form-row { margin: 0; }
+.buyer-pages.buyer-account-page #paymentAccountModal .form-row label { display: block; margin-bottom: 6px; color: #593346; font-size: 12px; font-weight: 650; }
+.buyer-pages.buyer-account-page #paymentAccountModal .form-row .auth-input { display: block; width: 100%; min-height: 42px; padding: 9px 11px; border: 1px solid #e4dae1; border-radius: 7px; background: #fff; color: #302733; font: 13px Inter, system-ui, sans-serif; }
+.buyer-pages.buyer-account-page #paymentAccountModal .form-row .auth-input:focus { border-color: #bf3c7d; outline: 0; box-shadow: 0 0 0 3px rgba(191, 60, 125, .12); }
+.buyer-pages.buyer-account-page #paymentAccountModal #paymentAccountStep1,
+.buyer-pages.buyer-account-page #paymentAccountModal #paymentAccountStep2 { width: 100%; }
+.buyer-pages.buyer-account-page #paymentAccountModal #paymentAccountStep1 .btn,
+.buyer-pages.buyer-account-page #paymentAccountModal #paymentAccountStep2 .btn { width: 100%; min-height: 42px; border-radius: 7px; }
+.buyer-pages.buyer-account-page .voucher-wallet-list { display: grid; gap: 10px; }
+.buyer-pages.buyer-account-page .wallet-voucher { display: grid; grid-template-columns: 38px minmax(0,1fr) auto; align-items: center; gap: 12px; padding: 12px; border: 1px solid #eadfe6; border-radius: 9px; background: #fff; }
+.buyer-pages.buyer-account-page .wallet-voucher-mark { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid #efc5da; border-radius: 9px; background: #fff3f9; color: #a52f6b; font-size: 17px; font-weight: 750; }
+.buyer-pages.buyer-account-page .wallet-voucher-details { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; gap: 3px; }
+.buyer-pages.buyer-account-page .wallet-voucher-topline { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+.buyer-pages.buyer-account-page .wallet-voucher-code { color: #302733; font-family: var(--font-mono); font-size: 11px; overflow-wrap: anywhere; }
+.buyer-pages.buyer-account-page .wallet-voucher-kind { padding: 2px 7px; border: 1px solid #eee5eb; border-radius: 999px; color: #756a77; background: #faf8fa; font-size: 9px; }
+.buyer-pages.buyer-account-page .wallet-voucher-value { color: #a52f6b; font-size: 12px; }
+.buyer-pages.buyer-account-page .wallet-voucher-terms,.buyer-pages.buyer-account-page .wallet-voucher-dates { color: #827783; font-size: 10px; line-height: 1.45; }
+.buyer-pages.buyer-account-page .wallet-voucher-claim { min-width: 100px; min-height: 34px; border-color: #e7b9d0; border-radius: 7px; color: #a52f6b; font-size: 10.5px; font-weight: 650; white-space: nowrap; }
+.buyer-pages.buyer-account-page .wallet-voucher-claim:not(:disabled):hover { border-color: #bf3c7d; background: #fff3f9; }
+.buyer-pages.buyer-account-page .wallet-voucher-claim:disabled { opacity: .68; cursor: not-allowed; }
+.buyer-pages.buyer-account-page .voucher-wallet-empty { padding: 18px; border: 1px dashed #e5d9e1; border-radius: 9px; background: #fcfafc; text-align: center; }
+.buyer-pages.buyer-account-page .voucher-wallet-empty strong { font-size: 12px; color: #302733; }
+.buyer-pages.buyer-account-page .voucher-wallet-empty p { margin: 5px 0 0; color: #827783; font-size: 10.5px; }
+@media(max-width:600px) {
+ .buyer-pages.buyer-account-page .wallet-voucher { grid-template-columns: 34px minmax(0,1fr); gap: 10px; }
+ .buyer-pages.buyer-account-page .wallet-voucher-mark { width: 32px; height: 32px; }
+ .buyer-pages.buyer-account-page .wallet-voucher form { grid-column: 2; }
+ .buyer-pages.buyer-account-page .wallet-voucher-claim { min-width: 0; }
 }

@@ -2,6 +2,7 @@
 @section('title', 'My Cart')
 @section('page-title', 'My Cart')
 @section('page-sub', 'Review your selected items')
+@section('body-class', 'cart-page-layout')
 
 @section('content')
 @if($errors->any())<div class="auth-error" role="alert">@foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif

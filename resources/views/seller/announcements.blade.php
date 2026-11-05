@@ -1,19 +1,18 @@
 @extends('seller.layout')
 @section('title', 'Announcements')
 @section('page-title', 'Announcements')
-@section('page-sub', 'Post updates to your buyers')
 
 @section('content')
 
-<div class="dash-grid">
+<div class="dash-grid seller-announcements-grid">
   <div class="stack">
     {{-- Composer --}}
-    <div class="card">
+    <div class="card announcements-composer">
       <div class="card-head">
         <div><h2>New Announcement</h2><p>Sent to every buyer on PocketFinds — no admin approval needed</p></div>
       </div>
       <div class="card-pad">
-        <form method="POST" action="{{ route('seller.announcements.store') }}">
+        <form class="announcement-compose-form" method="POST" action="{{ route('seller.announcements.store') }}">
           @csrf
           <div class="form-row">
             <label>Title</label>
@@ -31,8 +30,8 @@
     </div>
 
     {{-- My announcements --}}
-    <div class="card">
-      <div class="card-head"><div><h2>My Announcements</h2><p>What you've published</p></div></div>
+    <div class="card announcements-list-panel">
+      <div class="card-head"><div><h2>My Announcements</h2></div></div>
       <div class="card-pad" style="display:flex;flex-direction:column;gap:0">
         @forelse($myAnnouncements as $a)
         <div class="announcement-row">
@@ -61,7 +60,7 @@
 
   <div class="stack">
     {{-- Platform announcements (read-only, from admin) --}}
-    <div class="card">
+    <div class="card announcements-platform-panel">
       <div class="card-head"><div><h2>Platform Announcements</h2><p>From the PocketFinds team</p></div></div>
       <div class="card-pad" style="display:flex;flex-direction:column;gap:0">
         @forelse($platformAnnouncements as $a)

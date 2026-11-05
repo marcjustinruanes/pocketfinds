@@ -4,7 +4,7 @@
 @section('page-sub', 'Track and manage your orders')
 
 @section('content')
-<p><a href="{{ route('account.cancellation-refunds') }}">Cancellation refunds</a></p>
+<p class="orders-page-link"><a href="{{ route('account.cancellation-refunds') }}">Cancellation refunds</a></p>
 <div class="orders-page">
 @if($errors->any())<div class="auth-error" role="alert">@foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
 <div class="order-tabs-shell">

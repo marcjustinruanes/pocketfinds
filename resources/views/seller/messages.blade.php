@@ -1,7 +1,6 @@
 @extends('seller.layout')
 @section('title', 'Messages')
 @section('page-title', 'Messages')
-@section('page-sub', 'Chat with your customers')
 
 @section('content')
 @php $myId = auth()->id(); @endphp

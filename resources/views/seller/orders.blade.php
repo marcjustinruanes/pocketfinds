@@ -1,41 +1,55 @@
 @extends('seller.layout')
 @section('title', 'Order Management')
 @section('page-title', 'Order Management')
-@section('page-sub', 'Prepare, ship, and confirm delivery — all in one place')
 
 @section('content')
-<p><a href="{{ route('account.cancellation-refunds') }}">Cancellation refunds</a></p>
-@if(app(\App\Services\AssignmentReassignment::class)->installed())<a class="btn btn-primary" href="{{ route('seller.assignments.review') }}">Pickup possession reviews</a>@endif
+<div class="orders-management">
+<div class="orders-page-actions">
+  <div class="orders-page-context">
+    <span class="orders-eyebrow">Seller workspace</span>
+    <p>Review order progress and take action on the next shipment.</p>
+  </div>
+  <div class="orders-quick-links">
+    <a class="orders-secondary-action" href="{{ route('account.cancellation-refunds') }}">
+      @include('seller.partials.icon', ['name' => 'archive', 'size' => 15]) Cancellation refunds
+    </a>
+    @if(app(\App\Services\AssignmentReassignment::class)->installed())
+    <a class="btn btn-primary orders-primary-action" href="{{ route('seller.assignments.review') }}">
+      @include('seller.partials.icon', ['name' => 'truck', 'size' => 15]) Pickup possession reviews
+    </a>
+    @endif
+  </div>
+</div>
 @include('commerce.messages')
 @if(session('order_success'))<div class="auth-success" style="margin-bottom:16px">{{ session('order_success') }}</div>@endif
 @if(session('error'))<div style="background:var(--danger-soft,#fef2f2);border:1px solid var(--danger-line,#fecaca);color:var(--danger,#dc2626);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('error') }}</div>@endif
 
-<div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px">
+<div class="kpi-grid orders-kpis">
   <div class="kpi">
-    <div class="label">Needs Action</div>
+    <div class="orders-kpi-top"><div class="label">Needs action</div><span class="orders-kpi-icon">@include('seller.partials.icon', ['name' => 'orders', 'size' => 16])</span></div>
     <div class="value">{{ $orders->whereIn('status', ['placed', 'confirmed', 'preparing'])->count() }}</div>
     <div class="delta">New, confirmed, or preparing</div>
   </div>
   <div class="kpi">
-    <div class="label">Pending Confirmation</div>
+    <div class="orders-kpi-top"><div class="label">Pending confirmation</div><span class="orders-kpi-icon is-info">@include('seller.partials.icon', ['name' => 'truck', 'size' => 16])</span></div>
     <div class="value">{{ $pendingConfirmation }}</div>
     <div class="delta">Out for delivery</div>
   </div>
   <div class="kpi">
-    <div class="label">Delivered Today</div>
+    <div class="orders-kpi-top"><div class="label">Delivered today</div><span class="orders-kpi-icon is-success">@include('seller.partials.icon', ['name' => 'check-circle', 'size' => 16])</span></div>
     <div class="value">{{ $deliveredToday }}</div>
     <div class="delta up">Confirmed</div>
   </div>
 </div>
 
-<div class="filter-bar">
+<div class="filter-bar orders-filter-bar">
   <div class="search-mini">
     <span class="ic">@include('seller.partials.icon', ['name' => 'search', 'size' => 13])</span>
-    <input type="text" placeholder="Search by order ID or customer…" id="orderSearch">
+    <input type="text" placeholder="Search by order ID or customer…" id="orderSearch" aria-label="Search orders">
   </div>
 </div>
 
-<div class="card">
+<div class="card orders-list-panel">
   @php
   $statusTabs = [
     ['all',               'All Orders'],
@@ -59,16 +73,20 @@
     default       => (int) ($statusCounts[$key] ?? 0),
   };
   @endphp
-  <div class="tabs" style="padding:0 20px;margin-bottom:0;overflow-x:auto;flex-wrap:nowrap">
+  <div class="orders-list-heading">
+    <div><h2>Orders</h2><p>Choose a category to filter your order list.</p></div>
+    <span>{{ $orders->count() }} {{ \Illuminate\Support\Str::plural('order', $orders->count()) }}</span>
+  </div>
+  <nav class="tabs orders-status-tabs" aria-label="Filter orders by status">
     @foreach($statusTabs as [$key, $label])
-    <a href="{{ route('seller.orders', $key === 'all' ? [] : ['status' => $key]) }}" class="tab {{ $status === $key ? 'active' : '' }}" style="white-space:nowrap">
+    <a href="{{ route('seller.orders', $key === 'all' ? [] : ['status' => $key]) }}" class="tab {{ $status === $key ? 'active' : '' }}" @if($status === $key) aria-current="page" @endif>
       {{ $label }}
       @if($tabCount($key) > 0)
         <span class="tab-count {{ $status === $key ? 'active' : '' }}">{{ $tabCount($key) }}</span>
       @endif
     </a>
     @endforeach
-  </div>
+  </nav>
 
   <div class="card-pad">
     <div class="order-cards" id="orderCards">
@@ -234,14 +252,15 @@
         </div>
       </div>
       @empty
-      <div class="empty" style="padding:40px 20px">
+      <div class="empty orders-empty">
         <div class="ic">@include('seller.partials.icon', ['name' => 'orders', 'size' => 28])</div>
-        <h3>No orders yet</h3>
-        <p>Orders will appear here once customers place them.</p>
+        <h3>No orders found</h3>
+        <p>New orders matching this category will appear here as customers check out.</p>
       </div>
       @endforelse
     </div>
   </div>
+</div>
 </div>
 
 <div class="modal-overlay" id="logisticsPickerModal">

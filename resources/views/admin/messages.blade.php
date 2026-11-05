@@ -66,6 +66,35 @@
   .chat-input .icon-btn{width:38px;height:38px;padding:0;flex:none;border-radius:9px;display:inline-flex;align-items:center;justify-content:center}
   .file-chip{display:flex;align-items:center;gap:6px;background:var(--pink-soft);border:1px solid var(--pink-line);border-radius:8px;padding:5px 9px;font-size:11.5px;margin:0 16px 10px}
   .file-chip button{border:0;background:none;cursor:pointer;color:var(--pink-dark);font-weight:700}
+
+  .admin-messages-shell{height:min(760px,calc(100vh - 148px));min-height:440px;border:1px solid #e9e1e8;border-radius:15px;box-shadow:0 3px 12px rgba(35,24,33,.035)}
+  .admin-messages-shell .chat-list{background:#fff}
+  .admin-messages-shell .chat-list-head{position:sticky;top:0;z-index:2;padding:11px 12px;background:#fff}
+  .admin-messages-shell .chat-list-head input{height:37px!important;border-color:var(--border)!important;border-radius:9px!important;background:#fcfafb;font-size:11px!important}
+  .admin-messages-shell .chat-conv{align-items:center;min-height:68px;padding:10px 12px;border-bottom-color:#f0ebef;transition:background .15s,border-color .15s}
+  .admin-messages-shell .chat-conv:hover{background:#fcf9fb}
+  .admin-messages-shell .chat-conv.active{border-left:3px solid var(--pink);background:#fff5fa;padding-left:9px}
+  .admin-messages-shell .chat-conv .avatar-sm{width:37px;height:37px}
+  .admin-messages-shell .chat-conv strong{font-size:11.5px;font-weight:750}
+  .admin-messages-shell .chat-conv .role-tag{font-size:8px}
+  .admin-messages-shell .chat-conv p{margin-top:4px;font-size:10px;line-height:1.45}
+  .admin-messages-shell .chat-conv-time{font-size:9px}
+  .admin-messages-shell .chat-conv .unread{min-width:19px;padding:2px 6px;font-size:9px}
+  .admin-messages-shell .chat-head{min-height:60px;padding:10px 15px;background:#fff}
+  .admin-messages-shell .chat-head-clickable:hover{background:#fffafd}
+  .admin-messages-shell .chat-body{gap:10px;padding:18px clamp(14px,3vw,26px);background:linear-gradient(180deg,#fcfafb,#faf8fa)}
+  .admin-messages-shell .bubble{max-width:min(74%,680px);padding:10px 13px;border-radius:14px;font-size:11.5px;line-height:1.65;box-shadow:0 1px 2px rgba(35,24,33,.035)}
+  .admin-messages-shell .bubble.in{border-color:#ece5eb;background:#fff}
+  .admin-messages-shell .bubble.out{background:var(--pink)}
+  .admin-messages-shell .chat-input{align-items:center;gap:8px;padding:11px 13px;border-top-color:#eee8ed;background:#fff}
+  .admin-messages-shell .chat-input form{align-items:center!important;gap:7px!important}
+  .admin-messages-shell .chat-input input[type=text]{height:40px;border-radius:10px;background:#fcfafb;font-size:11.5px!important}
+  .admin-messages-shell .chat-input input[type=text]:focus{border-color:var(--pink);background:#fff;box-shadow:0 0 0 3px rgba(215,63,143,.1)}
+  .admin-messages-shell .attach-btn{width:36px;height:36px;border-radius:9px}
+  .admin-messages-shell .chat-input .btn{min-height:38px;padding:8px 12px;border-radius:9px;font-size:10.5px}
+  .admin-messages-shell :is(button,a,input):focus-visible{outline:3px solid rgba(27,107,145,.7);outline-offset:2px}
+  @media(max-width:700px){.admin-messages-shell{height:auto;min-height:0;overflow:visible}.admin-messages-shell .chat-list{max-height:280px}.admin-messages-shell .chat-main{min-height:520px}}
+  @media(max-width:560px){.admin-messages-shell .chat-list{max-height:240px}.admin-messages-shell .chat-main{min-height:460px}.admin-messages-shell .chat-body{padding:15px}.admin-messages-shell .bubble{max-width:88%}.admin-messages-shell .chat-input{align-items:stretch}}
 </style>
 @endpush
 
@@ -74,7 +103,7 @@
 @endpush
 
 @section('content')
-<div class="chat-shell">
+<div class="chat-shell admin-messages-shell">
   <div class="chat-list">
     <div class="chat-list-head">
       <div style="position:relative">

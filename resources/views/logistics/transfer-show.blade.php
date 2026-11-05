@@ -3,6 +3,7 @@
 @section('page-title', 'Transfer Details')
 @section('page-sub', $batch->label())
 @section('content')
+<section class="hub-transfer-page hub-transfer-detail-page">
 @if(session('success'))<div class="card card-pad">{{ session('success') }}</div>@endif
 @if($errors->any())<div class="card card-pad">{{ $errors->first() }}</div>@endif
 <div class="card card-pad"><p class="mono">{{ $batch->id }}</p><p><strong>{{ $batch->from_hub }}, {{ $batch->from_province }}</strong> → <strong>{{ $batch->to_hub }}, {{ $batch->to_province }}</strong></p>
@@ -43,4 +44,5 @@
 @endif @endif
 <div class="card"><div class="card-head"><h2>{{ $members->total() }} parcels</h2></div><div class="table-wrap"><table class="dtable"><thead><tr><th>Tracking</th><th>Leg status</th><th>Rider pickup</th><th>Received by / at</th></tr></thead><tbody>@foreach($members as $member)<tr><td>{{ $member->tracking_number ?? $member->shipment_id }}@if($member->shipment)@include('logistics.partials.parcel-custody',['parcel'=>$member->shipment])@endif</td><td>{{ in_array($batch->status,['rejected','cancelled']) ? $batch->label() : ($member->leg?->status ?? 'Historical leg unavailable') }}</td><td>{{ $member->leg?->rider_confirmed_pickup_at?->format('Y-m-d H:i') ?? '—' }}</td><td>{{ $member->receiver?->username ?? '—' }}<br>{{ $member->received_at?->format('Y-m-d H:i') }}</td></tr>@endforeach</tbody></table></div></div>{{ $members->links() }}
 <div class="card"><div class="card-head"><h2>Transfer history</h2></div><div class="table-wrap"><table class="dtable"><thead><tr><th>Time</th><th>Action</th><th>Actor</th><th>Transition</th><th>Parcel / reason</th></tr></thead><tbody>@forelse($events as $event)<tr><td>{{ $event->created_at->format('Y-m-d H:i:s') }}</td><td>{{ $event->action }}</td><td>{{ $event->actor?->username ?? 'Not recorded' }}</td><td>{{ $event->from_status ?? '—' }} → {{ $event->to_status }}</td><td>{{ $event->shipment_id }}<br>{{ $event->reason }}</td></tr>@empty<tr><td colspan="5">No recorded events.</td></tr>@endforelse</tbody></table></div></div>{{ $events->links() }}
+</section>
 @endsection

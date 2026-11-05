@@ -4,12 +4,12 @@
 @section('page-sub', $hub->is_regional_hub ? "{$hub->province}'s regional hub — also relays parcels for other municipality hubs in the province" : "Local hub for {$hub->municipality}, {$hub->province}")
 
 @section('content')
-@if(app(\App\Services\AssignmentReassignment::class)->installed())<div class="card card-pad"><a class="btn btn-primary" href="{{ route('logistics.assignments.review') }}">Assignment evidence & reassignment</a></div>@endif
-@if(app(\App\Services\AssignmentReassignment::class)->installed())<div class="card card-pad"><a class="btn btn-primary" href="{{ route('logistics.assignments.review') }}">Assignment evidence & reassignment</a></div>@endif
 @if(session('success'))<div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('success') }}</div>@endif
 @if(session('error'))<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('error') }}</div>@endif
 @if($errors->any())<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ $errors->first() }}</div>@endif
 
+<div class="hub-dashboard-page">
+@if(app(\App\Services\AssignmentReassignment::class)->installed())<div class="card card-pad hub-dashboard-action"><a class="btn btn-primary" href="{{ route('logistics.assignments.review') }}">Assignment evidence & reassignment</a></div>@endif
 <div class="card" style="margin-bottom:16px">
   <div class="card-head">
     <h2>Pickup Requests</h2>
@@ -148,5 +148,6 @@
     @endforelse
     <div aria-label="Incoming transfer pages">{{ $incoming->links() }}</div>
   </div>
+</div>
 </div>
 @endsection

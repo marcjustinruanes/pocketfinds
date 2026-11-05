@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="{{ asset('css/navigation.css') }}?v={{ filemtime(public_path('css/navigation.css')) }}">
 @stack('head')
 <link rel="stylesheet" href="{{ asset('css/buyer-pages.css') }}?v={{ filemtime(public_path('css/buyer-pages.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/notifications.css') }}?v={{ filemtime(public_path('css/notifications.css')) }}">
 @include('buyer.partials.confirmation-styles')
 </head>
 <body class="buyer marketplace buyer-storefront buyer-pages @yield('body-class')">
