@@ -14,6 +14,25 @@ class HubHiring
 {
     private ?User $registering = null;
 
+    public function completeRiderActivation(User $rider, string $password): void
+    {
+        validator($rider->getAttributes(), [
+            'license_number' => 'required|string', 'license_expiry' => 'required|date|after_or_equal:'.today()->addMonthNoOverflow()->toDateString(),
+            'vehicle_type' => 'required|exists:vehicle_types,slug', 'vehicle_ownership' => ['required', new \Illuminate\Validation\Rules\Enum(\App\Enums\VehicleOwnership::class)],
+        ])->validate();
+        app(PersonnelApplication::class)->assertReadable($rider, 'rider');
+        if ($rider->vehicle_ownership === 'company' && !CompanyVehicle::typeAvailableAtHub($rider->logistics_hub_id, $rider->vehicle_type)) {
+            throw ValidationException::withMessages(['activation' => 'Your assigned vehicle type is unavailable. Contact your logistics admin.']);
+        }
+        $rider->password = $password;
+        $rider->email_verified_at = now();
+        $rider->status = 'approved';
+        $rider->hiringDecision = ['action' => 'email_activation', 'activated_by_rider' => true];
+        $previous = $this->registering;
+        $this->registering = $rider;
+        try { $rider->save(); } finally { $this->registering = $previous; }
+    }
+
     public function role(User $u): ?string
     {
         if ($u->is_admin) {
@@ -82,11 +101,13 @@ class HubHiring
             $changed = ! $before || $user->isDirty(['status', 'logistics_hub_id', 'account_type', 'logistics_role', 'business_name']);
             if ($before && $role && $user->isDirty('status') && auth()->check() && $this->registering !== $user) {
                 $review = clone $user;
+                $reviewAttributes = $review->getAttributes();
                 foreach ((array) $fresh as $field => $value) {
                     if (! $user->isDirty($field)) {
-                        $review->setAttribute($field, $value);
+                        $reviewAttributes[$field] = $value;
                     }
                 }
+                $review->setRawAttributes($reviewAttributes);
                 $this->validateTransition($review, $role, $fresh->status);
             }
             $historyChanged = $changed || $user->hiringDecision || $user->isDirty(['status_reason', 'interview_scheduled_at', 'interview_location']);
@@ -119,6 +140,9 @@ class HubHiring
 
     private function validateTransition(User $user, string $role, string $from): void
     {
+        if ($role === 'rider' && $user->status === 'approved' && app(RiderActivation::class)->pending($user)) {
+            throw ValidationException::withMessages(['status' => 'This rider must set a password through the activation email.']);
+        }
         $actor = User::whereKey(auth()->id())->lockForUpdate()->firstOrFail();
         abort_unless($actor->status === 'approved',403);
         $platform = (bool) $actor->is_admin;
@@ -143,8 +167,8 @@ class HubHiring
             if ($role === 'hub_staff') {
                 $rules += ['interview_scheduled_at' => 'required|date', 'interview_location' => 'required|string|max:255'];
             } else {
-                $rules += ['license_file' => 'required|string', 'license_number' => 'required|string|max:50', 'license_expiry' => 'required|date|after_or_equal:today',
-                    'vehicle_type' => 'required|exists:vehicle_types,slug', 'vehicle_ownership' => 'required|in:own,company'];
+                $rules += ['license_file' => 'required|string', 'license_number' => 'required|string|max:50', 'license_expiry' => 'required|date|after_or_equal:'.today()->addMonthNoOverflow()->toDateString(),
+                    'vehicle_type' => 'required|exists:vehicle_types,slug', 'vehicle_ownership' => ['required', new \Illuminate\Validation\Rules\Enum(\App\Enums\VehicleOwnership::class)]];
                 if ($user->vehicle_ownership === 'own') {
                     $rules += ['vehicle_brand' => 'required|string|max:100', 'vehicle_model' => 'required|string|max:100',
                         'plate_number' => 'required|string|max:20', 'or_file' => 'required|string', 'cr_file' => 'required|string'];
@@ -241,6 +265,7 @@ class HubHiring
             }
             $account = $matches->first() ?? new User;
             if ($account->exists) {
+                if (!$account->can_resubmit) throw ValidationException::withMessages(['email'=>'Editing and resubmission are not permitted for this rejected application.']);
                 foreach (['given_names', 'last_name', 'middle_name', 'suffix', 'sex'] as $key) {
                     $previous = $account->{$key};
                     if ($previous instanceof \BackedEnum) {
@@ -263,6 +288,7 @@ class HubHiring
             }
             $returning = $account->exists;
             $account->fill($data);
+            $account->can_resubmit = false;
             $this->registering = $account;
             try {
                 $account->save();

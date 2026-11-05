@@ -24,7 +24,14 @@ class Order extends Model
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
+        static::creating(function ($order) {
+            $order->id = $order->id ?: (string) Str::uuid();
+            $policy = $order->commerce_snapshot['delivery_policy'] ?? null;
+            if ($policy && \App\Services\DeliveryGuarantee::installed()) {
+                $order->delivery_guaranteed_from = $policy['from'];
+                $order->delivery_guaranteed_by = $policy['by'];
+            }
+        });
     }
 
     public function save(array $options = [])
@@ -106,6 +113,8 @@ class Order extends Model
         'shipping_amount' => 'decimal:2',
         'discount_amount' => 'decimal:2',
         'total' => 'decimal:2',
+        'delivery_guaranteed_from' => 'datetime',
+        'delivery_guaranteed_by' => 'datetime',
     ];
 
     /** A parcel the courier marked delivered auto-completes if the buyer never confirms receipt within this many days. */
@@ -175,6 +184,7 @@ class Order extends Model
         }
         $this->logStatus('cancelled', $actorId, $reason);
         if(\App\Services\BuyerCommerce::installed()) app(\App\Services\BuyerCommerce::class)->release($this->gcash_purchase_id?:$this->id);
+        app(\App\Services\CancellationRefund::class)->initiate($this);
 
         return true;
     }

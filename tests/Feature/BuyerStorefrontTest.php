@@ -9,6 +9,28 @@ use Tests\TestCase;
 
 class BuyerStorefrontTest extends TestCase
 {
+    public function test_product_layout_shares_guest_design_with_working_buyer_actions(): void
+    {
+        $product = ['id'=>'sample-product', 'name'=>'Sample Product', 'cat'=>'Apparel', 'badge'=>null, 'rating'=>0, 'reviews'=>[], 'sold'=>2, 'img'=>null, 'images'=>[], 'video'=>null, 'price'=>100, 'old_price'=>null, 'stock'=>5, 'desc'=>'A sample item', 'specs'=>[['Material','Cotton']], 'seller'=>'Sample Shop', 'seller_slug'=>'sample-shop', 'location'=>'Laguna', 'restock_date'=>null, 'variations'=>[], 'variants'=>[]];
+        $data = ['product'=>$product, 'related'=>[$product], 'shopProducts'=>[$product]];
+        $this->view('partials.product-detail', $data + ['buyerMode'=>true])
+            ->assertSee('Product specifications')->assertSee('From the Same Shop')
+            ->assertSee('You Might Also Like')->assertSee('pdWishlistForm')
+            ->assertSee('directAddToCart(this)', false)
+            ->assertSee('data-modal-open="productReportModal"', false)
+            ->assertSee(route('buyer.product', 'sample-product'))
+            ->assertDontSee('data-protected', false)->assertDontSee('Buy Now');
+        $this->actingAs(new User(['id'=>'test-buyer', 'given_names'=>'Alex', 'last_name'=>'Buyer', 'account_type'=>'buyer']));
+        $this->view('buyer.product', $data + ['notifications'=>collect(), 'cartCount'=>0, 'unreadMessages'=>0, 'errors'=>new \Illuminate\Support\ViewErrorBag()])
+            ->assertSee('id="pdWishlistForm"', false)->assertSee('product-detail-page')
+            ->assertSee('const revCounts =', false)->assertDontSee('data-protected', false);
+        $this->view('guest.product', $data)->assertSee('const revCounts =', false);
+        $this->view('partials.product-detail', $data + ['buyerMode'=>false])
+            ->assertSee('data-protected', false)
+            ->assertSee(route('guest.product', 'sample-product'))
+            ->assertDontSee('directAddToCart(this)', false);
+    }
+
     private function storefrontData(): array
     {
         return [
@@ -25,6 +47,18 @@ class BuyerStorefrontTest extends TestCase
         ];
     }
 
+    public function test_embedded_messages_uses_the_full_conversation_panel_without_page_navigation(): void
+    {
+        $this->actingAs(new User(['id'=>1,'given_names'=>'Alex','last_name'=>'Buyer','account_type'=>'buyer']));
+        $this->view('buyer.messages-embedded',[
+            'seller'=>null,'sellerOnline'=>false,'messages'=>collect(),'conversations'=>collect(),
+            'product'=>null,'productVariation'=>null,'sellerProducts'=>collect(),'sellerOrders'=>collect(),'autoAttachOrder'=>null,
+        ])->assertSee('class="chat-shell"',false)->assertSee('Search conversations')
+            ->assertSee('No conversation open')
+            ->assertSee('buyer.css')->assertSee('messaging.css')
+            ->assertDontSee('class="market-header"',false)->assertDontSee('id="about"',false);
+    }
+
     public function test_buyer_storefront_uses_signed_in_links_without_guest_prompts(): void
     {
         $this->actingAs(new User(['id' => 'test-buyer', 'given_names' => 'Alex', 'last_name' => 'Buyer', 'account_type' => 'buyer']));
@@ -33,7 +67,14 @@ class BuyerStorefrontTest extends TestCase
             'unreadMessages' => 1,
             'statusCounts' => ['to_ship' => 2, 'in_transit' => 0, 'out_for_delivery' => 0, 'completed' => 1],
         ]));
-        $view->assertSee('Hi, Alex!')
+        $view->assertDontSee('Hi, Alex!')
+            ->assertDontSee('id="buyerOrdersTitle"', false)
+            ->assertSee('class="pf-messages-launch"', false)
+            ->assertSee('id="messagesModal"', false)
+            ->assertSee('buyer.js', false)
+            ->assertDontSee('buyer-communications', false)
+            ->assertDontSee('buyer-orders', false)
+            ->assertDontSee('title="Messages" aria-label="Messages"', false)
             ->assertSee(route('buyer.product', 'sample-product'))
             ->assertSee(route('buyer.cart'))
             ->assertSee(route('buyer.logout'))
@@ -42,6 +83,11 @@ class BuyerStorefrontTest extends TestCase
             ->assertDontSee('data-protected', false)
             ->assertDontSee('id="authModal"', false)
             ->assertDontSee(route('guest.product', 'sample-product'));
+        $header=view('buyer.partials.storefront-header',['notifications'=>collect(),'cartCount'=>3,'unreadMessages'=>1])->render();
+        $this->assertStringNotContainsString('Browse Products',$header);
+        $this->assertStringNotContainsString('My Vouchers',$header);
+        $this->assertStringNotContainsString(' FAQs</a>',$header);
+        $this->assertLessThan(strpos($header,'title="Cart"'),strpos($header,'title="Notifications"'));
     }
 
     public function test_guest_storefront_keeps_guest_links_and_sign_in_dialog(): void
@@ -122,7 +168,7 @@ class BuyerStorefrontTest extends TestCase
         ])->assertSee('css/buyer-pages.css', false)
             ->assertSee('class="market-header"', false)
             ->assertSee('aria-label="Buyer navigation"', false)
-            ->assertSee(route('buyer.dashboard').'#shops')
+            ->assertSee(route('buyer.dashboard').'#products')
             ->assertSee('id="cartBadge"', false)
             ->assertSee('id="pfAssistantPanel"', false)
             ->assertDontSee('class="topbar"', false);

@@ -1,4 +1,5 @@
 <?php
+require __DIR__.'/buyer-modules.php';
 
 \Illuminate\Support\Facades\Route::get('/private-documents/{token}', [\App\Http\Controllers\SensitiveDocumentController::class, 'show'])
     ->middleware(['auth', 'throttle:240,1'])->name('sensitive-documents.show');
@@ -34,6 +35,14 @@ use Illuminate\Support\Facades\Storage;
 require __DIR__.'/commerce.php';
 
 Route::get('/', [GuestController::class, 'home']);
+Route::get('/auth/collage-image', \App\Http\Controllers\AuthCollageImageController::class)->name('auth.collage-image');
+Route::get('/auth/collage-image/{slot}', \App\Http\Controllers\AuthCollageImageController::class)->whereIn('slot', ['main', 'back', 'front'])->name('auth.collage-slot');
+Route::get('/rider/activate/{token}', [\App\Http\Controllers\RiderActivationController::class, 'show'])->middleware('throttle:30,1')->name('rider.activation.show');
+Route::post('/rider/activate/{token}', [\App\Http\Controllers\RiderActivationController::class, 'store'])->middleware('throttle:6,1')->name('rider.activation.store');
+Route::get('/seller/application/correct', [\App\Http\Controllers\SellerApplicationController::class, 'edit'])->name('seller.application.edit');
+Route::post('/seller/application/correct', [\App\Http\Controllers\SellerApplicationController::class, 'update'])->middleware('throttle:10,1')->name('seller.application.update');
+Route::get('/application/correct', [\App\Http\Controllers\ApplicationCorrectionController::class, 'edit'])->name('application.correction.edit');
+Route::post('/application/correct', [\App\Http\Controllers\ApplicationCorrectionController::class, 'update'])->middleware('throttle:10,1')->name('application.correction.update');
 Route::get('/assistant', [GuestAssistantController::class, 'history'])->middleware('throttle:30,1')->name('guest.assistant.history');
 Route::post('/assistant', [GuestAssistantController::class, 'send'])->middleware('throttle:6,1')->name('guest.assistant.send');
 Route::delete('/assistant', [GuestAssistantController::class, 'clear'])->middleware('throttle:10,1')->name('guest.assistant.clear');
@@ -144,13 +153,23 @@ Route::middleware('web')->group(function () {
     // but nothing in the app links here anymore; use register.buyer/register.seller above.
     Route::get('/register', fn () => $registerView('auth.register', in_array(request('type'), ['buyer', 'seller'], true) ? request('type') : 'buyer'))->name('register');
     Route::get('/register/categories', [RegisterController::class, 'categories'])->name('register.categories');
+    Route::get('/register/postal-code', [RegisterController::class, 'postalCode'])->middleware('throttle:60,1')->name('register.postal-code');
     Route::post('/register/send-otp', [RegisterController::class, 'sendOtp'])->name('register.send-otp');
     Route::post('/register/verify-otp', [RegisterController::class, 'verifyOtp'])->name('register.verify-otp');
     Route::get('/register/check-username', [RegisterController::class, 'checkUsername'])->name('register.check-username');
+    Route::post('/register/check-identity', [RegisterController::class, 'checkIdentity'])->middleware('throttle:30,1')->name('register.check-identity');
     Route::get('/register/check-business-name', [RegisterController::class, 'checkBusinessName'])->name('register.check-business-name');
+    Route::get('/register/check-business-number', [RegisterController::class, 'checkBusinessNumber'])->middleware('throttle:60,1')->name('register.check-business-number');
     Route::get('/register/check-license', [RegisterController::class, 'checkLicenseNumber'])->name('register.check-license');
     Route::get('/register/check-plate', [RegisterController::class, 'checkPlateNumber'])->name('register.check-plate');
-    Route::get('/password/reset', fn () => view('auth.login'))->name('password.request');
+    Route::get('/password/reset', [\App\Http\Controllers\PasswordResetController::class, 'request'])->name('password.request');
+    Route::post('/password/email', [\App\Http\Controllers\PasswordResetController::class, 'email'])->middleware('throttle:6,1')->name('password.email');
+    Route::get('/password/reset/{token}', [\App\Http\Controllers\PasswordResetController::class, 'edit'])->name('password.reset');
+    Route::post('/password/reset', [\App\Http\Controllers\PasswordResetController::class, 'update'])->middleware('throttle:6,1')->name('password.update');
+    Route::post('/register/google/start', [SocialAuthController::class, 'startEmailVerification'])->middleware('throttle:10,1')->name('register.google.start');
+    Route::post('/register/google/reset', [SocialAuthController::class, 'resetEmailVerification'])->name('register.google.reset');
+    Route::post('/register/google/complete', [SocialAuthController::class, 'completeEmailVerification'])->middleware('throttle:10,1')->name('register.google.complete');
+    Route::get('/register/google/return', [SocialAuthController::class, 'returnEmailVerification'])->middleware('throttle:10,1')->name('register.google.return');
     Route::get('/auth/google/redirect', [SocialAuthController::class, 'redirectToGoogle'])->name('google.redirect');
     Route::get('/auth/google/login', [SocialAuthController::class, 'redirectToGoogleLogin'])->name('google.login');
     Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleCallback'])->name('google.callback');
@@ -294,6 +313,7 @@ Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
     Route::post('/policies/{accountType}', [AdminController::class, 'updatePolicy'])->name('policies.update');
     Route::post('/settings/general', [AdminController::class, 'updateGeneralSettings'])->name('settings.general.update');
     Route::post('/settings/hero', [AdminController::class, 'updateHeroSettings'])->name('settings.hero.update');
+    Route::post('/settings/auth-collage/{slot}', [\App\Http\Controllers\AdminAuthCollageController::class, 'update'])->whereIn('slot', ['main', 'back', 'front'])->name('settings.auth-collage.update');
     Route::post('/settings/categories/{id}/photo', [AdminController::class, 'updateCategoryPhoto'])->whereNumber('id')->name('settings.category-photo.update');
     Route::post('/settings/toggles', [AdminController::class, 'updateFeatureToggles'])->name('settings.toggles.update');
     Route::post('/settings/cache/clear', [AdminController::class, 'clearCache'])->name('settings.cache.clear');
@@ -452,6 +472,7 @@ Route::prefix('logistics')->name('logistics.')->middleware(['logistics', 'logist
         Route::patch('/hubs/{id}', [LogisticsManagementController::class, 'updateHub'])->middleware('throttle:20,1,logistics-address-write:')->name('hubs.update');
         Route::patch('/vehicles/{id}', [LogisticsManagementController::class, 'updateVehicle'])->name('vehicles.update');
         Route::get('/riders', [LogisticsController::class, 'riders'])->name('riders');
+        Route::post('/riders/{id}/activation-email', [LogisticsManagementController::class, 'resendRiderActivation'])->middleware('throttle:3,1')->name('riders.activation.resend');
         Route::patch('/riders/{id}/approve', [LogisticsController::class, 'approveRider'])->name('riders.approve');
         Route::patch('/riders/{id}/reject', [LogisticsController::class, 'rejectRider'])->name('riders.reject');
         Route::patch('/riders/{id}/activate', [LogisticsController::class, 'activateRider'])->name('riders.activate');

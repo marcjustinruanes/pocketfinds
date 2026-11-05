@@ -4,6 +4,7 @@
 @section('page-sub', 'Track and manage your orders')
 
 @section('content')
+<p><a href="{{ route('account.cancellation-refunds') }}">Cancellation refunds</a></p>
 <div class="orders-page">
 @if($errors->any())<div class="auth-error" role="alert">@foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
 <div class="order-tabs-shell">
@@ -55,6 +56,9 @@
     <span class="stamp stamp-{{ $order->status === 'placed' ? 'new' : $order->status }}">{{ str_replace('_', ' ', ucfirst($order->status)) }}</span>
   </div>
   <div class="order-meta"><span class="mono">{{ $order->order_number }}</span><span>{{ $order->created_at?->format('M d, Y h:i A') ?? '—' }}</span></div>
+  @if($order->delivery_guaranteed_from && $order->delivery_guaranteed_by)
+    <p class="order-reference">Guaranteed to get by {{ \App\Services\DeliveryGuarantee::label($order->delivery_guaranteed_from->toDateTimeString(), $order->delivery_guaranteed_by->toDateTimeString()) }}. @if(($order->commerce_snapshot['delivery_policy']['late_voucher_amount'] ?? 40) > 0)Get a ₱{{ number_format($order->commerce_snapshot['delivery_policy']['late_voucher_amount'] ?? 40, 2) }} voucher if your order arrives late.@endif</p>
+  @endif
   <div class="order-products-list">
     @foreach($order->itemsWithImages() as $item)
     <div class="order-product-row">

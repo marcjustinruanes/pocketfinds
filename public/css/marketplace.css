@@ -4,7 +4,7 @@
 *{box-sizing:border-box}
 /* Hide horizontal scrollbar tracks while preserving vertical scrolling. */
 html { overflow-x: clip; }
-body.marketplace { width: 100%; max-width: 100%; overflow-x: clip; }
+body.marketplace { --text:#8c7381; width: 100%; max-width: 100%; overflow-x: clip; }
 *::-webkit-scrollbar:horizontal { height: 0; }
 body.marketplace{margin:0;background:var(--page);color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased}
 a{text-decoration:none;color:inherit}

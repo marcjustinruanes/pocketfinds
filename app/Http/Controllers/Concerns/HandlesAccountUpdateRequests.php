@@ -45,7 +45,8 @@ trait HandlesAccountUpdateRequests
         $documents = [];
         foreach ($fileKeys as $key => $disk) {
             if ($request->hasFile($key)) {
-                $documents[$key] = app(MediaLifecycle::class)->store($request->file($key), $key.'s', $disk);
+                $directory = array_key_exists($key, \App\Support\SellerDocuments::LABELS) ? 'seller_documents' : $key.'s';
+                $documents[$key] = app(MediaLifecycle::class)->store($request->file($key), $directory, $disk);
             }
         }
 

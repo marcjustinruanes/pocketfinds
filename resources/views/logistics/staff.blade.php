@@ -17,7 +17,7 @@
     @if($errors->any())
       <div class="acf-alert" role="alert">{{ $errors->first() }}</div>
     @endif
-    <form method="POST" enctype="multipart/form-data" action="{{ route('logistics.staff.accounts.store') }}">@csrf
+    <form data-registration-form data-registration-dirty="{{ $errors->any() ? 'true' : 'false' }}" method="POST" enctype="multipart/form-data" action="{{ route('logistics.staff.accounts.store') }}">@csrf
       @include('logistics.partials.account-form', ['account' => null, 'creationRole' => 'hub_staff'])
     </form>
   </div>
@@ -151,6 +151,9 @@
                 @elseif($member->status === 'interview')
                 <button type="button" class="btn btn-outline-danger" onclick="openReasonModal('reject', '{{ route('logistics.staff.reject', $member->id) }}')">Reject</button>
                 <button type="button" class="btn btn-success" data-modal-open="confirmInterviewModal-{{ $member->id }}">Approve</button>
+                @elseif($member->status === 'rejected')
+                <span>{{ $member->can_resubmit ? 'Resubmission allowed' : 'Final rejection' }}</span>
+                <button type="button" class="btn btn-outline" onclick="openReasonModal('reject', '{{ route('logistics.staff.reject', $member->id) }}')">Update rejection decision</button>
                 @elseif($member->status === 'approved')
                 <button type="button" class="btn btn-outline" onclick="openReasonModal('suspend', '{{ route('logistics.staff.suspend', $member->id) }}')">Suspend</button>
                 @elseif($member->status === 'suspended')
@@ -247,4 +250,6 @@
 @include('admin.partials.doc-lightbox')
 @include('admin.partials.reason-modals')
 {{ $staff->links() }}
+<script src="{{ asset('js/registration-unsaved.js') }}?v={{ filemtime(public_path('js/registration-unsaved.js')) }}"></script>
+<script src="{{ asset('js/license-number-input.js') }}?v={{ filemtime(public_path('js/license-number-input.js')) }}"></script>
 @endsection

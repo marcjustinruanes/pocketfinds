@@ -22,7 +22,6 @@
         <{{ $heading }}>Explore</{{ $heading }}>
         <a href="{{ $footerHome }}#products">All Products</a>
         <a href="{{ $footerHome }}#categories">Shop by Category</a>
-        <a href="{{ $footerHome }}#shops">Featured Shops</a>
         <a href="{{ $footerHome }}#deals">Deals</a>
       </div>
       <div class="{{ $landing ? 'pf-footer-col' : '' }}">
@@ -36,12 +35,15 @@
         <a href="{{ url('/login') }}">Sign In</a>
         <a href="{{ url('/register/buyer') }}">Create a Buyer Account</a>
         <a href="{{ url('/register/seller') }}">Become a Seller</a>
+        <a href="{{ route('register.logistics') }}">Register a Logistics Company</a>
+        <a href="{{ route('register.rider') }}">Apply as a Rider</a>
+        <a href="{{ route('register.logistics-staff') }}">Apply as Hub Staff</a>
         @endif
       </div>
       <div class="{{ $landing ? 'pf-footer-col' : '' }}">
         <{{ $heading }}>Contact Us</{{ $heading }}>
         @if($supportEmail)
-        <a href="mailto:{{ $supportEmail }}">{{ $supportEmail }}</a>
+        <a href="#pocketfinds-contact" data-open-contact aria-haspopup="dialog">PocketFinds</a>
         @else
         <a href="{{ url('/login') }}">Sign in to contact us</a>
         @endif
@@ -49,3 +51,8 @@
     </div>
   </div>
 </footer>
+@if($supportEmail)
+@once
+@include('components.contact-dialog')
+@endonce
+@endif

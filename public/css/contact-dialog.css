@@ -1,0 +1,22 @@
+.pf-contact-dialog {
+  width: min(440px, calc(100% - 32px)); max-height: calc(100dvh - 40px);
+  margin: auto; padding: 24px; box-sizing: border-box; overflow-y: auto;
+  border: 1px solid #e4e4e7; border-radius: 12px;
+  background: #fff; color: #27272a; font-family: var(--font, Arial, sans-serif);
+}
+.pf-contact-dialog::backdrop { background: rgba(24, 24, 27, .45); }
+.pf-contact-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.pf-contact-heading h2 { margin: 0; font-family: inherit; font-size: 20px; font-weight: 700; }
+.pf-contact-heading button { border: 0; background: transparent; color: #71717a; font: inherit; font-size: 26px; cursor: pointer; padding: 0 4px; }
+.pf-contact-dialog form { display: flex; flex-direction: column; gap: 8px; }
+.pf-contact-dialog label { font-size: 13px; font-weight: 600; }
+.pf-contact-dialog input:not([type="hidden"]), .pf-contact-dialog textarea {
+  width: 100%; box-sizing: border-box; border: 1px solid #d4d4d8;
+  border-radius: 6px; padding: 10px 12px; background: #fff; color: inherit; font: inherit; font-size: 16px;
+}
+.pf-contact-dialog textarea { resize: vertical; margin-bottom: 4px; }
+.pf-contact-dialog label:not(:first-of-type) { margin-top: 8px; }
+.pf-contact-dialog [data-contact-status] { margin: 0; font-size: 13px; line-height: 1.5; }
+.pf-contact-dialog [data-contact-status][data-error="true"] { color: #b91c1c; }
+.pf-contact-send { margin-top: 8px; border: 0; border-radius: 6px; padding: 12px; background: #bf3c7d; color: #fff; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.pf-contact-send:disabled { opacity: .6; cursor: wait; }

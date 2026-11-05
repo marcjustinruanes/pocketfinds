@@ -2,20 +2,16 @@
 use Illuminate\Support\Facades\Storage;
 $existingImagesJs = collect($product->images ?? ($product->image ? [$product->image] : []))
     ->map(fn ($p) => ['path' => $p, 'url' => Storage::url($p)])->values();
-$existingVariationsJs = collect($product->variations ?? [])->map(function ($group) {
-    return [
-        'name' => $group['name'] ?? '',
-        'options' => collect($group['options'] ?? [])->map(function ($opt) {
-            return [
-                'value' => $opt['value'] ?? '',
-                'stock' => $opt['stock'] ?? 0,
-                'price' => $opt['price'] ?? null,
-                'image_path' => $opt['image'] ?? null,
-                'image_url' => !empty($opt['image']) ? Storage::url($opt['image']) : null,
-            ];
-        })->values(),
-    ];
-})->values();
+$prepareVariation = function ($group) use (&$prepareVariation) {
+    $group['options'] = collect($group['options'] ?? [])->map(function ($option) {
+        $option['image_path'] = $option['image'] ?? null;
+        $option['image_url'] = !empty($option['image']) ? Storage::url($option['image']) : null;
+        return $option;
+    })->all();
+    if (isset($group['axes'])) $group['axes'] = array_map($prepareVariation, $group['axes']);
+    return $group;
+};
+$existingVariationsJs = collect($product->variations ?? [])->map($prepareVariation)->values();
 @endphp
 <div class="modal-overlay" id="editProductModal-{{ $product->id }}">
   <div class="modal" style="max-width:620px;width:100%">

@@ -1,5 +1,5 @@
 @if(($buyerMode??false)&&session('success'))<p role="status">{{ session('success') }}</p>@endif
-@if(count($deals))
+<div class="pf-deal-stage">
 <div class="pf-deal-gallery-frame">
 <div class="pf-deal-showcase pf-deal-accordion" data-deal-showcase aria-label="Explore deals">
   @foreach($deals as $p)
@@ -26,8 +26,6 @@
   @endforeach
 </div>
 </div>
-<p class="pf-deal-empty" data-deal-filter-empty hidden role="status">No deals match these filters right now.</p>
-@else
-<p class="pf-deal-empty">No deals right now — check back soon.</p>
-@endif
+<p class="pf-deal-empty" data-deal-filter-empty @if(count($deals)) hidden @endif role="status">No deals match these filters right now.</p>
+</div>
 @once<script src="{{ asset('js/commerce.js') }}?v={{ filemtime(public_path('js/commerce.js')) }}"></script>@endonce

@@ -42,6 +42,9 @@ class Product extends Model
     /** Current available quantity for one specific variation option, or the whole product if it has none. */
     public function availableStock(?string $group = null, ?string $value = null): int
     {
+        if (\App\Support\ProductVariationSet::combination($this->variations)['requires_stock_setup'] ?? false) {
+            return 0;
+        }
         if (empty($this->variations)) {
             return (int) $this->stock;
         }
@@ -133,6 +136,13 @@ class Product extends Model
 
     public function save(array $options = [])
     {
+        if ($this->isDirty('variations') && \App\Support\ProductVariationSet::combination($this->variations)) {
+            if (! GcashInventory::$moving) {
+                \App\Support\ProductVariationSet::validate($this->variations);
+            }
+            // The database total is derived from pair quantities, never from colors or sizes.
+            $this->stock = $this->total_stock;
+        }
         if (! $this->exists || ! GcashInventory::installed() || GcashInventory::$moving) {
             return parent::save($options);
         }

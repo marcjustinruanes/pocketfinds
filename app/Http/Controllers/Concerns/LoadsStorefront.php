@@ -35,7 +35,7 @@ trait LoadsStorefront
 
         try {
             $heroSettings   = \App\Models\Setting::current();
-            $products       = $this->dbProducts(24, $productCategoryId, $search, $sort, $minPrice, $maxPrice);
+            $products       = $this->dbProducts(0, $productCategoryId, $search, $sort, $minPrice, $maxPrice);
             $deals          = $this->dbDeals(8, $browseCategoryId);
             $categories     = Category::withCount(['products' => fn ($q) => $q->where('status', 'active')->sellerApproved()])
                 ->orderBy('name')->get(['id', 'name', 'image_sha256']);
@@ -79,7 +79,8 @@ trait LoadsStorefront
             ->get()
             ->filter(fn (User $seller) => $seller->products_count > 0)
             ->map(function (User $seller) {
-                $productIds = $seller->products()->where('status', 'active')->pluck('id');
+                $activeProducts = $seller->products()->where('status', 'active')->get(['id', 'category_id']);
+                $productIds = $activeProducts->pluck('id');
                 $avgRating  = $productIds->isNotEmpty() ? Review::whereIn('product_id', $productIds)->avg('rating') : null;
                 $soldTotal  = $productIds->reduce(fn ($carry, $id) => $carry + $this->soldCount($id), 0);
 
@@ -91,6 +92,7 @@ trait LoadsStorefront
                     'rating'        => $avgRating ? round($avgRating, 1) : null,
                     'sold'          => $soldTotal,
                     'products_count'=> $seller->products_count,
+                    'category_ids'  => $activeProducts->pluck('category_id')->filter()->unique()->values()->all(),
                     'joined'        => $seller->created_at->format('M Y'),
                 ];
             })

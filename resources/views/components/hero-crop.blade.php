@@ -10,7 +10,8 @@
   </div>
   <template data-crop-template>
     <!DOCTYPE html>
-    <html lang="en"><head><meta charset="UTF-8">
+    <html lang="en"><head>
+    @include('partials.favicon')<meta charset="UTF-8">
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Allura&family=Manrope:wght@400&display=swap">
       <link rel="stylesheet" href="{{ asset('css/marketplace.css') }}">
       <link rel="stylesheet" href="{{ asset('css/landing.css') }}">

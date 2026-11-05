@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    @include('partials.favicon')
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Choose Account Type — PocketFinds</title>
@@ -123,46 +124,32 @@
         .dt-name { display: block; font-size: 12.5px; font-weight: 800; color: var(--auth-text); }
         .dt-desc { display: block; font-size: 11px; color: var(--auth-muted); margin-top: 1px; }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/auth-refresh.css') }}?v={{ filemtime(public_path('css/auth-refresh.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/auth-registration.css') }}?v={{ filemtime(public_path('css/auth-registration.css')) }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Allura&family=DM+Serif+Display&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ asset('css/auth-entry-layout.css') }}?v={{ filemtime(public_path('css/auth-entry-layout.css')) }}">
 </head>
-<body class="auth-page">
+<body class="auth-page auth-register auth-entry">
 <div class="auth-shell">
     <main class="auth-card">
-        <section class="auth-brand-panel">
-            <div class="auth-brand-content">
-                <a class="auth-logo" href="{{ url('/') }}">
-                    <span class="auth-logo-mark"><img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="PocketFinds" class="brand-logo-img"></span>
-                    <span><span class="auth-logo-pocket">Pocket</span><span class="auth-logo-finds">Finds</span></span>
-                </a>
-                <h1 class="auth-brand-title">Who are you on PocketFinds?</h1>
-                <p class="auth-brand-text">
-                    Pick the role that fits you. Each account type has its own features and registration flow.
-                </p>
-                <ul class="auth-brand-points">
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Quick, guided registration</li>
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Admin-reviewed accounts</li>
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Secure &amp; verified sign-up</li>
-                </ul>
-            </div>
-            <div class="auth-brand-footer">© {{ date('Y') }} PocketFinds. All rights reserved.</div>
-        </section>
+        @include('auth.partials.brand-panel', ['signInBrand' => true])
 
         <section class="auth-form-panel">
             <div class="auth-form-wrap">
-                <a href="{{ url('/') }}" class="back-home-link">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+                <a href="{{ url('/') }}" class="login-home-link">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
                     Back to homepage
                 </a>
 
                 <div class="page-header">
-                    <div class="page-title-row">
-                        <h2>Get started</h2>
-                    </div>
-                    <p>Select the account type that matches what you want to do.</p>
+                    <p style="text-align:center;font-style:italic">Select the account type that matches what you want to do.</p>
                 </div>
 
                 <div class="role-grid">
                     {{-- Buyer --}}
-                    <button class="role-card" type="button" data-account-type="buyer" data-target="{{ url('/register/method') }}">
+                    <button class="role-card" type="button" data-account-type="buyer" data-target="{{ route('register.buyer') }}">
                         <span class="role-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 001.95-1.57l1.65-8.42H6"/></svg>
                         </span>
@@ -174,9 +161,9 @@
                     </button>
 
                     {{-- Seller --}}
-                    <button class="role-card" type="button" data-account-type="seller" data-target="{{ url('/register/method') }}">
+                    <button class="role-card" type="button" data-account-type="seller" data-target="{{ route('register.seller') }}">
                         <span class="role-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+                            @include('auth.partials.account-role-icon', ['role' => 'seller'])
                         </span>
                         <span class="role-copy">
                             <span class="role-name">Seller</span>
@@ -188,10 +175,10 @@
                 </div>
 
                 <a href="{{ route('register.delivery-team') }}" class="delivery-team-link">
-                    <span class="dt-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8Z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span>
+                    <span class="dt-icon">@include('auth.partials.account-role-icon', ['role' => 'logistics', 'size' => 22])</span>
                     <span class="dt-copy">
-                        <span class="dt-name">Want to deliver or work logistics?</span>
-                        <span class="dt-desc">Join our delivery team as a Rider or Logistics staff →</span>
+                        <span class="dt-name">Want to join logistics or become a rider?</span>
+                        <span class="dt-desc">Register your logistics company, apply as hub staff, or join a logistics company as a rider.</span>
                     </span>
                 </a>
 

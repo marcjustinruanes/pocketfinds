@@ -1,6 +1,7 @@
-@if(in_array($regType ?? request('type', 'buyer'), ['seller', 'logistics'], true))
-<div class="auth-field">
-    <label class="auth-label" for="postal_code">Postal code <span class="auth-required">*</span></label>
-    <input class="auth-input" id="postal_code" name="postal_code" type="text" inputmode="numeric" minlength="4" maxlength="4" pattern="[0-9]{4}" placeholder="1603" value="{{ old('postal_code') }}" required>
+<div class="auth-field registration-postal-field" id="registrationPostalField" data-lookup-url="{{ route('register.postal-code') }}">
+    <label for="postal_code">Postal code</label>
+    <input class="auth-input registration-floating-native" type="text" id="postal_code" name="postal_code" value="" inputmode="numeric" maxlength="4" readonly placeholder="Unavailable">
+    <input type="hidden" id="municipality_psgc_code" name="municipality_psgc_code" value="">
+    <span id="registrationPostalCapsule" class="registration-postal-status" role="status" aria-live="polite"></span>
 </div>
-@endif
+@once<script defer src="{{ asset('js/registration-postal-code.js') }}?v={{ filemtime(public_path('js/registration-postal-code.js')) }}"></script>@endonce

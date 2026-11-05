@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    @include('partials.favicon')
 <meta charset="UTF-8">
 <title>Waybill — {{ $order->order_number }}</title>
 <style>

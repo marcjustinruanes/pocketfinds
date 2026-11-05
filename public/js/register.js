@@ -1,4 +1,25 @@
 const PSGC = 'https://psgc.gitlab.io/api';
+// Reject oversized selections before any preview, OCR or compression handler runs.
+const registrationUploadForm=document.getElementById('buyerForm')||document.getElementById('googleRegForm');
+const acceptedRegistrationFiles=new WeakMap();
+registrationUploadForm?.addEventListener('change',event=>{
+    const input=event.target;
+    if(!(input instanceof HTMLInputElement)||input.type!=='file')return;
+    const root=input.closest('.auth-field')||input.parentElement;
+    let error=root.querySelector('[data-upload-size-error]');
+    if([...input.files].some(file=>file.size>5*1024*1024)){
+        event.stopImmediatePropagation();
+        const restored=new DataTransfer();
+        (acceptedRegistrationFiles.get(input)||[]).forEach(file=>restored.items.add(file));
+        input.files=restored.files;
+        input.dispatchEvent(new Event('change',{bubbles:true}));
+        if(!error){error=document.createElement('span');error.dataset.uploadSizeError='';error.className='field-hint';error.setAttribute('role','alert');error.style.color='#b91c1c';root.append(error);}
+        error.textContent='Maximum file size is 5 MB. Choose a smaller file.';error.hidden=false;
+        return;
+    }
+    acceptedRegistrationFiles.set(input,[...input.files]);
+    if(error)error.hidden=true;
+},true);
 const isGoogleForm = !!document.getElementById('googleRegForm');
 const accountTypeVal = document.querySelector('input[name="account_type"]')?.value;
 const isSeller    = accountTypeVal === 'seller';
@@ -12,8 +33,18 @@ const minimumRegistrationAge = ['buyer', 'rider'].includes(accountTypeVal) ? 18 
     const field = document.getElementById(id);
     if (field) { field.minLength = 2; field.maxLength = 50; }
 });
+const noMiddleName = document.getElementById('no_middle_name');
+function syncMiddleName() {
+    const field = document.getElementById('middle_name');
+    if (!field || !noMiddleName) return;
+    field.required = !noMiddleName.checked;
+    field.disabled = noMiddleName.checked;
+    if (noMiddleName.checked) { field.value = ''; clearError(field); }
+}
+noMiddleName?.addEventListener('change', syncMiddleName);
+syncMiddleName();
 const mobileField = document.getElementById('contact_no');
-['tin', 'postal_code'].forEach(id => {
+['postal_code'].forEach(id => {
     const field = document.getElementById(id);
     if (!field) return;
     const sanitize = value => value.replace(/[^0-9]/g, '').slice(0, field.maxLength);
@@ -37,7 +68,9 @@ const birthdayField = document.getElementById('birthday');
 const licenseExpiryField = document.getElementById('license_expiry');
 if (licenseExpiryField) {
     const today = new Date();
-    licenseExpiryField.min = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const minimum = new Date(today.getFullYear(), today.getMonth()+1, 1);
+    minimum.setDate(Math.min(today.getDate(), new Date(minimum.getFullYear(), minimum.getMonth()+1, 0).getDate()));
+    licenseExpiryField.min ||= `${minimum.getFullYear()}-${String(minimum.getMonth() + 1).padStart(2, '0')}-${String(minimum.getDate()).padStart(2, '0')}`;
 }
 if (birthdayField) {
     const cutoff = new Date();
@@ -48,6 +81,27 @@ const registrationPassword = document.getElementById('password');
 if (registrationPassword) {
     registrationPassword.placeholder = '8+ characters, Aa, number and symbol';
     registrationPassword.title = 'Use at least 8 characters with uppercase, lowercase, a number and a special character.';
+    const requirements = document.createElement('ul');
+    requirements.id = 'registrationPasswordRequirements';
+    requirements.className = 'registration-password-requirements';
+    const rules = [
+        ['At least 8 characters', value => [...value].length >= 8],
+        ['Uppercase letter', value => /\p{Lu}/u.test(value)],
+        ['Lowercase letter', value => /\p{Ll}/u.test(value)],
+        ['Number', value => /\p{N}/u.test(value)],
+        ['Special character', value => /[\p{Z}\p{S}\p{P}]/u.test(value)],
+    ];
+    rules.forEach(([label]) => { const item = document.createElement('li'); item.textContent = label; requirements.append(item); });
+    registrationPassword.closest('.auth-field')?.append(requirements);
+    registrationPassword.setAttribute('aria-describedby', requirements.id);
+    const updateRequirements = () => rules.forEach(([label, check], index) => {
+        const met = check(registrationPassword.value);
+        requirements.children[index].classList.toggle('met', met);
+        requirements.children[index].setAttribute('aria-label', label + (met ? ': met' : ': not met'));
+    });
+    registrationPassword.addEventListener('input', updateRequirements);
+    registrationPassword.addEventListener('change', updateRequirements);
+    updateRequirements();
 }
 
 function normalizeMobile(number) {
@@ -59,31 +113,7 @@ function normalizeMobile(number) {
 function validateRegistrationName(value) {
     if (!value) return null;
     if ([...value].length < 2 || [...value].length > 50) return 'Name must be between 2 and 50 characters.';
-    return /^[\p{L}-]+([\s][\p{L}-]+)*$/u.test(value) ? null : 'Use only letters, hyphens, and single spaces between words.';
-}
-
-if (isSeller) {
-    const businessNameField = document.getElementById('businessNameField');
-    const businessPermitField = document.getElementById('businessPermitField');
-    const accountGrid = document.querySelector(`#panel-${isGoogleForm ? 5 : 6} .auth-form-grid`);
-    const usernameField = document.getElementById('username')?.closest('.auth-field');
-    const passwordField = document.getElementById('password')?.closest('.auth-field');
-    const confirmationField = document.getElementById('password_confirmation')?.closest('.auth-field');
-    if (businessNameField && businessPermitField && accountGrid) {
-        businessNameField.classList.add('full');
-        businessNameField.style.margin = '0 0 2px';
-        businessPermitField.style.margin = '0';
-        accountGrid.style.rowGap = '6px';
-        accountGrid.prepend(businessNameField);
-        businessNameField.insertAdjacentElement('afterend', businessPermitField);
-        const credentials = document.createElement('div');
-        credentials.style.cssText = 'display:flex;flex-direction:column;gap:10px;min-width:0';
-        [usernameField, passwordField, confirmationField].forEach(field => {
-            field?.classList.remove('full');
-            if (field) credentials.appendChild(field);
-        });
-        businessPermitField.insertAdjacentElement('afterend', credentials);
-    }
+    return /^[\p{L}'’\-]+([\s][\p{L}'’\-]+)*$/u.test(value) ? null : 'Use letters, apostrophes, hyphens, and single spaces between words.';
 }
 
 // For Google buyers, activate panel-1 (ID step) since it has no active class by default
@@ -189,14 +219,21 @@ if (isSeller) {
         .then(data => {
             const grid = document.getElementById('categoryGrid');
             grid.innerHTML = '';
+            const picker=grid.closest('.category-scroll-wrap');picker.classList.add('registration-category-picker');
+            const heading=document.createElement('div');heading.className='registration-category-heading';
+            const title=document.createElement('span');title.id='registrationCategoryLabel';title.textContent='Shop Category';
+            const hint=document.createElement('span');hint.textContent='Choose the category that best fits your products.';
+            heading.append(title,hint);picker.before(heading);
+            grid.setAttribute('role','group');grid.setAttribute('aria-labelledby',title.id);
             const categoryBoxes = [];
             let otherBtn;
+            const selectTile=(button,selected)=>{button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));};
 
             function selectCategory(id, btn) {
                 selectedCategoryId = id;
-                categoryBoxes.forEach(b => b.classList.toggle('selected', b === btn));
+                categoryBoxes.forEach(b => selectTile(b,b === btn));
                 // Picking a real category clears any "Other" text — only one selection counts.
-                otherBtn.classList.remove('selected');
+                selectTile(otherBtn,false);
                 document.getElementById('categoryOtherWrap').style.display = 'none';
                 document.getElementById('category_other_input').value = '';
                 syncCategorySelection();
@@ -207,12 +244,13 @@ if (isSeller) {
                 btn.type = 'button';
                 btn.className = 'category-box';
                 btn.dataset.categoryId = cat.id;
-                btn.innerHTML = `<span class="category-box-icon">${getCategoryIcon(cat.name)}</span><span class="category-box-name">${cat.name}</span>`;
+                btn.setAttribute('aria-pressed','false');
+                const name=document.createElement('span');name.className='category-box-name';name.textContent=cat.name;btn.append(name);
                 btn.addEventListener('click', () => {
                     if (btn.classList.contains('selected')) {
                         // Clicking the already-selected tile deselects it.
                         selectedCategoryId = null;
-                        btn.classList.remove('selected');
+                        selectTile(btn,false);
                         syncCategorySelection();
                         return;
                     }
@@ -227,14 +265,15 @@ if (isSeller) {
             otherBtn.type = 'button';
             otherBtn.className = 'category-box';
             otherBtn.id = 'categoryOtherBox';
-            otherBtn.innerHTML = `<span class="category-box-icon">${categoryIcons.default}</span><span class="category-box-name">Other</span>`;
+            otherBtn.setAttribute('aria-pressed','false');
+            otherBtn.innerHTML = '<span class="category-box-name">Other</span>';
             otherBtn.addEventListener('click', () => {
                 const show = !otherBtn.classList.contains('selected');
-                otherBtn.classList.toggle('selected', show);
+                selectTile(otherBtn,show);
                 // Picking "Other" clears any selected category tile — only one selection counts.
                 if (show) {
                     selectedCategoryId = null;
-                    categoryBoxes.forEach(b => b.classList.remove('selected'));
+                    categoryBoxes.forEach(b => selectTile(b,false));
                 }
                 const wrap = document.getElementById('categoryOtherWrap');
                 const input = document.getElementById('category_other_input');
@@ -255,6 +294,7 @@ if (isSeller) {
 // Google sign-ups arrive with an already-verified email (prefilled and
 // locked in the blade view) — skip the send/verify-code requirement.
 let emailVerified = typeof IS_GOOGLE_SIGNUP !== 'undefined' && IS_GOOGLE_SIGNUP;
+window.registrationEmailResetOnReload = performance.getEntriesByType('navigation')[0]?.type === 'reload';
 let otpCountdown  = null;
 
 function sendOtp() {
@@ -342,6 +382,7 @@ function verifyOtp() {
             document.getElementById('verifiedBadge').style.display = '';
             document.getElementById('sendOtpBtn').style.display    = 'none';
             document.getElementById('emailHint').textContent       = '';
+            syncGoogleEmailControls();
         } else {
             verifyBtn.disabled = false; verifyBtn.textContent = 'Verify';
             showOtpError(data.message ?? 'Invalid or expired code.');
@@ -351,6 +392,12 @@ function verifyOtp() {
 }
 
 let lastEmailValue = '';
+function syncGoogleEmailControls() {
+    const controls = document.querySelector('.registration-google-email');
+    if (controls) controls.style.display = emailVerified ? 'none' : '';
+    const hint = document.getElementById('googleEmailHint');
+    if (hint) hint.textContent = emailVerified ? '' : 'Verify your email with Google instead of a code.';
+}
 // OTP input: digits only, max 6
 document.getElementById('otp_code')?.addEventListener('input', function () {
     this.value = this.value.replace(/\D/g, '').slice(0, 6);
@@ -360,6 +407,7 @@ document.getElementById('email')?.addEventListener('input', function () {
     if (this.value === lastEmailValue) return;
     lastEmailValue = this.value;
     emailVerified = false;
+    syncGoogleEmailControls();
     clearInterval(otpCountdown);
     document.getElementById('otpField').style.display      = 'none';
     document.getElementById('verifiedBadge').style.display = 'none';
@@ -418,6 +466,7 @@ function snapIdPhoto() {
     document.getElementById('idVideo').srcObject = null;
     canvas.toBlob(blob => {
         idPhotoBlob = blob;
+        document.querySelector('#buyerForm, #googleRegForm')?.dispatchEvent(new Event('registration:dirty'));
         if (idPhotoUrl) URL.revokeObjectURL(idPhotoUrl);
         idPhotoUrl = URL.createObjectURL(blob);
         document.getElementById('idPhotoImg').src = idPhotoUrl;
@@ -434,7 +483,7 @@ function retakeIdPhoto() {
     idPhotoBlob = null;
     if (idPhotoUrl) { URL.revokeObjectURL(idPhotoUrl); idPhotoUrl = null; }
     document.getElementById('idPhotoPreview').style.display = 'none';
-    document.getElementById('idPhotoIdle').style.display    = 'block';
+    document.getElementById('idPhotoIdle').style.display    = 'flex';
     document.getElementById('id_file').value = '';
     const imgEl = document.getElementById('idPhotoImg');
     if (imgEl) { imgEl.src = ''; imgEl.style.display = ''; }
@@ -495,29 +544,86 @@ document.getElementById('id_file')?.addEventListener('change', async function ()
 // ── Selfie / Camera ──
 let selfieBlob = null;
 let cameraStream = null;
+let selfieCameraRequest = 0;
+let selfieCameraPending = false;
+let selfieCameraMonitor = null;
+const selfieVideo = document.getElementById('selfieVideo');
+const selfieCaptureButton = document.querySelector('#selfieCamera button[onclick*="snapSelfie"]');
+
+function selfieCameraReady() {
+    return !!cameraStream && selfieVideo.srcObject === cameraStream &&
+        cameraStream.getVideoTracks().some(track => track.readyState === 'live' && track.enabled && !track.muted) &&
+        selfieVideo.readyState >= 2 && !selfieVideo.paused && selfieVideo.videoWidth > 0 && selfieVideo.videoHeight > 0;
+}
+function updateSelfieCapture() {
+    if (selfieCaptureButton) selfieCaptureButton.disabled = !selfieCameraReady() || !selfieHasCameraImage();
+}
+function selfieHasCameraImage() {
+    if (!selfieCameraReady()) return false;
+    // Privacy shutters can leave a live track sending a solid camera-off screen.
+    // Sample a small frame so these screens cannot become a submitted selfie.
+    try {
+        const sample = document.createElement('canvas'); sample.width = 32; sample.height = 24;
+        const context = sample.getContext('2d', {willReadFrequently:true});
+        context.drawImage(selfieVideo, 0, 0, 32, 24);
+        const pixels = context.getImageData(0, 0, 32, 24).data;
+        const colours = new Map(); let largest = 0;
+        for (let i=0; i<pixels.length; i+=4) {
+            const key=((pixels[i]>>4)<<8)|((pixels[i+1]>>4)<<4)|(pixels[i+2]>>4);
+            const count=(colours.get(key)||0)+1; colours.set(key,count); largest=Math.max(largest,count);
+        }
+        return pixels.length > 0 && largest / (pixels.length / 4) < .94;
+    } catch (_) { return false; }
+}
+['loadeddata','playing','pause','waiting','stalled','emptied','ended'].forEach(event => selfieVideo?.addEventListener(event, updateSelfieCapture));
+updateSelfieCapture();
 
 function startCamera() {
+    if (selfieCameraPending || selfieCameraReady()) return;
+    stopCamera();
+    const request = ++selfieCameraRequest;
+    selfieCameraPending = true;
+    if (!navigator.mediaDevices?.getUserMedia) { selfieCameraPending = false; return; }
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
         .then(stream => {
+            if (request !== selfieCameraRequest) { stream.getTracks().forEach(track => track.stop()); return; }
+            selfieCameraPending = false;
             cameraStream = stream;
-            document.getElementById('selfieVideo').srcObject = stream;
+            selfieVideo.srcObject = stream;
+            stream.getVideoTracks().forEach(track => {
+                ['ended','mute','unmute'].forEach(event => track.addEventListener(event, updateSelfieCapture));
+            });
             document.getElementById('selfieIdle').style.display   = 'none';
+            document.getElementById('selfiePreview').style.display = 'none';
             document.getElementById('selfieCamera').style.display = 'block';
+            updateSelfieCapture();
+            selfieCameraMonitor = setInterval(updateSelfieCapture, 250);
         })
-        .catch(() => {});
+        .catch(() => { if (request === selfieCameraRequest) { selfieCameraPending = false; updateSelfieCapture(); } });
 }
 
 function snapSelfie() {
+    if (!selfieCameraReady() || !selfieHasCameraImage()) {
+        updateSelfieCapture();
+        const error=document.getElementById('selfieError');
+        if(error){error.textContent='Turn on your camera and make sure your face is visible before taking a selfie.';error.style.display='block';}
+        return;
+    }
     const video = document.getElementById('selfieVideo');
     const canvas = document.getElementById('selfieCanvas');
     canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    // Correct the reversed camera feed in the saved photo as well as the live view.
+    canvas.getContext('2d').setTransform(-1, 0, 0, 1, canvas.width, 0);
     canvas.getContext('2d').drawImage(video, 0, 0);
     stopCamera();
     document.getElementById('selfieVideo').srcObject = null;
     canvas.toBlob(blob => {
+        if (!blob) return;
         selfieBlob = blob;
+        document.querySelector('#buyerForm, #googleRegForm')?.dispatchEvent(new Event('registration:dirty'));
         document.getElementById('selfieImg').src = URL.createObjectURL(blob);
         document.getElementById('selfieCamera').style.display  = 'none';
+        document.getElementById('selfieIdle').style.display = 'none';
         document.getElementById('selfiePreview').style.display = 'block';
         document.getElementById('selfieError').style.display   = 'none';
     }, 'image/jpeg', 0.9);
@@ -526,12 +632,20 @@ function snapSelfie() {
 function retakeSelfie() {
     selfieBlob = null;
     document.getElementById('selfiePreview').style.display = 'none';
-    document.getElementById('selfieIdle').style.display    = 'block';
+    document.getElementById('selfieIdle').style.display    = 'flex';
     startCamera();
 }
 
 function stopCamera() {
+    clearInterval(selfieCameraMonitor); selfieCameraMonitor = null;
+    selfieCameraRequest++;
+    selfieCameraPending = false;
     if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+    if (selfieVideo) selfieVideo.srcObject = null;
+    updateSelfieCapture();
+    const camera = document.getElementById('selfieCamera');
+    if (camera) camera.style.display = 'none';
+    if (!selfieBlob) { const idle = document.getElementById('selfieIdle'); if (idle) idle.style.display = 'flex'; }
 }
 
 function resetIdentityUploads() {
@@ -543,7 +657,7 @@ function resetIdentityUploads() {
     selfieBlob = null;
     document.getElementById('selfiePreview').style.display = 'none';
     document.getElementById('selfieCamera').style.display = 'none';
-    document.getElementById('selfieIdle').style.display = 'block';
+    document.getElementById('selfieIdle').style.display = 'flex';
     document.getElementById('idPhotoError').style.display = 'none';
     document.getElementById('selfieError').style.display = 'none';
     clearOcrPrefill();
@@ -551,8 +665,7 @@ function resetIdentityUploads() {
 
 // ── Lightbox ──
 // Everything previewed here — photos and PDFs alike — stays inside this modal.
-// PDFs used to open via window.open() into a new browser tab/native viewer;
-// they now render in an <iframe> right here instead, same as an image would.
+// PDFs render as read-only pages in this modal without the browser viewer toolbar.
 function openLightbox(imgId) {
     const imgEl = document.getElementById(imgId);
     const lightboxImg = document.getElementById('lightboxImg');
@@ -563,14 +676,45 @@ function openLightbox(imgId) {
     lightboxImg.src = imgEl.src;
     document.getElementById('imgLightbox').classList.add('open');
 }
-function showPdfLightbox(url) {
+let pdfLightboxVersion = 0;
+let pdfLightboxDocument = null;
+let pdfLibrary = null;
+async function showPdfLightbox(url) {
+    const version = ++pdfLightboxVersion;
+    if (pdfLightboxDocument) { pdfLightboxDocument.destroy(); pdfLightboxDocument = null; }
     const lightboxImg = document.getElementById('lightboxImg');
     const lightboxPdf = document.getElementById('lightboxPdf');
     lightboxImg.style.display = 'none';
     lightboxImg.src = '';
     lightboxPdf.style.display = 'flex';
-    lightboxPdf.innerHTML = `<iframe src="${url}" style="width:min(800px,90vw);height:85vh;border:0;border-radius:8px;background:#fff"></iframe>`;
+    const status=document.createElement('p'); status.className='pdf-view-status'; status.setAttribute('role','status'); status.textContent='Loading document…';
+    lightboxPdf.replaceChildren(status);
     document.getElementById('imgLightbox').classList.add('open');
+    try {
+        // Render only page contents, without the browser PDF toolbar or form controls.
+        const libraryUrl = new URL('../vendor/pdfjs/pdf.min.mjs', document.querySelector('script[src*="js/register.js"]').src);
+        pdfLibrary ||= import(libraryUrl.href);
+        const pdfjs = await pdfLibrary;
+        pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdf.worker.min.mjs', libraryUrl).href;
+        const pdf = await pdfjs.getDocument({url, isEvalSupported:false}).promise;
+        if (version !== pdfLightboxVersion) { await pdf.destroy(); return; }
+        pdfLightboxDocument=pdf;
+        for (let number=1; number<=pdf.numPages; number++) {
+            if (version !== pdfLightboxVersion) return;
+            const page=await pdf.getPage(number);
+            const base=page.getViewport({scale:1});
+            const viewport=page.getViewport({scale:Math.min(1.5,1200/base.width)});
+            const canvas=document.createElement('canvas'); canvas.width=Math.ceil(viewport.width); canvas.height=Math.ceil(viewport.height);
+            canvas.setAttribute('role','img'); canvas.setAttribute('aria-label','Document page '+number+' of '+pdf.numPages);
+            await page.render({canvasContext:canvas.getContext('2d'),viewport,annotationMode:pdfjs.AnnotationMode.DISABLE}).promise;
+            if (version !== pdfLightboxVersion) return;
+            if (number===1) lightboxPdf.replaceChildren();
+            lightboxPdf.append(canvas);
+            page.cleanup();
+        }
+    } catch (_) {
+        if (version === pdfLightboxVersion) { status.textContent='This PDF could not be displayed. Please upload an unlocked, valid PDF.'; lightboxPdf.replaceChildren(status); }
+    }
 }
 function openDocLightbox(key) {
     const url  = docUrls[key];
@@ -589,6 +733,8 @@ function openDocLightbox(key) {
     document.getElementById('imgLightbox').classList.add('open');
 }
 function closeLightbox() {
+    pdfLightboxVersion++;
+    if (pdfLightboxDocument) { pdfLightboxDocument.destroy(); pdfLightboxDocument=null; }
     document.getElementById('imgLightbox').classList.remove('open');
     document.getElementById('lightboxImg').src = '';
     document.getElementById('lightboxPdf').innerHTML = '';
@@ -599,6 +745,7 @@ let businessPermitUrl  = null;
 
 // Prevent the box onclick from firing when clicking preview buttons
 document.getElementById('businessPermitBox')?.addEventListener('click', function (e) {
+    if(e.target.closest('input,button')) return;
     if (businessPermitBlob) return; // preview is showing — don't open file picker
     document.getElementById('business_permit_file').click();
 });
@@ -705,7 +852,7 @@ if (businessNameInput && !isLogistics) {
 // belong to one account — same "type it, get a live yes/no" pattern as
 // username/business name above, wired into a single helper since the two
 // fields behave identically.
-function attachDuplicateFieldCheck(inputId, checkUrl, paramName, minLen, onResult) {
+function attachDuplicateFieldCheck(inputId, checkUrl, paramName, minLen, onResult, validFormat = () => true) {
     let timer = null;
     const input = document.getElementById(inputId);
     if (!input) return;
@@ -715,6 +862,7 @@ function attachDuplicateFieldCheck(inputId, checkUrl, paramName, minLen, onResul
     input.parentNode.insertBefore(wrap, input);
     wrap.appendChild(input);
     const status = document.createElement('span');
+    status.id=inputId+'Availability';status.setAttribute('role','status');status.setAttribute('aria-live','polite');
     status.style.cssText = 'position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:12px;pointer-events:none';
     wrap.appendChild(status);
 
@@ -723,12 +871,12 @@ function attachDuplicateFieldCheck(inputId, checkUrl, paramName, minLen, onResul
         onResult?.(null);
         status.innerHTML = '';
         clearTimeout(timer);
-        if (value.length < minLen) return;
+        if (value.length < minLen || !validFormat(value)) return;
         status.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;color:#94a3b8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
         timer = setTimeout(() => {
             const checkedVal = value;
             fetch(`${checkUrl}?${paramName}=${encodeURIComponent(value)}`)
-                .then(r => r.json())
+                .then(r => { if(!r.ok)throw new Error('Availability check failed');return r.json(); })
                 .then(data => {
                     if (input.value.trim() !== checkedVal) return; // stale — value changed since this request went out
                     onResult?.(data.available);
@@ -750,7 +898,7 @@ function attachDuplicateFieldCheck(inputId, checkUrl, paramName, minLen, onResul
 }
 
 let licenseNumberAvailable = null;
-attachDuplicateFieldCheck('license_number', '/register/check-license', 'license_number', 3, (result) => { licenseNumberAvailable = result; });
+attachDuplicateFieldCheck('license_number', '/register/check-license', 'license_number', 13, (result) => { licenseNumberAvailable = result; }, value => /^[A-Z]\d{2}-\d{2}-\d{6}$/.test(value));
 
 let plateNumberAvailable = null;
 attachDuplicateFieldCheck('plate_number', '/register/check-plate', 'plate_number', 2, (result) => { plateNumberAvailable = result; });
@@ -1069,9 +1217,9 @@ document.getElementById('municipality')?.addEventListener('change', function () 
 
 // ── Field rules ──
 const rules = {
-    tin: (v) => !v || /^[0-9]{12}$/.test(v) ? null : 'Enter exactly 12 digits for the TIN, without hyphens.',
+    tin: (v) => !v || /^[0-9]{12}$/.test(v.replace(/[-\s]/g, '')) ? null : 'Enter a 12-digit TIN, such as 123-456-789-000.',
     sec_registration_no: (v) => /^[A-Za-z]{2}[0-9]{9}$/.test(v) ? null : 'Enter two letters followed by nine digits, such as CS202012345.',
-    postal_code: (v) => /^[0-9]{4}$/.test(v) ? null : 'Enter a four-digit postal code.',
+    postal_code: (v) => !v || /^[0-9]{4}$/.test(v) ? null : 'Postal code could not be verified.',
     business_name: (v) => isSeller && ([...v].length < 3 || [...v].length > 30) ? 'Shop name must be between 3 and 30 characters.' : null,
     given_names: validateRegistrationName,
     last_name: validateRegistrationName,
@@ -1120,7 +1268,7 @@ mobileField?.addEventListener('paste', function (event) {
 // Name fields accept Unicode letters, hyphens, and single spaces between words.
 ['last_name', 'given_names', 'middle_name'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', function () {
-        this.value = this.value.replace(/[^\p{L}\s-]/gu, '').replace(/  +/g, ' ');
+        this.value = this.value.replace(/[^\p{L}'’\s-]/gu, '').replace(/  +/g, ' ');
     });
 });
 
@@ -1140,18 +1288,21 @@ mobileField?.addEventListener('paste', function (event) {
 
 function showError(el, msg) {
     el.classList.add('error');
-    if (el.id === 'email') { const h = document.getElementById('emailHint'); if (h) { h.style.color = 'var(--auth-danger)'; h.textContent = msg; } return; }
+    if (el.id === 'email' || el.id === 'representative_email') { const h = document.getElementById(el.id === 'email'?'emailHint':'representativeEmailHint'); if (h) { h.style.color = 'var(--auth-danger)'; h.textContent = msg; } return; }
     if (el.id === 'contact_no') { const h = document.getElementById('contactHint'); if (h) { h.style.color = 'var(--auth-danger)'; h.textContent = msg; } return; }
-    el.parentElement.querySelector('.field-error')?.remove();
+    const scope=el.closest('.auth-field') ?? el.parentElement;
+    scope.querySelectorAll('.field-error').forEach(error=>{if(error.dataset.errorFor===(el.id||el.name))error.remove();});
     const err = document.createElement('span'); err.className = 'field-error'; err.textContent = msg;
-    (el.closest('.auth-input-wrap') ?? el).after(err);
+    err.dataset.errorFor=el.id||el.name;
+    if (el.closest('.registration-personal-grid')) el.closest('.auth-field').append(err);
+    else (el.closest('.email-verify-row') ?? el.closest('.auth-input-wrap') ?? el).after(err);
 }
 
 function clearError(el) {
     el.classList.remove('error');
-    if (el.id === 'email') { const h = document.getElementById('emailHint'); if (h) { h.style.color = ''; h.textContent = ''; } return; }
+    if (el.id === 'email' || el.id === 'representative_email') { const h = document.getElementById(el.id === 'email'?'emailHint':'representativeEmailHint'); if (h) { h.style.color = ''; h.textContent = ''; } return; }
     if (el.id === 'contact_no') { const h = document.getElementById('contactHint'); if (h) { h.style.color = ''; h.textContent = ''; } return; }
-    el.parentElement.querySelector('.field-error')?.remove();
+    (el.closest('.auth-field') ?? el.parentElement).querySelectorAll('.field-error').forEach(error=>{if(error.dataset.errorFor===(el.id||el.name))error.remove();});
 }
 
 // ── Registration error modal ──
@@ -1351,13 +1502,21 @@ function validateStep(step) {
         }
         wrap.style.outline = '';
         let detailsValid = true;
+        const businessName = document.getElementById('business_name');
+        if (businessName) {
+            clearError(businessName);
+            if (businessName.value.trim().length < 3) { showError(businessName, 'Enter a business name of at least 3 characters.'); detailsValid = false; }
+            else if (businessNameAvailable === false) { showError(businessName, 'Business name is already registered.'); detailsValid = false; }
+        }
+
         ['seller_type', 'tin'].forEach(id => {
             const field = document.getElementById(id);
-            if (!field) return;
+            if (!field || !document.getElementById(`panel-${step}`).contains(field)) return;
             clearError(field);
             const message = field.required && !field.value.trim() ? 'This field is required.' : rules[id]?.(field.value.trim());
             if (message) { showError(field, message); detailsValid = false; }
         });
+        if (document.getElementById(`panel-${step}`).querySelector('.seller-document-fields') && window.sellerDocumentInputs && !window.sellerDocumentInputs.validate()) detailsValid = false;
         return detailsValid;
     }
 
@@ -1369,8 +1528,10 @@ function validateStep(step) {
 
     const panel = document.getElementById(`panel-${step}`);
     let valid = true;
+    if(isSeller && step === (isGoogleForm?9:10) && window.sellerDocumentInputs && !window.sellerDocumentInputs.validate()) valid=false;
 
     panel.querySelectorAll('input, select').forEach(el => {
+        if(el.disabled) return;
         clearError(el);
         const val = el.type === 'password' ? el.value : el.value.trim();
         if (rules[el.id]) { const msg = rules[el.id](val); if (msg) { showError(el, msg); valid = false; return; } }
@@ -1415,10 +1576,10 @@ function validateStep(step) {
             if (!businessName.value.trim()) { showError(businessName, 'Business name is required.'); valid = false; }
             else if (businessNameAvailable === false) { showError(businessName, 'Business name is already registered.'); valid = false; }
         }
-        if ((isSeller || isLogistics) && !businessPermitBlob) {
+        if (isLogistics && !businessPermitBlob) {
             document.getElementById('businessPermitError').style.display = 'block';
             valid = false;
-        } else if (isSeller || isLogistics) {
+        } else if (isLogistics) {
             document.getElementById('businessPermitError').style.display = 'none';
         }
         // password confirmation
@@ -1454,6 +1615,7 @@ function setStep(current, target) {
         if (s < indicatorTarget) item.classList.add('done');
     });
     document.querySelector('.auth-form-panel').scrollTop = 0;
+    window.scrollTo({ top: 0, behavior: 'instant' });
     // Account fields should stay clean until the user explicitly continues or submits.
     if (target === accountStep) {
         document.getElementById(`panel-${target}`)?.querySelectorAll('input, select').forEach(clearError);
@@ -1464,7 +1626,7 @@ function setStep(current, target) {
 
 function nextStep(current) {
     if (!validateStep(current)) return;
-    setStep(current, current + 1);
+    setStep(current, isSeller && current === (isGoogleForm?9:10) ? idSelfieStep : current + 1);
 }
 
 function prevStep(current) {
@@ -1496,6 +1658,7 @@ if (document.getElementById('buyerForm')) {
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
+                    form.dispatchEvent(new Event('registration:saved'));
                     form.style.display = 'none';
                     document.getElementById('stepIndicator').style.display = 'none';
                     document.getElementById('signinLink').style.display = 'none';
@@ -1509,3 +1672,80 @@ if (document.getElementById('buyerForm')) {
             .catch(() => { btn.disabled = false; btn.textContent = 'Submit Registration'; showRegisterErrorModal('Network error. Please try again.'); });
     });
 }
+
+// Google verifies only the email; the current form and uploads stay in place.
+(() => {
+    const button = document.getElementById('registrationGoogleEmail');
+    if (!button) return;
+    const hint = document.getElementById('googleEmailHint');
+    const csrf = () => document.querySelector('input[name="_token"]').value;
+    const post = async (url, payload) => {
+        const response = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json', 'Accept':'application/json', 'X-CSRF-TOKEN':csrf()}, body:JSON.stringify(payload)});
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Unable to verify your email. Please try again.');
+        return data;
+    };
+    const resetEmail = () => {
+        const email=document.getElementById('email'); email.value=''; lastEmailValue=''; emailVerified=false;
+        clearInterval(otpCountdown); clearError(email);
+        document.getElementById('otpField').style.display='none';
+        document.getElementById('verifiedBadge').style.display='none';
+        const send=document.getElementById('sendOtpBtn'); send.style.display=''; send.disabled=false; send.textContent='Send Code';
+        document.getElementById('otp_code').value='';
+        syncGoogleEmailControls();
+    };
+    let resetting=Promise.resolve();
+    const googleReturn=JSON.parse(document.getElementById('registrationGoogleResult').textContent).returning===true;
+    if(window.registrationEmailResetOnReload || !googleReturn) {
+        resetEmail();
+        const email=document.getElementById('email');
+        email.readOnly=true;
+        const allowTyping=()=>{email.readOnly=false;};
+        email.addEventListener('focus',allowTyping);
+        email.addEventListener('pointerdown',allowTyping);
+        resetting=post(button.dataset.resetUrl,{}).catch(()=>{});
+        window.addEventListener('pageshow',resetEmail,{once:true});
+    }
+    window.addEventListener('pageshow',event=>{if(event.persisted)resetEmail();});
+    button.addEventListener('click', async () => {
+        resetEmail();
+        button.disabled = true;
+        hint.textContent = 'Opening Google to verify your email…';
+        try {
+            await resetting;
+            await window.registrationDraft.save();
+            const start = await post(button.dataset.startUrl, {type:button.dataset.type, same_tab:true});
+            button.closest('form').dispatchEvent(new Event('registration:verification-navigation'));
+            window.location.assign(start.url);
+        } catch (error) { button.disabled = false; hint.textContent = error.message; }
+    });
+    window.applyRegistrationGoogleResult = () => {
+            if(window.registrationEmailResetOnReload) return;
+            const data = JSON.parse(document.getElementById('registrationGoogleResult').textContent);
+            if (data.error) {
+                resetEmail();
+                document.getElementById('verifiedBadge').style.display = 'none';
+                document.getElementById('otpField').style.display = 'none';
+                const send = document.getElementById('sendOtpBtn');
+                send.style.display = ''; send.disabled = false; send.textContent = 'Send Code';
+                showError(document.getElementById('email'), data.error);
+                return;
+            }
+            if (!data.returning || !data.email) return;
+            const email = document.getElementById('email');
+            email.value = data.email;
+            email.dispatchEvent(new Event('input', {bubbles:true}));
+            clearError(email);
+            emailVerified = true;
+            lastEmailValue = data.email;
+            clearInterval(otpCountdown);
+            document.getElementById('otpField').style.display = 'none';
+            document.getElementById('verifiedBadge').style.display = '';
+            document.querySelector('#verifiedBadge .email-verified-badge').lastChild.textContent = ' Verified via Google';
+            document.getElementById('sendOtpBtn').style.display = 'none';
+            document.getElementById('emailHint').textContent = '';
+            syncGoogleEmailControls();
+    };
+    // Email verification must not wait for IndexedDB, files or address dropdowns.
+    window.applyRegistrationGoogleResult();
+})();

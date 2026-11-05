@@ -4,6 +4,7 @@
 @section('page-sub', 'Prepare, ship, and confirm delivery — all in one place')
 
 @section('content')
+<p><a href="{{ route('account.cancellation-refunds') }}">Cancellation refunds</a></p>
 @if(app(\App\Services\AssignmentReassignment::class)->installed())<a class="btn btn-primary" href="{{ route('seller.assignments.review') }}">Pickup possession reviews</a>@endif
 @include('commerce.messages')
 @if(session('order_success'))<div class="auth-success" style="margin-bottom:16px">{{ session('order_success') }}</div>@endif

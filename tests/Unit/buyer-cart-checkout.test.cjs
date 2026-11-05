@@ -52,6 +52,14 @@ test('unserviceable checkout cannot retain an earlier successful quote',async()=
     assert.equal(ui.nodes.cartTotal.textContent,'—');
 });
 
+test('guaranteed orders explain automatic free shipping and the saved delivery window',async()=>{
+    const ui=cart(async()=>({ok:true,json:async()=>({hash:'policy-hash',quote:{total:300,warnings:[],orders:{shop:{subtotal:300,shipping_amount:80,discount_amount:80,chargeable_kg:2,free_shipping_eligible:true,items:[{seller_slug:'shop'}],vouchers:[{code:'PFSHIPFREE',kind:'shipping',amount:80}],delivery_policy:{label:'1 – 7 Nov'}}}}})}));
+    assert.equal(await ui.prepare({}),true);
+    assert.match(ui.nodes.cartCheckoutFeedback.textContent,/Free shipping/);
+    assert.match(ui.nodes.cartCheckoutFeedback.textContent,/1 – 7 Nov/);
+    assert.match(ui.nodes.cartTotal.textContent,/300\.00/);
+});
+
 test('changing a voucher reduces the preview total before address and payment are complete',async()=>{
     let body;
     const ui=cart(async(url,options)=>{

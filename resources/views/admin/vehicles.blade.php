@@ -200,7 +200,7 @@
 </div>
 @endforeach
 
-@include('admin.partials.reason-modals', ['reasonModalTypes' => ['reject']])
+@include('admin.partials.reason-modals', ['reasonModalTypes' => ['reject'], 'applicationRejection' => false])
 
 <script>
 // Wire the status dropdown to filter the table rows

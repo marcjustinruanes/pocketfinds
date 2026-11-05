@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    @include('partials.favicon')
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign Up Method — PocketFinds</title>
@@ -90,30 +91,16 @@
             line-height: 1.2;
         }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/auth-refresh.css') }}?v={{ filemtime(public_path('css/auth-refresh.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/auth-registration.css') }}?v={{ filemtime(public_path('css/auth-registration.css')) }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Allura&family=DM+Serif+Display&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
-<body class="auth-page">
+<body class="auth-page auth-register">
 <div class="auth-shell">
     <main class="auth-card">
-        <section class="auth-brand-panel">
-            <div class="auth-brand-content">
-                <a class="auth-logo" href="{{ url('/') }}">
-                    <span class="auth-logo-mark">
-                        <img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="PocketFinds" class="brand-logo-img">
-                    </span>
-                    <span><span class="auth-logo-pocket">Pocket</span><span class="auth-logo-finds">Finds</span></span>
-                </a>
-                <h1 class="auth-brand-title">How would you like to sign up?</h1>
-                <p class="auth-brand-text">
-                    Choose how you want to create your account. Either way, your account will need admin approval before you can start.
-                </p>
-                <ul class="auth-brand-points">
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Google sign-up is quick and easy</li>
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Manual sign-up gives full control</li>
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Both require admin approval</li>
-                </ul>
-            </div>
-            <div class="auth-brand-footer">© {{ date('Y') }} PocketFinds. All rights reserved.</div>
-        </section>
+        @include('auth.partials.brand-panel', ['signInBrand' => true])
 
         <section class="auth-form-panel">
             <div class="auth-form-wrap">

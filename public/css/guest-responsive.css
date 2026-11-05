@@ -93,11 +93,12 @@
   #deals .pf-deal-fold-details { animation:none; }
 }
 body.marketplace { overflow-wrap: break-word; }
-.marketplace .container { width: min(1180px, calc(100% - clamp(24px, 4vw, 48px))); }
+.marketplace .container { width: calc(100% - clamp(24px, 4vw, 48px)); }
 .marketplace img { max-width: 100%; }
 .market-header .header-main { min-width: 0; }
 .market-header .pf-search-wrap, .market-header .search { min-width: 0; }
 .pf-product-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 155px), 1fr)); gap: clamp(10px, 1.5vw, 18px); }
+.pf-product-grid { grid-auto-rows: 1fr; }
 .pf-product-grid > * { min-width: 0; }
 .pf-product-media img { position: absolute; inset: 0; }
 .pf-product-body { min-width: 0; }
@@ -200,4 +201,17 @@ body.marketplace { overflow-wrap: break-word; }
 }
 @media (min-width: 480px) and (max-width: 600px) {
   .category-grid .cat-card { flex-basis: calc((100% - 24px) / 3); }
+}
+@media (min-width: 1051px) {
+  .market-header .header-main > .logo { order: 0; }
+  .market-header .header-main > .nav-links {
+    order: 1;
+    margin-left: 0;
+    margin-right: auto;
+  }
+  .market-header .header-main > .pf-search-wrap {
+    order: 2;
+    margin-left: 24px;
+  }
+  .market-header .header-main > .header-actions { order: 3; }
 }

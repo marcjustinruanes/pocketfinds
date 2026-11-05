@@ -1,0 +1,150 @@
+.pd-opt-btn.pd-opt-size { min-width:44px; min-height:44px; align-items:center; padding:8px 12px; font-weight:600; }
+.pd-opt-size .pd-option-stock, .pd-opt-color .pd-option-stock { display:none !important; }
+.pd-opt-btn.pd-opt-color { min-width:44px; min-height:44px; align-items:center; }
+.pd-opt-btn.pd-opt-color:has(.pd-option-swatch, .pd-option-image) { width:44px; height:44px; min-width:44px; padding:0; gap:0; border:0; border-radius:6px; background:transparent; flex:none; }
+.pd-opt-color:has(.pd-option-swatch, .pd-option-image) .pd-option-value { display:none; }
+.pd-option-image, .pd-option-swatch { display:block; width:100%; height:100%; box-sizing:border-box; object-fit:cover; border-radius:6px; border:1px solid rgba(0,0,0,.16); }
+.pd-opt-btn.pd-opt-color:has(.pd-option-swatch, .pd-option-image).active { outline:2px solid var(--pink-dark); outline-offset:2px; }
+.pd-opt-btn.pd-opt-color:has(.pd-option-swatch, .pd-option-image):hover:not(:disabled):not(.active) { outline:1px solid var(--pink-dark); outline-offset:2px; }
+.pd-opt-btn .pd-option-value { font-size:12px !important; }
+
+.pd-purchase { display:flex; flex-direction:column; gap:10px; min-width:0; }
+.pd-purchase .pd-price-group { display:flex; flex-direction:row; align-items:baseline; flex-wrap:wrap; gap:8px; }
+.pd-purchase .pd-price-group .pd-old { text-decoration:line-through; color:var(--muted); font-size:13px; }
+.pd-shipping { display:flex; align-items:center; gap:8px; padding:8px 0 0; font-size:12px; line-height:1.5; }
+.pd-shipping-icon { color:#168b5b; flex:none; }
+.pd-delivery-guarantee { font-weight:600; color:var(--ink, var(--text)); }
+.pd-purchase .pd-shipping { width:100%; }
+.pd-purchase .pd-shipping .pd-delivery-guarantee { font-size:11px; font-weight:400; }
+body.buyer-pages:has(.pd-page-grid), .buyer-pages .content:has(.pd-page-grid) { --page:#fff; background:#fff; }
+
+/* Keep long tab content within the product's picture/details section. */
+.pd-right-col > .pd-tabs-wrap .pd-tab-bar { flex:none; }
+.pd-right-col > .pd-tabs-wrap .pd-tab-pane { min-height:0; overflow-x:hidden; overflow-y:auto; scrollbar-width:thin; }
+.pd-right-col > .pd-tabs-wrap .pd-tab-pane > * { flex-shrink:0; }
+@media (min-width:901px) {
+  .pd-main-grid { --pd-panel-height:clamp(480px, 68vh, 640px); }
+  .pd-main-grid > .pd-img-col { height:var(--pd-panel-height); min-height:0; position:static; }
+  .pd-main-grid > .pd-img-col > .pd-main-img { height:var(--pd-panel-height); max-height:none; aspect-ratio:auto; flex:1; }
+  .pd-main-grid > .pd-img-col > .pd-main-img img { width:100%; height:100%; object-fit:cover; }
+  .pd-main-grid > .pd-right-col { height:var(--pd-panel-height); min-height:0; }
+  .pd-main-grid > .pd-right-col > .pd-info-card { flex:none; }
+  .pd-main-grid > .pd-right-col > .pd-tabs-wrap { display:flex; flex-direction:column; min-height:0; height:auto; overflow:hidden; align-self:stretch; }
+  .pd-main-grid > .pd-right-col > .pd-tabs-wrap .pd-tab-pane { flex:1; max-height:none; }
+  .product-detail-page .pd-main-grid > .pd-right-col { grid-template-rows:auto minmax(0,1fr) auto; align-items:start; }
+  .product-detail-page .pd-right-col > .pd-product-information { padding-top:0; }
+  .product-detail-page .pd-main-grid > .pd-right-col > .pd-tabs-wrap .pd-tab-pane { overflow-y:auto; }
+}
+@media (min-width:901px) and (max-width:1200px) {
+  .product-detail-page .pd-main-grid > .pd-right-col { grid-template-rows:auto auto minmax(0,1fr) auto; }
+}
+@media (max-width:900px) {
+  .pd-main-grid > .pd-right-col > .pd-tabs-wrap { min-height:0; overflow:hidden; }
+  .pd-main-grid > .pd-right-col > .pd-tabs-wrap .pd-tab-pane { max-height:360px; overflow-y:auto; }
+}
+.pd-main-grid .pd-info-card > .pd-crumb-row {
+  margin-bottom: 10px;
+}
+.pd-main-grid .pd-meta-row .pd-meta-link {
+  color: var(--muted);
+  font-weight: 400;
+}
+.pd-main-grid .pd-meta-row .pd-meta-muted {
+  font-weight: 400;
+}
+.pd-main-grid .pd-meta-row strong {
+  font-weight: 700;
+}
+.pd-main-grid .pd-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+.pd-main-grid .pd-right-col .pd-tab-bar .pd-tab {
+  justify-content: center;
+  text-align: center;
+  flex: 1;
+}
+.pd-main-grid .pd-rev-filter .pd-rev-count {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  margin-left: auto;
+  text-align: center;
+}
+.pd-main-grid .pd-rev-count .pd-rev-count-num {
+  font-family: var(--font);
+}
+.pd-main-grid .pd-right-col .pd-specs-grid {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  gap: 0;
+}
+.pd-main-grid .pd-right-col .pd-spec-row {
+  display: table-row;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  align-items: start;
+}
+.pd-main-grid .pd-right-col .pd-spec-row:nth-child(odd) {
+  background: transparent;
+}
+.pd-main-grid .pd-right-col .pd-spec-row:last-child {
+  border-bottom: 0;
+}
+.pd-main-grid .pd-right-col .pd-spec-key,
+.pd-main-grid .pd-right-col .pd-spec-val {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  vertical-align: top;
+  text-align: left;
+  min-width: 0;
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.pd-main-grid .pd-right-col .pd-spec-key {
+  width: 34%;
+  background: #fafafa;
+  color: var(--muted);
+  font-weight: 400;
+}
+.pd-main-grid .pd-right-col .pd-spec-val {
+  color: var(--ink, var(--text));
+  font-weight: 600;
+}
+@media (max-width: 480px) {
+  .pd-main-grid .pd-right-col .pd-spec-key,
+  .pd-main-grid .pd-right-col .pd-spec-val {
+    padding: 10px;
+    font-size: 12px;
+  }
+}
+.pd-page-grid > .pd-page-side {
+  grid-column: 1 / -1;
+  width: 100%;
+  max-width: none;
+}
+.pd-page-side .pd-related-side {
+  width: 100%;
+  max-width: none;
+}
+.pd-main-grid .pd-rev-list .empty h3 {
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--muted);
+}

@@ -2,27 +2,39 @@
 @section('title', 'My Account')
 @section('page-title', 'My Account')
 @section('page-sub', 'Manage your profile and settings')
+@section('hide-page-heading', true)
+@section('body-class', 'buyer-account-page')
+@push('head')
+<link rel="stylesheet" href="{{ asset('css/buyer-account.css') }}?v={{ filemtime(public_path('css/buyer-account.css')) }}">
+@endpush
 
 @section('content')
 @include('commerce.messages')
 
-@if(session('success'))
-<div class="auth-success" style="margin-bottom:16px">{{ session('success') }}</div>
-@endif
-
 {{-- Profile summary --}}
+<div class="account-layout" id="accountLayout">
+<aside class="account-sidebar" aria-label="Account navigation">
 <div class="profile-summary">
   <x-user-avatar :user="auth()->user()" size="64" class="profile-summary-avatar" />
   <div class="profile-summary-info">
     <h1>{{ auth()->user()->given_names }} {{ auth()->user()->last_name }}</h1>
     <p>{{ auth()->user()->email }}</p>
     <div class="profile-summary-badges">
-      <span class="stamp stamp-active">Buyer</span>
-      <span class="profile-summary-since">Member since {{ auth()->user()->created_at->format('M Y') }}</span>
+      <span class="profile-summary-since">Member since {{ auth()->user()->created_at?->format('M Y') }}</span>
     </div>
   </div>
 </div>
 
+<nav class="account-section-nav" aria-label="My account sections">
+ @foreach(['profile-information'=>['user','My profile'],'account-security'=>['lock','Login & security'],'delivery-addresses'=>['pin','My addresses'],'my-vouchers'=>['tag','My vouchers'],'payment-methods'=>['wallet','Payment accounts'],'following-shops'=>['shop','Following shops']] as $anchor=>$item)
+ <a href="#{{ $anchor }}" data-account-section="{{ $anchor }}">@include('buyer.partials.icon',['name'=>$item[0],'size'=>18])<span class="account-nav-label">{{ $item[1] }}</span>@if($anchor==='following-shops')<span class="account-count">{{ $followingShops->count() }}</span>@endif</a>
+ @endforeach
+</nav>
+<a class="account-sidebar-orders" href="{{ route('buyer.orders') }}">My orders <span aria-hidden="true">→</span></a>
+</aside>
+<div class="account-main">
+ <header class="account-panel-heading"><h1 id="accountPanelTitle">My profile</h1><p id="accountPanelDescription">Manage your personal details and profile photo.</p></header>
+<div class="account-photo-section">@include('account.partials.buyer-module-security')</div>
 <div class="dash-grid">
   <div class="stack">
 
@@ -45,7 +57,7 @@
     @endif
 
     <div class="card">
-      <div class="card-head"><div><h2>Profile Information</h2><p>Changes are reviewed by an admin before they take effect</p></div></div>
+      <div class="card-head" id="profile-information"><div><h2>Profile Information</h2><p>Changes are reviewed by an admin before they take effect</p></div></div>
       <div class="card-pad">
         @if(session('profile_success'))
         <div class="auth-success" style="margin-bottom:16px">{{ session('profile_success') }}</div>
@@ -89,7 +101,7 @@
           @csrf
           <div class="form-row">
             <label>Region</label><select name="region" data-account-region data-current="{{ old('region',auth()->user()->region) }}" required></select>
-            <label>Postal code</label><input name="postal_code" value="{{ old('postal_code',auth()->user()->postal_code) }}" pattern="[0-9]{4}" minlength="4" maxlength="4" inputmode="numeric" required>
+            <label>Postal code</label><input name="postal_code" value="{{ old('postal_code',auth()->user()->postal_code) }}" pattern="[0-9]{4}" minlength="4" maxlength="4" inputmode="numeric" readonly>
             <label>Province</label>
             <input type="text" name="province" value="{{ old('province', auth()->user()->province) }}" required>
           </div>
@@ -112,7 +124,7 @@
 
 @if(\App\Services\BuyerCommerce::installed())@include('buyer.partials.email-change')@endif
     <div class="card">
-      <div class="card-head"><h2>Change Password</h2></div>
+      <div class="card-head" id="account-security"><h2>Change Password</h2></div>
       <div class="card-pad">
         @if(session('password_success'))
         <div class="auth-success" style="margin-bottom:16px">{{ session('password_success') }}</div>
@@ -146,7 +158,7 @@
 
 
     <div class="card">
-      <div class="card-head"><h2>Account Details</h2></div>
+      <div class="card-head" id="account-details"><h2>Account Details</h2></div>
       <div class="card-pad" style="display:flex;flex-direction:column;gap:14px">
         <div>
           <div class="field-label">Account Type</div>
@@ -170,7 +182,7 @@
     </div>
 
     <div class="card">
-      <div class="card-head">
+      <div class="card-head" id="delivery-addresses">
         <div><h2>Delivery Address</h2><p>Where your orders ship — pick one at checkout</p></div>
         <button type="button" class="btn btn-outline" data-modal-open="addAddressModal">Add New Address</button>
       </div>
@@ -180,7 +192,7 @@
     </div>
 
     <div class="card">
-      <div class="card-head">
+      <div class="card-head" id="payment-methods">
         <div><h2>Payment Methods</h2><p>Connect a GCash account. Email verification confirms this profile entry, not receipt of a payment.</p></div>
       </div>
       <div class="card-pad" style="display:flex;flex-direction:column;gap:10px">
@@ -211,6 +223,12 @@
     </div>
   </div>
 </div>
+
+@include('buyer.partials.following-shops', ['shops'=>$followingShops])
+<div class="account-refund-link"><a href="{{ route('account.cancellation-refunds') }}">View cancellation refunds <span aria-hidden="true">→</span></a></div>
+</div>
+</div>
+<script src="{{ asset('js/buyer-account-panels.js') }}?v={{ filemtime(public_path('js/buyer-account-panels.js')) }}" defer></script>
 
 <div class="modal-overlay" id="paymentAccountModal">
   <div class="modal" style="max-width:420px">

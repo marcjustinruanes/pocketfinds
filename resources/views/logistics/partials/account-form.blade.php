@@ -1,6 +1,7 @@
 @php($editing = isset($account) && $account)
 @php($formRole = $editing ? ($account->account_type === 'rider' ? 'rider' : 'hub_staff') : ($creationRole ?? null))
 @php($isRider = $formRole === 'rider')
+@php($emailActivation = $isRider && (!$editing || app(\App\Services\RiderActivation::class)->pending($account)))
 
 {{-- ① Hub Assignment --}}
 <div class="acf-section acf-section-first">
@@ -100,8 +101,8 @@
     <label class="acf-label">Sex <span class="acf-req" aria-hidden="true">*</span>
       <select class="acf-input" name="sex" required>
         <option value="" disabled @selected(!old('sex', $account->sex ?? ''))>Select sex</option>
-        @foreach(['male' => 'Male', 'female' => 'Female'] as $val => $lbl)
-          <option value="{{ $val }}" @selected(old('sex', $account->sex ?? '') === $val)>{{ $lbl }}</option>
+        @foreach(\App\Enums\Sex::cases() as $sexOption)
+          <option value="{{ $sexOption->value }}" @selected(old('sex', $account->sex ?? '') === $sexOption->value)>{{ $sexOption->label() }}</option>
         @endforeach
       </select>
     </label>
@@ -133,6 +134,10 @@
     <label class="acf-label">Email address <span class="acf-req" aria-hidden="true">*</span>
       <input class="acf-input" name="email" type="email" value="{{ old('email', $account?->email ?? '') }}" required maxlength="255" autocomplete="email">
     </label>
+    @if($emailActivation)
+    @unless($editing)<input type="hidden" name="send_activation" value="1">@endunless
+    <p class="acf-hint acf-span">The rider will receive an email link to set their password and activate the account. The link expires in 24 hours.</p>
+    @else
     <label class="acf-label">{{ $editing ? 'New password' : 'Password' }} @if($editing)<span class="acf-optional">optional</span>@else<span class="acf-req" aria-hidden="true">*</span>@endif
       <span class="acf-pw-wrap">
         <input class="acf-input" type="password" name="password" autocomplete="new-password" minlength="12" maxlength="128" @required(!$editing) id="acf-pw-1">
@@ -150,6 +155,7 @@
       </span>
     </label>
     <p class="acf-hint acf-span">Minimum 12 characters — must include uppercase, lowercase, numbers and symbols.</p>
+    @endif
   </div>
 </div>
 
@@ -167,19 +173,21 @@
     <label class="acf-label">Vehicle type <span class="acf-req" aria-hidden="true">*</span>
       <select class="acf-input" name="vehicle_type" required>
         <option value="">Select vehicle type</option>
-        <option value="two_wheels" @selected(old('vehicle_type', $account->vehicle_type ?? '') === 'two_wheels')>Two wheels (motorcycle)</option>
-        <option value="four_wheels" @selected(old('vehicle_type', $account->vehicle_type ?? '') === 'four_wheels')>Four wheels (car/van)</option>
+        @foreach(\Illuminate\Support\Facades\DB::table('vehicle_types')->orderBy('id')->get() as $vehicleType)
+          <option value="{{ $vehicleType->slug }}" @selected(old('vehicle_type', $account->vehicle_type ?? '') === $vehicleType->slug)>{{ $vehicleType->name }}</option>
+        @endforeach
       </select>
     </label>
     <label class="acf-label">Vehicle ownership <span class="acf-req" aria-hidden="true">*</span>
       <select class="acf-input" name="vehicle_ownership" required id="acf-ownership">
         <option value="">Select ownership</option>
-        <option value="own" @selected(old('vehicle_ownership', $account->vehicle_ownership ?? '') === 'own')>Own vehicle</option>
-        <option value="company" @selected(old('vehicle_ownership', $account->vehicle_ownership ?? '') === 'company')>Company vehicle</option>
+        @foreach(\App\Enums\VehicleOwnership::cases() as $vehicleOwnership)
+          <option value="{{ $vehicleOwnership->value }}" @selected(old('vehicle_ownership', $account->vehicle_ownership ?? '') === $vehicleOwnership->value)>{{ $vehicleOwnership->label() }}</option>
+        @endforeach
       </select>
     </label>
     <label class="acf-label" data-rider-license>Licence expiry date <span class="acf-req" aria-hidden="true">*</span>
-      <input class="acf-input" type="date" name="license_expiry" min="{{ today()->toDateString() }}"
+      <input class="acf-input" type="date" name="license_expiry" min="{{ today()->addMonthNoOverflow()->toDateString() }}"
         value="{{ old('license_expiry', $account?->license_expiry?->toDateString() ?? '') }}" required>
     </label>
   </div>

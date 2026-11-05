@@ -23,7 +23,7 @@
 #authModal .am-check-label, #authModal .am-link { font-size: 12px; }
 #authModal .am-check-label { min-height: 32px; }
 #authModal .am-btn { border-radius: 6px; min-height: 46px; background: #be3a7d; font-size: 14px; font-weight: 600; margin: 0; }
-#authModal .am-btn:hover { background: #a62f6a; transform: none; box-shadow: none; }
+#authModal .am-btn:hover { background:#a62f6a; transform:none; box-shadow:none; }
 #authModal .am-bottom { border-top: 1px solid #e9e4ea; padding-top: 20px; margin-top: 24px; font-size: 12px; line-height: 1.6; }
 #authModal .am-link { color: #be3a7d; }
 #authModal .am-dismiss { display: block; margin: 8px auto 0; padding: 8px 12px; min-height: 36px; border: 0; background: none; color: #71717a; font: inherit; font-size: 12px; cursor: pointer; }
@@ -46,3 +46,46 @@
   #authModal.open .am-card { animation: am-enter .16s ease-out; }
   @keyframes am-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 }
+/* The sign-in page's white panel, sized for a dialog. */
+#authModal .am-card { width:min(480px,100%); color:#8c7381; border-radius:12px; }
+#authModal .am-form-panel { padding:36px 32px; }
+#authModal #amDialogDescription, #authModal .am-dismiss { display:none; }
+#authModal .am-brand-header { display:block; margin-bottom:32px; }
+#authModal .am-logo-pocket { color:#593346; }
+#authModal .am-logo-mark { width:40px; height:44px; }
+#authModal .am-logo { font-size:21px; }
+#authModal .am-logo-copy { display:flex; flex-direction:column; gap:3px; }
+#authModal .am-logo-name { line-height:1.15; }
+#authModal .am-logo-tagline { font-size:12px; font-weight:400; line-height:1.4; letter-spacing:0; color:#8c7381; }
+#authModal .am-logo-finds { color:#bf3c7d; }
+#authModal .am-card { scrollbar-width:none; }
+#authModal .am-card::-webkit-scrollbar { display:none; width:0; height:0; }
+#authModal .am-form-panel { position:relative; }
+#authModal .am-close { top:38px; right:32px; width:40px; height:40px; display:grid; place-items:center; border:0; border-radius:0; color:#8c7381; background:transparent; }
+#authModal .am-close:hover { background:transparent; color:#593346; }
+#authModal .am-accessible-title { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+#authModal #amSignin .am-page-header { margin:0; }
+#authModal .am-page-header { margin-bottom:32px; }
+#authModal .am-home { display:inline-flex; align-items:center; gap:6px; padding:0; border:0; background:none; color:#8c7381; font:600 13px/1.5 Inter,Arial,sans-serif; cursor:pointer; }
+#authModal .am-form { gap:22px; }
+#authModal .am-floating { position:relative; }
+#authModal .am-floating > .am-input { height:52px; border:0; border-radius:9px; padding:0 16px; background:transparent; color:#8c7381; box-shadow:none; }
+#authModal .am-floating > .am-input.has-toggle { padding-right:48px; }
+#authModal .am-floating > .am-label { position:absolute; top:50%; left:12px; margin:0; padding:0 4px; transform:translateY(-50%); color:#8c7381; background:transparent; font-size:15px; line-height:1.2; font-weight:400; pointer-events:none; transition:top .15s,font-size .15s; }
+#authModal .am-outline { position:absolute; inset:-6px 0 0; margin:0; padding:0 12px; min-width:0; border:1px solid #e4e4e7; border-radius:9px; pointer-events:none; }
+#authModal .am-outline legend { width:auto; max-width:0; height:12px; overflow:hidden; padding:0; font:600 11px/12px Inter,Arial,sans-serif; white-space:nowrap; }
+#authModal .am-outline legend span { opacity:0; }
+#authModal .am-floating:has(input:focus) .am-label,
+#authModal .am-floating:has(input:not(:placeholder-shown)) .am-label { top:0; font-size:12px; font-weight:600; }
+#authModal .am-floating:has(input:focus) .am-outline legend,
+#authModal .am-floating:has(input:not(:placeholder-shown)) .am-outline legend { max-width:100%; padding:0 4px; }
+#authModal .am-floating:has(input:focus) .am-outline { border-color:#bc387f; filter:drop-shadow(0 0 2px #bc387f30); }
+#authModal .am-floating:has(input:focus) .am-label { color:#bc387f; }
+#authModal .am-input:-webkit-autofill { -webkit-box-shadow:0 0 0 1000px #fdf2f8 inset; -webkit-text-fill-color:#8c7381; }
+#authModal .am-pw-toggle[hidden] { display:none; }
+#authModal .am-btn { min-height:48px; border-radius:9px; background:#bc387f; }
+#authModal .am-divider { display:flex; align-items:center; gap:14px; margin:22px 0; color:#8c7381; font-size:13px; }
+#authModal .am-divider::before,#authModal .am-divider::after { content:''; flex:1; height:1px; background:#e4e4e7; }
+#authModal .am-google-login { display:flex; align-items:center; justify-content:center; gap:10px; min-height:48px; border:1px solid #e4e4e7; border-radius:9px; color:#8c7381; font-size:14px; font-weight:600; text-decoration:none; }
+#authModal .am-bottom { border:0; padding-top:0; margin-top:24px; color:#8c7381; font-size:13px; }
+@media(max-width:480px) { #authModal .am-form-panel { padding:32px 20px; } #authModal .am-close { top:34px; right:20px; } }

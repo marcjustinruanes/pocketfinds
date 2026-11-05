@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    @include('partials.favicon')
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Your Seller Account — PocketFinds</title>
@@ -128,41 +129,19 @@
             .license-layout { grid-template-columns:1fr; }
         }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/auth-refresh.css') }}?v={{ filemtime(public_path('css/auth-refresh.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/auth-registration.css') }}?v={{ filemtime(public_path('css/auth-registration.css')) }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Allura&family=DM+Serif+Display&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
-<body class="auth-page">
+<body class="auth-page auth-register registration-steps-page">
 <div class="auth-shell">
     <main class="auth-card">
 
-        <section class="auth-brand-panel">
-            <div class="auth-brand-content">
-                <a class="auth-logo" href="{{ url('/') }}">
-                    <span class="auth-logo-mark"><img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="PocketFinds" class="brand-logo-img"></span>
-                    <span><span class="auth-logo-pocket">Pocket</span><span class="auth-logo-finds">Finds</span></span>
-                </a>
-                <h1 class="auth-brand-title">Start selling.</h1>
-                <p class="auth-brand-text">
-                    Set up your shop, add your business details, and fill in your info across a few quick steps. Your account will be reviewed and activated by our admin team.
-                </p>
-                <ul class="auth-brand-points">
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Secure &amp; verified registration</li>
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Admin-approved accounts</li>
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Confirmation sent to your email</li>
-                </ul>
-            </div>
-            <div class="auth-brand-footer">© {{ date('Y') }} PocketFinds. All rights reserved.</div>
-        </section>
-
-        <section class="auth-form-panel">
-            <div class="auth-form-wrap">
-
-                {{-- Step indicator --}}
-                @php
-                    $regType = 'seller';
-                    $typeIcons = [
-                        'seller' => '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>',
-                    ];
-                @endphp
-                <div class="steps" id="stepIndicator">
+        <aside class="auth-brand-panel registration-progress-panel" aria-label="Registration progress">
+            @include('auth.partials.registration-logo')
+            <div class="steps" id="stepIndicator">
                     <div class="step-item seller-only" data-step="1" style="display:none">
                         <div class="step-circle">1</div>
                         <span class="step-label">Category</span>
@@ -188,6 +167,20 @@
                         <span class="step-label">Account</span>
                     </div>
                 </div>
+        </aside>
+
+        <section class="auth-form-panel">
+            <div class="auth-form-wrap">
+                @include('auth.partials.registration-back')
+
+                {{-- Step indicator --}}
+                @php
+                    $regType = 'seller';
+                    $typeIcons = [
+                        'seller' => '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>',
+                    ];
+                @endphp
+
 
                 <form id="buyerForm" method="POST" action="{{ route('register.store') }}" enctype="multipart/form-data" novalidate>
                     @csrf
@@ -213,27 +206,7 @@
                             <label class="auth-label" for="business_name">Business Name <span class="auth-required">*</span></label>
                             <input class="auth-input" id="business_name" name="business_name" type="text" placeholder="e.g. Dela Cruz Trading" required minlength="3" maxlength="30">
                         </div>
-                        <div class="auth-field" id="businessPermitField" style="margin-bottom:12px">
-                            <label class="auth-label">Business Permit <span class="auth-required">*</span></label>
-                            <div class="upload-box document-upload" id="businessPermitBox" style="cursor:pointer">
-                                <div id="businessPermitIdle" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px 8px;text-align:center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:#aaa;margin-bottom:6px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                                    <p style="margin:0 0 7px;font-size:11px;color:#888">Upload business permit</p>
-                                    <label for="business_permit_file" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border:1px solid var(--auth-primary);color:var(--auth-primary);background:#fff;border-radius:8px;font-size:11px;cursor:pointer">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                                        Upload
-                                    </label>
-                                    <span class="upload-info">Clear photo or scan · JPG, PNG, or PDF · max 5 MB</span>
-                                </div>
-                                <div id="businessPermitPreview" style="display:none;position:relative">
-                                    <img id="businessPermitImg" style="width:100%;max-height:120px;object-fit:cover;border-radius:6px" alt="Business permit">
-                                    <button type="button" class="enlarge-btn" onclick="event.stopPropagation();openLightbox('businessPermitImg')" aria-label="Enlarge business permit">⤢</button>
-                                    <button type="button" onclick="event.stopPropagation();clearBusinessPermit()" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer">✕</button>
-                                </div>
-                            </div>
-                            <input type="file" id="business_permit_file" name="business_permit_file" accept="image/*,.pdf" style="display:none" required>
-                            <span id="businessPermitError" style="display:none;color:red;font-size:11px">Please upload your business permit.</span>
-                        </div>
+                        @include('auth.partials.seller-documents')
                         <div class="category-scroll-wrap">
                             <div class="category-box-grid" id="categoryGrid"><p class="auth-muted-text">Loading categories…</p></div>
                         </div>
@@ -381,8 +354,7 @@
                                 <input class="auth-input" id="given_names" name="given_names" type="text" placeholder="Juan" required>
                             </div>
                             <div class="auth-field">
-                                <label class="auth-label" for="middle_name">Middle name</label>
-                                <input class="auth-input" id="middle_name" name="middle_name" type="text" placeholder="Santos" maxlength="50">
+                                @include('auth.partials.registration-middle-name')
                             </div>
                             <div class="auth-field">
                                 <label class="auth-label" for="suffix">Suffix</label>
@@ -397,8 +369,9 @@
                                 <label class="auth-label" for="sex">Sex <span class="auth-required">*</span></label>
                                 <select class="auth-input auth-select" id="sex" name="sex" required>
                                     <option value="" disabled selected>Select sex</option>
-                                    <option value="male">Male</option>
-                                    <option value="female">Female</option>
+                                    @foreach(\App\Enums\Sex::cases() as $sexOption)
+                                        <option value="{{ $sexOption->value }}" @selected(old('sex') === $sexOption->value)>{{ $sexOption->label() }}</option>
+                                    @endforeach
                                 </select>
                             </div>
                             <div class="auth-field">
@@ -438,6 +411,7 @@
                                     <button type="button" class="btn-send-otp" id="sendOtpBtn" onclick="sendOtp()" @if($isGoogleSignup ?? false) style="display:none" @endif>Send Code</button>
                                 </div>
                                 <span class="field-hint" id="emailHint">{{ ($isGoogleSignup ?? false) ? 'Prefilled from your Google account.' : '' }}</span>
+                                @include('auth.partials.google-email-verification')
                             </div>
                             <div class="auth-field full" id="otpField" style="display:none">
                                 <label class="auth-label" for="otp_code">Verification code <span class="auth-required">*</span></label>
@@ -613,6 +587,8 @@
 <script>const IS_GOOGLE_SIGNUP = @json($isGoogleSignup ?? false);</script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="{{ asset('js/auth.js') }}"></script>
+<script src="{{ asset('js/registration-unsaved.js') }}?v={{ filemtime(public_path('js/registration-unsaved.js')) }}"></script>
 <script src="{{ asset('js/register.js') }}?v={{ @filemtime(public_path('js/register.js')) ?: 1 }}"></script>
+<script src="{{ asset('js/registration-flow.js') }}?v={{ filemtime(public_path('js/registration-flow.js')) }}"></script>
 </body>
 </html>

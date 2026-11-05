@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" @if(auth()->check() && in_array(auth()->user()->theme, ['light','dark'])) data-theme="{{ auth()->user()->theme }}" @endif>
 <head>
+    @include('partials.favicon')
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>@yield('title', 'Admin') - Console</title>
@@ -47,4 +48,5 @@
 @stack('scripts')
 <script src="{{ asset('js/navigation.js') }}?v={{ filemtime(public_path('js/navigation.js')) }}"></script>
 </body>
+<script src="{{ asset('js/address-postal-lookup.js') }}?v={{ filemtime(public_path('js/address-postal-lookup.js')) }}" defer></script>
 </html>

@@ -73,7 +73,7 @@ $statusMeta = match($product->status) {
           </div>
           <div>
             <div class="field-label">Stock</div>
-            <div class="field-value mono" style="font-size:19px;font-weight:700;{{ $product->total_stock <= 0 ? 'color:var(--danger)' : '' }}">{{ $product->total_stock }}</div>
+            <div class="field-value mono" style="font-size:19px;font-weight:700;{{ $product->total_stock <= 0 ? 'color:var(--danger)' : '' }}">{{ (\App\Support\ProductVariationSet::combination($product->variations)['requires_stock_setup'] ?? false) ? 'Set combination stock' : $product->total_stock }}</div>
             @if($product->total_stock <= 0)<div style="font-size:11px;color:var(--danger)">Out of stock</div>@endif
           </div>
           <div><div class="field-label">Category</div><div class="field-value">{{ $product->category->name ?? '—' }}</div></div>
@@ -122,7 +122,7 @@ $statusMeta = match($product->status) {
         <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--pink-dark)">Variations</div>
         @foreach($product->variations as $group)
         <div style="margin-bottom:12px">
-          <div style="font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">{{ $group['name'] ?? 'Option' }}</div>
+          <div style="font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">{{ ($group['type'] ?? null) === 'combinations' ? implode(' / ', array_column($group['axes'], 'name')) : ($group['name'] ?? 'Option') }}</div>
           <div style="display:flex;flex-wrap:wrap;gap:8px">
             @forelse(($group['options'] ?? []) as $opt)
             <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:12.5px;background:#fff">

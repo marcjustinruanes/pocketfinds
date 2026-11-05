@@ -45,8 +45,8 @@ class User extends Authenticatable
         'last_name', 'given_names', 'middle_name', 'suffix', 'sex', 'birthday', 'age',
         'email', 'contact_no',
         'region', 'province', 'municipality', 'barangay', 'house_no', 'street',
-        'seller_type', 'tin',
-        'position', 'sec_registration_no', 'postal_code', 'service_regions',
+        'seller_type', 'tin', 'dti_certificate_file', 'sec_certificate_file', 'bir_certificate_file',
+        'position', 'representative_email', 'representative_contact_no', 'sec_registration_no', 'postal_code', 'service_regions',
         'is_on_vacation',
         'password', 'id_file', 'id_type_id', 'selfie_file', 'resume_file',
         'status', 'status_reason', 'is_admin', 'is_logistics', 'logistics_role', 'logistics_hub_id',
@@ -55,18 +55,21 @@ class User extends Authenticatable
         // rider-only fields (merged in from the now-dropped rider_profiles table)
         'vehicle_type', 'vehicle_ownership', 'vehicle_brand', 'vehicle_model', 'plate_number',
         'or_file', 'cr_file', 'license_number', 'license_expiry', 'license_file',
+        'nbi_clearance_file',
         // logistics-only settings
         'notify_new_requests', 'notify_unassigned_shipments', 'preferred_scanner',
         'theme', 'preferred_language',
     ];
 
     protected $hidden = ['password', 'remember_token', 'company_owner_key', 'id_file', 'selfie_file', 'license_file', 'or_file', 'cr_file', 'resume_file',
+        'dti_certificate_file', 'sec_certificate_file', 'bir_certificate_file', 'nbi_clearance_file',
         'id_photo_path', 'selfie_photo_path', 'license_photo_path', 'or_cr_path'];
 
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
+            'can_resubmit' => 'boolean',
             'password' => 'hashed',
             'birthday' => 'date',
             'suffix' => Suffix::class,

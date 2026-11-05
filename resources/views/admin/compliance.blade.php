@@ -51,9 +51,15 @@
                   <button type="button" class="doc-chip" style="padding:4px 8px;font-size:11px;cursor:pointer" data-doc-trigger data-src="{{ app(\App\Services\SensitiveDocuments::class)->url($seller->selfie_file) }}" data-type="{{ str_ends_with(strtolower($seller->selfie_file), '.pdf') ? 'pdf' : 'image' }}" data-title="Selfie with ID"><x-admin-icon name="eye" /> Selfie</button>
                 @endif
                 @if($seller->business_permit_file)
-                  <button type="button" class="doc-chip" style="padding:4px 8px;font-size:11px;cursor:pointer" data-doc-trigger data-src="{{ Storage::url($seller->business_permit_file) }}" data-type="{{ str_ends_with(strtolower($seller->business_permit_file), '.pdf') ? 'pdf' : 'image' }}" data-title="Business Permit"><x-admin-icon name="eye" /> Permit</button>
+                  {{-- Earlier applications retain their original permit. --}}
+                  <button type="button" class="doc-chip" style="padding:4px 8px;font-size:11px;cursor:pointer" data-doc-trigger data-src="{{ app(\App\Services\SensitiveDocuments::class)->url($seller->business_permit_file) }}" data-type="{{ str_ends_with(strtolower($seller->business_permit_file), '.pdf') ? 'pdf' : 'image' }}" data-title="Business Permit"><x-admin-icon name="eye" /> Permit</button>
                 @endif
-                @if(!$seller->id_file && !$seller->selfie_file && !$seller->business_permit_file)
+                @foreach(\App\Support\SellerDocuments::required($seller->seller_type) as $documentField)
+                  @if($seller->{$documentField})
+                  <button type="button" class="doc-chip" data-doc-trigger data-src="{{ app(\App\Services\SensitiveDocuments::class)->url($seller->{$documentField}) }}" data-type="{{ str_ends_with(strtolower($seller->{$documentField}), '.pdf') ? 'pdf' : 'image' }}" data-title="{{ \App\Support\SellerDocuments::LABELS[$documentField] }}">{{ \App\Support\SellerDocuments::LABELS[$documentField] }}</button>
+                  @endif
+                @endforeach
+                @if(!$seller->id_file && !$seller->selfie_file && !$seller->business_permit_file && !collect(\App\Support\SellerDocuments::required($seller->seller_type))->contains(fn($field) => filled($seller->{$field})))
                   <span style="color:var(--muted);font-size:12px">None</span>
                 @endif
               </div>
@@ -113,7 +119,12 @@
                   <div class="doc-grid">
                     <x-admin-doc-thumb :path="$seller->id_file" label="Government ID" />
                     <x-admin-doc-thumb :path="$seller->selfie_file" label="Selfie with ID" />
+                    @foreach(\App\Support\SellerDocuments::required($seller->seller_type) as $documentField)
+                    <x-admin-doc-thumb :path="$seller->{$documentField}" :label="\App\Support\SellerDocuments::LABELS[$documentField]" />
+                    @endforeach
+                    @if($seller->business_permit_file)
                     <x-admin-doc-thumb :path="$seller->business_permit_file" label="Business Permit" />
+                    @endif
                   </div>
                 </div>
 

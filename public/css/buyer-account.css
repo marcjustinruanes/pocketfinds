@@ -1,0 +1,70 @@
+body.buyer-account-page{background:#fff;--paper:#faf8fa;--ink:#593346}
+.buyer-account-page .account-layout{display:grid;grid-template-columns:235px minmax(0,1fr);gap:38px;align-items:start;margin-top:12px}
+.account-sidebar{position:sticky;top:105px;padding:18px 16px;background:#fcf7fa;border:1px solid #eee3e9;border-radius:12px}
+.buyer-account-page .account-sidebar .profile-summary{padding:0 0 20px;gap:11px;flex-direction:column;align-items:center;text-align:center;border-bottom:1px solid #eadfe6}
+.buyer-account-page .account-sidebar .profile-summary-avatar{width:44px!important;height:44px!important;font-size:17px!important}
+.buyer-account-page .account-sidebar .profile-summary h1{font-size:14px;margin:4px 0 5px}
+.buyer-account-page .account-sidebar .profile-summary p{font-size:10px;line-height:1.5;margin-bottom:6px}
+.buyer-account-page .account-sidebar .profile-summary-badges{font-size:10px;display:block}
+.account-sidebar .profile-summary-since{display:block;margin-top:6px}
+.buyer-account-page .account-sidebar .account-section-nav{display:flex;flex-direction:column;align-items:stretch;gap:5px;border:0;margin:14px 0;padding:0}
+.account-sidebar .account-section-nav a{padding:12px 10px;gap:11px;font-size:12px;color:#775565}
+.account-sidebar .account-section-nav a[aria-current]{background:#f8e7f0;color:#a52d6e;font-weight:650}
+.account-sidebar .account-section-nav svg{flex:none;color:#a17d90}
+.account-sidebar .account-section-nav .account-nav-label{border:0;padding:0;background:none;border-radius:0;font-size:inherit;color:inherit;flex:1}
+.account-sidebar-orders{display:flex;justify-content:space-between;border-top:1px solid #eadfe6;padding:17px 10px 2px;font-size:12px;text-decoration:none;color:#775565}
+.account-main{min-width:0}
+.account-panel-heading{margin:4px 0 24px;padding-bottom:20px;border-bottom:1px solid #eee5eb}
+.account-panel-heading h1{font-size:24px;line-height:1.25;font-weight:750;margin:0;color:#593346}
+.account-panel-heading p{font-size:12px;line-height:1.7;color:#8c7381;margin:8px 0 0}
+.buyer-account-page .account-main .dash-grid,.buyer-account-page .account-main .stack,.account-main .account-photo-section{display:contents}
+.buyer-account-page .account-main .card{margin-bottom:20px}
+.buyer-account-page .account-main .card[hidden]{display:none!important}
+.buyer-account-page .account-main .account-following{margin-top:0}
+.account-main .account-shop-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.account-main .account-refund-link{border-top:1px solid #eee5eb;margin-top:12px}
+@media(max-width:800px){.buyer-account-page .account-layout{grid-template-columns:190px minmax(0,1fr);gap:20px}.account-sidebar{padding:15px 10px}.account-main .account-shop-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){.buyer-account-page .account-layout{grid-template-columns:minmax(0,1fr);gap:22px}.account-sidebar{position:static;padding:16px}.buyer-account-page .account-sidebar .account-section-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:0}.account-sidebar-orders{margin-top:14px}.account-panel-heading h1{font-size:22px}}
+.buyer-account-page .content{max-width:1120px}
+.buyer-account-page .profile-summary{display:flex;align-items:center;gap:18px;padding:24px 0;margin-bottom:0;border:0;background:none;box-shadow:none}
+.buyer-account-page .profile-summary h1{font:750 25px/1.2 Inter,system-ui,sans-serif;color:#593346;margin:5px 0 7px}
+.buyer-account-page .profile-summary p{font-size:13px;margin:0 0 9px;color:#8c7381;overflow-wrap:anywhere}
+.account-eyebrow{font-size:11px;font-weight:600;color:#8c7381}
+.buyer-account-page .profile-summary-badges{display:flex;gap:10px;align-items:center;font-size:11px;color:#8c7381}
+.account-section-nav{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 0 18px;margin-bottom:20px;border-bottom:1px solid #eee5eb}
+.account-section-nav a{display:flex;align-items:center;gap:7px;padding:9px 13px;border-radius:7px;color:#593346;font-size:12px;font-weight:600;text-decoration:none}
+.account-section-nav a:hover,.account-section-nav a:focus-visible{background:#fcf1f7;color:#bc387f}
+.account-section-nav a span,.account-count{border:1px solid #e6bcd3;border-radius:20px;padding:2px 7px;font-size:10px;color:#bc387f;background:#fcf1f7}
+.buyer-account-page .dash-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:22px;align-items:start}
+.buyer-account-page .stack{display:flex;flex-direction:column;gap:20px;min-width:0}
+.buyer-account-page .card{border:1px solid #eadfe6;border-radius:12px;background:#fff;box-shadow:none;overflow:visible}
+.buyer-account-page .card-head{padding:18px 20px;border-bottom:1px solid #f0e8ed;gap:12px;flex-wrap:wrap}
+.buyer-account-page .card-head h2{font-size:15px;font-weight:650;color:#593346}
+.buyer-account-page .card-head p{font-size:11px;line-height:1.6;color:#8c7381;margin-top:5px}
+.buyer-account-page .card-pad{padding:20px}
+.buyer-account-page .form-grid-2{gap:14px}
+.buyer-account-page .form-row{margin-bottom:15px}
+.buyer-account-page .form-row label{font-size:12px;font-weight:550;color:#593346;margin-bottom:7px}
+.buyer-account-page .form-row :is(input,select){min-height:42px;border:1px solid #e4dae1;border-radius:7px;background:#fff;font-size:13px;color:#593346;box-sizing:border-box;width:100%;min-width:0}
+.buyer-account-page .form-row small{font-size:11px;line-height:1.6;color:#8c7381}
+.buyer-account-page .btn{font-size:12px;min-height:36px;padding:8px 13px;border-radius:7px}
+.account-photo-section .card{margin-bottom:20px!important}
+.account-photo-section form small{width:100%;font-size:11px;color:#8c7381}
+.account-photo-section input[type=file]{max-width:100%;font-size:12px}
+.buyer-account-page :is(.card-head,.account-following){scroll-margin-top:105px}
+.account-following{margin-top:24px}
+.account-shop-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.account-shop{border:1px solid #eee5eb;border-radius:9px;padding:14px;min-width:0}
+.account-shop-identity{display:flex;align-items:center;gap:11px;text-decoration:none;min-width:0;color:#593346}
+.account-shop-identity img{border-radius:10px;object-fit:cover;flex:none;background:#fcf1f7}
+.account-shop-identity span{min-width:0}
+.account-shop-identity strong{font-size:13px;display:block;overflow-wrap:anywhere}
+.account-shop-identity small{font-size:11px;color:#8c7381;display:block;margin-top:5px}
+.account-shop-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:16px}
+.account-shop-actions a,.account-shop-actions button{font:500 11px Inter,system-ui,sans-serif;color:#bc387f;background:transparent;border:0;padding:4px 0;cursor:pointer;text-decoration:none}
+.account-shop-actions button{color:#8c7381}
+.account-following-empty{grid-column:1/-1;font-size:13px;color:#8c7381;margin:8px 0}
+.account-refund-link{padding:20px 0;font-size:12px}
+.account-refund-link a{color:#593346;text-decoration:none}
+@media(max-width:800px){.buyer-account-page .dash-grid{grid-template-columns:minmax(0,1fr)}.account-shop-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.buyer-account-page .profile-summary h1{font-size:21px}.account-section-nav{gap:2px}.account-section-nav a{padding:8px 9px}.account-shop-grid{grid-template-columns:minmax(0,1fr)}.buyer-account-page .card-pad,.buyer-account-page .card-head{padding:16px}}

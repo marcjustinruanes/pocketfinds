@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    @include('partials.favicon')
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Join the Delivery Team — PocketFinds</title>
@@ -95,46 +96,32 @@
         .back-home-link:hover { color: var(--auth-primary); }
 
     </style>
+    <link rel="stylesheet" href="{{ asset('css/auth-refresh.css') }}?v={{ filemtime(public_path('css/auth-refresh.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/auth-registration.css') }}?v={{ filemtime(public_path('css/auth-registration.css')) }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Allura&family=DM+Serif+Display&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ asset('css/auth-entry-layout.css') }}?v={{ filemtime(public_path('css/auth-entry-layout.css')) }}">
 </head>
-<body class="auth-page">
+<body class="auth-page auth-register auth-entry">
 <div class="auth-shell">
     <main class="auth-card">
-        <section class="auth-brand-panel">
-            <div class="auth-brand-content">
-                <a class="auth-logo" href="{{ url('/') }}">
-                    <span class="auth-logo-mark"><img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="PocketFinds" class="brand-logo-img"></span>
-                    <span><span class="auth-logo-pocket">Pocket</span><span class="auth-logo-finds">Finds</span></span>
-                </a>
-                <h1 class="auth-brand-title">Join our delivery team.</h1>
-                <p class="auth-brand-text">
-                    Work with PocketFinds behind the scenes — pick up and deliver orders, or coordinate the sorting center. Each role has its own registration flow.
-                </p>
-                <ul class="auth-brand-points">
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Quick, guided registration</li>
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Admin-reviewed accounts</li>
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Secure &amp; verified sign-up</li>
-                </ul>
-            </div>
-            <div class="auth-brand-footer">© {{ date('Y') }} PocketFinds. All rights reserved.</div>
-        </section>
+        @include('auth.partials.brand-panel', ['signInBrand' => true])
 
         <section class="auth-form-panel">
             <div class="auth-form-wrap">
                 <a href="{{ route('register.type') }}" class="back-home-link">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
                     Back
                 </a>
 
                 <div class="page-header">
-                    <div class="page-title-row">
-                        <h2>Delivery team</h2>
-                    </div>
-                    <p>Select the role that matches what you want to do.</p>
+                    <p style="text-align:center;font-style:italic">Select the role that matches what you want to do.</p>
                 </div>
 
                 <div class="role-grid">
                     {{-- Rider --}}
-                    <button class="role-card" type="button" data-account-type="rider" data-target="{{ url('/register/method') }}">
+                    <button class="role-card" type="button" data-account-type="rider" data-target="{{ route('register.rider') }}">
                         <span class="role-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h-5l-3 6h11l-3-6z"/><path d="M12 6V3M15 6l2-3"/></svg>
                         </span>
@@ -146,9 +133,9 @@
                     </button>
 
                     {{-- Logistics Company --}}
-                    <button class="role-card" type="button" data-account-type="logistics" data-target="{{ url('/register/method') }}">
+                    <button class="role-card" type="button" data-account-type="logistics" data-target="{{ route('register.logistics') }}">
                         <span class="role-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><path d="M9 14l2 2 4-4"/></svg>
+                            @include('auth.partials.account-role-icon', ['role' => 'logistics'])
                         </span>
                         <span class="role-copy">
                             <span class="role-name">Logistics Company</span>
@@ -158,7 +145,7 @@
                     </button>
 
                     {{-- Hub Staff --}}
-                    <button class="role-card" type="button" data-account-type="logistics-staff" data-target="{{ url('/register/method') }}">
+                    <button class="role-card" type="button" data-account-type="logistics-staff" data-target="{{ route('register.logistics-staff') }}">
                         <span class="role-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
                         </span>

@@ -13,7 +13,7 @@
     const validateManagedName=value=>{
         if(!value)return null;
         if(value.length<2||value.length>50)return'Name must be between 2 and 50 characters.';
-        return/^[\p{L}-]+(\s[\p{L}-]+)*$/u.test(value)?null:'Use only letters, hyphens, and single spaces between words.';
+        return/^[\p{L}'’\-]+(\s[\p{L}'’\-]+)*$/u.test(value)?null:'Use letters, apostrophes, hyphens, and single spaces between words.';
     };
     document.querySelectorAll('input[name="given_names"],input[name="last_name"],input[name="middle_name"]').forEach(input=>{
         input.addEventListener('blur',()=>{

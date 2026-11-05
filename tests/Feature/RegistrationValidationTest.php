@@ -29,7 +29,7 @@ class RegistrationValidationTest extends TestCase
     {
         // Omit uploads so these checks never create accounts or store files.
         return $this->postJson('/register', array_replace([
-            'account_type' => 'buyer', 'auth_method' => 'manual',
+            'account_type' => 'buyer', 'auth_method' => 'manual', 'middle_name' => 'Santos',
             'given_names' => 'Niño', 'last_name' => 'Peñaflor-Reyes',
             'sex' => 'male', 'birthday' => now()->subYears(18)->toDateString(),
             'email' => 'registration.test@gmail.com', 'username' => 'buyer_test',
@@ -37,6 +37,27 @@ class RegistrationValidationTest extends TestCase
             'municipality' => 'Cebu City', 'barangay' => 'Lahug',
             'password' => 'Mamimili@2026', 'password_confirmation' => 'Mamimili@2026',
         ], $overrides))->assertStatus(422);
+    }
+
+    public function test_live_identity_check_matches_the_full_identity_only(): void
+    {
+        $identity=['given_names'=>"Ana O'Hara",'last_name'=>'Reyes','middle_name'=>'Cruz','suffix'=>null,'birthday'=>'1995-01-02','sex'=>'female'];
+        DB::table('users')->insert($identity+['email'=>'existing@gmail.com','status'=>'approved']);
+        $this->postJson('/register/check-identity',$identity)->assertOk()->assertJson(['duplicate'=>true])->assertExactJson(['duplicate'=>true]);
+        $this->postJson('/register/check-identity',array_replace($identity,['given_names'=>"  ANA O'HARA  "]))->assertOk()->assertJson(['duplicate'=>true]);
+        foreach(['given_names'=>'Maria','last_name'=>'Santos','middle_name'=>'Diaz','birthday'=>'1995-01-03','sex'=>'male','suffix'=>\App\Enums\Suffix::cases()[0]->value] as $field=>$value){
+            $this->postJson('/register/check-identity',array_replace($identity,[$field=>$value]))->assertOk()->assertJson(['duplicate'=>false]);
+        }
+        DB::table('users')->update(['status'=>'rejected']);
+        $this->postJson('/register/check-identity',$identity)->assertOk()->assertJson(['duplicate'=>false]);
+    }
+
+    public function test_live_identity_check_handles_no_middle_name_and_rejects_incomplete_input(): void
+    {
+        $identity=['given_names'=>'Ana','last_name'=>'Reyes','middle_name'=>null,'birthday'=>'1995-01-02','sex'=>'female'];
+        DB::table('users')->insert($identity+['status'=>'pending']);
+        $this->postJson('/register/check-identity',$identity+['no_middle_name'=>true])->assertOk()->assertJson(['duplicate'=>true]);
+        $this->postJson('/register/check-identity',['given_names'=>'Ana'])->assertUnprocessable()->assertJsonValidationErrors(['last_name','birthday','sex']);
     }
 
     public function test_names_and_buyer_age_boundaries(): void
@@ -53,45 +74,36 @@ class RegistrationValidationTest extends TestCase
     public function test_names_accept_only_letters_and_hyphens(): void
     {
         foreach (['given_names', 'middle_name', 'last_name'] as $field) {
-            foreach (['Niño', 'Ana-Marie', 'Muñoz', 'Maria Cristina', 'Jose-Maria dela Cruz'] as $name) {
+            foreach (['Niño', 'Ana-Marie', 'Muñoz', 'Maria Cristina', 'Jose-Maria dela Cruz', "O'Hara", 'D’Angelo'] as $name) {
                 $this->registration([$field => $name])->assertJsonMissingValidationErrors($field);
             }
-            foreach (["O'Hara", 'Jr.', 'Ana123', 'Ana@', 'Double  Space'] as $name) {
+            foreach (['Jr.', 'Ana123', 'Ana@', 'Double  Space'] as $name) {
                 $this->registration([$field => $name])->assertJsonValidationErrors($field);
             }
         }
-        $this->registration(['middle_name' => ''])->assertJsonMissingValidationErrors('middle_name');
+        $this->registration(['middle_name' => ''])->assertJsonValidationErrors('middle_name');
+        $this->registration(['middle_name' => '', 'no_middle_name' => 1])->assertJsonMissingValidationErrors('middle_name');
     }
 
     public function test_license_number_format_is_enforced_on_public_registration(): void
     {
-        // Use a buyer baseline and test the regex directly — the public rider path
-        // requires vehicle_types table and file uploads not present in this test's schema.
-        $nameRegex = '/^[A-Z]\d{2}-\d{2}-\d{6}$/D';
-        foreach (['N01-23-456789', 'A00-00-000000', 'Z99-99-999999'] as $valid) {
-            $this->assertTrue((bool) preg_match($nameRegex, $valid), "Expected valid: {$valid}");
+        foreach (['N01-23-456789', 'A00-00-000000', 'Z99-99-999999','n0123456789'] as $valid) {
+            $this->registration(['account_type'=>'rider','license_number'=>$valid])->assertJsonMissingValidationErrors('license_number');
         }
-        foreach (['N01-23-45678', 'N01-23-4567890', '101-23-456789', 'N0123456789X', 'n01-23-456789', 'N01-23-45678X', '', 'ABC-12-345678'] as $invalid) {
-            $this->assertFalse((bool) preg_match($nameRegex, $invalid), "Expected invalid: {$invalid}");
+        foreach (['N01-23-45678', 'N01-23-4567890', '101-23-456789', 'N0123456789X', 'AB01-23-456789','AB0123456789','ABC01-23-456789', 'N01-23-45678X', '', 'ABC-12-345678'] as $invalid) {
+            $this->registration(['account_type'=>'rider','license_number'=>$invalid])->assertJsonValidationErrors('license_number');
         }
     }
 
     public function test_license_number_format_is_enforced_on_managed_registration(): void
     {
-        // The managed path validates license_number inside PersonnelApplication::rules(),
-        // which is called in the $onboarding block after the outer validate() passes.
-        // Test the regex directly to confirm the rule is consistent with the workbook.
-        $nameRegex = '/^[A-Z]\d{2}-\d{2}-\d{6}$/D';
+        $rules=app(\App\Services\PersonnelApplication::class)->rules('rider','company');
         foreach (['N01-23-456789', 'A00-00-000000'] as $valid) {
-            $this->assertTrue((bool) preg_match($nameRegex, $valid), "Expected valid: {$valid}");
+            $this->assertTrue(validator(['license_number'=>$valid],['license_number'=>$rules['license_number']])->passes());
         }
-        foreach (['N01-23-45678', '101-23-456789', 'N0123456789X', 'n01-23-456789'] as $invalid) {
-            $this->assertFalse((bool) preg_match($nameRegex, $invalid), "Expected invalid: {$invalid}");
+        foreach (['N01-23-45678', '101-23-456789', 'N0123456789X', 'n01-23-456789','AB01-23-456789'] as $invalid) {
+            $this->assertFalse(validator(['license_number'=>$invalid],['license_number'=>$rules['license_number']])->passes());
         }
-        // Confirm the same regex string is used in PersonnelApplication::rules()
-        $reflection = new \ReflectionClass(\App\Services\PersonnelApplication::class);
-        $source = file_get_contents($reflection->getFileName());
-        $this->assertStringContainsString('[A-Z]\\d{2}-\\d{2}-\\d{6}', $source);
     }
 
     public function test_multi_word_names_accepted_on_public_registration(): void
@@ -111,10 +123,44 @@ class RegistrationValidationTest extends TestCase
     {
         $rider = ['account_type' => 'rider', 'business_name' => '', 'license_number' => 'N01-23-456789'];
         $this->registration(array_replace($rider, ['birthday' => now()->subYears(18)->addDay()->toDateString()]))->assertJsonValidationErrors('birthday');
-        foreach ([today(), today()->addDay()] as $expiry) {
+        foreach ([today()->addMonthNoOverflow(), today()->addMonthNoOverflow()->addDay()] as $expiry) {
             $this->registration(array_replace($rider, ['license_expiry' => $expiry->toDateString()]))->assertJsonMissingValidationErrors(['birthday', 'license_expiry']);
         }
-        $this->registration(array_replace($rider, ['license_expiry' => today()->subDay()->toDateString()]))->assertJsonValidationErrors('license_expiry');
+        foreach([today()->subDay(),today(),today()->addMonthNoOverflow()->subDay()] as $expiry){
+            $this->registration(array_replace($rider, ['license_expiry' => $expiry->toDateString()]))->assertJsonValidationErrors('license_expiry');
+        }
+    }
+
+    public function test_license_availability_requires_full_format_and_matches_existing_numbers(): void
+    {
+        foreach(['N','N01-23','invalid','12345678901'] as $number)$this->getJson('/register/check-license?'.http_build_query(['license_number'=>$number]))->assertOk()->assertJson(['available'=>false,'valid'=>false]);
+        $this->getJson('/register/check-license?license_number=n0123456789')->assertOk()->assertJson(['available'=>true,'valid'=>true]);
+        DB::table('users')->insert(['license_number'=>'n0123456789','status'=>'pending']);
+        $this->getJson('/register/check-license?license_number=N01-23-456789')->assertOk()->assertJson(['available'=>false,'valid'=>true]);
+        DB::table('users')->update(['status'=>'rejected']);
+        $this->getJson('/register/check-license?license_number=N01-23-456789')->assertOk()->assertJson(['available'=>true,'valid'=>true]);
+        $this->assertSame('N01-23-456789',\App\Support\DriverLicenseNumber::normalize('n01 23 456789'));
+        $this->getJson('/register/check-license?license_number=ab0123456789')->assertOk()->assertJson(['available'=>false,'valid'=>false]);
+        $this->registration(['account_type'=>'rider','license_number'=>'AC0123456789'])->assertJsonValidationErrors('license_number');
+    }
+
+    public function test_resume_is_pdf_only_and_shop_logo_requires_an_image(): void
+    {
+        $image=fn()=>\Illuminate\Http\UploadedFile::fake()->createWithContent('photo.png',base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aL1kAAAAASUVORK5CYII='));
+        $pdf=fn()=>\Illuminate\Http\UploadedFile::fake()->createWithContent('resume.pdf',"%PDF-1.4\nResume");
+        $this->registration(['account_type'=>'rider','resume_file'=>$image()])->assertJsonValidationErrors('resume_file');
+        $this->registration(['account_type'=>'rider','resume_file'=>$pdf()])->assertJsonMissingValidationErrors('resume_file');
+        $this->registration(['account_type'=>'seller','shop_logo'=>$pdf()])->assertJsonValidationErrors('shop_logo');
+        $this->registration(['account_type'=>'seller','shop_logo'=>$image()])->assertJsonMissingValidationErrors('shop_logo');
+    }
+
+    public function test_rider_expiry_one_month_boundary_handles_short_months(): void
+    {
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-01-31 12:00:00'));
+        $rider=['account_type'=>'rider','business_name'=>'','license_number'=>'N01-23-456789'];
+        $this->registration($rider+['license_expiry'=>'2026-02-27'])->assertJsonValidationErrors('license_expiry');
+        $this->registration($rider+['license_expiry'=>'2026-02-28'])->assertJsonMissingValidationErrors('license_expiry');
+        $this->travelBack();
     }
 
     public function test_managed_rider_validation_matches_registration_rules(): void
@@ -124,7 +170,7 @@ class RegistrationValidationTest extends TestCase
             $request = \Illuminate\Http\Request::create('/test', 'POST', array_replace([
                 'role' => 'rider', 'given_names' => 'Niño', 'last_name' => 'Reyes',
                 'birthday' => now()->subYears(18)->toDateString(), 'contact_no' => '9171234567',
-                'license_expiry' => today()->toDateString(),
+                'license_expiry' => today()->addMonthNoOverflow()->toDateString(),
             ], $overrides));
             try {
                 // Other required fields are deliberately absent, preventing writes.
@@ -143,7 +189,8 @@ class RegistrationValidationTest extends TestCase
         }
         $this->assertArrayHasKey('birthday', $validate(['birthday' => now()->subYears(18)->addDay()->toDateString()]));
         $this->assertArrayHasKey('license_expiry', $validate(['license_expiry' => today()->subDay()->toDateString()]));
-        $this->assertArrayNotHasKey('license_expiry', $validate(['license_expiry' => today()->addDay()->toDateString()]));
+        $this->assertArrayHasKey('license_expiry', $validate(['license_expiry' => today()->addMonthNoOverflow()->subDay()->toDateString()]));
+        $this->assertArrayNotHasKey('license_expiry', $validate(['license_expiry' => today()->addMonthNoOverflow()->toDateString()]));
         DB::table('users')->insert(['contact_no' => '09171234567']);
         $this->assertArrayHasKey('contact_no', $validate());
     }
@@ -200,31 +247,34 @@ class RegistrationValidationTest extends TestCase
         }
         $this->registration(array_replace($seller, ['seller_type' => 'unknown']))->assertJsonValidationErrors('seller_type');
         $this->registration(array_replace($seller, ['seller_type' => '']))->assertJsonValidationErrors('seller_type');
-        foreach (['12345678900', '1234567890001', '123-456-78A-000', '123456-789000'] as $tin) {
+        foreach (['12345678900', '1234567890001', '123-456-78A-000'] as $tin) {
             $this->registration(array_replace($seller, ['tin' => $tin]))->assertJsonValidationErrors('tin');
         }
         $this->registration(array_replace($seller, ['region' => '']))->assertJsonValidationErrors('region');
+        $this->registration(array_replace($seller, ['tin' => '123-456-789-000']))->assertJsonMissingValidationErrors('tin');
         DB::table('users')->insert(['tin' => '123456789000', 'status' => 'approved']);
         $this->registration($seller)->assertJsonValidationErrors('tin');
     }
 
     public function test_logistics_company_fields_are_required_and_validated(): void
     {
+        $this->registration(['account_type'=>'logistics','representative_email'=>'invalid','representative_contact_no'=>'123'])->assertJsonValidationErrors(['representative_email','representative_contact_no']);
         $logistics = ['account_type' => 'logistics', 'business_name' => 'Test Logistics',
             'tin' => '234567890000', 'sec_registration_no' => 'CS202012345',
             'position' => 'Operations Manager', 'postal_code' => '0123',
             'hub_areas' => json_encode([['region' => 'Central Visayas', 'province' => 'Cebu', 'municipality' => 'Cebu City']])];
         $this->registration($logistics)->assertJsonMissingValidationErrors(['tin', 'sec_registration_no', 'position', 'postal_code', 'hub_areas']);
-        foreach (['tin', 'sec_registration_no', 'position', 'postal_code'] as $field) {
+        foreach (['tin', 'sec_registration_no', 'position'] as $field) {
             $this->registration(array_replace($logistics, [$field => '']))->assertJsonValidationErrors($field);
         }
+        $this->registration(array_replace($logistics, ['postal_code'=>'']))->assertJsonMissingValidationErrors('postal_code');
         foreach (['CS20201234', '202012345CS', 'CS2020-12345', '12345678901'] as $sec) {
             $this->registration(array_replace($logistics, ['sec_registration_no' => $sec]))->assertJsonValidationErrors('sec_registration_no');
         }
         foreach (['160', '16030', '16A3'] as $postal) {
             $this->registration(array_replace($logistics, ['postal_code' => $postal]))->assertJsonValidationErrors('postal_code');
         }
-        $this->registration(array_replace($logistics, ['tin' => '234-567-890-000']))->assertJsonValidationErrors('tin');
+        $this->registration(array_replace($logistics, ['tin' => '234-567-890-000']))->assertJsonMissingValidationErrors('tin');
         $this->registration(array_replace($logistics, ['hub_areas' => json_encode([['province' => 'Cebu', 'municipality' => 'Cebu City']])]))->assertJsonValidationErrors('hub_areas');
         DB::table('users')->insert(['sec_registration_no' => 'CS202012345', 'tin' => '234567890000', 'status' => 'approved']);
         $this->registration($logistics)->assertJsonValidationErrors(['sec_registration_no', 'tin']);
@@ -237,7 +287,7 @@ class RegistrationValidationTest extends TestCase
         $this->post('/login', ['email' => 'rejected@gmail.com', 'password' => 'wrong'])
             ->assertSessionHasErrors(['email' => 'Invalid credentials.']);
         $this->post('/login', ['email' => 'rejected@gmail.com', 'password' => 'Test@2026'])
-            ->assertSessionHasErrors(['email' => 'Your account application was rejected. Reason: Business permit is unreadable.']);
+            ->assertSessionHasErrors(['email' => 'Your application was rejected. Editing and resubmission are not permitted.']);
         $this->assertGuest();
     }
 
@@ -268,13 +318,13 @@ class RegistrationValidationTest extends TestCase
         };
         // Valid multi-word Filipino names — these were blocked by the old broken pattern
         foreach (['given_names', 'last_name', 'middle_name'] as $field) {
-            foreach (['Maria Cristina', 'Jose-Maria dela Cruz', 'Niño Aquino', 'Ana-Marie Santos'] as $name) {
+            foreach (['Maria Cristina', 'Jose-Maria dela Cruz', 'Niño Aquino', 'Ana-Marie Santos', "O'Hara", 'D’Angelo'] as $name) {
                 $this->assertArrayNotHasKey($field, $validate($field, $name), "'{$name}' should be valid for {$field}");
             }
         }
         // Invalid: numbers, symbols, double spaces — must still be rejected
         foreach (['given_names', 'last_name', 'middle_name'] as $field) {
-            foreach (["O'Hara", 'Ana123', 'Ana@', 'Double  Space'] as $name) {
+            foreach (['Jr.', 'Ana123', 'Ana@', 'Double  Space'] as $name) {
                 $this->assertArrayHasKey($field, $validate($field, $name), "'{$name}' should be invalid for {$field}");
             }
         }
@@ -288,28 +338,28 @@ class RegistrationValidationTest extends TestCase
     public function test_def001_frontend_name_regex_matches_backend(): void
     {
         // The backend regex used in both RegisterController and LogisticsManagementController
-        $backendRegex = '/^[\p{L}-]+(\s[\p{L}-]+)*$/u';
+        $backendRegex = "/^[\\p{L}'’\\-]+(\\s[\\p{L}'’\\-]+)*$/u";
 
         // Confirm the fixed JS regex string is present in role-account-details.js
         $jsSource = file_get_contents(public_path('js/role-account-details.js'));
-        $this->assertStringContainsString('/^[\\p{L}-]+(\\s[\\p{L}-]+)*$/u', $jsSource,
+        $this->assertStringContainsString("/^[\\p{L}'’\\-]+(\\s[\\p{L}'’\\-]+)*$/u", $jsSource,
             'role-account-details.js must use the Unicode-aware name regex matching the backend');
         // Confirm the broken pattern attribute assignment is gone
         $this->assertStringNotContainsString("input.pattern='[\\p{L}\\-]+'", $jsSource,
             'The broken HTML pattern attribute must be removed from role-account-details.js');
 
         // Verify the regex itself accepts and rejects the right values
-        foreach (['Maria Cristina', 'Jose-Maria dela Cruz', 'Niño', 'Ana-Marie', 'Muñoz'] as $valid) {
+        foreach (['Maria Cristina', 'Jose-Maria dela Cruz', 'Niño', 'Ana-Marie', 'Muñoz', "O'Hara", 'D’Angelo'] as $valid) {
             $this->assertSame(1, preg_match($backendRegex, $valid), "Expected valid: {$valid}");
         }
-        foreach (["O'Hara", 'Ana123', 'Double  Space', 'Ana@'] as $invalid) {
+        foreach (['Jr.', 'Ana123', 'Double  Space', 'Ana@'] as $invalid) {
             $this->assertSame(0, preg_match($backendRegex, $invalid), "Expected invalid: {$invalid}");
         }
     }
 
     /**
      * DEF-002 regression: the managed-form JS had no license number format validation.
-     * The fix adds setCustomValidity() using /^[A-Z]\d{2}-\d{2}-\d{6}$/ matching the backend.
+     * Managed forms must accept the same one-letter prefix as registration.
      * This test confirms the backend regex and the JS regex are identical strings.
      */
     public function test_def002_frontend_license_regex_matches_backend(): void
@@ -325,7 +375,7 @@ class RegistrationValidationTest extends TestCase
         $source = file_get_contents($reflection->getFileName());
         $this->assertStringContainsString('[A-Z]\\d{2}-\\d{2}-\\d{6}', $source);
 
-        // Valid LTO formats
+        // Supported formats
         foreach (['N01-23-456789', 'A00-00-000000', 'Z99-99-999999'] as $valid) {
             $this->assertSame(1, preg_match($backendRegex, $valid), "Expected valid: {$valid}");
         }

@@ -12,13 +12,11 @@
         <strong>{{ $addr->label ?: 'Address' }}</strong>{{ $addr->is_default ? ' · Default' : '' }}<br>
         {{ $addr->recipient_name }}{{ $addr->contact_no ? ' · ' . $addr->contact_no : '' }}<br>
         <span style="color:var(--muted)">{{ $addr->full_address }}</span>
-        @if(!filled($addr->region)||!preg_match('/^[0-9]{4}$/D',(string)$addr->postal_code))
-        <br><strong style="color:var(--danger,#a12236)">Region and four-digit postal code are required for checkout.</strong>
+        @if(!filled($addr->region))
+        <br><strong style="color:var(--danger,#a12236)">Region is required for checkout.</strong>
         <br><a href="{{ route('buyer.account') }}#address-information">Update account address</a><span> or add a complete delivery address.</span>
         @endif
-        @if($addr->is_default)
-          <br><span style="color:var(--muted);font-size:11px">Set from your account address — change it via an account update request</span>
-        @endif
+        <br><button type="button" class="btn btn-outline" data-edit-delivery-address="{{ $addr->id }}" style="font-size:11px;padding:4px 8px">Edit</button>
       </span>
       @unless($addr->is_default)
         <button type="button" class="icon-btn" data-delete-address="{{ $addr->id }}" aria-label="Remove {{ $addr->label ?: 'saved' }} address" title="Remove address" style="width:24px;height:24px;flex:none">
@@ -26,7 +24,22 @@
         </button>
       @endunless
     </label>
-    @if(!filled($addr->region)||!preg_match('/^[0-9]{4}$/D',(string)$addr->postal_code))
+    <div id="editDeliveryAddress{{ $addr->id }}" hidden>
+      <form class="delivery-address-editor" method="POST" action="{{ route('buyer.addresses.update',$addr) }}" style="padding:14px;border:1px solid var(--border);border-radius:9px">
+        @csrf @method('PATCH')
+        <div class="address-form-grid">
+        @foreach(['label'=>'Label','recipient_name'=>'Recipient name','contact_no'=>'Mobile number','region'=>'Region','province'=>'Province','municipality'=>'City / municipality','barangay'=>'Barangay','postal_code'=>'Postal code','house_no'=>'House / unit','street'=>'Street'] as $field=>$label)
+         <label>{{ $label }}<input name="{{ $field }}" value="{{ $addr->$field }}" @required(!in_array($field,['label','house_no','street','postal_code'])) @if($field==='region') data-address-edit-region @endif></label>
+        @endforeach
+        </div>
+        <button class="btn btn-primary">Save delivery address</button>
+        <button class="btn btn-outline" type="button" data-edit-delivery-address="{{ $addr->id }}">Cancel</button>
+      </form>
+    </div>
+    @unless($addr->is_default)
+    <form method="POST" action="{{ route('buyer.addresses.default',$addr) }}">@csrf<button class="btn btn-outline" style="font-size:11px;padding:4px 8px">Make default</button></form>
+    @endunless
+    @if(!filled($addr->region))
     <form data-complete-delivery-address action="{{ route('buyer.addresses.complete',$addr) }}" method="POST" style="border:1px solid var(--border);border-radius:9px;padding:12px">
       @csrf @method('PATCH')
       <strong>Complete missing delivery details</strong>
@@ -36,7 +49,7 @@
       </div>
       <div class="form-row">
       @if(preg_match('/^[0-9]{4}$/D',(string)$addr->postal_code))<input type="hidden" name="postal_code" value="{{ $addr->postal_code }}"><span>Postal code: {{ $addr->postal_code }}</span>
-      @else<label>Postal code<input class="auth-input" type="text" name="postal_code" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" required placeholder="4-digit postal code" autocomplete="postal-code"></label>@endif
+      @else<input type="hidden" name="postal_code" value="">@endif
       </div>
       <p data-completion-feedback role="status" style="font-size:12px"></p><button class="btn btn-primary" type="submit">Save Delivery Details</button>
     </form>
@@ -47,8 +60,13 @@
 </div>
 
 @once<script src="{{ asset('js/buyer-address-completion.js') }}?v={{ filemtime(public_path('js/buyer-address-completion.js')) }}"></script>@endonce
+@once<script src="{{ asset('js/buyer-address-edit.js') }}?v={{ filemtime(public_path('js/buyer-address-edit.js')) }}"></script>@endonce
 
 <style>
+.delivery-address-editor label{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:12px}
+.delivery-address-editor input,.delivery-address-editor select{box-sizing:border-box;width:100%;min-width:0;padding:10px;border:1px solid var(--border);border-radius:8px;font:inherit;background:#fff;color:var(--ink)}
+.delivery-address-editor .address-form-grid{margin-bottom:14px}
+.delivery-address-editor [role=alert]{color:var(--danger)}
 .buyer-pages .address-modal { z-index: 240; padding: 16px; }
 .buyer-pages .address-modal.open { display: flex; align-items: center; justify-content: center; }
 .address-modal [hidden] { display: none !important; }
@@ -85,7 +103,7 @@
       <div class="form-row"><label for="addrRecipientName">Recipient name *</label><input class="auth-input" id="addrRecipientName" maxlength="150" autocomplete="name" required></div>
       <div class="form-row address-form-wide"><label for="addrContactNo">Mobile number *</label><div style="display:flex;align-items:center;gap:8px"><span>+63</span><input class="auth-input" id="addrContactNo" type="tel" placeholder="9XXXXXXXXX" maxlength="10" inputmode="numeric" pattern="9[0-9]{9}" autocomplete="tel-national" required aria-describedby="addrContactHint"></div><p class="address-hint" id="addrContactHint">Enter 10 digits starting with 9.</p></div>
       <div class="form-row"><label for="addrRegion">Region *</label><select id="addrRegion" required><option value="">Loading regions…</option></select></div>
-      <div class="form-row"><label for="addrPostalCode">Postal code *</label><input id="addrPostalCode" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" required></div>
+      <div class="form-row"><label for="addrPostalCode">Postal code</label><input id="addrPostalCode" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" readonly></div>
       <div class="form-row"><label for="addrProvince">Province *</label><select class="select" id="addrProvince" required><option value="" disabled selected>Loading provinces…</option></select></div>
       <div class="form-row"><label for="addrMunicipality">City / municipality *</label><select class="select" id="addrMunicipality" disabled required><option value="" disabled selected>Select province first</option></select></div>
       <div class="form-row address-form-wide"><label for="addrBarangay">Barangay *</label><select class="select" id="addrBarangay" disabled required><option value="" disabled selected>Select municipality first</option></select></div>

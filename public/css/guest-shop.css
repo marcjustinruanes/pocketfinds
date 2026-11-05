@@ -21,7 +21,7 @@
 .guest-shop-page .gs-product-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
 .guest-shop-page .pf-product-card { min-width: 0; border-radius: 8px; }
 .guest-shop-page .pf-product-media { background: #fff; }
-.guest-shop-page .pf-product-media img { object-fit: contain; }
+.guest-shop-page .pf-product-media img { object-fit: cover; object-position: center; }
 .guest-shop-page .pf-product-name { -webkit-line-clamp: 2; min-height: 2.7em; }
 .guest-shop-page .gs-empty { grid-column: 1 / -1; padding: 48px 0; text-align: center; color: var(--muted); }
 .guest-shop-page .gs-empty h2 { font-size: 18px; color: var(--text); }

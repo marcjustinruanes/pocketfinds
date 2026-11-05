@@ -47,12 +47,16 @@ class AccountUpdateRequest extends Model
         $data = $this->allChanges();
         if ($data) {
             foreach (array_keys($this->requested_documents ?? []) as $key) {
+                if (array_key_exists($key, \App\Support\SellerDocuments::LABELS)) {
+                    app(MediaLifecycle::class)->deleteAfterCommit($this->user->getAttribute($key), 'sensitive_documents');
+                }
                 if (in_array($key, ['id_file', 'selfie_file', 'license_file', 'business_permit_file', 'or_file', 'cr_file', 'resume_file', 'company_logo'], true)) {
                     app(MediaLifecycle::class)->deleteAfterCommit($this->user->getAttribute($key), 'public');
                 }
             }
             $this->user->update($data);
-            $this->syncBuyerDefaultAddress($data);
+            // Delivery addresses are managed independently; approved account changes
+            // must not overwrite a buyer's edited or newly chosen default address.
         }
     }
 

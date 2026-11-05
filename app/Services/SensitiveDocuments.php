@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\Storage;
 
 class SensitiveDocuments
 {
-    public const DIRECTORIES = ['id_files', 'selfie_files', 'license_files', 'vehicle_docs', 'or_files', 'cr_files', 'resume_files'];
-    public const FIELDS = ['id_file', 'selfie_file', 'license_file', 'or_file', 'cr_file', 'resume_file', 'id_photo_path', 'selfie_photo_path', 'license_photo_path', 'or_cr_path'];
+    public const DIRECTORIES = ['id_files', 'selfie_files', 'license_files', 'vehicle_docs', 'or_files', 'cr_files', 'resume_files', 'seller_documents', 'nbi_clearances', 'business_certificates', 'business_permits'];
+    public const FIELDS = ['id_file', 'selfie_file', 'license_file', 'or_file', 'cr_file', 'resume_file', 'id_photo_path', 'selfie_photo_path', 'license_photo_path', 'or_cr_path', 'dti_certificate_file', 'sec_certificate_file', 'bir_certificate_file', 'nbi_clearance_file', 'business_permit_file'];
 
     public static function safe(string $path): bool
     {

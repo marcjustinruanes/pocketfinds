@@ -33,6 +33,7 @@
             @for($s=1;$s<=5;$s++)<span style="color:{{ $s<=$review->rating ? '#f59e0b' : 'var(--border)' }};font-size:15px">★</span>@endfor
           </div>
           @if($review->comment)<p style="margin:0 0 10px;font-size:13px;color:var(--text)">{{ $review->comment }}</p>@endif
+          @if($review->variationLabel())<p style="font-size:12px;color:var(--muted)">{{ $review->variationLabel() }}</p>@endif
           @if($review->photos)<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">@foreach($review->photos as $photo)<a href="{{ Storage::disk('public')->url($photo) }}" target="_blank" rel="noopener"><img src="{{ Storage::disk('public')->url($photo) }}" alt="Buyer review photo" width="72" height="72" style="object-fit:cover;border-radius:8px"></a>@endforeach</div>@endif
           @if($review->edited_at)<small>Buyer edited this review once.</small>@endif
           @if($review->seller_reply)

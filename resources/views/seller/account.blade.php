@@ -4,6 +4,8 @@
 @section('page-sub', 'Manage your seller profile and settings')
 
 @section('content')
+@include('account.partials.buyer-module-security')
+<p><a href="{{ route('seller.shop-categories.index') }}">Shop categories</a> · <a href="{{ route('account.cancellation-refunds') }}">Cancellation refunds</a></p>
 @include('commerce.messages')
 @php $u = $seller; @endphp
 
@@ -33,9 +35,7 @@
       <div class="card-head"><div><h2>Profile Information</h2><p>Update your personal details</p></div></div>
       <div class="card-pad">
         <div style="display:flex;align-items:center;gap:16px;margin-bottom:22px">
-          <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(145deg,var(--pink),#7a2a56);display:grid;place-items:center;color:#fff;font-weight:700;font-size:22px;flex:none">
-            {{ strtoupper(substr($u->given_names, 0, 1)) }}
-          </div>
+          <x-user-avatar :user="$u" size="64" />
           <div>
             <div style="font-size:16px;font-weight:700">{{ $u->given_names }} {{ $u->last_name }}</div>
             <div style="font-size:12px;color:var(--muted)">{{ $u->email }}</div>
@@ -53,7 +53,7 @@
           </div>
           <div class="form-grid-2">
             <div class="form-row"><label>Middle Name</label><input type="text" name="middle_name" value="{{ old('middle_name', $u->middle_name) }}"></div>
-            <div class="form-row"><label>Phone Number</label><input type="text" name="contact_no" value="{{ old('contact_no', $u->contact_no) }}" placeholder="09XXXXXXXXX" maxlength="11"></div>
+            <div class="form-row"><label>Phone Number</label><input type="tel" name="contact_no" value="{{ old('contact_no',$u->contact_no) }}" placeholder="9XXXXXXXXX" inputmode="numeric"></div>
           </div>
           <div class="form-grid-2">
             <div class="form-row">
@@ -232,7 +232,13 @@
               </button>
             </div>
           @endif
-          <div class="form-row"><label>{{ $u->business_permit_file ? 'Replace' : 'Upload' }} Business Permit <span style="color:var(--muted);font-weight:400">(optional)</span></label><input type="file" name="business_permit_file" accept="image/*,.pdf" style="padding:6px"></div>
+          @foreach(\App\Support\SellerDocuments::required($u->seller_type) as $documentField)
+          @php($documentLabel = \App\Support\SellerDocuments::LABELS[$documentField])
+          @if($u->{$documentField})
+          <button type="button" class="doc-preview-btn" data-src="{{ app(\App\Services\SensitiveDocuments::class)->url($u->{$documentField}) }}" data-type="{{ str_ends_with(strtolower($u->{$documentField}), '.pdf') ? 'pdf' : 'image' }}">View {{ $documentLabel }}</button>
+          @endif
+          <div class="form-row"><label>{{ $u->{$documentField} ? 'Replace' : 'Upload' }} {{ $documentLabel }}</label><input type="file" name="{{ $documentField }}" accept=".jpg,.jpeg,.png,.pdf" style="padding:6px"></div>
+          @endforeach
 
           <button type="submit" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:7px">
             @include('seller.partials.icon',['name'=>'send','size'=>14]) Submit for Review
@@ -292,7 +298,6 @@
           ['Shop Category',  $u->category_id ? ($categories->firstWhere('id', $u->category_id)->name ?? 'Not provided') : 'Not provided'],
           ['ID Type',        $u->id_type_id ? ($idTypes->firstWhere('id', $u->id_type_id)->name ?? 'Not provided') : 'Not provided'],
           ['ID File',        $u->id_file ? '<button type="button" class="doc-preview-btn" data-src="'.app(\App\Services\SensitiveDocuments::class)->url($u->id_file).'" data-type="'.(in_array(strtolower(pathinfo($u->id_file,PATHINFO_EXTENSION)),['jpg','jpeg','png'])?'image':'pdf').'" style="background:none;border:none;padding:0;color:var(--pink);font-weight:600;cursor:pointer;font-size:13px">View File</button>' : 'Not provided'],
-          ['Business Permit',$u->business_permit_file ? '<button type="button" class="doc-preview-btn" data-src="'.asset('storage/'.$u->business_permit_file).'" data-type="'.(in_array(strtolower(pathinfo($u->business_permit_file,PATHINFO_EXTENSION)),['jpg','jpeg','png'])?'image':'pdf').'" style="background:none;border:none;padding:0;color:var(--pink);font-weight:600;cursor:pointer;font-size:13px">View File</button>' : 'Not provided'],
         ] as [$label, $val])
         <div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border)">
           <span style="color:var(--muted)">{{ $label }}</span>

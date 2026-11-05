@@ -1287,8 +1287,12 @@ class LogisticsController extends Controller
             abort_unless($actor->status==='approved' && $actor->account_type==='logistics' && $actor->is_logistics && $actor->isLogisticsAdmin() && !$actor->is_admin && $actor->business_name===$peek->business_name,403);
             $rider=$this->rider($id);
             $from=match($action){'reject'=>'pending','suspend'=>'approved','activate'=>'suspended'};
-            abort_unless($rider->status===$from,422,'This personnel decision no longer applies. Refresh.');
+            abort_unless($rider->status===$from || ($action==='reject' && $rider->status==='rejected'),422,'This personnel decision no longer applies. Refresh.');
             $reason=app(\App\Services\PersonnelReasons::class)->resolve($request,$action);
+            if ($action==='reject') {
+                app(\App\Services\ApplicationRejection::class)->reject($rider,$reason,$request);
+                return;
+            }
             $rider->hiringDecision=['action'=>$action,'reason'=>$reason];
             $rider->update(['status'=>match($action){'reject'=>'rejected','suspend'=>'suspended','activate'=>'approved'},'status_reason'=>$action==='activate'?null:$reason]);
             DB::afterCommit(function()use($rider,$action){
@@ -1425,10 +1429,9 @@ class LogisticsController extends Controller
     public function rejectStaff(Request $request, $id)
     {
         $staff = $this->staffMember($id);
-        abort_unless(in_array($staff->status, ['pending', 'interview'], true), 422, 'Only an application awaiting review can be rejected.');
+        abort_unless(in_array($staff->status, ['pending', 'interview', 'rejected'], true), 422, 'Only an application awaiting review can be rejected.');
         $reason = app(\App\Services\PersonnelReasons::class)->resolve($request,$staff->status==='approved'?'suspend':'reject');
-        $staff->update(['status' => 'rejected', 'status_reason' => $reason]);
-        $this->notifyStaffStatus($staff, 'rejected', $reason);
+        app(\App\Services\ApplicationRejection::class)->reject($staff,$reason,$request);
 
         return back()->with('success', 'Hub staff application rejected.');
     }
@@ -1808,7 +1811,7 @@ class LogisticsController extends Controller
     {
         $request->validate([
             'region' => 'required|string|max:255',
-            'postal_code' => ['required','regex:/^[0-9]{4}$/D'],
+            'postal_code' => ['nullable','regex:/^[0-9]{4}$/D'],
             'province' => 'required|string|max:255',
             'municipality' => 'required|string|max:255',
             'barangay' => 'required|string|max:255',

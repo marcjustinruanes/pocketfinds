@@ -534,7 +534,7 @@ class RiderController extends Controller
     {
         $request->validate([
             'region' => 'required|string|max:255',
-            'postal_code' => ['required','regex:/^[0-9]{4}$/D'],
+            'postal_code' => ['nullable','regex:/^[0-9]{4}$/D'],
             'province' => 'required|string|max:255',
             'municipality' => 'required|string|max:255',
             'barangay' => 'required|string|max:255',

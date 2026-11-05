@@ -51,6 +51,7 @@ class LogisticsManagementController extends LogisticsController
     {
         $role = $account ? ($account->account_type === 'rider' ? 'rider' : 'hub_staff') : $request->input('role');
         $minimumAge = $role === 'rider' ? 18 : 16;
+        $emailActivation = $role === 'rider' && (!$account ? $request->boolean('send_activation') : app(\App\Services\RiderActivation::class)->pending($account));
         $onboarding = !$account || in_array($account->status,['pending','interview'],true);
         $application=app(\App\Services\PersonnelApplication::class);$application->normalize($request);
         if (is_string($request->input('contact_no'))) {
@@ -60,23 +61,23 @@ class LogisticsManagementController extends LogisticsController
             'role' => [$account ? 'sometimes' : 'required', Rule::in(['rider', 'hub_staff'])],
             'username' => ['required', 'alpha_dash', 'max:60', Rule::unique('users', 'username')->ignore($account?->id)],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($account?->id)],
-            'given_names' => ['required', 'string', 'min:2', 'max:50', 'regex:/^[\p{L}-]+(\s[\p{L}-]+)*$/u'],
-            'last_name' => ['required', 'string', 'min:2', 'max:50', 'regex:/^[\p{L}-]+(\s[\p{L}-]+)*$/u'],
-            'middle_name' => ['nullable', 'string', 'min:2', 'max:50', 'regex:/^[\p{L}-]+(\s[\p{L}-]+)*$/u'],
-            'suffix'=>['nullable',new \Illuminate\Validation\Rules\Enum(\App\Enums\Suffix::class)], 'sex' => 'required|in:male,female', 'birthday' => 'required|date|before_or_equal:'.now()->subYears($minimumAge)->format('Y-m-d'),
+            'given_names' => ['required', 'string', 'min:2', 'max:50', "regex:/^[\\p{L}'’\\-]+(\\s[\\p{L}'’\\-]+)*$/u"],
+            'last_name' => ['required', 'string', 'min:2', 'max:50', "regex:/^[\\p{L}'’\\-]+(\\s[\\p{L}'’\\-]+)*$/u"],
+            'middle_name' => ['nullable', 'string', 'min:2', 'max:50', "regex:/^[\\p{L}'’\\-]+(\\s[\\p{L}'’\\-]+)*$/u"],
+            'suffix'=>['nullable',new \Illuminate\Validation\Rules\Enum(\App\Enums\Suffix::class)], 'sex' => ['required', new \Illuminate\Validation\Rules\Enum(\App\Enums\Sex::class)], 'birthday' => 'required|date|before_or_equal:'.now()->subYears($minimumAge)->format('Y-m-d'),
             'contact_no' => ['bail', 'required', 'string', 'regex:/^09[0-9]{9}$/D', function ($attribute, $value, $fail) use ($account) {
                 if (User::whereIn('contact_no', \App\Support\PhilippineMobile::variants($value))->when($account, fn ($query) => $query->where('id', '!=', $account->id))->exists()) {
                     $fail('This mobile number is already registered.');
                 }
             }],
-            'license_expiry' => $role === 'rider' ? ['required', 'date', 'after_or_equal:today'] : ['prohibited'],
+            'license_expiry' => $role === 'rider' ? ['required', 'date', 'after_or_equal:'.today()->addMonthNoOverflow()->toDateString()] : ['prohibited'],
             'barangay' => 'required|string|max:255',
-            'password' => [$account ? 'nullable' : 'required', 'string', 'min:12', 'max:128', \Illuminate\Validation\Rules\Password::min(8)->mixedCase()->numbers()->symbols(), 'confirmed'],
+            'password' => $emailActivation ? ['prohibited'] : [$account ? 'nullable' : 'required', 'string', 'min:12', 'max:128', \Illuminate\Validation\Rules\Password::min(8)->mixedCase()->numbers()->symbols(), 'confirmed'],
             'status' => $account ? 'prohibited' : 'sometimes|in:pending',
             'logistics_hub_id' => ['required', 'integer', Rule::exists('logistics_hubs', 'id')->where('company_name', auth()->user()->business_name)->where('is_operational', true)],
-            'vehicle_type' => 'nullable|in:two_wheels,four_wheels', 'vehicle_ownership' => 'nullable|in:own,company',
+            'vehicle_type' => 'nullable|exists:vehicle_types,slug', 'vehicle_ownership' => ['nullable', new \Illuminate\Validation\Rules\Enum(\App\Enums\VehicleOwnership::class)],
         ], ['birthday.before_or_equal' => "You must be at least {$minimumAge} years old.",
-            'license_expiry.after_or_equal' => 'The driver\'s license has expired. Enter today or a later expiry date.']);
+            'license_expiry.after_or_equal' => 'The driver\'s license must have at least one month remaining before expiry.']);
         if($onboarding) {
             $extra=$request->validate(array_merge($application->rules($role,$request->input('vehicle_ownership'),$account),['username'=>['required','string','alpha_dash','min:8','max:30'],'email'=>['required','email','regex:/@gmail\.com$/i']]));
             $data=array_merge($data,$extra);
@@ -85,7 +86,7 @@ class LogisticsManagementController extends LogisticsController
         }
         $role = $account ? ($account->account_type === 'rider' ? 'rider' : 'hub_staff') : $data['role'];
         if ($role === 'rider') {
-            $request->validate(['vehicle_type' => 'required|in:two_wheels,four_wheels', 'vehicle_ownership' => 'required|in:own,company']);
+            $request->validate(['vehicle_type' => 'required|exists:vehicle_types,slug', 'vehicle_ownership' => ['required', new \Illuminate\Validation\Rules\Enum(\App\Enums\VehicleOwnership::class)]]);
         }
         $hub = $this->companyHubs()->findOrFail($data['logistics_hub_id']);
         $data['barangay'] = app(HubAddress::class)->validateBarangay($hub, $data['barangay']);
@@ -100,6 +101,7 @@ class LogisticsManagementController extends LogisticsController
         if (empty($data['password'])) {
             unset($data['password']);
         }
+        if ($emailActivation && !$account) $data['password'] = \Illuminate\Support\Str::random(64);
         $data = array_merge($data, [
             'account_type' => $role === 'rider' ? 'rider' : 'logistics', 'is_logistics' => $role === 'hub_staff', 'is_admin' => false,
             'logistics_role' => $role === 'hub_staff' ? 'hub_staff' : null, 'business_name' => $hub->company_name,
@@ -131,11 +133,25 @@ class LogisticsManagementController extends LogisticsController
             $this->requireCurrentPersonnelAdmin();
             $data=$this->accountData($request);
             app(HubHiring::class)->assertIntake($hub,$data['account_type']==='rider'?'rider':'hub_staff',true);
-            return User::create(array_merge($data,['auth_method'=>'manual']));
+            $account = User::create(array_merge($data,['auth_method'=>'manual']));
+            if ($request->input('role') === 'rider' && $request->boolean('send_activation')) {
+                app(\App\Services\RiderActivation::class)->issue($account, User::findOrFail(auth()->id()), true);
+            }
+            return $account;
         },3);
         $request->attributes->set('logistics_record_id', $account->id);
 
-        return redirect()->route('logistics.accounts.edit', $account->id)->with('success', 'Complete application created as Pending. Rider approval or the Hub Staff interview and approval are still required before login.');
+        return redirect()->route('logistics.accounts.edit', $account->id)->with('success', $request->boolean('send_activation') && $account->account_type === 'rider'
+            ? 'Rider added. An activation email will be sent so the rider can set a password and activate the account.'
+            : 'Complete application created as Pending. Rider approval or the Hub Staff interview and approval are still required before login.');
+    }
+
+    public function resendRiderActivation(Request $request, $id)
+    {
+        $this->requireCurrentPersonnelAdmin();
+        $rider = $this->managedUsers()->where('account_type', 'rider')->findOrFail($id);
+        app(\App\Services\RiderActivation::class)->issue($rider, User::findOrFail(auth()->id()));
+        return back()->with('success', 'A new activation email will be sent. The previous activation link is no longer valid.');
     }
 
     public function storeRiderAccount(Request $request)
@@ -167,7 +183,11 @@ class LogisticsManagementController extends LogisticsController
                 $hashes=[];foreach(\App\Services\SensitiveDocuments::FIELDS as $field) if(isset($data[$field]) && $data[$field]!==$account->{$field}) $hashes[$field]=['before'=>$account->{$field}?hash('sha256',$account->{$field}):null,'after'=>hash('sha256',$data[$field])];
                 $account->hiringDecision=['action'=>'application_completed','document_changes'=>$hashes];
             }
+            $oldEmail = $account->email;
             $account->update($data);
+            if ($account->account_type === 'rider' && $oldEmail !== $account->email && app(\App\Services\RiderActivation::class)->pending($account)) {
+                app(\App\Services\RiderActivation::class)->issue($account, User::findOrFail(auth()->id()));
+            }
             foreach(array_unique(array_filter($priorDocuments)) as $oldPath) if(!in_array($oldPath,array_intersect_key($account->getAttributes(),array_flip(\App\Services\SensitiveDocuments::FIELDS)),true)) app(\App\Services\MediaLifecycle::class)->deleteAfterCommit($oldPath,'sensitive_documents');
         },3);
 

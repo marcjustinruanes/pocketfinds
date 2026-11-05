@@ -640,7 +640,7 @@ class SellerController extends Controller
             'sku' => 'nullable|string|max:100',
             'stock' => 'nullable|integer|min:0',
             'restock_date' => 'nullable|date|after_or_equal:today',
-            'variations' => 'nullable|string',
+            'variations' => 'nullable|json',
             'details' => 'nullable|string',
             'variation_images' => 'nullable|array',
             'variation_images.*' => 'image|mimes:jpg,jpeg,png,webp|max:4096',
@@ -662,6 +662,7 @@ class SellerController extends Controller
 
         $imagePaths = collect($request->file('images', []))->map(fn ($file) => app(MediaLifecycle::class)->store($file, 'product_images', 'public'))->values();
         $variations = $request->filled('variations') ? json_decode($request->variations, true) : null;
+        \App\Support\ProductVariationSet::validate($variations);
         $details = $request->filled('details') ? json_decode($request->details, true) : null;
 
         $firstVariationImage = $this->applyVariationImagesAndPrices($variations, $request->file('variation_images', []));
@@ -720,7 +721,7 @@ class SellerController extends Controller
             'sku' => 'nullable|string|max:100',
             'stock' => 'nullable|integer|min:0',
             'restock_date' => 'nullable|date|after_or_equal:today',
-            'variations' => 'nullable|string',
+            'variations' => 'nullable|json',
             'details' => 'nullable|string',
             'variation_images' => 'nullable|array',
             'variation_images.*' => 'image|mimes:jpg,jpeg,png,webp|max:4096',
@@ -739,6 +740,7 @@ class SellerController extends Controller
         $keptImages = collect($request->input('existing_images', []));
         $newImages = collect($request->file('images', []))->map(fn ($file) => app(MediaLifecycle::class)->store($file, 'product_images', 'public'));
         $variations = $request->filled('variations') ? json_decode($request->variations, true) : null;
+        \App\Support\ProductVariationSet::validate($variations);
         $details = $request->filled('details') ? json_decode($request->details, true) : null;
 
         // Each option keeps its previously-uploaded photo (sent back as
@@ -799,27 +801,58 @@ class SellerController extends Controller
             return null;
         }
 
+        $uploaded = [];
+        $resolve = function (array &$option) use ($variationImages, &$uploaded, &$firstImage): void {
+            if (isset($option['color']) && (! is_string($option['color']) || ! preg_match('/^#[0-9a-fA-F]{6}$/', $option['color']))) {
+                unset($option['color']);
+            }
+            $key = $option['image_key'] ?? null;
+            unset($option['image_key']);
+            if ($key && isset($variationImages[$key])) {
+                $uploaded[$key] ??= app(MediaLifecycle::class)->store($variationImages[$key], 'product_images', 'public');
+                $option['image'] = $uploaded[$key];
+            } elseif (! empty($option['existing_image'])) {
+                $option['image'] = $option['existing_image'];
+            }
+            unset($option['existing_image']);
+            $firstImage ??= $option['image'] ?? null;
+            if (isset($option['price']) && (! is_numeric($option['price']) || $option['price'] < 0)) {
+                unset($option['price']);
+            } elseif (isset($option['price'])) {
+                $option['price'] = round((float) $option['price'], 2);
+            }
+        };
         foreach ($variations as &$variation) {
-            foreach ($variation['options'] as &$option) {
-                $key = $option['image_key'] ?? null;
-                unset($option['image_key']);
-                if ($key && isset($variationImages[$key])) {
-                    $path = app(MediaLifecycle::class)->store($variationImages[$key], 'product_images', 'public');
-                    $option['image'] = $path;
-                } elseif (! empty($option['existing_image'])) {
-                    $option['image'] = $option['existing_image'];
+            if (($variation['type'] ?? null) === 'combinations') {
+                foreach ($variation['axes'] as &$axis) {
+                    foreach ($axis['options'] as &$axisOption) {
+                        $resolve($axisOption);
+                        unset($axisOption['stock'], $axisOption['price']);
+                    }
+                    unset($axisOption);
                 }
-                unset($option['existing_image']);
-                $firstImage ??= $option['image'] ?? null;
-
-                if (isset($option['price']) && (! is_numeric($option['price']) || $option['price'] < 0)) {
-                    unset($option['price']);
-                } elseif (isset($option['price'])) {
-                    $option['price'] = round((float) $option['price'], 2);
+                unset($axis);
+            }
+            foreach ($variation['options'] as &$option) {
+                $resolve($option);
+                if (($variation['type'] ?? null) === 'combinations') {
+                    // A color's photo is shared by its size combinations.
+                    unset($option['image'], $option['color']);
+                    $photoAxes = $variation['axes'];
+                    usort($photoAxes, fn ($a, $b) => (int) preg_match('/^colou?rs?$/i', $b['name']) <=> (int) preg_match('/^colou?rs?$/i', $a['name']));
+                    foreach ($photoAxes as $axis) {
+                        foreach ($axis['options'] as $axisOption) {
+                            if ($axisOption['value'] === ($option['attributes'][$axis['name']] ?? null) && ! empty($axisOption['image'])) {
+                                $option['image'] = $axisOption['image'];
+                                break 2;
+                            }
+                        }
+                    }
                 }
             }
+            unset($option);
         }
-        unset($variation, $option);
+        unset($variation);
 
         return $firstImage;
     }
@@ -891,6 +924,26 @@ class SellerController extends Controller
                 'additions.*.value' => 'required|string',
                 'additions.*.qty' => 'nullable|integer|min:0',
             ]);
+            $combination = \App\Support\ProductVariationSet::combination($locked->variations);
+            if ($combination['requires_stock_setup'] ?? false) {
+                $request->validate(['additions.*.qty' => 'required|integer|min:0']);
+                \App\Services\GcashInventory::assertEditable($locked);
+                $quantities = [];
+                foreach ($data['additions'] as $addition) {
+                    abort_unless($addition['group'] === $combination['name'] && ! array_key_exists($addition['value'], $quantities), 422, 'Set stock once for each variation combination.');
+                    $quantities[$addition['value']] = (int) $addition['qty'];
+                }
+                abort_unless(count($quantities) === count($combination['options']), 422, 'Set stock for every variation combination.');
+                foreach ($combination['options'] as &$option) {
+                    abort_unless(array_key_exists($option['value'], $quantities), 422, 'A variation combination is missing.');
+                    $option['stock'] = $quantities[$option['value']];
+                }
+                unset($option, $combination['requires_stock_setup']);
+                \App\Support\ProductVariationSet::validate([$combination]);
+                $locked->update(['variations' => [$combination], 'stock' => array_sum($quantities)]);
+
+                return;
+            }
             foreach ($data['additions'] as $addition) {
                 $qty = (int) ($addition['qty'] ?? 0);
                 if ($qty > 0) {
@@ -1033,7 +1086,7 @@ class SellerController extends Controller
     {
         $request->validate([
             'region' => 'required|string|max:255',
-            'postal_code' => ['required','regex:/^[0-9]{4}$/D'],
+            'postal_code' => ['nullable','regex:/^[0-9]{4}$/D'],
             'province' => 'required|string|max:255',
             'municipality' => 'required|string|max:255',
             'barangay' => 'required|string|max:255',
@@ -1142,12 +1195,15 @@ class SellerController extends Controller
             'id_type_id' => 'nullable|integer|exists:id_types,id',
             'id_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'business_permit_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'dti_certificate_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'sec_certificate_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'bir_certificate_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
 
         return $this->submitAccountUpdateRequest(
             $request,
             ['id_type_id'],
-            ['id_file' => 'public', 'business_permit_file' => 'public'],
+            ['id_file' => 'public', 'business_permit_file' => 'public', 'dti_certificate_file' => 'sensitive_documents', 'sec_certificate_file' => 'sensitive_documents', 'bir_certificate_file' => 'sensitive_documents'],
             'docs_success'
         );
     }

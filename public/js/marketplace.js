@@ -27,8 +27,16 @@ document.addEventListener("DOMContentLoaded", () => {
         const saved = JSON.parse(sessionStorage.getItem(scrollKey) || "null");
         sessionStorage.removeItem(scrollKey);
         if (!window.pocketfindsReloadAtHero && saved && saved.url === window.location.pathname + window.location.search) {
-            const restore = () => window.scrollTo({ top: saved.top, left: 0, behavior: "instant" });
+            const restore = () => {
+                const section = saved.anchor ? document.getElementById(saved.anchor) : null;
+                const headerHeight = document.querySelector('.market-header')?.getBoundingClientRect().height || 0;
+                const top = section
+                    ? section.getBoundingClientRect().top + window.scrollY - headerHeight - 12
+                    : saved.top;
+                if (Number.isFinite(top)) window.scrollTo({ top: Math.max(0, top), left: 0, behavior: "instant" });
+            };
             requestAnimationFrame(restore);
+            if (saved.anchor) window.addEventListener('load', restore, { once: true });
         }
     } catch (_) { /* Browsing still works if session storage is unavailable. */ }
     document.querySelectorAll("[data-browse-category]").forEach((link) => {
@@ -44,13 +52,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
     const productFilters = document.querySelector("#products .pf-product-filters");
-    const filterSidebar = document.querySelector('#products .pf-catalog-sidebar');
-    if (filterSidebar) {
-        filterSidebar.open = false;
-    }
-    productFilters?.querySelectorAll('input[name="category"]').forEach((choice) => {
-        choice.addEventListener("change", () => productFilters.requestSubmit());
-    });
     productFilters?.querySelector('select[name="sort"]')?.addEventListener("change", () => productFilters.requestSubmit());
     const validateCatalogRange = () => {
         const minimum = productFilters.elements.min_price;
@@ -58,32 +59,70 @@ document.addEventListener("DOMContentLoaded", () => {
         maximum.setCustomValidity(minimum.value !== "" && maximum.value !== "" && Number(maximum.value) < Number(minimum.value) ? "Maximum price must be at least the minimum price." : "");
     };
     productFilters?.addEventListener("input", validateCatalogRange);
+    if (productFilters?.hasAttribute('data-auto-price-range')) {
+        const initialRange = new URLSearchParams(new FormData(productFilters)).toString();
+        const applyRange = () => {
+            validateCatalogRange();
+            if (new URLSearchParams(new FormData(productFilters)).toString() !== initialRange && productFilters.reportValidity()) {
+                productFilters.requestSubmit();
+            }
+        };
+        productFilters.addEventListener('keydown', event => {
+            if (event.key === 'Enter' && event.target.matches('input[type="number"]')) {
+                event.preventDefault();
+                applyRange();
+            }
+        });
+        productFilters.addEventListener('focusout', event => {
+            if (event.relatedTarget?.closest('[data-catalog-category], [data-catalog-reset]')) return;
+            setTimeout(() => {
+                if (!productFilters.contains(document.activeElement)) applyRange();
+            }, 0);
+        });
+    }
     productFilters?.addEventListener("submit", () => {
         const target = new URL(productFilters.action);
         target.search = new URLSearchParams(new FormData(productFilters)).toString();
-        try { sessionStorage.setItem(scrollKey, JSON.stringify({ url: target.pathname + target.search, top: window.scrollY })); } catch (_) {}
+        try { sessionStorage.setItem(scrollKey, JSON.stringify({ url: target.pathname + target.search, anchor: 'products' })); } catch (_) {}
     });
     document.querySelectorAll("[data-catalog-reset], [data-catalog-category]").forEach(link => link.addEventListener("click", event => {
         if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
         const target = new URL(link.href);
-        try { sessionStorage.setItem(scrollKey, JSON.stringify({ url: target.pathname + target.search, top: window.scrollY })); } catch (_) {}
+        try { sessionStorage.setItem(scrollKey, JSON.stringify({ url: target.pathname + target.search, anchor: 'products' })); } catch (_) {}
     }));
     const dealSection = document.getElementById("deals");
+    const dealCategoryFilter = dealSection?.querySelector('[data-deal-category]');
+    const initialDealCategory = new URLSearchParams(window.location.search).get('deal_category');
+    if (dealCategoryFilter && initialDealCategory !== null) dealCategoryFilter.value = initialDealCategory;
     const shopList = document.querySelector("#shops .pf-shop-row");
     if (shopList) {
-        const firstSix = [...shopList.querySelectorAll(".pf-shop-card")].slice(0, 6);
+        const shopCards = [...shopList.querySelectorAll('.pf-shop-card')];
+        const emptyShops = shopList.querySelector('[data-shop-filter-empty]');
         const sizeShopList = () => {
-            if (!firstSix.length) return;
+            const firstSix = shopCards.filter(card => !card.hidden).slice(0, 6);
+            if (!firstSix.length) { shopList.style.maxHeight = ''; return; }
             const style = getComputedStyle(shopList);
             const height = firstSix.reduce((total, card) => total + card.getBoundingClientRect().height, 0)
                 + (parseFloat(style.rowGap) || 0) * (firstSix.length - 1)
                 + (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
             shopList.style.maxHeight = `${Math.ceil(height)}px`;
         };
-        sizeShopList();
+        const filterShops = () => {
+            const category = dealCategoryFilter?.value || '';
+            shopCards.forEach(card => {
+                const categories = JSON.parse(card.dataset.shopCategories || '[]').map(String);
+                card.hidden = !!category && !categories.includes(category);
+            });
+            if (emptyShops) emptyShops.hidden = !category || shopCards.some(card => !card.hidden);
+            shopList.scrollTop = 0;
+            sizeShopList();
+        };
+        filterShops();
+        dealCategoryFilter?.addEventListener('change', filterShops);
+        dealSection?.querySelector('.pf-deal-price-form')?.addEventListener('reset', () => queueMicrotask(filterShops));
         if (typeof ResizeObserver !== "undefined") {
             const observer = new ResizeObserver(sizeShopList);
-            firstSix.forEach((card) => observer.observe(card));
+            shopCards.forEach((card) => observer.observe(card));
         }
         window.addEventListener("resize", sizeShopList);
     }
@@ -372,7 +411,7 @@ document.addEventListener("DOMContentLoaded", () => {
             showcase.hidden = !first;
             if (gallery) gallery.hidden = !first;
             const controls = section?.querySelector('.pf-deal-gallery-controls');
-            if (controls) controls.hidden = !first;
+            if (controls) controls.hidden = false;
             if (emptyMessage) emptyMessage.hidden = !!first;
             selectDeal(first?.dataset.dealSelect ?? "");
             scheduleRotation();
@@ -505,7 +544,7 @@ document.addEventListener("DOMContentLoaded", () => {
         modal.classList.add("open");
         modal.setAttribute("aria-hidden", "false");
         switchTab(tab);
-        (window.innerWidth > 600 ? document.getElementById("am_email") : dialog)?.focus({ preventScroll: true });
+        dialog?.focus({ preventScroll: true });
     };
     const closeModal = () => {
         if (!modal?.classList.contains("open")) return;
@@ -548,6 +587,25 @@ document.addEventListener("DOMContentLoaded", () => {
     );
 
     // ── Password toggle inside modal ──
+    modal?.querySelector('.am-form')?.addEventListener('submit',event=>{
+        const form=event.currentTarget;form.querySelectorAll('input').forEach(input=>input.readOnly=false);
+        if(!form.reportValidity())event.preventDefault();
+    });
+    modal?.querySelectorAll('.am-field').forEach(field=>{
+        const input=field.querySelector('input'),label=field.querySelector('label');
+        if(!input||!label)return;
+        const wrapper=input.parentElement.classList.contains('am-input-wrap')?input.parentElement:field;
+        wrapper.classList.add('am-floating');input.placeholder=' ';
+        input.readOnly=true;
+        const unlock=()=>{input.readOnly=false;};input.addEventListener('pointerdown',unlock);input.addEventListener('keydown',unlock);
+        wrapper.append(label);
+        const outline=document.createElement('fieldset');outline.className='am-outline';outline.setAttribute('aria-hidden','true');
+        const legend=document.createElement('legend'),text=document.createElement('span');text.textContent=label.textContent;legend.append(text);outline.append(legend);wrapper.append(outline);
+        if(input.type==='password'){
+            const toggle=wrapper.querySelector('[data-password-toggle]');
+            const sync=()=>{toggle.hidden=!input.value;};input.addEventListener('input',sync);input.addEventListener('change',sync);sync();
+        }
+    });
     document.querySelectorAll("[data-password-toggle]").forEach(btn => {
         btn.addEventListener("click", () => {
             const inp = document.getElementById(btn.dataset.passwordToggle);

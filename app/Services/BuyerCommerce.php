@@ -58,12 +58,12 @@ class BuyerCommerce
         }
         $address = $addressId ? BuyerAddress::where('buyer_id', $buyer->id)->findOrFail($addressId)->toShippingArray() : collect(['region', 'postal_code', 'province', 'municipality', 'barangay', 'house_no', 'street', 'contact_no'])->mapWithKeys(fn ($f) => [$f => $buyer->$f])->all();
         $warnings = [];
-        foreach (['region', 'postal_code', 'province', 'municipality', 'barangay'] as $f) {
+        foreach (['region', 'province', 'municipality', 'barangay'] as $f) {
             if (! filled($address[$f] ?? null)) {
                 if (! $preview) {
-                    $this->fail('Complete your delivery address, including region and postal code.', 'delivery_address_id');
+                    $this->fail('Complete your delivery address, including region.', 'delivery_address_id');
                 }
-                $warnings[] = 'Complete your delivery address, including region and postal code, to calculate shipping.';
+                $warnings[] = 'Complete your delivery address, including region, to calculate shipping.';
             }
         }
         $addressIncomplete = ! empty($warnings);
@@ -141,6 +141,18 @@ class BuyerCommerce
             $shippingAmount = $usesLegacyFlatRate
                 ? ($legacyShippingFees[$sellerId] ?? 0)
                 : ($rate ? $rate->first_kg + max(0, $kg - 1) * $rate->additional_kg : 0);
+            $order['free_shipping_eligible'] = DeliveryGuarantee::regionalPoliciesInstalled()
+                ? (bool) ($rate->free_shipping ?? ($usesLegacyFlatRate && $shippingAmount == 0))
+                : true;
+            if (DeliveryGuarantee::active() && !$shippingPending) {
+                $lateVoucherAmount = DeliveryGuarantee::sellerVouchersInstalled()
+                    ? (($rate->late_voucher_enabled ?? false) ? (float) $rate->late_voucher_amount : 0)
+                    : DeliveryGuarantee::LATE_VOUCHER_AMOUNT;
+                $order['delivery_policy'] = DeliveryGuarantee::window((int) ($rate->delivery_days_min ?? 1), (int) ($rate->delivery_days_max ?? 7), $lateVoucherAmount);
+                if (DeliveryGuarantee::sellerVouchersInstalled()) {
+                    $order['delivery_policy']['late_voucher_seller_id'] = (int) $sellerId;
+                }
+            }
             $order += ['subtotal' => round(array_sum(array_map(fn ($i) => $i['price'] * $i['qty'], $order['items'])), 2), 'shipping_amount' => $shippingPending ? 0 : round($shippingAmount, 2), 'discount_amount' => 0, 'seller_discount' => 0, 'vouchers' => [], 'shipping_rate_id' => $rate?->id, 'chargeable_kg' => $kg, 'shipping_pending' => $shippingPending];
         }unset($order);
         // One selected value per type replaces its predecessor. Store selections are keyed by seller.
@@ -155,6 +167,9 @@ class BuyerCommerce
             }
         }
         foreach ($selection as $v) {
+            if (! DeliveryGuarantee::voucherBelongsTo((int) $v->id, (int) $buyer->id)) {
+                $this->fail('This late-delivery voucher belongs to another buyer.', 'vouchers');
+            }
             if (! $v->is_active || now()->lt($v->starts_at) || now()->gte($v->ends_at)) {
                 $this->fail('Voucher '.$v->code.' is inactive, not started, or expired.', 'vouchers');
             }
@@ -173,6 +188,9 @@ class BuyerCommerce
                 $this->fail('You have already used voucher '.$v->code.'.', 'vouchers');
             }
             $eligible = $v->seller_id !== null ? array_intersect_key($orders, [$v->seller_id => true]) : $orders;
+            if ($v->code === DeliveryGuarantee::FREE_SHIPPING_CODE) {
+                $eligible = array_filter($eligible, fn ($order) => $order['free_shipping_eligible'] && !$order['shipping_pending']);
+            }
             if (! $eligible) {
                 $this->fail('Voucher '.$v->code.' does not match these shops.', 'vouchers');
             }
@@ -199,6 +217,16 @@ class BuyerCommerce
                     $order['seller_discount'] += $cents / 100;
                 }unset($order);
             }
+        }
+        if (DeliveryGuarantee::active()) {
+            $automatic = DB::table('commerce_vouchers')->where('code', DeliveryGuarantee::FREE_SHIPPING_CODE)->lockForUpdate()->first();
+            foreach ($orders as &$eligibleOrder) {
+                if (!$eligibleOrder['free_shipping_eligible'] || $eligibleOrder['shipping_pending']) continue;
+                $shippingDiscount = array_sum(array_column(array_filter($eligibleOrder['vouchers'], fn ($voucher) => $voucher['kind'] === 'shipping'), 'amount'));
+                $remaining = max(0, round($eligibleOrder['shipping_amount'] - $shippingDiscount, 2));
+                if ($remaining > 0) $eligibleOrder['vouchers'][] = ['id' => $automatic->id, 'code' => $automatic->code, 'kind' => 'shipping', 'amount' => $remaining, 'funding_source' => 'platform'];
+            }
+            unset($eligibleOrder);
         }
         foreach ($orders as &$order) {
             $remainingMerch = $order['subtotal'];
@@ -269,6 +297,7 @@ class BuyerCommerce
         if (! self::installed()) {
             return;
         }
+        app(DeliveryGuarantee::class)->sweep();
         foreach (DB::table('commerce_reminders as r')->join('commerce_flash_sales as f', 'f.id', '=', 'r.flash_sale_id')->whereNull('r.sent_at')->where('f.is_active', true)->where('f.starts_at', '<=', now()->addMinutes(5))->where('f.ends_at', '>', now())->select('r.*', 'f.product_id')->get() as $r) {
             DB::transaction(function () use ($r) {
                 if (DB::table('commerce_reminders')->where('id', $r->id)->whereNull('sent_at')->lockForUpdate()->first()) {

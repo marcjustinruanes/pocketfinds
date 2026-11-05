@@ -25,7 +25,7 @@ class PersonnelOnboardingTest extends TestCase
     protected function data(string $role='rider'): array
     {
         $d=['role'=>$role,'username'=>'managed_application','email'=>'managed@gmail.com','given_names'=>'Managed','last_name'=>'Applicant','sex'=>'male','birthday'=>'2000-01-01','contact_no'=>'09123456789','barangay'=>'Central','region'=>'CALABARZON','password'=>'FixturePassword123!','password_confirmation'=>'FixturePassword123!','logistics_hub_id'=>$this->hub->id,'selfie_file'=>$this->image()];
-        return $d+($role==='rider'?['license_number'=>'L01-00-000001','license_expiry'=>'2030-01-01','license_file'=>$this->image(),'vehicle_type'=>'two_wheels','vehicle_ownership'=>'own','vehicle_brand'=>'Brand','vehicle_model'=>'Model','plate_number'=>'PLATE-1','or_file'=>$this->image(),'cr_file'=>$this->image()]:['id_type_id'=>1,'id_file'=>$this->image()]);
+        return $d+($role==='rider'?['license_type'=>'professional','dl_codes'=>['A'],'vehicle_dl_code'=>'A','load_capacity_kg'=>20,'nbi_clearance_file'=>$this->image(),'license_number'=>'L01-00-000001','license_expiry'=>'2030-01-01','license_file'=>$this->image(),'vehicle_type'=>'two_wheels','vehicle_ownership'=>'own','vehicle_brand'=>'Brand','vehicle_model'=>'Model','plate_number'=>'PLATE-1','or_file'=>$this->image(),'cr_file'=>$this->image()]:['id_type_id'=>1,'id_file'=>$this->image()]);
     }
     protected function create(string $role='rider'): User { $this->post('/logistics/'.($role==='rider'?'riders':'staff').'/accounts',$this->data($role))->assertRedirect()->assertSessionHasNoErrors();return User::where('username','managed_application')->firstOrFail(); }
     public function test_complete_managed_rider_stays_pending_and_uses_private_licence_identity(): void
@@ -118,9 +118,9 @@ class PersonnelOnboardingTest extends TestCase
     public function test_rejection_notification_runs_after_commit_without_internal_reason(): void
     {
         $r=$this->create();
-        Mail::shouldReceive('raw')->once()->withArgs(fn($body,$callback)=>DB::transactionLevel()===0 && $r->fresh()->status==='rejected' && !str_contains($body,'CONFIDENTIAL') && DB::table('hiring_application_history')->where('user_id',$r->id)->where('status','rejected')->exists());
         $this->patch('/logistics/riders/'.$r->id.'/reject',['reason_preset'=>'other','reason_details'=>'CONFIDENTIAL investigation reference'])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame('CONFIDENTIAL investigation reference',$r->fresh()->status_reason);
+        Mail::assertSent(\App\Mail\ApplicationRejectedMail::class, fn($mail)=>DB::transactionLevel()===0 && !$mail->canResubmit && $mail->reason===null && !str_contains($mail->render(),'CONFIDENTIAL') && DB::table('hiring_application_history')->where('user_id',$r->id)->where('status','rejected')->exists());
     }
     public function test_duplicate_normalized_identifiers_and_nonmeaningful_reasons_are_rejected(): void
     {

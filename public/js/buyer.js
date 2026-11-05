@@ -7,7 +7,8 @@ document.addEventListener('click', (e) => {
     }
     const closer = e.target.closest('[data-modal-close]');
     if (closer) {
-        (closer.closest('.modal-overlay') || closer.closest('.chat-widget'))?.classList.remove('open');
+        const closed=closer.closest('.modal-overlay') || closer.closest('.chat-widget');closed?.classList.remove('open');
+        if(closed?.id==='messagesModal')document.getElementById('messagesModalBody')?.replaceChildren();
     }
     if (e.target.classList.contains('modal-overlay')) {
         e.target.classList.remove('open');
@@ -16,6 +17,7 @@ document.addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         document.querySelectorAll('.modal-overlay.open, .chat-widget.open').forEach(m => m.classList.remove('open'));
+        document.getElementById('messagesModalBody')?.replaceChildren();
     }
 });
 
@@ -39,21 +41,11 @@ const MESSAGES_BASE_URL = '/buyer/messages';
 function loadMessagesPanel(url) {
     const body = document.getElementById('messagesModalBody');
     if (!body) return;
-    body.innerHTML = '<div style="margin:auto;color:var(--muted);font-size:13px">Loading…</div>';
-    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-        .then(res => res.text())
-        .then(html => {
-            body.innerHTML = html;
-            body.querySelectorAll('script').forEach(oldScript => {
-                const newScript = document.createElement('script');
-                if (oldScript.src) newScript.src = oldScript.src;
-                else newScript.textContent = oldScript.textContent;
-                oldScript.replaceWith(newScript);
-            });
-        })
-        .catch(() => {
-            body.innerHTML = '<div style="margin:auto;color:var(--danger);font-size:13px">Could not load messages.</div>';
-        });
+    const target=new URL(url||MESSAGES_BASE_URL,window.location.origin);
+    if(target.origin!==window.location.origin||target.pathname!==MESSAGES_BASE_URL)return;
+    target.searchParams.set('embedded','1');
+    const frame=document.createElement('iframe');frame.className='buyer-messages-frame';frame.title='Messages with sellers';frame.src=target.href;
+    body.replaceChildren(frame);
 }
 
 function openMessagesModal(url) {
@@ -63,6 +55,8 @@ function openMessagesModal(url) {
         return;
     }
     document.getElementById('messagesModal')?.classList.add('open');
+    const assistant=document.getElementById('pfAssistantPanel');if(assistant)assistant.hidden=true;
+    document.querySelector('.pf-assistant-launch')?.setAttribute('aria-expanded','false');
     loadMessagesPanel(url || MESSAGES_BASE_URL);
 }
 
@@ -75,6 +69,7 @@ document.querySelectorAll('[data-messages-trigger]').forEach(btn => {
         // to a different conversation) just closes the widget.
         if (widget?.classList.contains('open') && widget.dataset.currentUrl === url) {
             widget.classList.remove('open');
+            document.getElementById('messagesModalBody')?.replaceChildren();
             return;
         }
         if (widget) widget.dataset.currentUrl = url;
@@ -98,7 +93,7 @@ document.querySelectorAll('[data-logout]').forEach(btn => {
     btn.addEventListener('click', () => logoutOverlay.classList.add('open'));
 });
 document.querySelectorAll('[data-modal-close]').forEach(btn => {
-    btn.addEventListener('click', () => logoutOverlay.classList.remove('open'));
+    btn.addEventListener('click', () => logoutOverlay?.classList.remove('open'));
 });
 logoutOverlay?.addEventListener('click', e => {
     if (e.target === logoutOverlay) logoutOverlay.classList.remove('open');
@@ -108,7 +103,6 @@ logoutOverlay?.addEventListener('click', e => {
 const cartOverlay = document.getElementById('cartOverlay');
 let cmQty       = 1;
 let cmPrice     = 0;
-let cmIsBuy     = false;
 let cmOrigin    = null;
 let cmProductId = null;
 let cmImg       = null;
@@ -116,10 +110,9 @@ let cmName      = null;
 
 const CART_ICON_PATH = 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 5m12-5l2 5M9 21a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z';
 
-function openCart(productName, price, colors, sizes, isBuyNow, triggerEl, productId, img) {
+function openCart(productName, price, colors, sizes, triggerEl, productId, img) {
     cmQty       = 1;
     cmPrice     = price;
-    cmIsBuy     = isBuyNow;
     cmOrigin    = triggerEl || null;
     cmProductId = productId || null;
     cmImg       = img || null;
@@ -128,22 +121,18 @@ function openCart(productName, price, colors, sizes, isBuyNow, triggerEl, produc
     // header icon
     const iconWrap = document.getElementById('cmIconWrap');
     const headerIcon = document.getElementById('cmHeaderIcon');
-    iconWrap.style.background = isBuyNow ? 'var(--pink)' : 'var(--pink-soft)';
-    headerIcon.style.stroke   = isBuyNow ? '#fff' : 'var(--pink-dark)';
-    headerIcon.innerHTML      = isBuyNow
-        ? `<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>`
-        : `<path d="${CART_ICON_PATH}"/>`;
+    iconWrap.style.background = 'var(--pink-soft)';
+    headerIcon.style.stroke   = 'var(--pink-dark)';
+    headerIcon.innerHTML      = `<path d="${CART_ICON_PATH}"/>`;
 
-    document.getElementById('cmTitle').textContent       = isBuyNow ? 'Buy Now' : 'Add to Cart';
+    document.getElementById('cmTitle').textContent       = 'Add to Cart';
     document.getElementById('cmSub').textContent         = productName;
     document.getElementById('cmQty').textContent         = 1;
-    document.getElementById('cmConfirmLabel').textContent = isBuyNow ? 'Buy Now' : 'Add to Cart';
+    document.getElementById('cmConfirmLabel').textContent = 'Add to Cart';
 
     // confirm button icon
     const confirmIcon = document.getElementById('cmConfirmIcon');
-    confirmIcon.innerHTML = isBuyNow
-        ? `<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>`
-        : `<path d="${CART_ICON_PATH}"/>`;
+    confirmIcon.innerHTML = `<path d="${CART_ICON_PATH}"/>`;
 
     updateCmTotal();
 
@@ -201,7 +190,6 @@ function cmConfirm() {
     const color = document.querySelector('#cmColors .cm-opt.active')?.textContent.trim() || '';
     const size  = document.querySelector('#cmSizes .cm-opt.active')?.textContent.trim() || '';
     closeCart();
-    if (!cmIsBuy) {
         // POST to server
         fetch('/buyer/cart/add', {
             method: 'POST',
@@ -226,9 +214,6 @@ function cmConfirm() {
         .catch(error => {
             showToast(error.message || 'Unable to add this item to your cart.', 'error');
         });
-    } else {
-        showToast('Proceeding to checkout…', 'buy');
-    }
 }
 
 function flyToCart(originEl) {
@@ -293,11 +278,7 @@ cartOverlay?.addEventListener('click', e => {
 // ── Product card helpers (data-attribute based) ─────────────────────────────
 function pcCart(btn) {
     const d = btn.closest('.pc-actions').dataset;
-    openCart(d.name, parseFloat(d.price), [], [], false, btn, d.id, d.img);
-}
-function pcBuy(btn) {
-    const d = btn.closest('.pc-actions').dataset;
-    openCart(d.name, parseFloat(d.price), [], [], true, btn, d.id, d.img);
+    openCart(d.name, parseFloat(d.price), [], [], btn, d.id, d.img);
 }
 
 // ── Dashboard hero photo rotation — same behavior as the guest homepage hero ──

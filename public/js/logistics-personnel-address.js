@@ -2,12 +2,12 @@
     // Early feedback only. Laravel remains authoritative for application/identity checks.
     document.querySelectorAll('[data-personnel-address]').forEach((root, formIndex) => {
         const form = root.closest('form');
-        const name = value => !value || ([...value].length >= 2 && [...value].length <= 50 && /^[\p{L}-]+(\s[\p{L}-]+)*$/u.test(value));
+        const name = value => !value || ([...value].length >= 2 && [...value].length <= 50 && /^[\p{L}'’\-]+(\s[\p{L}'’\-]+)*$/u.test(value));
         const fields = {
-            given_names: value => name(value) ? '' : 'Use 2 to 50 Unicode letters, hyphens, and single spaces between words.',
-            last_name: value => name(value) ? '' : 'Use 2 to 50 Unicode letters, hyphens, and single spaces between words.',
-            middle_name: value => name(value) ? '' : 'Use 2 to 50 Unicode letters, hyphens, and single spaces between words.',
-            license_number: value => !value || /^[A-Z]\d{2}-\d{2}-\d{6}$/u.test(value) ? '' : 'Use the licence format N01-23-456789, with an uppercase letter.',
+            given_names: value => name(value) ? '' : 'Use 2 to 50 letters, apostrophes, hyphens, and single spaces.',
+            last_name: value => name(value) ? '' : 'Use 2 to 50 letters, apostrophes, hyphens, and single spaces.',
+            middle_name: value => name(value) ? '' : 'Use 2 to 50 letters, apostrophes, hyphens, and single spaces.',
+            license_number: value => !value || /^[A-Z]\d{2}-\d{2}-\d{6}$/u.test(value) ? '' : 'Use the licence format N01-23-456789.',
             password: value => !value || ([...value].length >= 12 && [...value].length <= 128 && /\p{Ll}/u.test(value) && /\p{Lu}/u.test(value) && /\p{N}/u.test(value) && /[\p{Z}\p{S}\p{P}]/u.test(value)) ? '' : 'Use 12 to 128 characters with uppercase, lowercase, a number and a symbol.',
             password_confirmation: value => !value || value === form.querySelector('[name="password"]')?.value ? '' : 'Passwords must match.',
         };

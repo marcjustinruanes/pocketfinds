@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    @include('partials.favicon')
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Complete Your Registration</title>
@@ -81,44 +82,19 @@
             border: 1px solid #fed7aa;
         }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/auth-refresh.css') }}?v={{ filemtime(public_path('css/auth-refresh.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/auth-registration.css') }}?v={{ filemtime(public_path('css/auth-registration.css')) }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Allura&family=DM+Serif+Display&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
-<body class="auth-page">
+<body class="auth-page auth-register registration-steps-page">
 <div class="auth-shell">
     <main class="auth-card">
 
-        <section class="auth-brand-panel">
-            <div class="auth-brand-content">
-                <a class="auth-logo" href="{{ url('/') }}">
-                    <span class="auth-logo-mark"><img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="PocketFinds" class="brand-logo-img"></span>
-                    <span><span class="auth-logo-pocket">Pocket</span><span class="auth-logo-finds">Finds</span></span>
-                </a>
-                <h1 class="auth-brand-title">Almost there.</h1>
-                <p class="auth-brand-text">
-                    Your Google account has been connected. Just fill in a few more details to complete your
-                    {{ ucfirst(request('type', 'buyer')) }} registration.
-                </p>
-                <ul class="auth-brand-points">
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:4px"><circle cx="12" cy="12" r="10"/><path d="M8.56 2.75c4.37 6.03 6.02 9.42 8.03 17.72m2.54-15.38c-3.72 4.35-8.94 5.66-16.88 5.85m19.5 1.9c-3.5-.93-6.63-.82-8.94 0-2.58.92-5.01 2.86-7.44 6.32"/></svg> Google account connected</li>
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:4px"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg> Email pre-filled from Google</li>
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:4px"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Set a password for direct login</li>
-                </ul>
-            </div>
-            <div class="auth-brand-footer">© {{ date('Y') }} PocketFinds. All rights reserved.</div>
-        </section>
-
-        <section class="auth-form-panel">
-            <div class="auth-form-wrap">
-
-                {{-- Step indicator --}}
-                @php
-                    $regType = session('oauth_account_type', request('type', 'buyer'));
-                    $typeIcons = [
-                        'buyer'  => '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 001.95-1.57l1.65-8.42H6"/></svg>',
-                        'seller' => '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>',
-                        'rider'  => '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h-5l-3 6h11l-3-6z"/></svg>',
-                    ];
-                @endphp
-                <div class="steps" id="stepIndicator">
+        <aside class="auth-brand-panel registration-progress-panel" aria-label="Registration progress">
+            @include('auth.partials.registration-logo')
+            <div class="steps" id="stepIndicator">
                     <div class="step-item seller-only" data-step="0" style="display:none">
                         <div class="step-circle">1</div>
                         <span class="step-label">Category</span>
@@ -144,6 +120,22 @@
                         <span class="step-label">Account</span>
                     </div>
                 </div>
+        </aside>
+
+        <section class="auth-form-panel">
+            <div class="auth-form-wrap">
+                @include('auth.partials.registration-back')
+
+                {{-- Step indicator --}}
+                @php
+                    $regType = session('oauth_account_type', request('type', 'buyer'));
+                    $typeIcons = [
+                        'buyer'  => '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 001.95-1.57l1.65-8.42H6"/></svg>',
+                        'seller' => '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>',
+                        'rider'  => '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h-5l-3 6h11l-3-6z"/></svg>',
+                    ];
+                @endphp
+
 
                 <form id="googleRegForm" method="POST" action="{{ route('register.store') }}" enctype="multipart/form-data" novalidate>
                     @csrf
@@ -331,8 +323,7 @@
                                 <input class="auth-input" id="given_names" name="given_names" type="text" placeholder="Juan" required>
                             </div>
                             <div class="auth-field">
-                                <label class="auth-label" for="middle_name">Middle name</label>
-                                <input class="auth-input" id="middle_name" name="middle_name" type="text" placeholder="Santos" maxlength="50">
+                                @include('auth.partials.registration-middle-name')
                             </div>
                             <div class="auth-field">
                                 <label class="auth-label" for="suffix">Suffix</label>
@@ -347,8 +338,9 @@
                                 <label class="auth-label" for="sex">Sex <span class="auth-required">*</span></label>
                                 <select class="auth-input auth-select" id="sex" name="sex" required>
                                     <option value="" disabled selected>Select sex</option>
-                                    <option value="male">Male</option>
-                                    <option value="female">Female</option>
+                                    @foreach(\App\Enums\Sex::cases() as $sexOption)
+                                        <option value="{{ $sexOption->value }}" @selected(old('sex') === $sexOption->value)>{{ $sexOption->label() }}</option>
+                                    @endforeach
                                 </select>
                             </div>
                             <div class="auth-field">
@@ -607,6 +599,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="{{ asset('js/auth.js') }}"></script>
+<script src="{{ asset('js/registration-unsaved.js') }}?v={{ filemtime(public_path('js/registration-unsaved.js')) }}"></script>
 <script src="{{ asset('js/register.js') }}?v={{ @filemtime(public_path('js/register.js')) ?: 1 }}"></script>
 <script>
     const googleData = {
@@ -647,6 +640,7 @@
         .then(r => r.json())
         .then(data => {
             if (data.success) {
+                form.dispatchEvent(new Event('registration:saved'));
                 form.style.display = 'none';
                 document.getElementById('stepIndicator').style.display = 'none';
                 document.getElementById('signinLink').style.display    = 'none';
@@ -665,5 +659,6 @@
     });
 
 </script>
+<script src="{{ asset('js/registration-flow.js') }}?v={{ filemtime(public_path('js/registration-flow.js')) }}"></script>
 </body>
 </html>

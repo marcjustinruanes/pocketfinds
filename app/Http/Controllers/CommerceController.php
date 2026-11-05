@@ -120,6 +120,7 @@ class CommerceController extends Controller
             DB::table('commerce_wishlist')->where('buyer_id', $u->id)->where('product_id', $product)->delete();
         }
 
+        if($r->expectsJson())return response()->json(['saved'=>$r->boolean('saved')]);
         return back()->with('success', $r->boolean('saved') ? 'Saved to wishlist.' : 'Removed from wishlist.');
     }
 
@@ -127,15 +128,16 @@ class CommerceController extends Controller
     {
         $buyer = $this->buyer($r);
         abort_unless($address->buyer_id === $buyer->id, 403);
-        $data = $r->validate(['region' => 'required|string|max:255', 'postal_code' => ['required', 'regex:/^[0-9]{4}$/D']]);
+        $data = $r->validate(['region' => 'required|string|max:255', 'postal_code' => ['nullable', 'regex:/^[0-9]{4}$/D']]);
         DB::transaction(function () use ($address, $buyer, $data) {
             $saved = BuyerAddress::whereKey($address->id)->where('buyer_id', $buyer->id)->lockForUpdate()->firstOrFail();
             if (filled($saved->region) && $saved->region !== $data['region']) {
                 $this->flow()->fail('The saved region cannot be replaced here. Submit an account address update.', 'region');
             }
-            if (preg_match('/^[0-9]{4}$/D', (string) $saved->postal_code) && $saved->postal_code !== $data['postal_code']) {
+            if (preg_match('/^[0-9]{4}$/D', (string) $saved->postal_code) && filled($data['postal_code'] ?? null) && $saved->postal_code !== $data['postal_code']) {
                 $this->flow()->fail('The saved postal code cannot be replaced here. Submit an account address update.', 'postal_code');
             }
+            if(!filled($data['postal_code']??null))unset($data['postal_code']);
             $saved->update($data);
         });
 
@@ -147,6 +149,7 @@ class CommerceController extends Controller
         $u = $this->buyer($r);
         $v = DB::table('commerce_vouchers')->where('id', $voucher)->where('is_active', true)->where('starts_at', '<=', now())->where('ends_at', '>', now())->first();
         abort_unless($v, 422, 'This voucher cannot be claimed yet or has expired.');
+        abort_unless(\App\Services\DeliveryGuarantee::voucherBelongsTo($voucher, (int) $u->id), 403, 'This voucher belongs to another buyer.');
         DB::table('commerce_claims')->insertOrIgnore(['buyer_id' => $u->id, 'voucher_id' => $voucher]);
 
         return back()->with('success', 'Voucher saved to your wallet.');
@@ -312,6 +315,12 @@ class CommerceController extends Controller
         $u = $this->manager($r);
         abort_if($u->is_admin, 403);
         $d = $r->validate(['region' => 'required|string|max:255', 'first_kg' => 'required|numeric|min:0|max:1000000', 'additional_kg' => 'required|numeric|min:0|max:1000000', 'is_active' => 'required|boolean']);
+        if (\App\Services\DeliveryGuarantee::regionalPoliciesInstalled()) {
+            $d += $r->validate(['free_shipping' => 'required|boolean', 'delivery_days_min' => 'required|integer|min:1|max:60', 'delivery_days_max' => 'required|integer|gte:delivery_days_min|max:60']);
+        }
+        if (\App\Services\DeliveryGuarantee::sellerVouchersInstalled()) {
+            $d += $r->validate(['late_voucher_enabled' => 'required|boolean', 'late_voucher_amount' => 'required|numeric|min:0.01|max:1000000']);
+        }
         DB::table('commerce_shipping_rates')->updateOrInsert(['seller_id' => $u->id, 'region' => $d['region']], $d);
 
         return back()->with('success', 'Shipping rate saved.');

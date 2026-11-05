@@ -31,10 +31,10 @@ class RemainingRegistrationAuditTest extends PersonnelOnboardingTest
     {
         foreach(['2026_10_16_000001_add_registration_business_details','2026_10_16_000002_add_logistics_registration_details'] as $migration) (require database_path('migrations/'.$migration.'.php'))->up();
         auth()->forgetGuards();
-        $data=function(){ $d=$this->data();unset($d['role']);return $d+['account_type'=>'rider','auth_method'=>'manual','business_name'=>'Alpha','province'=>'Laguna','municipality'=>'Santa Cruz']; };
+        $data=function(){ $d=$this->data();unset($d['role']);return $d+['no_middle_name'=>1,'account_type'=>'rider','auth_method'=>'manual','business_name'=>'Alpha','province'=>'Laguna','municipality'=>'Santa Cruz']; };
         foreach(['José María','李 明'] as $name) {
             DB::beginTransaction();$d=$data();$d['given_names']=$name;
-            $r=$this->postJson('/register',$d);$r->assertOk()->assertJson(['success'=>true]);DB::rollBack();
+            $r=$this->withSession(['registration_verified_email'=>['email'=>$d['email'],'expires_at'=>now()->addHour()->timestamp]])->postJson('/register',$d);$r->assertOk()->assertJson(['success'=>true]);DB::rollBack();
         }
         foreach([['given_names','Jane123'],['given_names','Jane<script>'],['password','NoSymbol12345'],['license_number','garbage']] as [$field,$value]) {
             $d=$data();$d[$field]=$value;if($field==='password')$d['password_confirmation']=$value;

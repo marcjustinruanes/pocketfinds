@@ -199,6 +199,9 @@
           <span style="font-weight:600;text-align:right;word-break:break-word">{{ $val ?: 'Not provided' }}</span>
         </div>
         @endforeach
+        @if($user->nbi_clearance_file)
+          <a href="{{ app(\App\Services\SensitiveDocuments::class)->url($user->nbi_clearance_file) }}" target="_blank" rel="noopener" style="font-size:13px;padding:8px 0">View NBI clearance</a>
+        @endif
       </div>
     </div>
   </div>

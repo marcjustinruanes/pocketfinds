@@ -31,7 +31,7 @@ body.buyer-pages {
 .buyer-pages .product-grid-lg { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 20px; }
 .buyer-pages .product-card { border-radius: 8px; background: #fff; min-width: 0; overflow: hidden; box-shadow: none; }
 .buyer-pages .product-img { aspect-ratio: 1; height: auto; margin: 0; border-radius: 0; background: #fff; }
-.buyer-pages .product-img img { object-fit: contain; }
+.buyer-pages .product-img img { object-fit: cover; object-position: center; }
 .buyer-pages .product-info { padding: 12px; }
 .buyer-pages .product-name { font-size: 13px; line-height: 1.4; min-height: 2.8em; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .buyer-pages .product-price-row { flex-wrap: wrap; gap: 6px; }

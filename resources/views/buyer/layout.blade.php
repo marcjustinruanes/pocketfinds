@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    @include('partials.favicon')
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -16,14 +17,13 @@
 <link rel="stylesheet" href="{{ asset('css/buyer-pages.css') }}?v={{ filemtime(public_path('css/buyer-pages.css')) }}">
 @include('buyer.partials.confirmation-styles')
 </head>
-<body class="buyer marketplace buyer-storefront buyer-pages">
+<body class="buyer marketplace buyer-storefront buyer-pages @yield('body-class')">
 <div class="shell" id="appShell">
   <div style="display:flex;flex-direction:column;min-width:0">
     @include('buyer.partials.storefront-header')
     <main class="content">
       @sectionMissing('hide-page-heading')
       <div class="buyer-page-heading">
-        <a href="{{ route('buyer.dashboard') }}">Home</a><span aria-hidden="true"> / </span><span>@yield('page-title', 'My Account')</span>
         <h1>@yield('page-title', 'My Account')</h1>
         @if(request()->routeIs('buyer.messages'))
         <div class="messages-page-help page-assistant-help">@include('buyer.partials.assistant')</div>
@@ -142,5 +142,7 @@
 <script src="{{ asset('js/navigation.js') }}?v={{ filemtime(public_path('js/navigation.js')) }}"></script>
 @stack('scripts')
 <script src="{{ asset('js/buyer-account-details.js') }}?v={{ filemtime(public_path('js/buyer-account-details.js')) }}"></script>
+<script src="{{ asset('js/address-postal-lookup.js') }}?v={{ filemtime(public_path('js/address-postal-lookup.js')) }}" defer></script>
+<script src="{{ asset('js/wishlist-feedback.js') }}?v={{ filemtime(public_path('js/wishlist-feedback.js')) }}" defer></script>
 </body>
 </html>

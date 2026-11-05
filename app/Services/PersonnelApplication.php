@@ -15,6 +15,7 @@ class PersonnelApplication
         $request->validate(array_fill_keys(['email','username','given_names','last_name','middle_name','suffix','birthday','sex','contact_no','license_number','plate_number','vehicle_ownership','vehicle_type'],'sometimes|nullable|string'));
         $values=[];
         foreach(['license_number','plate_number'] as $field) if(is_string($request->input($field))) $values[$field]=trim($request->input($field));
+        if(isset($values['license_number']))$values['license_number']=\App\Support\DriverLicenseNumber::normalize($values['license_number']);
         if(is_string($request->input('contact_no'))) $values['contact_no']=\App\Support\PhilippineMobile::normalize($request->input('contact_no'));
         $request->merge($values);
     }
@@ -32,10 +33,14 @@ class PersonnelApplication
         $rules=['selfie_file'=>$file('selfie_file','jpg,jpeg,png')];
         if($role==='hub_staff') return $rules+['id_file'=>$file('id_file'),'id_type_id'=>'required|integer|exists:id_types,id'];
         $unique=fn(string $field)=>function($attribute,$value,$fail)use($field,$account){
+            if($field==='license_number'){
+                if(\App\Support\DriverLicenseNumber::exists($value,$account?->id))$fail('This identifier is already registered to another account.');
+                return;
+            }
             if(User::where('status','!=','rejected')->when($account,fn($q)=>$q->where('id','!=',$account->id))->whereRaw('LOWER(TRIM('.$field.')) = ?',[mb_strtolower(trim($value))])->exists()) $fail('This identifier is already registered to another account.');
         };
-        $rules+=['vehicle_type'=>'required|exists:vehicle_types,slug','vehicle_ownership'=>'required|in:own,company','license_number'=>['required','string','regex:/^[A-Z]\d{2}-\d{2}-\d{6}$/D',$unique('license_number')],
-            'license_expiry'=>'required|date|after_or_equal:today','license_file'=>$file('license_file')];
+        $rules+=['vehicle_type'=>'required|exists:vehicle_types,slug','vehicle_ownership'=>['required', new \Illuminate\Validation\Rules\Enum(\App\Enums\VehicleOwnership::class)],'license_number'=>['required','string','regex:/^[A-Z]\d{2}-\d{2}-\d{6}$/D',$unique('license_number')],
+            'license_expiry'=>'required|date|after_or_equal:'.today()->addMonthNoOverflow()->toDateString(),'license_file'=>$file('license_file'), 'nbi_clearance_file'=>$file('nbi_clearance_file')];
         if($ownership==='own') $rules+=['vehicle_brand'=>'required|string|max:100','vehicle_model'=>'required|string|max:100','plate_number'=>['required','string','max:20',$unique('plate_number')],'or_file'=>$file('or_file'),'cr_file'=>$file('cr_file')];
         return $rules;
     }
@@ -43,7 +48,7 @@ class PersonnelApplication
     public function files(string $role, ?string $ownership): array
     {
         return $role==='hub_staff'?['id_file'=>'id_files','selfie_file'=>'selfie_files']:
-            (['license_file'=>'license_files','selfie_file'=>'selfie_files']+($ownership==='own'?['or_file'=>'vehicle_docs','cr_file'=>'vehicle_docs']:[]));
+            (['license_file'=>'license_files','selfie_file'=>'selfie_files','nbi_clearance_file'=>'nbi_clearances']+($ownership==='own'?['or_file'=>'vehicle_docs','cr_file'=>'vehicle_docs']:[]));
     }
 
     public function store(Request $request,string $role,array $data,?User $account=null): array

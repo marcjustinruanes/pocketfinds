@@ -1,3 +1,5 @@
+<style>[data-role="product-form"] [hidden] { display:none !important; }</style>
+<script src="{{ asset('js/variant-matrix.js') }}?v={{ filemtime(public_path('js/variant-matrix.js')) }}"></script>
 <script>
 // Shared Add/Edit product form logic. Called once per modal instance (the Add
 // modal, and one Edit modal per product) — everything is scoped to `root` so
@@ -117,10 +119,32 @@ window.initProductForm = function (root, opts) {
   const noVariationStock = form.querySelector('[data-role="no-variation-stock"]');
   const addVariationBtn  = form.querySelector('[data-role="add-variation-btn"]');
   const variationsJson   = form.querySelector('[data-role="variations-json"]');
+  const existingCombination = (opts.existingVariations || []).find(group => group.type === 'combinations');
+  const combinationStock = new Map((existingCombination?.options || []).map(option => [ProductVariantMatrix.key(option.attributes), {stock: existingCombination.requires_stock_setup ? '' : String(option.stock), price: option.price ?? ''}]));
+  const combinationPanel = document.createElement('div');
+  combinationPanel.hidden = true;
+  combinationPanel.style.cssText = 'border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:12px';
+  variationsList.after(combinationPanel);
+  let combinationSignature = '';
+  let combinationError = '';
+  let initializingVariations = true;
   let varCount = 0;
   let optUidCounter = 0;
   const optionImages = new Map(); // uid -> File (newly picked option photos)
 
+  const colorPalette = @json(\App\Support\ProductColor::PALETTE);
+  function namedColor(value) { const key = Object.keys(colorPalette).find(name => name.toLowerCase() === value.trim().toLowerCase()); return key ? colorPalette[key] : null; }
+  const sizePresets = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', 'One Size'];
+  function variationType(name) {
+    return /^colou?rs?$/i.test(name || '') ? 'color' : /^sizes?$/i.test(name || '') ? 'size' : /^(grams?|weight)$/i.test(name || '') ? 'weight' : 'custom';
+  }
+  function configureVariation(div) {
+    const type = variationType(div.querySelector('.var-name-input').value.trim());
+    div.querySelector('.size-presets').hidden = type !== 'size';
+    div.querySelector('.color-presets').hidden = type !== 'color';
+    div.querySelector('.color-help').hidden = type !== 'color';
+    div.querySelectorAll('.opt-color').forEach(input => input.hidden = type !== 'color');
+  }
   function addVariationRow(prefillName, prefillOptions) {
     noVariationStock.style.display = 'none';
     const stockInput = form.querySelector('[data-role="stock-input"]');
@@ -131,20 +155,61 @@ window.initProductForm = function (root, opts) {
     div.style.cssText = 'background:var(--paper);border:1px solid var(--border);border-radius:10px;padding:12px 14px';
     div.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <select class="var-type" aria-label="Variation type"><option value="custom">Custom</option><option value="color">Color</option><option value="size">Size</option><option value="weight">Grams / Weight</option></select>
         <input type="text" placeholder="Variation name (e.g. Size, Color)" class="var-name-input" value="${prefillName ? prefillName.replace(/"/g,'&quot;') : ''}"
           style="flex:1;border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px">
         <button type="button" class="var-remove-btn" style="border:0;background:none;cursor:pointer;color:var(--danger);padding:4px">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
+      <div class="size-presets" hidden style="margin-bottom:10px"></div>
+      <div class="color-presets" hidden style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
+      <p class="color-help" hidden style="font-size:12px;color:var(--muted)">Choose a color from the palette or upload an option photo. Add a color name. With one variation, set stock per option. With two or more, set stock per combination below.</p>
       <div class="options-list" style="display:flex;flex-direction:column;gap:6px"></div>
       <button type="button" class="btn btn-sm btn-outline add-option-btn" style="margin-top:8px;font-size:11px;display:inline-flex;align-items:center;gap:4px">
         <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Add Option
       </button>`;
     variationsList.appendChild(div);
-    div.querySelector('.var-name-input').addEventListener('input', syncVariations);
+    const typeSelect = div.querySelector('.var-type');
+    typeSelect.value = variationType(prefillName);
+    typeSelect.addEventListener('change', () => {
+      div.querySelector('.var-name-input').value = {color:'Color', size:'Size', weight:'Grams', custom:''}[typeSelect.value];
+      configureVariation(div); syncVariations();
+    });
+    div.querySelector('.var-name-input').addEventListener('input', () => {
+      typeSelect.value = variationType(div.querySelector('.var-name-input').value.trim());
+      configureVariation(div); syncVariations();
+    });
+    sizePresets.forEach(size => {
+      const button = document.createElement('button');
+      button.type = 'button'; button.className = 'btn btn-sm btn-outline';
+      button.textContent = size; button.style.margin = '0 4px 4px 0';
+      button.addEventListener('click', () => {
+        const rows = [...div.querySelectorAll('.options-list > div')];
+        if (rows.some(row => row.querySelector('.opt-value').value.trim().toLowerCase() === size.toLowerCase())) return;
+        const empty = rows.find(row => !row.querySelector('.opt-value').value.trim());
+        if (empty) { empty.querySelector('.opt-value').value = size; syncVariations(); }
+        else addOptionRow(div, {value:size});
+      });
+      div.querySelector('.size-presets').appendChild(button);
+    });
+    Object.entries(colorPalette).filter(([name]) => name !== 'Grey').forEach(([name, hex]) => {
+      const button = document.createElement('button');
+      button.type = 'button'; button.title = name; button.setAttribute('aria-label', 'Add ' + name);
+      button.style.cssText = 'width:28px;height:28px;border-radius:50%;border:1px solid #aaa;background:' + hex;
+      button.addEventListener('click', () => {
+        const rows = [...div.querySelectorAll('.options-list > div')];
+        if (rows.some(row => row.querySelector('.opt-value').value.trim().toLowerCase() === name.toLowerCase())) return;
+        const empty = rows.find(row => !row.querySelector('.opt-value').value.trim());
+        if (empty) {
+          empty.querySelector('.opt-value').value = name; empty.querySelector('.opt-color').value = hex; empty.dataset.color = hex; syncVariations();
+        } else addOptionRow(div, {value:name, color:hex});
+      });
+      div.querySelector('.color-presets').append(button);
+    });
     div.querySelector('.var-remove-btn').addEventListener('click', () => {
+      div.querySelectorAll('[data-opt-uid]').forEach(row => optionImages.delete(row.dataset.optUid));
       div.remove();
       if (variationsList.children.length === 0) noVariationStock.style.display = '';
       syncVariations();
@@ -156,6 +221,7 @@ window.initProductForm = function (root, opts) {
     } else {
       addOptionRow(div);
     }
+    configureVariation(div);
   }
   addVariationBtn.addEventListener('click', () => addVariationRow());
 
@@ -165,10 +231,11 @@ window.initProductForm = function (root, opts) {
     const row = document.createElement('div');
     const uid = 'opt' + (optUidCounter++);
     row.dataset.optUid = uid;
-    row.style.cssText = 'display:flex;align-items:center;gap:8px';
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap';
     row.innerHTML = `
       <div class="opt-photo-wrap" style="position:relative;width:44px;height:44px;flex-shrink:0"></div>
       <input type="file" class="opt-photo-input" accept="image/jpeg,image/png,image/webp" style="display:none">
+      <input type="color" class="opt-color" aria-label="Option color" title="Choose color" style="width:40px;height:40px;padding:2px" hidden>
       <input type="text" placeholder="Option (e.g. Red, XL)" class="opt-value" value="${(prefill.value || '').replace(/"/g,'&quot;')}"
         style="flex:1;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px">
       <input type="number" placeholder="Price (₱)" min="0" step="0.01" class="opt-price" title="Leave blank to use the product's base price" value="${prefill.price ?? ''}"
@@ -179,6 +246,12 @@ window.initProductForm = function (root, opts) {
         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>`;
     optList.appendChild(row);
+    const colorInput = row.querySelector('.opt-color');
+    colorInput.value = /^#[0-9a-f]{6}$/i.test(prefill.color || '') ? prefill.color : (namedColor(prefill.value || '') || '#000000');
+    if (prefill.color || namedColor(prefill.value || '')) row.dataset.color = colorInput.value;
+    row.querySelector('.opt-value').addEventListener('input', () => { const color = namedColor(row.querySelector('.opt-value').value); if (color && !row.dataset.customColor) { colorInput.value = color; row.dataset.color = color; } });
+    colorInput.addEventListener('input', () => { row.dataset.color = colorInput.value; row.dataset.customColor = 'true'; syncVariations(); });
+    configureVariation(varDiv);
     row.querySelectorAll('.opt-value, .opt-price, .opt-stock').forEach(el => el.addEventListener('input', syncVariations));
     row.querySelector('.opt-remove-btn').addEventListener('click', () => { row.remove(); optionImages.delete(uid); syncVariations(); });
 
@@ -242,6 +315,7 @@ window.initProductForm = function (root, opts) {
         const priceRaw = row.querySelector('.opt-price').value.trim();
         if (!val) return;
         const option = { value: val, stock };
+        if (variationType(name) === 'color' && row.dataset.color) option.color = row.dataset.color;
         if (priceRaw !== '') option.price = parseFloat(priceRaw);
         if (optionImages.has(row.dataset.optUid)) option.image_key = row.dataset.optUid;
         else if (row.dataset.existingImage) option.existing_image = row.dataset.existingImage;
@@ -249,7 +323,66 @@ window.initProductForm = function (root, opts) {
       });
       if (name) vars.push({ name, options });
     });
-    variationsJson.value = vars.length ? JSON.stringify(vars) : '';
+    if (initializingVariations) return;
+    const combined = ProductVariantMatrix.usesCombinations(vars);
+    variationsList.querySelectorAll('.opt-stock, .opt-price').forEach(input => { input.hidden = combined; input.disabled = combined; });
+    combinationPanel.hidden = !combined;
+    combinationPanel.querySelectorAll('input').forEach(input => input.disabled = !combined);
+    if (!combined) {
+      combinationSignature = ''; combinationError = '';
+      variationsJson.value = vars.length ? JSON.stringify(vars) : '';
+      return;
+    }
+    const axes = vars.map(group => ({name: group.name, options: group.options.map(option => {
+      const {stock, price, ...axisOption} = option;
+      return axisOption;
+    })}));
+    let rows = [];
+    combinationError = '';
+    try {
+      if (axes.length > 4) throw new Error('Use up to four variation groups per product.');
+      if (new Set(axes.map(axis => axis.name.toLowerCase())).size !== axes.length) throw new Error('Give each variation a different name.');
+      if (axes.some(axis => new Set(axis.options.map(option => option.value.toLowerCase())).size !== axis.options.length)) throw new Error('Give each option a different name.');
+      rows = ProductVariantMatrix.rows(axes);
+      if (!rows.length) throw new Error('Add at least one option to each variation.');
+      if (rows.some(row => row.value.length > 150) || new Set(rows.map(row => row.value)).size !== rows.length) throw new Error('Use shorter, distinct option names for combinations.');
+    } catch (error) { combinationError = error.message; }
+    const signature = JSON.stringify(axes.map(axis => [axis.name, axis.options.map(option => option.value)])) + combinationError;
+    if (signature !== combinationSignature) {
+      combinationSignature = signature;
+      combinationPanel.replaceChildren();
+      const heading = document.createElement('strong'); heading.textContent = 'Stock per combination';
+      const hint = document.createElement('p');
+      hint.style.cssText = 'font-size:12px;color:var(--muted);margin:6px 0 12px';
+      hint.textContent = combinationError || 'Enter stock for each combination (0 if unavailable). Leave the price blank to use the product price. Existing separate option stock is not assigned automatically.';
+      combinationPanel.append(heading, hint);
+      rows.forEach(row => {
+        const saved = combinationStock.get(row.key) || {stock:'', price:''};
+        combinationStock.set(row.key, saved);
+        const line = document.createElement('div');
+        line.style.cssText = 'display:grid;grid-template-columns:minmax(80px,1fr) 80px 100px;align-items:center;gap:8px;margin-top:8px';
+        const label = document.createElement('span'); label.textContent = row.value; label.style.fontSize = '12px';
+        line.append(label);
+        for (const field of ['stock', 'price']) {
+          const input = document.createElement('input');
+          input.type = 'number'; input.min = '0'; input.step = field === 'stock' ? '1' : '0.01';
+          input.placeholder = field === 'stock' ? 'Stock' : 'Price';
+          input.required = field === 'stock'; input.value = saved[field];
+          input.setAttribute('aria-label', row.value + ' ' + field);
+          input.style.cssText = 'width:100%;min-width:0;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px';
+          input.addEventListener('input', () => { saved[field] = input.value; syncVariations(); });
+          line.append(input);
+        }
+        combinationPanel.append(line);
+      });
+    }
+    const options = rows.map(row => {
+      const saved = combinationStock.get(row.key);
+      const option = {value:row.value, attributes:row.attributes, stock:saved?.stock === '' ? null : Number(saved?.stock)};
+      if (saved?.price !== '' && saved?.price != null) option.price = Number(saved.price);
+      return option;
+    });
+    variationsJson.value = JSON.stringify([{name: 'Options', type: 'combinations', axes, options}]);
   }
 
   function syncOptionImageInputs() {
@@ -267,9 +400,10 @@ window.initProductForm = function (root, opts) {
     });
   }
 
-  if (opts.existingVariations && opts.existingVariations.length) {
-    opts.existingVariations.forEach(group => addVariationRow(group.name, group.options));
-  }
+  const initialGroups = existingCombination ? existingCombination.axes : (opts.existingVariations || []);
+  initialGroups.forEach(group => addVariationRow(group.name, group.options));
+  initializingVariations = false;
+  syncVariations();
 
   // ── Simple lightbox for enlarging option/cover photo previews (shared) ──
   function openImageLightbox(src) {
@@ -325,7 +459,13 @@ window.initProductForm = function (root, opts) {
 
   // Sync everything right before submit
   form.addEventListener('submit', (e) => {
-    if (totalPhotoCount() === 0 && optionImages.size === 0) {
+    syncVariations();
+    if (combinationError || (!combinationPanel.hidden && !form.reportValidity())) {
+      e.preventDefault();
+      if (combinationError) alert(combinationError);
+      return;
+    }
+    if (totalPhotoCount() === 0 && optionImages.size === 0 && !variationsList.querySelector('[data-existing-image]')) {
       e.preventDefault();
       alert('Add at least one product photo — either a cover photo or a photo on a variation option.');
       return;

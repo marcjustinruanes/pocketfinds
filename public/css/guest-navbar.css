@@ -1,8 +1,8 @@
 /* New guest navbar; scoped to preserve the restored page designs. */
 .pfx-header {
   --pfx-font: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --pfx-ink: #18181b;
-  --pfx-ink-soft: #52525b;
+  --pfx-ink: #593346;
+  --pfx-ink-soft: #593346;
   --pfx-muted: #6f6f6f;
   --pfx-surface: #ffffff;
   --pfx-cream: #fdfaf6;
@@ -69,7 +69,7 @@
   color: var(--pfx-ink-soft); cursor: pointer;
   transition: color var(--pfx-dur-fast), border-color var(--pfx-dur-fast), background var(--pfx-dur-fast);
 }
-.pfx-icon-btn:hover { color: var(--pfx-accent); border-color: var(--pfx-accent); background: var(--pfx-accent-soft); }
+.pfx-icon-btn:hover { color:var(--pfx-accent); border-color:var(--pfx-accent); background:var(--pfx-accent-soft); }
 .pfx-icon-btn:active { transform: scale(.95); }
 
 .pfx-account-btn { position: relative; }

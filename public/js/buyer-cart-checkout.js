@@ -7,6 +7,13 @@
         const status=document.getElementById('shippingVoucherStatus');if(!status)return;
         const select=document.querySelector('select[name="vouchers[shipping]"]');
         const code=select?.value;
+        const guaranteedRows=quote ? Object.values(quote.orders).filter(row=>row.delivery_policy && row.free_shipping_eligible !== false) : [];
+        if(guaranteedRows.length) {
+            status.textContent=guaranteedRows.some(row=>row.shipping_pending)
+                ? 'Free shipping is included. Complete your address and shipping details to confirm availability.'
+                : 'Free shipping applied to eligible seller delivery areas.';
+            return;
+        }
         if(!code){status.textContent='No shipping voucher selected. Choose one from the Shipping voucher dropdown; claiming it does not apply it automatically.';return;}
         if(error){status.textContent='Shipping voucher not applied: '+error;return;}
         if(loading){status.textContent='Checking shipping voucher '+code+'…';return;}
@@ -93,7 +100,7 @@
             const dock = document.getElementById('cartDockTotal'); if (dock) dock.textContent = money(result.quote.total);
             form.elements.quote_hash.value = showErrors?(result.hash||''):'';
             shippingVoucherStatus(result.quote);
-            feedback.textContent = result.quote.warnings?.length?result.quote.warnings.join(' '):rows.map(row=>`${row.items[0].seller_slug}: ${row.chargeable_kg} kg shipping ${money(row.shipping_amount)}`).join(' · ');
+            feedback.textContent = result.quote.warnings?.length?result.quote.warnings.join(' '):rows.map(row=>row.delivery_policy ? `${row.items[0].seller_slug}: ${row.free_shipping_eligible ? 'Free shipping · ' : ''}Delivery ${row.delivery_policy.label}` : `${row.items[0].seller_slug}: ${row.chargeable_kg} kg shipping ${money(row.shipping_amount)}`).join(' · ');
             return true;
         } catch(error) { if (current === version) {shippingVoucherStatus(null,error.message);if(showErrors)checkoutError(error.message);else feedback.textContent=error.message;document.getElementById('cartDiscountRow').style.display='none';document.getElementById('cartTotal').textContent='—';const dock=document.getElementById('cartDockTotal');if(dock)dock.textContent='—';} return false; }
     }

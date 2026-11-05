@@ -34,7 +34,7 @@ class HubHiringTest extends TestCase
         Http::fake(['https://psgc.gitlab.io/api/regions/'=>Http::response([['code'=>'040000000','name'=>'CALABARZON']]),'https://psgc.gitlab.io/api/provinces/'=>Http::response([['code'=>'043400000','name'=>'Laguna','regionCode'=>'040000000']]),'https://psgc.gitlab.io/api/provinces/043400000/cities-municipalities/'=>Http::response([['code'=>'043426000','name'=>'Santa Cruz'],['code'=>'043422000','name'=>'Pila']]),'https://psgc.gitlab.io/api/cities-municipalities/043426000/barangays/'=>Http::response([['code'=>'043426001','name'=>'Central']]),'https://psgc.gitlab.io/api/cities-municipalities/043422000/barangays/'=>Http::response([['code'=>'043422001','name'=>'Central']])]);
         Mail::fake();
         Storage::fake('public'); Storage::fake('sensitive_documents');
-        foreach(['id_files/fixture-id.png','selfie_files/fixture-selfie.png','license_files/fixture-license.png','vehicle_docs/fixture-or.png','vehicle_docs/fixture-cr.png'] as $path) Storage::disk('sensitive_documents')->put($path,'private fixture');
+        foreach(['nbi_clearances/fixture-nbi.png','id_files/fixture-id.png','selfie_files/fixture-selfie.png','license_files/fixture-license.png','vehicle_docs/fixture-or.png','vehicle_docs/fixture-cr.png'] as $path) Storage::disk('sensitive_documents')->put($path,'private fixture');
         $this->hub = LogisticsHub::create(['company_name' => 'Alpha', 'province' => 'Laguna', 'municipality' => 'Santa Cruz', 'is_operational' => true, 'is_hiring' => true]);
         $this->admin = $this->person('logistics_admin');
         DB::table('id_types')->insert(['id' => 1, 'name' => "Driver's License"]);
@@ -47,7 +47,7 @@ class HubHiringTest extends TestCase
         $n = ++$this->serial;
 
         return User::create(['username' => 'person_'.$n, 'email' => 'person_'.$n.'@gmail.com', 'given_names' => 'Fixture', 'last_name' => 'Person'.$n,
-            'id_file' => $role==='rider'?'license_files/fixture-license.png':'id_files/fixture-id.png', 'selfie_file' => 'selfie_files/fixture-selfie.png', 'id_type_id' => 1, 'license_file' => 'license_files/fixture-license.png', 'license_number' => 'LICENSE-'.$n, 'license_expiry' => '2030-01-01', 'vehicle_type' => 'two_wheels', 'vehicle_ownership' => 'own', 'vehicle_brand' => 'Test', 'vehicle_model' => 'Test', 'plate_number' => 'PLATE'.$n, 'or_file' => 'vehicle_docs/fixture-or.png', 'cr_file' => 'vehicle_docs/fixture-cr.png', 'birthday' => '1990-01-01', 'sex' => 'male', 'password' => 'FixturePassword123!', 'account_type' => in_array($role, ['hub_staff', 'logistics_admin']) ? 'logistics' : $role,
+            'id_file' => $role==='rider'?'license_files/fixture-license.png':'id_files/fixture-id.png', 'selfie_file' => 'selfie_files/fixture-selfie.png', 'id_type_id' => 1, 'license_file' => 'license_files/fixture-license.png', 'license_type'=>'professional','dl_codes'=>['A'],'vehicle_dl_code'=>'A','load_capacity_kg'=>20,'nbi_clearance_file'=>'nbi_clearances/fixture-nbi.png','license_number' => 'LICENSE-'.$n, 'license_expiry' => '2030-01-01', 'vehicle_type' => 'two_wheels', 'vehicle_ownership' => 'own', 'vehicle_brand' => 'Test', 'vehicle_model' => 'Test', 'plate_number' => 'PLATE'.$n, 'or_file' => 'vehicle_docs/fixture-or.png', 'cr_file' => 'vehicle_docs/fixture-cr.png', 'birthday' => '1990-01-01', 'sex' => 'male', 'password' => 'FixturePassword123!', 'account_type' => in_array($role, ['hub_staff', 'logistics_admin']) ? 'logistics' : $role,
             'logistics_role' => $role === 'hub_staff' ? 'hub_staff' : ($role === 'logistics_admin' ? 'admin' : null), 'is_admin' => $role === 'admin',
             'is_logistics' => in_array($role, ['hub_staff', 'logistics_admin']), 'business_name' => $hub->company_name, 'logistics_hub_id' => $hub->id, 'status' => $status]);
     }
@@ -62,14 +62,76 @@ class HubHiringTest extends TestCase
     private function application(string $role): array
     {
         $image = fn () => UploadedFile::fake()->createWithContent('document.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aL1kAAAAASUVORK5CYII='));
-        $data = ['account_type' => $role === 'rider' ? 'rider' : 'logistics', 'logistics_mode' => 'join', 'auth_method' => 'manual', 'username' => 'applicant_'.$role,
+        $data = ['no_middle_name' => 1, 'account_type' => $role === 'rider' ? 'rider' : 'logistics', 'logistics_mode' => 'join', 'auth_method' => 'manual', 'username' => 'applicant_'.$role,
             'email' => $role.'@gmail.com', 'given_names' => 'New', 'last_name' => $role === 'rider' ? 'Rider' : 'Staff', 'birthday' => '2000-01-01', 'sex' => 'male',
             'password' => 'FixturePassword123!', 'password_confirmation' => 'FixturePassword123!', 'contact_no' => '09123456789', 'region'=>'CALABARZON', 'province' => 'Laguna',
             'municipality' => 'Santa Cruz', 'barangay' => 'Central', 'business_name' => 'Alpha', 'logistics_hub_id' => $this->hub->id, 'selfie_file' => $image()];
 
+        $this->withSession(['registration_verified_email'=>['email'=>$data['email'], 'expires_at'=>now()->addHour()->timestamp]]);
         return $role === 'rider' ? $data + ['vehicle_type' => 'two_wheels', 'vehicle_ownership' => 'own', 'vehicle_brand' => 'Test', 'vehicle_model' => 'Test',
-            'plate_number' => 'TEST001', 'license_number' => 'H01-00-000001', 'license_expiry' => '2030-01-01', 'license_file' => $image(), 'or_file' => $image(), 'cr_file' => $image()]
+            'license_type'=>'professional','dl_codes'=>['A'],'vehicle_dl_code'=>'A','load_capacity_kg'=>20,'nbi_clearance_file'=>$image(),'plate_number' => 'TEST001', 'license_number' => 'H01-00-000001', 'license_expiry' => '2030-01-01', 'license_file' => $image(), 'or_file' => $image(), 'cr_file' => $image()]
             : $data + ['id_type_id' => 1, 'id_file' => $image()];
+    }
+
+    public function test_registration_saves_the_api_postal_code_instead_of_a_submitted_override(): void
+    {
+        \Illuminate\Support\Facades\Cache::forget('registration_postal_api_v1');
+        \Illuminate\Support\Facades\Http::fake([
+            'psgc.cloud/api/cities'=>\Illuminate\Support\Facades\Http::response([]),
+            'psgc.cloud/api/municipalities'=>\Illuminate\Support\Facades\Http::response([['code'=>'0403426000','name'=>'Santa Cruz','zip_code'=>'4004']]),
+        ]);
+        $data=$this->application('rider')+['municipality_psgc_code'=>'043426000','postal_code'=>'9999'];
+        $this->postJson('/register',$data)->assertOk()->assertJson(['success'=>true]);
+        $this->assertDatabaseHas('users',['email'=>$data['email'],'postal_code'=>'4004']);
+    }
+
+    public function test_registration_accepts_manual_postal_code_when_api_has_no_result(): void
+    {
+        \Illuminate\Support\Facades\Cache::forget('registration_postal_api_v1');
+        \Illuminate\Support\Facades\Http::fake(['psgc.cloud/*'=>\Illuminate\Support\Facades\Http::response([])]);
+        $data=$this->application('rider')+['municipality_psgc_code'=>'043426000','postal_code'=>'4004'];
+        $this->postJson('/register',$data)->assertOk()->assertJson(['success'=>true]);
+        $this->assertDatabaseHas('users',['email'=>$data['email'],'postal_code'=>'4004']);
+    }
+
+    public function test_registration_requires_current_proof_for_the_submitted_email(): void
+    {
+        $data = $this->application('rider');
+        session()->forget('registration_verified_email');
+        $this->postJson('/register', $data)->assertUnprocessable()->assertJsonValidationErrors('email');
+        $this->withSession(['registration_verified_email'=>['email'=>'different@gmail.com', 'expires_at'=>now()->addHour()->timestamp]])
+            ->postJson('/register', $data)->assertUnprocessable()->assertJsonValidationErrors('email');
+        $this->withSession(['registration_verified_email'=>['email'=>$data['email'], 'expires_at'=>now()->subMinute()->timestamp]])
+            ->postJson('/register', $data)->assertUnprocessable()->assertJsonValidationErrors('email');
+        $this->assertDatabaseMissing('users', ['email'=>$data['email']]);
+    }
+
+    public function test_public_rider_requires_nbi_without_retired_license_fields(): void
+    {
+        $data = $this->application('rider'); unset($data['nbi_clearance_file']);
+        $this->postJson('/register', $data)->assertUnprocessable()->assertJsonValidationErrors('nbi_clearance_file');
+        $this->assertDatabaseMissing('users', ['username'=>'applicant_rider']);
+        $data=$this->application('rider');foreach(['license_type','dl_codes','vehicle_dl_code','load_capacity_kg'] as $field)unset($data[$field]);
+        $this->postJson('/register', $data)->assertOk()->assertJson(['success'=>true]);
+        $rider = User::where('username','applicant_rider')->firstOrFail();
+        foreach(['license_type','dl_codes','vehicle_dl_code','load_capacity_kg'] as $field)$this->assertArrayNotHasKey($field,$rider->getAttributes());
+        Storage::disk('sensitive_documents')->assertExists($rider->nbi_clearance_file);
+        Storage::disk('public')->assertMissing($rider->nbi_clearance_file);
+    }
+
+    public function test_hub_staff_pdf_resume_is_validated_and_saved_privately(): void
+    {
+        $data=$this->application('hub_staff');
+        $data['resume_file']=UploadedFile::fake()->createWithContent('resume.png',base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aL1kAAAAASUVORK5CYII='));
+        $this->postJson('/register',$data)->assertUnprocessable()->assertJsonValidationErrors('resume_file');
+        $this->assertDatabaseMissing('users',['username'=>'applicant_hub_staff']);
+        $data['resume_file']=UploadedFile::fake()->createWithContent('resume.pdf',"%PDF-1.4\nResume");
+        $this->postJson('/register',$data)->assertOk()->assertJson(['success'=>true]);
+        $staff=User::where('username','applicant_hub_staff')->firstOrFail();
+        $this->assertSame('hub_staff',$staff->logistics_role);
+        Storage::disk('sensitive_documents')->assertExists($staff->resume_file);
+        Storage::disk('public')->assertMissing($staff->resume_file);
+        $this->assertArrayNotHasKey('resume_file',$staff->toArray());
     }
 
     public function test_staff_requires_interview_and_records_each_decision(): void
@@ -114,7 +176,7 @@ class HubHiringTest extends TestCase
         $this->postJson('/register', $this->application('hub_staff'))->assertOk();
         $staff = User::where('username', 'applicant_hub_staff')->firstOrFail();
         $this->actingAs($this->admin)->patchJson('/logistics/staff/'.$staff->id.'/reject')->assertUnprocessable();
-        $this->patch('/logistics/staff/'.$staff->id.'/reject', ['reason_preset'=>'Incomplete or unclear documents'])->assertRedirect();
+        $this->patch('/logistics/staff/'.$staff->id.'/reject', ['rejection_decision'=>'allow_resubmission','reason_preset'=>'Incomplete or unclear documents'])->assertRedirect();
         $this->assertSame('rejected', $staff->fresh()->status);
         $this->patchJson('/logistics/staff/'.$staff->id.'/activate')->assertUnprocessable();
         auth()->logout();
@@ -296,7 +358,7 @@ class HubHiringTest extends TestCase
     {
         $this->postJson('/register', $this->application('rider'))->assertOk();
         $rider = User::where('username', 'applicant_rider')->firstOrFail();
-        $rider->update(['status' => 'rejected', 'status_reason' => 'Original rejection']);
+        $rider->forceFill(['status' => 'rejected', 'status_reason' => 'Original rejection', 'can_resubmit'=>true])->save();
         $oldEvent = DB::table('hiring_application_history')->where('user_id', $rider->id)->orderByDesc('id')->first();
         $this->postJson('/register', $this->application('rider'))->assertOk();
         $this->assertSame($rider->id, User::where('username', 'applicant_rider')->firstOrFail()->id);
@@ -394,7 +456,7 @@ class HubHiringTest extends TestCase
         $this->settings('hub_staff', ['is_hiring' => false, 'limit' => 0])->assertRedirect();
         $this->postJson('/register', $data)->assertOk();
         $buyer = User::where('username', $data['username'])->firstOrFail();
-        $buyer->update(['status' => 'rejected', 'status_reason' => 'Original buyer rejection']);
+        $buyer->forceFill(['status' => 'rejected', 'status_reason' => 'Original buyer rejection', 'can_resubmit'=>true])->save();
         $this->postJson('/register', $data)->assertOk();
         $this->assertSame($buyer->id, User::where('username', $data['username'])->value('id'));
         $this->assertDatabaseHas('hiring_application_history', ['user_id' => $buyer->id, 'status' => 'rejected', 'reason' => 'Original buyer rejection']);

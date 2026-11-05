@@ -60,6 +60,8 @@ class AdminController extends Controller
 
     public function loginPost(Request $request)
     {
+        $request->session()->forget('seller_application_correction');
+        $request->session()->forget('application_correction');
         $request->validate([
             'email' => 'required|string',
             'password' => 'required',
@@ -71,6 +73,9 @@ class AdminController extends Controller
         $user = User::where('email', $login)->orWhere('username', $login)->first();
 
         if ($user) {
+            if ($user->account_type === 'rider' && app(\App\Services\RiderActivation::class)->pending($user)) {
+                return back()->withErrors(['email' => 'Set your password using the activation email before signing in. Ask your logistics admin to resend it if needed.'])->withInput();
+            }
             if ($user->status === 'pending') {
                 return back()->withErrors(['email' => 'Your account is still pending admin approval. Please wait for confirmation.'])->withInput();
             }
@@ -82,6 +87,21 @@ class AdminController extends Controller
                     return back()->withErrors(['email' => 'Invalid credentials.'])->withInput();
                 }
                 $message = 'Your account application was rejected.';
+                if (!$user->can_resubmit) {
+                    return back()->withErrors(['email'=>'Your application was rejected. Editing and resubmission are not permitted.'])->with('accountStatus','rejected')->withInput();
+                }
+                if ($user->account_type === 'seller') {
+                    Auth::logout();
+                    $request->session()->regenerate();
+                    $request->session()->put('seller_application_correction', ['id' => $user->id, 'expires_at' => now()->addMinutes(30)->timestamp]);
+                    return redirect()->route('seller.application.edit');
+                }
+                if (!$user->is_admin && in_array($user->account_type, ['buyer', 'rider', 'logistics'], true)) {
+                    Auth::logout();
+                    $request->session()->regenerate();
+                    $request->session()->put('application_correction', \App\Support\ApplicationCorrection::grant($user));
+                    return redirect()->route('application.correction.edit');
+                }
                 if ($user->status_reason && $user->account_type!=='rider') {
                     $message .= ' Reason: '.$user->status_reason;
                 }
@@ -169,7 +189,18 @@ class AdminController extends Controller
 
     public function approveUser(User $user)
     {
+        if ($user->account_type === 'seller') {
+            foreach (\App\Support\SellerDocuments::required($user->seller_type) as $field) {
+                $path = $user->{$field};
+                abort_unless($path && (\Illuminate\Support\Facades\Storage::disk('sensitive_documents')->exists($path) || \Illuminate\Support\Facades\Storage::disk('public')->exists($path)), 422, \App\Support\SellerDocuments::LABELS[$field].' is required before approval.');
+            }
+        }
         abort_if(app(HubHiring::class)->role($user) !== null, 403, 'Personnel recruitment belongs to the company Logistics Admin.');
+        if (\App\Services\CompanyOwnership::founder($user)) {
+            foreach (\App\Support\LogisticsDocuments::LABELS as $field => $label) {
+                abort_unless(app(\App\Services\PersonnelApplication::class)->readable($user->{$field}), 422, $label.' is required before approval.');
+            }
+        }
         $user->update(['status' => 'approved', 'status_reason' => null]);
         $this->sendStatusEmail($user, 'approved');
 
@@ -181,8 +212,7 @@ class AdminController extends Controller
         abort_if(app(HubHiring::class)->role($user) !== null, 403, 'Personnel recruitment belongs to the company Logistics Admin.');
         $reason = $this->resolveReason($request);
         // Founder names remain reserved; hubs/personnel and operational history are preserved.
-        $user->update(['status' => 'rejected', 'status_reason' => $reason]);
-        $this->sendStatusEmail($user, 'rejected', $reason);
+        app(\App\Services\ApplicationRejection::class)->reject($user, $reason, $request);
 
         return back()->with('success', 'Application rejected.');
     }
@@ -822,7 +852,7 @@ class AdminController extends Controller
             'email' => ['required', 'email', 'max:255', Rule::in([$user->email])],
             'contact_no' => ['required','regex:/^09[0-9]{9}$/'],
             'region' => 'required|string|max:255',
-            'postal_code' => ['required','regex:/^[0-9]{4}$/D'],
+            'postal_code' => ['nullable','regex:/^[0-9]{4}$/D'],
             'province' => 'required|string|max:255',
             'municipality' => 'required|string|max:255',
             'barangay' => 'required|string|max:255',

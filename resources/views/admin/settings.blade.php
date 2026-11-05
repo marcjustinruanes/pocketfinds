@@ -19,6 +19,7 @@
   <nav class="settings-nav" id="settingsNav">
     <a class="settings-nav-item active" data-settings-tab="general"><span class="ic"><x-admin-icon name="settings" /></span> General</a>
     <a class="settings-nav-item" data-settings-tab="hero"><span class="ic"><x-admin-icon name="bag" /></span> Hero Banner</a>
+    <a class="settings-nav-item" data-settings-tab="collage"><span class="ic"><x-admin-icon name="bag" /></span> Account Photos</a>
     <a class="settings-nav-item" data-settings-tab="categories"><span class="ic"><x-admin-icon name="bag" /></span> Category Photos</a>
     <a class="settings-nav-item" data-settings-tab="policies"><span class="ic"><x-admin-icon name="file" /></span> Platform Policies</a>
     <a class="settings-nav-item" data-settings-tab="appearance"><span class="ic"><x-admin-icon name="chart" /></span> Appearance</a>
@@ -26,6 +27,7 @@
   </nav>
 
   <div>
+    @include('admin.partials.auth-collage-settings')
     <div data-settings-panel="categories" style="display:none">
       <h2 class="settings-section-title">Category Photos</h2>
       <p class="settings-section-sub">Replace the square photos on the guest homepage. Other shapes are cropped to the center.</p>
@@ -308,6 +310,9 @@ document.querySelectorAll('#settingsNav [data-settings-tab]').forEach(tab => {
 });
 
 // Live preview: apply the chosen theme instantly, before the form even saves.
+@if(session('settings_tab') === 'collage')
+document.querySelector('#settingsNav [data-settings-tab="collage"]').click();
+@endif
 @if(session('settings_tab') === 'categories' || $errors->has('category_photo'))
 document.querySelector('#settingsNav [data-settings-tab="categories"]').click();
 @endif

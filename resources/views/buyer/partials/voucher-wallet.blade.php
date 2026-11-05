@@ -1,5 +1,6 @@
 @php
-  $walletVouchers=\Illuminate\Support\Facades\DB::table('commerce_vouchers')->where('is_active',true)->where('ends_at','>',now())->get();
+  $walletVouchers=\Illuminate\Support\Facades\DB::table('commerce_vouchers')->when(\App\Services\DeliveryGuarantee::regionalPoliciesInstalled(), fn($q)=>$q->where('code','!=',\App\Services\DeliveryGuarantee::FREE_SHIPPING_CODE))->where('is_active',true)->where('ends_at','>',now())->get();
+  $walletVouchers=$walletVouchers->filter(fn($voucher)=>\App\Services\DeliveryGuarantee::voucherBelongsTo((int)$voucher->id,(int)auth()->id()));
   $walletClaims=\Illuminate\Support\Facades\DB::table('commerce_claims')->where('buyer_id',auth()->id())->pluck('voucher_id')->all();
 @endphp
 <div class="card" id="my-vouchers"><div class="card-head"><div><h2>My Vouchers</h2><p>Claim vouchers here and select them when checking out in your cart.</p></div></div><div class="card-pad">

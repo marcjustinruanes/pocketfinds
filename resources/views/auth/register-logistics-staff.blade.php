@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    @include('partials.favicon')
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hub Staff Registration — PocketFinds</title>
@@ -765,39 +766,19 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/auth-refresh.css') }}?v={{ filemtime(public_path('css/auth-refresh.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/auth-registration.css') }}?v={{ filemtime(public_path('css/auth-registration.css')) }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Allura&family=DM+Serif+Display&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
-<body class="auth-page">
+<body class="auth-page auth-register registration-steps-page">
 <div class="auth-shell">
     <main class="auth-card">
 
-        <section class="auth-brand-panel">
-            <div class="auth-brand-content">
-                <a class="auth-logo" href="{{ url('/') }}">
-                    <span class="auth-logo-mark"><img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="PocketFinds" class="brand-logo-img"></span>
-                    <span><span class="auth-logo-pocket">Pocket</span><span class="auth-logo-finds">Finds</span></span>
-                </a>
-                <h1 class="auth-brand-title">Join a hub team.</h1>
-                <p class="auth-brand-text">
-                    Work at a logistics hub — sort parcels, process pickups, and keep deliveries moving. Fill in your details and your account will be reviewed by our admin team.
-                </p>
-                <ul class="auth-brand-points">
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Secure &amp; verified registration</li>
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Admin-approved accounts</li>
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Confirmation sent to your email</li>
-                </ul>
-            </div>
-            <div class="auth-brand-footer">© {{ date('Y') }} PocketFinds. All rights reserved.</div>
-        </section>
-
-        <section class="auth-form-panel">
-            <div class="auth-form-wrap">
-
-                {{-- Step indicator (6 Steps: Address -> Company & Hub -> ID & Selfie -> Personal -> Contact -> Account) --}}
-                @php
-                    $regType = 'hub_staff';
-                    $typeIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>';
-                @endphp
-                <div class="steps" id="stepIndicator">
+        <aside class="auth-brand-panel registration-progress-panel" aria-label="Registration progress">
+            @include('auth.partials.registration-logo')
+            <div class="steps" id="stepIndicator">
                     <div class="step-item active" data-step="5">
                         <div class="step-circle">1</div>
                         <span class="step-label">Address</span>
@@ -823,6 +804,18 @@
                         <span class="step-label">Account</span>
                     </div>
                 </div>
+        </aside>
+
+        <section class="auth-form-panel">
+            <div class="auth-form-wrap">
+                @include('auth.partials.registration-back')
+
+                {{-- Step indicator (6 Steps: Address -> Company & Hub -> ID & Selfie -> Personal -> Contact -> Account) --}}
+                @php
+                    $regType = 'hub_staff';
+                    $typeIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>';
+                @endphp
+
 
                 <form id="buyerForm" method="POST" action="{{ route('register.store') }}" enctype="multipart/form-data" novalidate>
                     @csrf
@@ -845,6 +838,7 @@
                             <a href="{{ route('register.delivery-team') }}" title="Change account type" style="flex-shrink:0;margin-left:8px;color:var(--auth-muted);text-decoration:none;line-height:1" onmouseover="this.style.color='var(--auth-primary)'" onmouseout="this.style.color='var(--auth-muted)'"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg></a>
                         </div>
 
+                        <p class="auth-subtitle rider-address-intro">Tell us where you live so we can find hiring hubs in your area.</p>
                         <div class="address-grid">
                             @include('auth.partials.registration-region')
                             <div class="auth-field full">
@@ -893,23 +887,9 @@
                             <a href="{{ route('register.delivery-team') }}" title="Change account type" style="flex-shrink:0;margin-left:8px;color:var(--auth-muted);text-decoration:none;line-height:1" onmouseover="this.style.color='var(--auth-primary)'" onmouseout="this.style.color='var(--auth-muted)'"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg></a>
                         </div>
 
-                        {{-- Address summary banner --}}
-                        <div class="address-summary-pill">
-                            <div class="address-summary-left">
-                                <div class="pin-icon">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                                </div>
-                                <div class="location-meta">
-                                    <span class="location-label">Your Location</span>
-                                    <strong class="location-value" id="pillAddressText">—</strong>
-                                </div>
-                            </div>
-                            <button type="button" class="change-address-btn" onclick="prevStep(8)">Change</button>
-                        </div>
-
                         {{-- 1. Company Picker --}}
                         <div class="auth-field full" style="margin-bottom:14px">
-                            <label class="auth-label">1. Which company do you want to join? <span class="auth-required">*</span></label>
+                            <label class="auth-label">Which company do you want to join?</label>
                             <div class="company-grid" id="joinCompanyGrid">
                                 @forelse($logisticsCompanies ?? [] as $i => $lc)
                                 <label class="company-option-label" id="companyLabel_{{ $i }}">
@@ -934,7 +914,8 @@
                         {{-- 2. Hub Selection & Hiring Status Section --}}
                         <div id="hubSection" class="hub-section-wrapper" style="display:none">
                             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                                <label class="auth-label" style="margin:0">2. Hub to Join <span class="auth-required">*</span></label>
+                                <label class="auth-label" style="margin:0">Hub to Join</label>
+                                <button type="button" class="btn-change-hub" id="changeSelectedHub" onclick="openHubModal()" aria-label="Change hub" title="Change hub" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 5 5M4 16l-1 5 5-1L21 7a3.5 3.5 0 0 0-5-5Z"/></svg></button>
                             </div>
                             <div id="hubNoticeContainer" style="display:none;margin-bottom:10px"></div>
                             <div id="hubSelectionContainer"></div>
@@ -1059,7 +1040,7 @@
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                                     </div>
                                     <div>
-                                        <strong style="font-size:12.5px;color:#1e293b;display:block">Resume / Curriculum Vitae <span style="font-weight:400;font-size:11px;color:var(--auth-muted)">(Optional)</span></strong>
+                                        <strong style="font-size:12.5px;color:#1e293b;display:block">Resume / Curriculum Vitae</strong>
                                         <span style="font-size:11px;color:var(--auth-muted)">Attach your CV (.pdf, .doc, .docx · max 5MB)</span>
                                     </div>
                                 </div>
@@ -1083,7 +1064,7 @@
                                     <span>Remove</span>
                                 </button>
                             </div>
-                            <input type="file" id="resume_file" name="resume_file" accept=".pdf,.doc,.docx" style="display:none" onchange="handleResumeSelect(this)">
+                            <input type="file" id="resume_file" name="resume_file" accept=".pdf,application/pdf" style="display:none" onchange="handleResumeSelect(this)">
                             <span id="resumeFileError" style="display:none;color:red;font-size:11px;margin-top:4px"></span>
                         </div>
 
@@ -1119,8 +1100,7 @@
                                 <input class="auth-input" id="given_names" name="given_names" type="text" placeholder="Juan" required>
                             </div>
                             <div class="auth-field">
-                                <label class="auth-label" for="middle_name">Middle name</label>
-                                <input class="auth-input" id="middle_name" name="middle_name" type="text" placeholder="Santos" maxlength="50">
+                                @include('auth.partials.registration-middle-name')
                             </div>
                             <div class="auth-field">
                                 <label class="auth-label" for="suffix">Suffix</label>
@@ -1135,8 +1115,9 @@
                                 <label class="auth-label" for="sex">Sex <span class="auth-required">*</span></label>
                                 <select class="auth-input auth-select" id="sex" name="sex" required>
                                     <option value="" disabled selected>Select sex</option>
-                                    <option value="male">Male</option>
-                                    <option value="female">Female</option>
+                                    @foreach(\App\Enums\Sex::cases() as $sexOption)
+                                        <option value="{{ $sexOption->value }}" @selected(old('sex') === $sexOption->value)>{{ $sexOption->label() }}</option>
+                                    @endforeach
                                 </select>
                             </div>
                             <div class="auth-field">
@@ -1176,6 +1157,7 @@
                                     <button type="button" class="btn-send-otp" id="sendOtpBtn" onclick="sendOtp()" @if($isGoogleSignup ?? false) style="display:none" @endif>Send Code</button>
                                 </div>
                                 <span class="field-hint" id="emailHint">{{ ($isGoogleSignup ?? false) ? 'Prefilled from your Google account.' : '' }}</span>
+                                @include('auth.partials.google-email-verification')
                             </div>
                             <div class="auth-field full" id="otpField" style="display:none">
                                 <label class="auth-label" for="otp_code">Verification code <span class="auth-required">*</span></label>
@@ -1276,44 +1258,7 @@
                 </div>
 
                 {{-- Nearby Hubs Selection Modal --}}
-                <div id="hubsModal" class="hubs-modal-backdrop" style="display:none" onclick="if(event.target===this)closeHubModal()">
-                    <div class="hubs-modal-dialog">
-                        <div class="hubs-modal-header">
-                            <div>
-                                <h3 class="hubs-modal-title" id="hubsModalTitle">Choose a Hub</h3>
-                                <p class="hubs-modal-sub" id="hubsModalSub">Browse and select an available hub in your province</p>
-                            </div>
-                            <button type="button" class="hubs-modal-close" onclick="closeHubModal()" aria-label="Close">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                            </button>
-                        </div>
-
-                        {{-- Search input --}}
-                        <div class="hubs-modal-search" id="hubsModalSearchBox">
-                            <div class="hubs-search-wrapper">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                                <input type="text" id="hubsSearchInput" placeholder="Search municipality or hub..." oninput="filterHubsModal(this.value)">
-                            </div>
-                        </div>
-
-                        {{-- List of hubs --}}
-                        <div class="hubs-modal-body" id="hubsModalList">
-                            {{-- Hub cards injected dynamically --}}
-                        </div>
-
-                        {{-- Modal Footer --}}
-                        <div class="hubs-modal-footer">
-                            <div class="hubs-footer-left">
-                                <span>Selected:</span>
-                                <strong class="hubs-selection-val" id="hubsModalSelectedText">None</strong>
-                            </div>
-                            <div class="hubs-footer-actions">
-                                <button type="button" class="btn-hubs-cancel" onclick="closeHubModal()">Cancel</button>
-                                <button type="button" class="btn-hubs-confirm" id="btnConfirmHubSelection" onclick="confirmHubModalSelection()">Confirm Selection</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                @include('auth.partials.registration-hub-modal')
 
                 {{-- Lightbox --}}
                 <div class="img-lightbox" id="imgLightbox" onclick="closeLightbox()">
@@ -1349,7 +1294,9 @@ const STAFF_STEPS = [5, 8, 2, 3, 4, 6];
 </script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="{{ asset('js/auth.js') }}"></script>
+<script src="{{ asset('js/registration-unsaved.js') }}?v={{ filemtime(public_path('js/registration-unsaved.js')) }}"></script>
 <script src="{{ asset('js/register.js') }}?v={{ @filemtime(public_path('js/register.js')) ?: 1 }}"></script>
+<script src="{{ asset('js/registration-hub-picker.js') }}?v={{ filemtime(public_path('js/registration-hub-picker.js')) }}"></script>
 <script>
 function staffSetStep(from, to) {
     document.getElementById('panel-' + from)?.classList.remove('active');
@@ -1365,6 +1312,7 @@ function staffSetStep(from, to) {
     });
 
     document.querySelector('.auth-form-panel')?.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'instant' });
 
     if (to === 8) {
         refreshCompanyAndHubOptions();
@@ -1450,6 +1398,7 @@ function refreshCompanyAndHubOptions() {
             radio.disabled = false;
             anyEnabled = true;
             const hiringCount = provHubs.filter(h => h.is_hiring).length;
+            if(!hiringCount){card.classList.add('disabled');radio.disabled=true;radio.checked=false;}
             if (tag) {
                 tag.style.display = 'block';
                 if (hiringCount > 0) {
@@ -1513,279 +1462,6 @@ let currentSelectedHubId = null;
 let tempModalHubId = null;
 let activeProvHubs = [];
 
-function renderHubOptions() {
-    const hubSection = document.getElementById('hubSection');
-    const container  = document.getElementById('hubSelectionContainer');
-    const noticeEl   = document.getElementById('hubNoticeContainer');
-    const selectedCompany = document.querySelector('input[name="business_name"]:checked')?.value;
-    const province     = (document.getElementById('province')?.value || '').trim();
-    const municipality = (document.getElementById('municipality')?.value || '').trim();
-
-    document.getElementById('hubSelectError').style.display = 'none';
-
-    if (!selectedCompany) {
-        hubSection.style.display = 'none';
-        container.innerHTML = '';
-        if (noticeEl) noticeEl.style.display = 'none';
-        currentSelectedHubId = null;
-        document.getElementById('selected_hub_id').value = '';
-        return;
-    }
-
-    hubSection.style.display = 'block';
-    container.innerHTML = '';
-
-    const allHubs = COMPANY_HUBS[selectedCompany] || [];
-    activeProvHubs = allHubs.filter(h => h.province.toLowerCase() === province.toLowerCase());
-
-    if (activeProvHubs.length === 0) {
-        if (noticeEl) noticeEl.style.display = 'none';
-        container.innerHTML = `<div style="padding:12px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;color:#dc2626;font-size:12px">
-            <strong>${selectedCompany}</strong> does not have any hubs registered in ${province}. Please choose another company.
-        </div>`;
-        currentSelectedHubId = null;
-        document.getElementById('selected_hub_id').value = '';
-        return;
-    }
-
-    // Retain selection only if still valid for this company
-    if (currentSelectedHubId && !activeProvHubs.some(h => h.id === currentSelectedHubId)) {
-        currentSelectedHubId = null;
-        document.getElementById('selected_hub_id').value = '';
-    }
-
-    // Direct municipality match check
-    const directMatch = activeProvHubs.find(h => h.municipality.toLowerCase() === municipality.toLowerCase());
-
-    // When the staff's own municipality really does have a hub here, and it's hiring,
-    // surface it as the pre-picked choice right away instead of making them dig for
-    // it in the "browse all hubs" modal — they can still switch via Change if they want.
-    if (directMatch && directMatch.is_hiring && !currentSelectedHubId) {
-        currentSelectedHubId = directMatch.id;
-    }
-
-    // Setup Notice banners
-    if (directMatch) {
-        if (directMatch.is_hiring) {
-            if (noticeEl) noticeEl.style.display = 'none';
-        } else {
-            if (noticeEl) {
-                noticeEl.style.display = 'block';
-                noticeEl.innerHTML = `
-                <div class="hub-notice warning">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                    <div>
-                        <strong>The ${directMatch.municipality} Hub is currently not hiring staff.</strong>
-                        <div style="margin-top:2px;color:#c2410c">The admin has closed applications here. Please select an available nearby hub in <strong>${province}</strong> below.</div>
-                    </div>
-                </div>`;
-            }
-        }
-    } else {
-        if (noticeEl) {
-            noticeEl.style.display = 'block';
-            noticeEl.innerHTML = `
-            <div class="hub-notice info">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                <div>
-                    <strong>${selectedCompany} has no hub in ${municipality}.</strong>
-                    <div style="margin-top:2px;color:#64748b">Please select one of their available hubs in <strong>${province}</strong> below.</div>
-                </div>
-            </div>`;
-        }
-    }
-
-    updateSelectedHubPreview();
-}
-
-function updateSelectedHubPreview() {
-    const container = document.getElementById('hubSelectionContainer');
-    const province     = (document.getElementById('province')?.value || '').trim();
-    const municipality = (document.getElementById('municipality')?.value || '').trim();
-
-    document.getElementById('selected_hub_id').value = currentSelectedHubId || '';
-
-    if (!currentSelectedHubId) {
-        container.innerHTML = `
-        <div class="no-hub-selected-card">
-            <div style="display:flex;align-items:center;gap:12px">
-                <div class="no-hub-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                </div>
-                <div>
-                    <strong style="font-size:13px;color:#1e293b">No hub selected yet</strong>
-                    <p style="margin:2px 0 0;font-size:11.5px;color:var(--auth-muted)">Please choose an available hiring hub in ${province} to apply.</p>
-                </div>
-            </div>
-            <button type="button" class="btn-browse-hubs" onclick="openHubModal()">
-                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                <span>Select Hub</span>
-            </button>
-        </div>`;
-        return;
-    }
-
-    const hub = activeProvHubs.find(h => h.id === currentSelectedHubId);
-    if (!hub) return;
-
-    const isDirectMatch = hub.municipality.toLowerCase() === municipality.toLowerCase();
-
-    container.innerHTML = `
-    <div class="selected-hub-card ${isDirectMatch ? '' : 'nearby-chosen'}">
-        <div class="selected-hub-main">
-            <div class="selected-hub-icon">
-                ${isDirectMatch
-                    ? `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
-                    : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>`
-                }
-            </div>
-            <div class="selected-hub-details">
-                <div class="selected-hub-header">
-                    <span class="selected-hub-name">${hub.municipality} Hub</span>
-                    <span class="hub-badge ${hub.is_hiring ? 'hub-badge-hiring' : 'hub-badge-not-hiring'}">
-                        ${hub.is_hiring ? (isDirectMatch ? 'Actively Hiring' : 'Hiring') : (hub.hiring_status || 'Not Hiring')}
-                    </span>
-                    ${hub.is_regional_hub ? '<span class="hub-badge hub-badge-regional"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Regional</span>' : ''}
-                </div>
-                <p class="selected-hub-desc">
-                    ${isDirectMatch
-                        ? 'Your local municipality hub. You will be assigned to work here.'
-                        : `Nearby hub in ${hub.province} (${activeProvHubs.length - 1} other hub${activeProvHubs.length > 2 ? 's' : ''} available)`
-                    }
-                </p>
-            </div>
-        </div>
-        ${activeProvHubs.length > 1 ? `
-        <button type="button" class="btn-change-hub" onclick="openHubModal()">
-            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            <span>Change</span>
-        </button>` : ''}
-    </div>`;
-}
-
-// ── Hubs Modal Implementation ──
-function openHubModal() {
-    tempModalHubId = currentSelectedHubId;
-
-    const province = (document.getElementById('province')?.value || '').trim();
-    const selectedCompany = document.querySelector('input[name="business_name"]:checked')?.value || '';
-
-    const titleEl = document.getElementById('hubsModalTitle');
-    const subEl   = document.getElementById('hubsModalSub');
-    if (titleEl) titleEl.textContent = `Available Hubs in ${province}`;
-    if (subEl)   subEl.textContent   = `Select a hub to join for ${selectedCompany} (${activeProvHubs.length} total)`;
-
-    const searchInput = document.getElementById('hubsSearchInput');
-    if (searchInput) searchInput.value = '';
-
-    renderModalHubList('');
-
-    const modal = document.getElementById('hubsModal');
-    if (modal) modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-}
-
-function closeHubModal() {
-    const modal = document.getElementById('hubsModal');
-    if (modal) modal.style.display = 'none';
-    document.body.style.overflow = '';
-}
-
-function renderModalHubList(searchTerm) {
-    const container = document.getElementById('hubsModalList');
-    if (!container) return;
-
-    const municipality = (document.getElementById('municipality')?.value || '').trim();
-    const term = searchTerm.toLowerCase();
-
-    const filtered = activeProvHubs.filter(h =>
-        h.municipality.toLowerCase().includes(term) ||
-        h.province.toLowerCase().includes(term)
-    );
-
-    if (filtered.length === 0) {
-        container.innerHTML = `<p style="text-align:center;color:var(--auth-muted);font-size:12px;margin:24px 0">No hubs match "${searchTerm}".</p>`;
-        return;
-    }
-
-    let html = '';
-    filtered.forEach(h => {
-        const isDirectMatch = h.municipality.toLowerCase() === municipality.toLowerCase();
-        const isSelected = h.id === tempModalHubId;
-
-        html += `
-        <div class="hub-choice-card ${isDirectMatch ? 'direct-match' : ''} ${isSelected ? 'selected' : ''} ${h.is_hiring ? '' : 'not-hiring'}"
-             id="modalHubCard_${h.id}"
-             onclick="${h.is_hiring ? `selectModalHub(${h.id})` : ''}">
-            <div style="display:flex;align-items:center;gap:10px;min-width:0">
-                <input type="radio" name="modal_hub_choice" id="modalHubChoice_${h.id}" value="${h.id}"
-                    ${h.is_hiring ? '' : 'disabled'}
-                    ${isSelected ? 'checked' : ''}
-                    style="accent-color:var(--auth-primary);width:16px;height:16px;cursor:pointer;flex-shrink:0"
-                    onclick="event.stopPropagation(); selectModalHub(${h.id})">
-                <div style="min-width:0">
-                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                        <strong style="font-size:13px;color:#1e293b">${h.municipality} Hub</strong>
-                        ${isDirectMatch ? '<span style="font-size:10px;font-weight:700;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:999px;display:inline-flex;align-items:center;gap:3px"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Home Municipality</span>' : ''}
-                        ${h.is_regional_hub ? '<span class="hub-badge hub-badge-regional"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Regional</span>' : ''}
-                    </div>
-                    <span style="font-size:11px;color:var(--auth-muted)">${h.province}</span>
-                </div>
-            </div>
-            <div style="flex-shrink:0">
-                ${h.is_hiring
-                    ? '<span class="hub-badge hub-badge-hiring"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Hiring</span>'
-                    : `<span class="hub-badge hub-badge-not-hiring">${h.hiring_status || 'Not Hiring'}</span>`
-                }
-            </div>
-        </div>`;
-    });
-
-    container.innerHTML = html;
-    updateModalFooterSelection();
-}
-
-function selectModalHub(hubId) {
-    tempModalHubId = hubId;
-
-    document.querySelectorAll('#hubsModalList .hub-choice-card').forEach(c => c.classList.remove('selected'));
-    const card = document.getElementById('modalHubCard_' + hubId);
-    if (card) card.classList.add('selected');
-
-    const radio = document.getElementById('modalHubChoice_' + hubId);
-    if (radio) radio.checked = true;
-
-    updateModalFooterSelection();
-}
-
-function updateModalFooterSelection() {
-    const textEl = document.getElementById('hubsModalSelectedText');
-    const confirmBtn = document.getElementById('btnConfirmHubSelection');
-    if (!textEl || !confirmBtn) return;
-
-    const chosen = activeProvHubs.find(h => h.id === tempModalHubId);
-    if (chosen) {
-        textEl.textContent = `${chosen.municipality} Hub`;
-        confirmBtn.disabled = false;
-    } else {
-        textEl.textContent = 'None';
-        confirmBtn.disabled = true;
-    }
-}
-
-function confirmHubModalSelection() {
-    if (!tempModalHubId) return;
-    currentSelectedHubId = tempModalHubId;
-    updateSelectedHubPreview();
-    document.getElementById('hubSelectError').style.display = 'none';
-    closeHubModal();
-}
-
-function filterHubsModal(value) {
-    renderModalHubList(value.trim());
-}
-
-// ── Resume Upload Handlers ──
 function handleResumeSelect(input) {
     const file = input.files && input.files[0];
     const errEl = document.getElementById('resumeFileError');
@@ -1803,9 +1479,9 @@ function handleResumeSelect(input) {
     }
 
     const ext = file.name.split('.').pop().toLowerCase();
-    if (!['pdf', 'doc', 'docx'].includes(ext)) {
+    if (ext !== 'pdf') {
         if (errEl) {
-            errEl.textContent = 'Please select a valid document (.pdf, .doc, or .docx).';
+            errEl.textContent = 'Please upload your resume as a PDF.';
             errEl.style.display = 'block';
         }
         input.value = '';
@@ -1901,6 +1577,7 @@ nextStep = function (current) {
         const panel = document.getElementById('panel-3');
         let valid = true;
         panel.querySelectorAll('input, select').forEach(el => {
+            if (el.disabled) return;
             clearError(el);
             const val = el.value.trim();
             if (rules[el.id]) { const msg = rules[el.id](val); if (msg) { showError(el, msg); valid = false; return; } }
@@ -1984,5 +1661,7 @@ document.getElementById('barangay')?.addEventListener('change', () => {
     resetCompanyAndHubStep();
 });
 </script>
+<script src="{{ asset('js/registration-flow.js') }}?v={{ filemtime(public_path('js/registration-flow.js')) }}"></script>
+<script src="{{ asset('js/registration-company-picker.js') }}?v={{ filemtime(public_path('js/registration-company-picker.js')) }}"></script>
 </body>
 </html>

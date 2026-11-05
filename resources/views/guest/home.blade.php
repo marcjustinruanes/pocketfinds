@@ -6,13 +6,34 @@
 @endphp
 <html lang="en">
 <head>
+    @include('partials.favicon')
 <style>
 html.hero-intro { overflow: hidden; background: #2d1925; }
 html.hero-intro body { position: fixed; inset: 0; width: 100%; height: 100%; overflow: hidden; }
+html.catalog-restoring body { visibility: hidden; }
 </style>
 <script>
 history.scrollRestoration = 'manual';
-window.pocketfindsReloadAtHero = performance.getEntriesByType('navigation')[0]?.type === 'reload';
+let restoreProducts = window.location.hash === '#products';
+try {
+  const saved = JSON.parse(sessionStorage.getItem('pocketfinds-category-scroll') || 'null');
+  restoreProducts ||= saved?.anchor === 'products' && saved.url === window.location.pathname + window.location.search;
+} catch (_) {}
+if (restoreProducts) {
+  document.documentElement.classList.add('catalog-restoring');
+  document.addEventListener('DOMContentLoaded', () => {
+    requestAnimationFrame(() => {
+      const products = document.getElementById('products');
+      if (products) {
+        const headerHeight = document.querySelector('.market-header')?.getBoundingClientRect().height || 0;
+        window.scrollTo({ top: Math.max(0, products.getBoundingClientRect().top + window.scrollY - headerHeight - 12), left: 0, behavior: 'instant' });
+      }
+      document.documentElement.classList.remove('catalog-restoring');
+    });
+  }, { once: true });
+  window.setTimeout(() => document.documentElement.classList.remove('catalog-restoring'), 3000);
+}
+window.pocketfindsReloadAtHero = !restoreProducts && performance.getEntriesByType('navigation')[0]?.type === 'reload';
 if (window.pocketfindsReloadAtHero) {
   history.scrollRestoration = 'manual';
   history.replaceState(history.state, '', window.location.pathname + window.location.search);
@@ -57,68 +78,13 @@ if ((window.pocketfindsReloadAtHero || (!window.location.hash && !window.locatio
 @if($buyerMode)<link rel="stylesheet" href="{{ asset('css/buyer-storefront.css') }}?v={{ filemtime(public_path('css/buyer-storefront.css')) }}">@endif
 @if($buyerMode)<link rel="stylesheet" href="{{ asset('css/navigation.css') }}?v={{ filemtime(public_path('css/navigation.css')) }}">@endif
 </head>
-<body class="marketplace {{ $buyerMode ? 'buyer-storefront' : '' }}">
+<body class="marketplace storefront-home {{ $buyerMode ? 'buyer-storefront' : '' }}">
 
 {{-- ── Header ── --}}
 @if($buyerMode)
 @include('buyer.partials.storefront-header')
 @else
-<header class="market-header">
-  <div class="container header-main">
-
-    <a class="logo" href="{{ url('/') }}">
-      <span class="logo-mark">
-        <img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="PocketFinds" class="brand-logo-img">
-      </span>
-      <span><span class="logo-pocket">Pocket</span><span class="logo-finds">Finds</span></span>
-    </a>
-
-    <div class="pf-search-wrap">
-      <form class="search" action="{{ url('/') }}" method="GET">
-        <span class="pf-search-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        </span>
-        <input data-search name="q" type="search" placeholder="Search" value="{{ $search ?? '' }}">
-        <button type="submit">
-          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        </button>
-      </form>
-    </div>
-
-    <nav class="nav-links">
-      <a class="nav-link" href="#deals">Deals</a>
-      <a class="nav-link" href="#products">Products</a>
-      <a class="nav-link" href="#about">About</a>
-    </nav>
-
-    <div class="header-actions">
-      <button class="pf-acct-icon" type="button" data-protected title="Wishlist" aria-label="Wishlist"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 4 5 5L7 22l-5-5L15 4Z"/><path d="m12 7 5 5M5 3v4M3 5h4M19 15v4M17 17h4M19 2v2M18 3h2"/></svg>
-      </button>
-      <button class="pf-acct-icon" type="button" data-protected title="Cart">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 5m12-5l2 5M9 21a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"/></svg>
-      </button>
-
-      {{-- Account icon → dropdown with Sign In + Register --}}
-      <div class="pf-account-btn" id="pf-acct-btn">
-        <button class="pf-acct-icon" type="button" id="pf-acct-toggle" aria-label="Account">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        </button>
-        <div class="pf-acct-dropdown" id="pf-acct-dropdown">
-          <a href="{{ url('/login') }}">
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-            Sign In
-          </a>
-          <div class="pf-acct-sep"></div>
-          <a class="register-link" href="{{ url('/register/type') }}">
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-            Create Account
-          </a>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</header>
+@include('guest.partials.header')
 @endif
 
 <main>
@@ -161,7 +127,6 @@ if ((window.pocketfindsReloadAtHero || (!window.location.hash && !window.locatio
 </section>
 
 <div class="container" style="padding-top:14px">
-  @if($buyerMode)@include('buyer.partials.storefront-orders')@endif
 
   @if(!empty($dbError))
   <div style="margin-bottom:20px;padding:12px 18px;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;display:flex;align-items:center;gap:10px;font-size:13px;color:#92400e">
@@ -224,13 +189,11 @@ if ((window.pocketfindsReloadAtHero || (!window.location.hash && !window.locatio
       <div class="pf-split-col" id="deals">
         <div class="pf-deal-container">
         <div class="pf-section-head pf-category-heading pf-deal-heading">
-          @if(count($deals))
           <div class="pf-deal-gallery-controls">
-            <button type="button" data-deal-prev aria-label="Previous deal" title="Previous deal">&larr;</button>
-            <span data-deal-position aria-live="polite">1 / {{ count($deals) }}</span>
-            <button type="button" data-deal-next aria-label="Next deal" title="Next deal">&rarr;</button>
+            <button type="button" data-deal-prev aria-label="Previous deal" title="Previous deal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m7-7-7 7 7 7"/></svg></button>
+            <span data-deal-position aria-live="polite">{{ count($deals) ? 1 : 0 }} / {{ count($deals) }}</span>
+            <button type="button" data-deal-next aria-label="Next deal" title="Next deal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-7-7 7 7-7 7"/></svg></button>
           </div>
-          @endif
           <div class="pf-deal-heading-copy">
             <h2 class="pf-section-title">Deals</h2>
             <p class="pf-deal-intro">Little prices. Lovely finds.</p>
@@ -266,7 +229,7 @@ if ((window.pocketfindsReloadAtHero || (!window.location.hash && !window.locatio
         </div>
         <div class="pf-shop-row">
           @forelse($shops as $shop)
-          <div class="pf-shop-card">
+          <div class="pf-shop-card" data-shop-categories="{{ json_encode($shop['category_ids'] ?? []) }}">
             <div class="pf-shop-av">
               @if(!empty($shop['photo']))<img src="{{ $shop['photo'] }}" alt="{{ $shop['name'] }}" loading="lazy">@else{{ $shop['initial'] }}@endif
             </div>
@@ -295,6 +258,7 @@ if ((window.pocketfindsReloadAtHero || (!window.location.hash && !window.locatio
           @empty
           <p class="pf-deal-empty">No featured shops yet — check back soon.</p>
           @endforelse
+          @if(count($shops))<p class="pf-deal-empty" data-shop-filter-empty hidden role="status">No featured shops in this category yet.</p>@endif
         </div>
       </div>
 
@@ -315,39 +279,31 @@ if ((window.pocketfindsReloadAtHero || (!window.location.hash && !window.locatio
     </div>
 
     <div class="pf-catalog-layout">
-    <aside class="pf-catalog-sidebar-shell" aria-label="Product filters">
-    <details class="pf-catalog-sidebar">
-      <summary aria-label="Toggle product filters" title="Open or close product filters"><svg class="pf-catalog-toggle-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg><span>Product filters</span></summary>
-    <form class="pf-product-filters" action="{{ $storefrontUrl }}#products" method="GET">
-      @if($search)<input type="hidden" name="q" value="{{ $search }}">@endif
-      <fieldset class="pf-catalog-categories">
-        <legend>Categories</legend>
-        <label><input type="radio" name="category" value="" @checked(!$productCategoryId)>@include('guest.partials.category-filter-icon', ['category' => null])<span>All categories</span></label>
+    <div class="pf-catalog-sidebar-stack">
+    <aside class="pf-catalog-sidebar-shell" aria-label="Product categories">
+      <nav class="pf-catalog-icon-rail" aria-label="Filter products by category">
+        <a href="{{ $storefrontUrl.'?'.http_build_query(array_merge(request()->only('q', 'min_price', 'max_price', 'sort'), ['category' => ''])) }}#products" data-catalog-category aria-label="All categories" @if(!$productCategoryId) aria-current="true" @endif>@include('guest.partials.category-filter-icon', ['category' => null])<span>All categories</span></a>
         @foreach($categories as $category)
-        <label><input type="radio" name="category" value="{{ $category->id }}" @checked((int) $productCategoryId === (int) $category->id)>@include('guest.partials.category-filter-icon', ['category' => $category])<span>{{ $category->name }}</span></label>
+        <a href="{{ $storefrontUrl.'?'.http_build_query(array_merge(request()->only('q', 'min_price', 'max_price', 'sort'), ['category' => $category->id])) }}#products" data-catalog-category aria-label="{{ $category->name }}" @if((int) $productCategoryId === (int) $category->id) aria-current="true" @endif>@include('guest.partials.category-filter-icon', ['category' => $category])<span>{{ $category->name }}</span></a>
         @endforeach
-      </fieldset>
+      </nav>
+    </aside>
+    <aside class="pf-catalog-price-sidebar" aria-label="Price range">
+    <form class="pf-product-filters" action="{{ $storefrontUrl }}#products" method="GET" data-auto-price-range>
+      @if($search)<input type="hidden" name="q" value="{{ $search }}">@endif
+      <input type="hidden" name="category" value="{{ $productCategoryId ?: '' }}">
+      <input type="hidden" name="sort" value="{{ $sort }}">
       <div class="pf-price-filter">
-        <label class="pf-catalog-price-row"><span>Min price (₱)</span><input type="number" name="min_price" min="0" max="1000000000" step="10" placeholder="0" value="{{ old('min_price', $minPrice) }}"></label>
-        <label class="pf-catalog-price-row"><span>Max price (₱)</span><input type="number" name="max_price" min="0" max="1000000000" step="10" placeholder="Any" value="{{ old('max_price', $maxPrice) }}"></label>
-        <label class="pf-catalog-sort"><span>Sort by</span><select name="sort" aria-label="Sort products">
-          <option value="newest" @selected($sort === 'newest')>Newest</option>
-          <option value="price_asc" @selected($sort === 'price_asc')>Price: Low to High</option>
-          <option value="price_desc" @selected($sort === 'price_desc')>Price: High to Low</option>
-        </select></label>
-        <div class="pf-catalog-filter-actions"><button type="submit">Apply filters</button><a href="{{ $storefrontUrl }}?category=#products" data-catalog-reset>Reset</a></div>
+        <input type="number" name="min_price" min="0" max="1000000000" step="0.01" placeholder="Min" aria-label="Minimum price in pesos" title="Minimum price (₱). Press Enter to apply." value="{{ old('min_price', $minPrice) }}">
+        <span class="pf-catalog-price-divider" aria-hidden="true">|</span>
+        <input type="number" name="max_price" min="0" max="1000000000" step="0.01" placeholder="Max" aria-label="Maximum price in pesos" title="Maximum price (₱). Press Enter to apply." value="{{ old('max_price', $maxPrice) }}">
+        <a class="pf-catalog-price-reset" href="{{ $storefrontUrl.'?'.http_build_query(request()->only('q', 'category', 'sort')) }}#products" data-catalog-reset>Reset</a>
       </div>
       @error('min_price')<p class="pf-filter-error" role="alert">{{ $message }}</p>@enderror
       @error('max_price')<p class="pf-filter-error" role="alert">{{ $message }}</p>@enderror
     </form>
-    </details>
-    <nav class="pf-catalog-icon-rail" aria-label="Filter products by category">
-      <a href="{{ $storefrontUrl.'?'.http_build_query(array_merge(request()->only('q', 'min_price', 'max_price', 'sort'), ['category' => ''])) }}#products" data-catalog-category title="All categories" aria-label="All categories" @if(!$productCategoryId) aria-current="true" @endif>@include('guest.partials.category-filter-icon', ['category' => null])</a>
-      @foreach($categories as $category)
-      <a href="{{ $storefrontUrl.'?'.http_build_query(array_merge(request()->only('q', 'min_price', 'max_price', 'sort'), ['category' => $category->id])) }}#products" data-catalog-category title="{{ $category->name }}" aria-label="{{ $category->name }}" @if((int) $productCategoryId === (int) $category->id) aria-current="true" @endif>@include('guest.partials.category-filter-icon', ['category' => $category])</a>
-      @endforeach
-    </nav>
     </aside>
+    </div>
     <div class="pf-catalog-results">
     <div class="pf-catalog-summary" role="status">{{ count($products) }} product{{ count($products) === 1 ? '' : 's' }} shown</div>
     <div class="pf-product-grid">
@@ -401,7 +357,9 @@ if ((window.pocketfindsReloadAtHero || (!window.location.hash && !window.locatio
 @if(!$buyerMode)@include('guest.auth-modal')@endif
 <script src="{{ asset('js/marketplace.js') }}?v={{ @filemtime(public_path('js/marketplace.js')) ?: 1 }}"></script>
 @if($buyerMode)
+@include('buyer.partials.messages-modal')
 @include('buyer.partials.assistant')
+<script src="{{ asset('js/buyer.js') }}?v={{ filemtime(public_path('js/buyer.js')) }}"></script>
 <script src="{{ asset('js/navigation.js') }}?v={{ filemtime(public_path('js/navigation.js')) }}"></script>
 <script src="{{ asset('js/buyer-storefront.js') }}?v={{ filemtime(public_path('js/buyer-storefront.js')) }}"></script>
 @else

@@ -22,7 +22,7 @@
     'business_name' => 'Business Name', 'username' => 'Username', 'category_id' => 'Shop Category', 'shipping_fee' => 'Shipping Fee',
     'id_type_id' => 'ID Type',
   ];
-  $documentLabels = ['id_file' => 'ID File', 'business_permit_file' => 'Business Permit'];
+  $documentLabels = ['id_file' => 'ID File', 'business_permit_file' => 'Business Permit'] + \App\Support\SellerDocuments::LABELS;
 @endphp
 
 <div class="kpi-grid">

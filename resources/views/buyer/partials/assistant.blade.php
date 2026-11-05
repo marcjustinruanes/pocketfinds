@@ -4,6 +4,9 @@
 <link rel="stylesheet" href="{{ asset('css/buyer-assistant.css') }}?v={{ filemtime(public_path('css/buyer-assistant.css')) }}">
 <div class="pf-assistant" data-endpoint="{{ route($assistantGuest ? 'guest.assistant.send' : 'buyer.assistant.send') }}" @unless($assistantGuest) data-conversations="{{ route('buyer.assistant.conversations') }}" @endunless data-support="{{ route('support.contact') }}" data-guest="{{ $assistantGuest ? 'true' : 'false' }}">
   <div class="pf-assistant-dock">
+  @unless($assistantGuest)
+  <button type="button" class="pf-messages-launch" data-messages-trigger data-messages-url="{{ route('buyer.messages') }}" aria-label="Messages" title="Messages">@include('buyer.partials.icon', ['name' => 'mail', 'size' => 24])</button>
+  @endunless
   <button class="pf-assistant-launch" type="button" aria-label="Ask PocketFinds" aria-expanded="false" aria-controls="pfAssistantPanel">
     @include('buyer.partials.icon', ['name' => 'chat', 'size' => 24])
     <span class="pf-assistant-launch-label" aria-hidden="true">Ask PocketFinds</span>

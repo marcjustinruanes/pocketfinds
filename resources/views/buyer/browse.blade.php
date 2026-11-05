@@ -1,41 +1,63 @@
 @extends('buyer.layout')
-@section('title', 'Browse Products')
-@section('page-title', 'Browse Products')
-@section('page-sub', 'Discover items from local sellers')
+@section('title', 'Products')
+@section('hide-page-heading', true)
+
+@push('head')
+<link rel="stylesheet" href="{{ asset('css/guest-catalog.css') }}?v={{ filemtime(public_path('css/guest-catalog.css')) }}">
+@endpush
 
 @section('content')
-<form class="filter-bar" method="GET" action="{{ route('buyer.browse') }}">
-  <div class="search-mini">
-    <span class="ic">@include('buyer.partials.icon', ['name' => 'search', 'size' => 13])</span>
-    <input type="text" name="q" placeholder="Search products…" value="{{ request('q') }}">
-  </div>
-  <select class="select" name="category" onchange="this.form.submit()">
-    <option value="">All Categories</option>
-    @foreach($categories as $cat)
-      <option value="{{ $cat->id }}" {{ (string) request('category') === (string) $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
-    @endforeach
-  </select>
-  <select class="select" name="sort" onchange="this.form.submit()">
-    <option value="" {{ !request('sort') ? 'selected' : '' }}>Sort: Newest</option>
-    <option value="price_asc" {{ request('sort') === 'price_asc' ? 'selected' : '' }}>Price: Low to High</option>
-    <option value="price_desc" {{ request('sort') === 'price_desc' ? 'selected' : '' }}>Price: High to Low</option>
-  </select>
-  <button type="submit" class="btn btn-primary" style="display:none">Filter</button>
-</form>
-
-<div class="card">
-  <div class="card-pad">
-    <div class="product-grid product-grid-lg" id="browseGrid">
+<section id="products" aria-label="Products">
+  <div class="pf-catalog-layout">
+    <div class="pf-catalog-sidebar-stack">
+      <aside class="pf-catalog-sidebar-shell" aria-label="Product categories">
+        <nav class="pf-catalog-icon-rail" aria-label="Filter products by category">
+          <a href="{{ route('buyer.browse', request()->except('category', 'page')) }}" aria-label="All categories" @if(!request('category')) aria-current="true" @endif>
+            @include('guest.partials.category-filter-icon', ['category' => null])<span>All categories</span>
+          </a>
+          @foreach($categories as $category)
+            <a href="{{ route('buyer.browse', array_merge(request()->only('q','min_price','max_price','sort'), ['category' => $category->id])) }}" aria-label="{{ $category->name }}" @if((string)request('category') === (string)$category->id) aria-current="true" @endif>
+              @include('guest.partials.category-filter-icon', ['category' => $category])<span>{{ $category->name }}</span>
+            </a>
+          @endforeach
+        </nav>
+      </aside>
+      <aside class="pf-catalog-price-sidebar" aria-label="Price range">
+        <form class="pf-product-filters" action="{{ route('buyer.browse') }}" method="GET" id="browsePriceFilter">
+          @foreach(request()->only('q','category','sort') as $key => $value)
+            <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+          @endforeach
+          <div class="pf-price-filter">
+            <input type="number" name="min_price" min="0" max="1000000000" step="0.01" placeholder="Min" aria-label="Minimum price in pesos" value="{{ request('min_price') }}">
+            <span class="pf-catalog-price-divider" aria-hidden="true">|</span>
+            <input type="number" name="max_price" min="0" max="1000000000" step="0.01" placeholder="Max" aria-label="Maximum price in pesos" value="{{ request('max_price') }}">
+            <a class="pf-catalog-price-reset" href="{{ route('buyer.browse', request()->only('q','category','sort')) }}">Reset</a>
+          </div>
+          @error('min_price')<p class="pf-filter-error" role="alert">{{ $message }}</p>@enderror
+          @error('max_price')<p class="pf-filter-error" role="alert">{{ $message }}</p>@enderror
+        </form>
+      </aside>
+    </div>
+  <div class="pf-catalog-results">
+    <div class="pf-product-grid" id="browseGrid">
       @forelse($products as $p)
-      @include('buyer.partials.product-card', ['p' => $p])
+        @include('guest.partials.pf-product-card', ['p' => $p, 'productRoute' => 'buyer.product', 'catalogCard' => true])
       @empty
-      <div class="empty" style="grid-column:1/-1">
-        @include('buyer.partials.icon', ['name' => 'bag', 'size' => 28])
-        <h3>No products found</h3>
-        <p>Try adjusting your search or filters.</p>
-      </div>
+        <div class="empty" style="grid-column:1/-1">
+          @include('buyer.partials.icon', ['name' => 'bag', 'size' => 28])
+          <h3>No products found</h3>
+          <p>Try another search using the navigation bar.</p>
+        </div>
       @endforelse
     </div>
   </div>
-</div>
+  </div>
+</section>
+<script>
+(() => {
+ const form=document.getElementById('browsePriceFilter');
+ form.addEventListener('change',()=>{if(form.reportValidity())form.requestSubmit();});
+ form.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();if(form.reportValidity())form.requestSubmit();}});
+})();
+</script>
 @endsection

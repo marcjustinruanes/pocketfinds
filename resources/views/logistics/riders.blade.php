@@ -17,7 +17,7 @@
     @if($errors->any())
       <div class="acf-alert" role="alert">{{ $errors->first() }}</div>
     @endif
-    <form method="POST" enctype="multipart/form-data" action="{{ route('logistics.riders.accounts.store') }}">@csrf
+    <form data-registration-form data-registration-dirty="{{ $errors->any() ? 'true' : 'false' }}" method="POST" enctype="multipart/form-data" action="{{ route('logistics.riders.accounts.store') }}">@csrf
       @include('logistics.partials.account-form', ['account' => null, 'creationRole' => 'rider'])
     </form>
   </div>
@@ -47,6 +47,7 @@
         </thead>
         <tbody>
           @forelse($riders as $rider)
+          @php($activationPending = app(\App\Services\RiderActivation::class)->pending($rider))
           <tr>
             <td>
               <div class="cell-user">
@@ -57,7 +58,7 @@
             <td>{{ $rider->vehicle_type ? \Illuminate\Support\Str::title(str_replace('_', ' ', $rider->vehicle_type)) : '—' }}</td>
             <td class="mono">{{ $rider->vehicle_ownership === 'company' ? 'Company Vehicle' : ($rider->plate_number ?: '—') }}</td>
             <td class="mono">{{ $rider->created_at?->format('M d, Y') ?? '—' }}</td>
-            <td><span class="stamp stamp-{{ $rider->status }}">{{ ucfirst($rider->status) }}</span></td>
+            <td><span class="stamp stamp-{{ $rider->status }}">{{ $activationPending && $rider->status === 'pending' ? 'Pending activation' : ucfirst($rider->status) }}</span></td>
             <td>
               <div class="row-actions">
                 <a class="btn btn-sm btn-outline" href="{{ route('logistics.accounts.edit', $rider->id) }}">Edit / hub assignment</a>
@@ -132,10 +133,18 @@
                 <button class="btn btn-outline" data-modal-close>Close</button>
                 @if($rider->status === 'pending')
                   <button type="button" class="btn btn-outline-danger" onclick="openReasonModal('reject', '{{ route('logistics.riders.reject', $rider->id) }}')">Reject</button>
+                  @if($activationPending)
+                  <form method="POST" action="{{ route('logistics.riders.activation.resend', $rider->id) }}">@csrf<button class="btn btn-primary" type="submit">Resend activation email</button></form>
+                  @else
                   <form method="POST" enctype="multipart/form-data" action="{{ route('logistics.riders.approve', $rider->id) }}" style="display:inline">
                     @csrf @method('PATCH')
                     <button class="btn btn-success" type="submit">Approve</button>
                   </form>
+                  @endif
+                @elseif($rider->status === 'rejected')
+                  <span>{{ $rider->can_resubmit ? 'Resubmission allowed' : 'Final rejection' }}</span>
+                  <button type="button" class="btn btn-outline" onclick="openReasonModal('reject', '{{ route('logistics.riders.reject', $rider->id) }}')">Update rejection decision</button>
+                  @if($activationPending && $rider->can_resubmit)<form method="POST" action="{{ route('logistics.riders.activation.resend', $rider->id) }}">@csrf<button class="btn btn-primary" type="submit">Resend correction link</button></form>@endif
                 @elseif($rider->status === 'approved')
                   <button type="button" class="btn btn-outline-danger" onclick="openReasonModal('suspend', '{{ route('logistics.riders.suspend', $rider->id) }}')">Suspend</button>
                 @elseif($rider->status === 'suspended')
@@ -156,4 +165,6 @@
 @include('admin.partials.doc-lightbox')
 @include('admin.partials.reason-modals', ['reasonModalTypes'=>['reject','suspend','activate']])
 {{ $riders->links() }}
+<script src="{{ asset('js/registration-unsaved.js') }}?v={{ filemtime(public_path('js/registration-unsaved.js')) }}"></script>
+<script src="{{ asset('js/license-number-input.js') }}?v={{ filemtime(public_path('js/license-number-input.js')) }}"></script>
 @endsection

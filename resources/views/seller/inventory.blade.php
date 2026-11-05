@@ -5,6 +5,7 @@
 @php use Illuminate\Support\Facades\Storage; @endphp
 
 @section('content')
+<p><a href="{{ route('seller.shop-categories.index') }}">Manage shop categories and subcategories</a></p>
 @if($errors->has('product'))<div role="alert" style="padding:12px;border:1px solid #d77;margin-bottom:12px">{{ $errors->first('product') }}</div>@endif
 
 @if(!$seller->category_id)
@@ -81,7 +82,7 @@
           </td>
           <td style="text-align:center">
             @php $stock = $product->total_stock; @endphp
-            <span style="font-size:13px;font-weight:600;{{ $stock <= 0 ? 'color:var(--danger)' : '' }}">{{ $stock }}</span>
+            <span style="font-size:13px;font-weight:600;{{ $stock <= 0 ? 'color:var(--danger)' : '' }}">{{ (\App\Support\ProductVariationSet::combination($product->variations)['requires_stock_setup'] ?? false) ? 'Set combination stock' : $stock }}</span>
           </td>
           <td style="text-align:center">
             @if($product->status === 'pending')

@@ -12,22 +12,20 @@
   </div>
   <div class="pf-product-body">
     <div class="pf-product-name">{{ $p['name'] }}</div>
-    <div>
+    <div class="pf-product-prices">
       <span class="pf-product-price">₱{{ number_format($p['price']) }}</span>
       @if($p['old_price'] ?? null)<span class="pf-product-old-price">₱{{ number_format($p['old_price']) }}</span>@endif
     </div>
-    @if(!($catalogCard ?? false) || ($p['rating'] ?? 0) > 0 || ($p['sold'] ?? 0) > 0)
     <div class="pf-product-pill">
       @if(($p['rating'] ?? 0) > 0)
       <span class="pf-pill-rating">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="#f59e0b" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         {{ number_format($p['rating'], 1) }}
       </span>
-      @if(!($catalogCard ?? false) || ($p['sold'] ?? 0) > 0)<span class="pf-pill-sep"></span>@endif
+      <span class="pf-pill-sep" aria-hidden="true"></span>
       @endif
-      @if(!($catalogCard ?? false) || ($p['sold'] ?? 0) > 0)<span class="pf-pill-sold">{{ ($p['sold'] ?? 0) >= 1000 ? round($p['sold']/1000,1).'k' : ($p['sold'] ?? 0) }} sold</span>@endif
+      <span class="pf-pill-sold">{{ ($p['sold'] ?? 0) >= 1000 ? round($p['sold']/1000,1).'k' : ($p['sold'] ?? 0) }} sold</span>
     </div>
-    @endif
     @if($p['location'] ?? null)
     <div class="pf-product-loc">
       <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>

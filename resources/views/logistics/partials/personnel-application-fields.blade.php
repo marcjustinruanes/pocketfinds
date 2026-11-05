@@ -58,6 +58,7 @@
   @php($fileFields = $formRole === 'rider'
     ? ['license_file' => ['label' => "Driver's licence", 'accept' => 'image/jpeg,image/png,application/pdf', 'hint' => 'JPG, PNG or PDF'],
        'selfie_file'  => ['label' => 'Selfie with licence', 'accept' => 'image/jpeg,image/png', 'hint' => 'JPG or PNG — face clearly visible'],
+       'nbi_clearance_file' => ['label' => 'NBI clearance', 'accept' => 'image/jpeg,image/png,application/pdf', 'hint' => 'JPG, PNG or PDF'],
        'or_file'      => ['label' => 'Official receipt (OR)', 'accept' => 'image/jpeg,image/png,application/pdf', 'hint' => 'JPG, PNG or PDF', 'own' => true],
        'cr_file'      => ['label' => 'Certificate of registration (CR)', 'accept' => 'image/jpeg,image/png,application/pdf', 'hint' => 'JPG, PNG or PDF', 'own' => true]]
     : ['id_file'      => ['label' => 'Identity document', 'accept' => 'image/jpeg,image/png,application/pdf', 'hint' => 'JPG, PNG or PDF'],

@@ -1,0 +1,13 @@
+.auth-collage-editors { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,270px),1fr)); gap: 18px; align-items: start; }
+.auth-collage-editor { min-width: 0; }
+.auth-collage-editor h3 { margin: 0 0 16px; font-size: 16px; }
+.auth-collage-crop-frame { position: relative; width: 100%; overflow: hidden; border-radius: 11px; background: var(--border); margin-bottom: 18px; }
+.auth-collage-crop-frame img { display: block; width: 100%; height: 100%; position: absolute; inset: 0; }
+.auth-collage-editor input[type=file] { max-width: 100%; padding: 6px; }
+.auth-collage-editor .form-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.auth-collage-slider { margin-top: 16px; }
+.auth-collage-slider label { display: flex; align-items: center; justify-content: space-between; font-size: 13px; margin-bottom: 7px; }
+.auth-collage-slider output { color: var(--muted); }
+.auth-collage-slider input { width: 100%; accent-color: #bc387f; }
+.auth-collage-editor-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.auth-collage-editor-error { color: var(--danger); font-size: 12px; line-height: 1.5; }

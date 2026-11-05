@@ -48,7 +48,11 @@ class GuestController extends Controller
             ->where('seller_id', $p->seller_id)->where('status', 'active')->sellerApproved()->where('id', '!=', $id)
             ->limit(6)->get()->map(fn($r) => $this->mapProduct($r))->all();
 
-        $sellerSold = $product['sold'] + collect($shopProducts)->sum('sold');
+        $sellerProductIds = Product::where('seller_id', $p->seller_id)->pluck('id');
+        $sellerSold = $sellerProductIds->sum(fn ($productId) => $this->soldCount($productId));
+        $sellerFollowers = $p->seller->followers()->count();
+        $sellerRating = Review::whereIn('product_id', $sellerProductIds)->avg('rating');
+        $sellerReviewCount = Review::whereIn('product_id', $sellerProductIds)->count();
 
         $titleTerms = collect(preg_split('/[^\\pL\\pN]+/u', $p->name))
             ->filter(fn ($term) => mb_strlen($term) > 2)
@@ -58,13 +62,17 @@ class GuestController extends Controller
             ->where('status', 'active')
             ->sellerApproved()
             ->where('id', '!=', $id)
-            ->when($titleTerms->isNotEmpty(), function ($query) use ($titleTerms) {
-                $query->where(function ($matches) use ($titleTerms) {
-                    foreach ($titleTerms as $term) {
-                        $matches->orWhere('name', 'like', '%' . $term . '%');
-                    }
-                });
-            }, fn ($query) => $query->whereRaw('1 = 0'))
+            ->where('seller_id', '!=', $p->seller_id)
+            ->where(function ($matches) use ($p, $titleTerms) {
+                $matches->whereRaw('1 = 0');
+                if ($p->category_id !== null) {
+                    $matches->orWhere('category_id', $p->category_id);
+                }
+                foreach ($titleTerms as $term) {
+                    $matches->orWhereLike('name', '%' . $term . '%');
+                }
+            })
+            ->orderBy('name')
             ->limit(8)
             ->get()
             ->map(fn($r) => $this->mapProduct($r))
@@ -72,7 +80,7 @@ class GuestController extends Controller
 
         $shop = null;
         $announcement = $this->guestAnnouncement();
-        return view('guest.product', compact('product', 'shop', 'related', 'shopProducts', 'announcement', 'sellerSold'));
+        return view('guest.product', compact('product', 'shop', 'related', 'shopProducts', 'announcement', 'sellerSold', 'sellerFollowers', 'sellerRating', 'sellerReviewCount'));
     }
 
     public function shop($slug)
@@ -95,6 +103,7 @@ class GuestController extends Controller
         ];
 
         $announcement = $this->guestAnnouncement();
-        return view('guest.shop', compact('shop', 'items', 'slug', 'announcement'));
+        $items=app(\App\Services\ShopCatalog::class)->filter($items,$seller->id,request('shop_category'));
+        return view('guest.shop', compact('shop', 'items', 'slug', 'announcement','seller'));
     }
 }

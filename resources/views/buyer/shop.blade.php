@@ -56,6 +56,7 @@
 </div>
 
 {{-- Products --}}
+@include('partials.shop-catalog-tools',['buyerMode'=>true])
 <div class="sp-products-head">
   <span>All Products</span>
   <span class="sp-products-count">{{ count($items) }} item{{ count($items)!==1?'s':'' }}</span>

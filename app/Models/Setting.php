@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Setting extends Model
 {
+    protected $hidden = ['auth_collage_image_data', 'auth_collage_back_image_data', 'auth_collage_front_image_data'];
+
     protected $fillable = [
         'platform_name', 'support_email', 'commission_rate',
         'google_signin_enabled', 'new_registrations_enabled',
@@ -23,6 +25,7 @@ class Setting extends Model
     ];
 
     protected $casts = [
+        'auth_collage_crops' => 'array',
         'commission_rate'             => 'decimal:2',
         'google_signin_enabled'       => 'boolean',
         'new_registrations_enabled'   => 'boolean',

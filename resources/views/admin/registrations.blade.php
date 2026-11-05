@@ -127,8 +127,18 @@
                     <x-admin-doc-thumb :path="$user->id_file" label="Government ID" />
                     @endunless
                     <x-admin-doc-thumb :path="$user->selfie_file" label="Selfie with ID" />
-                    @if($user->account_type === 'seller' || $user->account_type === 'logistics')
+                    @if($user->account_type === 'seller')
+                    @foreach(\App\Support\SellerDocuments::required($user->seller_type) as $documentField)
+                    <x-admin-doc-thumb :path="$user->{$documentField}" :label="\App\Support\SellerDocuments::LABELS[$documentField]" />
+                    @endforeach
+                    @endif
+                    @if($user->account_type === 'logistics' || $user->business_permit_file)
                     <x-admin-doc-thumb :path="$user->business_permit_file" label="Business Permit" />
+                    @if(\App\Services\CompanyOwnership::founder($user))
+                      @foreach(\App\Support\LogisticsDocuments::LABELS as $field => $label)
+                        <x-admin-doc-thumb :path="$user->{$field}" :label="$label" />
+                      @endforeach
+                    @endif
                     @endif
                     @if($user->account_type === 'logistics' && $user->company_logo)
                     <x-admin-doc-thumb :path="$user->company_logo" label="Company Logo" />
@@ -169,6 +179,8 @@
                     <div class="full"><div class="field-label">Company Name</div><div class="field-value">{{ $user->business_name }}</div></div>
                     <div><div class="field-label">Contact Person</div><div class="field-value">{{ $user->given_names }} {{ $user->last_name }}</div></div>
                     <div><div class="field-label">Position / Job Title</div><div class="field-value">{{ $user->position ?? 'Not provided' }}</div></div>
+                    <div><div class="field-label">Representative Email</div><div class="field-value">{{ $user->representative_email ?? 'Not provided' }}</div></div>
+                    <div><div class="field-label">Representative Contact Number</div><div class="field-value">{{ $user->representative_contact_no ?? 'Not provided' }}</div></div>
                     <div><div class="field-label">SEC Registration Number</div><div class="field-value">{{ $user->sec_registration_no ?? 'Not provided' }}</div></div>
                     <div><div class="field-label">TIN</div><div class="field-value">{{ $user->tin ?? 'Not provided' }}</div></div>
                     <div><div class="field-label">Region</div><div class="field-value">{{ $user->region ?? 'Not provided' }}</div></div>
@@ -210,6 +222,9 @@
                 <button class="btn btn-outline" data-modal-close>Cancel</button>
                 @if($user->status !== 'rejected')
                 <button type="button" class="btn btn-outline-danger" onclick="openReasonModal('reject', '{{ route('admin.registrations.reject', $user->id) }}')">Reject</button>
+                @else
+                <span>{{ $user->can_resubmit ? 'Resubmission allowed' : 'Final rejection' }}</span>
+                <button type="button" class="btn btn-outline" onclick="openReasonModal('reject', '{{ route('admin.registrations.reject', $user->id) }}')">Update rejection decision</button>
                 @endif
                 @if($user->status !== 'approved')
                 <form method="POST" action="{{ route('admin.registrations.approve', $user->id) }}" style="display:inline">

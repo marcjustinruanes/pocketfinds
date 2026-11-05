@@ -6,7 +6,6 @@
   $pPrice  = $p['price'];
   $pBadge  = $p['badge'] ?? '';
   $pLoc    = $p['location'] ?? '';
-  $pRating = $p['rating'];
   $filterName = $filterName ?? null;
 @endphp
 <div class="product-card"@if($filterName !== null) data-product="{{ strtolower($filterName) }}"@endif onclick="window.location='{{ $pLink }}'">
@@ -30,12 +29,13 @@
     @if($p['flash_sale']??null)<small>Flash sale</small>@endif
     <div class="product-price-row">
       <span class="product-price">₱{{ number_format($pPrice) }}</span>
-      <span class="rating-pill">
-        @if($pRating > 0)
+      <span class="pf-product-pill">
+        @if(($p['rating'] ?? 0) > 0)
+        <span class="pf-pill-rating">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="#f59e0b" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        {{ number_format($pRating, 1) }} ·
+        {{ number_format($p['rating'], 1) }}</span><span class="pf-pill-sep" aria-hidden="true"></span>
         @endif
-        {{ ($p['sold'] ?? 0) >= 1000 ? round(($p['sold'] ?? 0)/1000, 1).'k' : ($p['sold'] ?? 0) }} sold
+        <span class="pf-pill-sold">{{ ($p['sold'] ?? 0) >= 1000 ? round(($p['sold'] ?? 0)/1000, 1).'k' : ($p['sold'] ?? 0) }} sold</span>
       </span>
     </div>
     @if($pLoc)
@@ -52,7 +52,6 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 5m12-5l2 5M9 21a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"/></svg>
         Cart
       </button>
-      <button type="button" class="btn-buy" onclick="event.stopPropagation(); pcBuy(this)">Buy Now</button>
     </div>
   </div>
 </div>

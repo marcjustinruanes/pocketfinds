@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    @include('partials.favicon')
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>{{ $shop['name'] }} — PocketFinds</title>
@@ -17,6 +18,7 @@
 @include('guest.partials.header')
 
 <main class="container" style="padding:20px 0 40px">
+@include('partials.shop-catalog-tools',['buyerMode'=>false])
 
 <a href="{{ url()->previous() === url()->current() ? url('/') : url()->previous() }}" class="gp-back">
   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Back

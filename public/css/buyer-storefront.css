@@ -1,7 +1,14 @@
 .buyer-storefront .pf-buyer-menu { position: relative; }
+/* Signed-in storefronts inherit the guest storefront's visual palette. */
+body.buyer-storefront.product-detail-page { --pink:#d9468f; --pink-dark:#be3a7d; --text:#593346; --paper:#fff; --page:#fff; }
+.buyer-storefront .pf-buyer-identity strong { color:var(--ink); }
+.buyer-storefront .market-header .pf-acct-icon:hover { border-color:#ddc4d2; color:#bf3c7d; box-shadow:none; }
+.buyer-storefront .pf-product-card:hover { border-color:var(--border); box-shadow:none; }
 .buyer-storefront .pf-buyer-menu summary { list-style: none; }
 .buyer-storefront .pf-buyer-menu summary::-webkit-details-marker { display: none; }
-.buyer-storefront .pf-buyer-avatar { background: #bf3c7d; color: #fff; border-color: #bf3c7d; font-size: 14px; font-weight: 700; }
+.buyer-storefront .market-header .pf-buyer-avatar,
+.buyer-storefront .market-header .pf-buyer-avatar:hover { background: transparent; border-color: transparent; padding: 0; box-shadow: none; }
+.buyer-storefront .pf-buyer-avatar .user-avatar { width: 100% !important; height: 100% !important; }
 .pf-buyer-count, .pf-buyer-dot { position: absolute; background: #bf3c7d; color: #fff; top: -4px; right: -4px; border: 2px solid #fff; border-radius: 20px; }
 .pf-buyer-count { min-width: 20px; height: 20px; padding: 0 4px; font-size: 10px; line-height: 16px; text-align: center; }
 .pf-buyer-dot { width: 10px; height: 10px; right: 0; top: 0; }
@@ -42,24 +49,20 @@
 }
 .buyer-storefront a:focus-visible,
 .buyer-storefront button:focus-visible {
-  text-shadow: 0 0 10px rgba(217, 70, 143, .32);
+  text-shadow: none;
   text-decoration-color: currentColor;
 }
 @media (hover: hover) and (pointer: fine) {
   .buyer-storefront a:hover,
   .buyer-storefront button:not(:disabled):hover {
-    text-shadow: 0 0 10px rgba(217, 70, 143, .32);
+    text-shadow: none;
     text-decoration-color: currentColor;
   }
   .buyer-storefront :is(.nav-link, .pf-buyer-welcome a, .buyer-page-heading > a, .seller-actions a, .pd-meta-link, .pf-footer-col a):hover {
     color: #bf3c7d;
   }
   .buyer-storefront :is(.pf-section-title, .buyer-page-heading h1, .pd-title, .sp-name):hover {
-    text-shadow: 0 0 14px rgba(217, 70, 143, .24);
-  }
-  .buyer-storefront :is(.pf-product-card, .product-card):hover :is(.pf-product-name, .product-name) {
-    color: #bf3c7d;
-    text-shadow: 0 0 10px rgba(217, 70, 143, .25);
+    text-shadow: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {

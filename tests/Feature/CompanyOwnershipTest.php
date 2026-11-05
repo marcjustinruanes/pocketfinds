@@ -35,15 +35,15 @@ class CompanyOwnershipTest extends PersonnelOnboardingTest
     {
         foreach(['2026_10_16_000001_add_registration_business_details','2026_10_16_000002_add_logistics_registration_details','2026_10_29_000006_enforce_logistics_company_owner'] as $m)(require database_path('migrations/'.$m.'.php'))->up();
         auth()->forgetGuards();$d=$this->data('hub_staff');unset($d['role'],$d['logistics_hub_id']);
-        $d+=['account_type'=>'logistics','auth_method'=>'manual','business_name'=>'Reserved Company','province'=>'Laguna','municipality'=>'Santa Cruz','tin'=>'123456789012','sec_registration_no'=>'CS123456789','position'=>'Owner','postal_code'=>'4009','business_permit_file'=>$this->image(),'hub_areas'=>json_encode([['region'=>'CALABARZON','province'=>'Laguna','municipality'=>'Santa Cruz']])];
+        $d+=['account_type'=>'logistics','auth_method'=>'manual','business_name'=>'Reserved Company','province'=>'Laguna','municipality'=>'Santa Cruz','tin'=>'123456789012','sec_registration_no'=>'CS123456789','position'=>'Owner','postal_code'=>'4009','business_permit_file'=>$this->image(),'sec_certificate_file'=>$this->image(),'bir_certificate_file'=>$this->image(),'hub_areas'=>json_encode([['region'=>'CALABARZON','province'=>'Laguna','municipality'=>'Santa Cruz']])];
         $this->postJson('/register',$d)->assertOk()->assertJson(['success'=>true]);
         $founder=User::where('username','managed_application')->firstOrFail();$originalId=$founder->id;$hubId=DB::table('logistics_hubs')->where('company_name','Reserved Company')->value('id');
         $platform=User::create(['username'=>'platform-reviewer','account_type'=>'admin','is_admin'=>true,'status'=>'approved']);
-        $this->actingAs($platform)->patch(route('admin.registrations.reject',$founder),['reason_preset'=>'other','reason_details'=>'Genuine application requires correction'])->assertRedirect();
+        $this->actingAs($platform)->patch(route('admin.registrations.reject',$founder),['rejection_decision'=>'allow_resubmission','reason_preset'=>'other','reason_details'=>'Genuine application requires correction'])->assertRedirect();
         $this->assertSame('rejected',$founder->fresh()->status);$this->assertDatabaseHas('logistics_hubs',['id'=>$hubId]);
         auth()->forgetGuards();
         $this->getJson('/register/check-business-name?account_type=logistics&business_name=Reserved%20Company')->assertOk()->assertJson(['available'=>false,'reapplication_only'=>true]);
-        $d['selfie_file']=$this->image();$d['id_file']=$this->image();$d['business_permit_file']=$this->image();
+        $d['selfie_file']=$this->image();$d['id_file']=$this->image();$d['business_permit_file']=$this->image();$d['sec_certificate_file']=$this->image();$d['bir_certificate_file']=$this->image();
         $this->postJson('/register',$d)->assertOk()->assertJson(['success'=>true]);
         $this->assertSame($originalId,User::where('username','managed_application')->value('id'));$this->assertSame('pending',$founder->fresh()->status);
         $this->assertSame(1,DB::table('logistics_hubs')->where('company_name','Reserved Company')->count());$this->assertDatabaseHas('logistics_hubs',['id'=>$hubId]);

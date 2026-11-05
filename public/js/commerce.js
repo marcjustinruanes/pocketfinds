@@ -21,6 +21,8 @@
         rateForm.elements.region.value=button.dataset.region;
         if(!rateForm.elements.region.value){status.textContent='This region could not be matched. Select its current region name from the list.';return;}
         rateForm.elements.first_kg.value=button.dataset.firstKg;rateForm.elements.additional_kg.value=button.dataset.additionalKg;rateForm.elements.is_active.value=button.dataset.active;
+        if(rateForm.elements.free_shipping) { rateForm.elements.free_shipping.value=button.dataset.freeShipping || '0';rateForm.elements.delivery_days_min.value=button.dataset.deliveryMin || '1';rateForm.elements.delivery_days_max.value=button.dataset.deliveryMax || '7'; }
+        if(rateForm.elements.late_voucher_enabled) { rateForm.elements.late_voucher_enabled.value=button.dataset.lateVoucherEnabled || '0';rateForm.elements.late_voucher_amount.value=button.dataset.lateVoucherAmount || '40'; }
         status.textContent='Editing '+button.dataset.region+'. Save region rate to apply your changes.';rateForm.scrollIntoView({behavior:'smooth',block:'center'});rateForm.elements.first_kg.focus({preventScroll:true});
     }));
     const form = document.getElementById('commerce-checkout');

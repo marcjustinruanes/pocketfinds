@@ -40,6 +40,17 @@
     <form method="POST" id="{{ $type }}ReasonForm" onsubmit="return validateReasonForm('{{ $type }}')">
       @csrf @method('PATCH')
       <div class="modal-body">
+        @if($type === 'reject' && ($applicationRejection ?? true))
+        <div class="form-row" style="margin-bottom:16px">
+          <label for="rejectionDecision">Application decision</label>
+          <select id="rejectionDecision" name="rejection_decision" required style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font:inherit">
+            @foreach(\App\Enums\RejectionDecision::cases() as $decision)
+              <option value="{{ $decision->value }}" @selected($decision===\App\Enums\RejectionDecision::FinalRejection)>{{ $decision->label() }}</option>
+            @endforeach
+          </select>
+          <small>Allow resubmission sends an email inviting the applicant to sign in and correct the application. Final rejection blocks editing and resubmission.</small>
+        </div>
+        @endif
         <div style="display:flex;flex-direction:column;gap:10px">
           @foreach($cfg['reasons'] as $reason)
           <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;min-height:44px">

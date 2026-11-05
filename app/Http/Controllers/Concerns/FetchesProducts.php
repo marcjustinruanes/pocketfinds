@@ -87,9 +87,18 @@ trait FetchesProducts
         $prov = trim($p->seller->province ?? '');
         $location = trim($mun . ($mun && $prov ? ', ' : '') . $prov);
 
-        $reviews = Review::with('buyer')->where('product_id', $p->id)->latest('created_at')->get();
+        $reviews = Review::with(['buyer','order'])->where('product_id', $p->id)->latest('created_at')->get();
 
         $variations = collect($p->variations ?? [])->map(function ($variation) {
+            if (($variation['type'] ?? null) === 'combinations') {
+                foreach ($variation['axes'] as &$axis) {
+                    foreach ($axis['options'] as &$axisOption) {
+                        if (!empty($axisOption['image'])) $axisOption['image'] = $this->productImageUrl($axisOption['image']);
+                    }
+                    unset($axisOption);
+                }
+                unset($axis);
+            }
             $variation['options'] = collect($variation['options'] ?? [])->map(function ($option) {
                 if (!empty($option['image'])) $option['image'] = $this->productImageUrl($option['image']);
                 return $option;
@@ -126,7 +135,7 @@ trait FetchesProducts
             'is_new'      => $p->created_at?->gt(now()->subDays(14)) ?? false,
             'location'    => $location,
             'price'       => $displayPrice,
-            'old_price'   => $hasDiscount ? (float) $p->price : null,
+            'old_price'   => ($hasDiscount || ($flash && $displayPrice < (float)$p->price)) ? (float) $p->price : null,
             'badge'       => $hasDiscount ? '-' . $percentOff . '%' : null,
             'rating'      => $reviews->isNotEmpty() ? round($reviews->avg('rating'), 1) : 0,
             'sold'        => $this->soldCount($p->id),
@@ -150,6 +159,7 @@ trait FetchesProducts
                 'name'   => $r->buyer?->given_names ? mb_substr($r->buyer->given_names,0,1).'***' : 'Buyer',
                 'photos' => array_map(fn($path)=>\Illuminate\Support\Facades\Storage::disk('public')->url($path),$r->photos??[]),
                 'rating' => $r->rating,
+                'variation' => $r->variationLabel(),
                 'date'   => $r->created_at ? \Illuminate\Support\Carbon::parse($r->created_at)->format('M d, Y') : '',
                 'text'   => $r->comment ?: '',
             ])->all(),

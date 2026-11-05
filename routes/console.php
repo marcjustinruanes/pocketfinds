@@ -24,6 +24,11 @@ Artisan::command('gcash:expire', function () {
 })->purpose('Release expired GCash stock and voucher allocations exactly once');
 Schedule::command('gcash:expire')->everyMinute()->withoutOverlapping();
 
+Artisan::command('orders:late-delivery-vouchers', function () {
+    $this->info(app(\App\Services\DeliveryGuarantee::class)->sweep().' late-delivery vouchers issued.');
+})->purpose('Issue the voucher promised at checkout for each missed delivery guarantee');
+Schedule::command('orders:late-delivery-vouchers')->everyMinute()->withoutOverlapping();
+
 Artisan::command('documents:privatize {--apply : Copy, verify and remove public originals}', function () {
     $service = app(\App\Services\SensitiveDocuments::class);
     $public = \Illuminate\Support\Facades\Storage::disk('public');

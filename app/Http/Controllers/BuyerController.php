@@ -81,12 +81,18 @@ class BuyerController extends Controller
 
     public function browse(Request $request)
     {
+        $request->validate([
+            'min_price' => 'nullable|numeric|min:0|max:1000000000',
+            'max_price' => 'nullable|numeric|min:0|max:1000000000'.($request->filled('min_price') ? '|gte:min_price' : ''),
+        ]);
         $categories = Category::orderBy('name')->get(['id', 'name']);
         $products = $this->dbProducts(
             0,
             $request->filled('category') ? (int) $request->input('category') : null,
             $request->filled('q') ? $request->input('q') : null,
-            $request->input('sort')
+            $request->input('sort'),
+            $request->filled('min_price') ? (float) $request->input('min_price') : null,
+            $request->filled('max_price') ? (float) $request->input('max_price') : null
         );
 
         return view('buyer.browse', compact('products', 'categories'));
@@ -110,20 +116,25 @@ class BuyerController extends Controller
             ->sellerApproved()
             ->where('id', '!=', $id)
             ->where('seller_id', '!=', $p->seller_id)
-            ->when($titleTerms->isNotEmpty(), function ($query) use ($titleTerms) {
-                $query->where(function ($matches) use ($titleTerms) {
-                    foreach ($titleTerms as $term) {
-                        $matches->orWhereLike('name', '%'.$term.'%');
-                    }
-                });
-            }, fn ($query) => $query->whereRaw('1 = 0'))
+            ->where(function ($matches) use ($p, $titleTerms) {
+                $matches->whereRaw('1 = 0');
+                if ($p->category_id !== null) {
+                    $matches->orWhere('category_id', $p->category_id);
+                }
+                foreach ($titleTerms as $term) {
+                    $matches->orWhereLike('name', '%'.$term.'%');
+                }
+            })
+            ->orderBy('name')
             ->limit(8)
             ->get()
             ->map(fn ($r) => $this->mapProduct($r))
             ->all();
         $shop = null;
 
-        return view('buyer.product', compact('product', 'shop', 'related', 'shopProducts', 'sellerOnline'));
+        $isFollowing = ShopFollow::where('buyer_id', auth()->id())->where('seller_id', $p->seller_id)->exists();
+        $isSaved = \App\Services\BuyerCommerce::installed() && \Illuminate\Support\Facades\DB::table('commerce_wishlist')->where('buyer_id', auth()->id())->where('product_id', $p->id)->exists();
+        return view('buyer.product', compact('product', 'shop', 'related', 'shopProducts', 'sellerOnline', 'isFollowing', 'isSaved'));
     }
 
     public function shop($slug)
@@ -143,7 +154,8 @@ class BuyerController extends Controller
             'is_following' => ShopFollow::where('buyer_id', auth()->id())->where('seller_id', $seller->id)->exists(),
         ];
 
-        return view('buyer.shop', compact('shop', 'items', 'slug'));
+        $items=app(\App\Services\ShopCatalog::class)->filter($items,$seller->id,request('shop_category'));
+        return view('buyer.shop', compact('shop', 'items', 'slug','seller'));
     }
 
     /** Toggle the current buyer's follow of a seller's shop. */
@@ -246,7 +258,7 @@ class BuyerController extends Controller
         if(is_string($request->input('contact_no'))) $request->merge(['contact_no'=>\App\Support\PhilippineMobile::normalize($request->contact_no)]);
         $data = $request->validate([
             'region' => ['required','string','max:255'],
-            'postal_code' => ['required','regex:/^[0-9]{4}$/D'],
+            'postal_code' => ['nullable','regex:/^[0-9]{4}$/D'],
             'label' => ['nullable', 'string', 'max:50'],
             'recipient_name' => ['required', 'string', 'max:150'],
             'contact_no' => ['required', 'string', 'regex:/\A09[0-9]{9}\z/'],
@@ -287,18 +299,18 @@ class BuyerController extends Controller
     {
         abort_unless($address->buyer_id === auth()->id(), 403);
 
-        // The default address mirrors the buyer's own approved account address —
-        // it isn't just another saved address, so it can't be removed directly.
-        // It only ever changes when a profile/address update request they submit
-        // gets approved by an admin (see AccountUpdateRequest::apply()).
-        if ($address->is_default) {
+        $removed=DB::transaction(function()use($address){
+            User::whereKey(auth()->id())->lockForUpdate()->firstOrFail();
+            $saved=BuyerAddress::where('buyer_id',auth()->id())->whereKey($address->id)->lockForUpdate()->firstOrFail();
+            if($saved->is_default)return false;
+            $saved->delete();return true;
+        });
+        if (!$removed) {
             if ($request->expectsJson()) {
-                return response()->json(['success' => false, 'message' => 'Your default address cannot be removed. Submit an account update request to change it.'], 422);
+                return response()->json(['success' => false, 'message' => 'Choose another default delivery address before removing this one.'], 422);
             }
-            return back()->with('error', 'Your default address is set from your account address. To change it, submit an account update request and wait for admin approval.');
+            return back()->with('error', 'Choose another default delivery address before removing this one.');
         }
-
-        $address->delete();
 
         if ($request->expectsJson()) {
             return response()->json(['success' => true]);
@@ -512,6 +524,7 @@ class BuyerController extends Controller
 
     public function orders(Request $request)
     {
+        app(\App\Services\DeliveryGuarantee::class)->sweep((int) auth()->id());
         Order::autoCompleteDeliveredThrottled();
 
         $allowedTabs = ['all', 'to_ship', 'in_transit', 'out_for_delivery', 'delivered', 'completed', 'cancelled', 'refunds'];
@@ -1075,16 +1088,24 @@ class BuyerController extends Controller
             ? $sellerOrders->firstWhere('id', $request->query('order'))
             : null;
 
-        // All conversations this buyer has
+        // Only seller conversations can be opened by the buyer messaging routes.
         $conversations = Message::with(['sender', 'receiver', 'product', 'gcashPurchase'])
             ->where('sender_id', auth()->id())
             ->orWhere('receiver_id', auth()->id())
             ->orderByDesc('created_at')
             ->get()
             ->groupBy(fn ($m) => $m->sender_id === auth()->id() ? $m->receiver_id : $m->sender_id)
-            ->map(fn ($msgs) => $msgs->first());
+            ->map(fn ($msgs) => $msgs->first())
+            ->filter(function ($message) {
+                $contact = $message->sender_id === auth()->id() ? $message->receiver : $message->sender;
+                return $contact && $contact->account_type === 'seller' && filled($contact->username);
+            });
 
         $data = compact('product', 'productVariation', 'seller', 'sellerOnline', 'messages', 'conversations', 'sellerProducts', 'sellerOrders', 'autoAttachOrder');
+
+        if ($request->boolean('embedded')) {
+            return view('buyer.messages-embedded', $data);
+        }
 
         if ($request->ajax()) {
             return view('buyer.partials.messages-panel', $data);
@@ -1117,22 +1138,26 @@ class BuyerController extends Controller
     public function reportMessage(Request $request)
     {
         $data = $request->validate([
-            'message_id' => ['required', 'integer'],
+            'message_id' => ['nullable', 'required_without:receiver_id', 'integer'],
+            'receiver_id' => ['nullable', 'required_without:message_id', 'integer'],
             'reason' => ['required', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:3000'],
             'evidence' => ['nullable', 'file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi'],
         ]);
-        $message = Message::with(['sender', 'receiver'])->whereKey($data['message_id'])
+        $message = empty($data['message_id']) ? null : Message::with(['sender', 'receiver'])->whereKey($data['message_id'])
             ->where(fn ($query) => $query->where('sender_id', auth()->id())->orWhere('receiver_id', auth()->id()))
             ->firstOrFail();
+        $respondent = $message
+            ? ($message->sender_id === auth()->id() ? $message->receiver : $message->sender)
+            : User::whereKey($data['receiver_id'])->where('account_type', 'seller')->firstOrFail();
         $evidence = $request->file('evidence');
         $values = [
             'id' => (string) Str::uuid(), 'order_id' => null, 'complainant_id' => auth()->id(),
-            'respondent_id' => $message->sender_id === auth()->id() ? $message->receiver_id : $message->sender_id,
-            'complaint_type' => $data['reason'], 'subject' => 'Reported chat message',
+            'respondent_id' => $respondent->id,
+            'complaint_type' => $data['reason'], 'subject' => $message ? 'Reported chat message' : 'Reported shop conversation',
             'description' => $data['description'] ?? null, 'status' => 'open',
-            'message_id' => $message->id, 'shop_name' => $message->receiver?->business_name ?? $message->sender?->business_name,
-            'message_body' => $message->body, 'message_type' => $message->attachment_type ?: ($message->body ? 'text' : 'message'),
+            'message_id' => $message?->id, 'shop_name' => $respondent->business_name,
+            'message_body' => $message?->body, 'message_type' => $message ? ($message->attachment_type ?: ($message->body ? 'text' : 'message')) : 'conversation',
         ];
         if ($evidence) {
             $values['evidence_path'] = app(MediaLifecycle::class)->store($evidence, 'report_evidence', 'public');
@@ -1354,11 +1379,13 @@ class BuyerController extends Controller
 
     public function account()
     {
+        app(\App\Services\DeliveryGuarantee::class)->sweep((int) auth()->id());
         $paymentAccounts = BuyerPaymentAccount::where('buyer_id', auth()->id())->latest('created_at')->get();
         BuyerAddress::ensureDefaultFor(auth()->user());
         $addresses = BuyerAddress::where('buyer_id', auth()->id())->orderByDesc('is_default')->latest()->get();
 
-        return view('buyer.account', array_merge(compact('paymentAccounts', 'addresses'), [
+        $followingShops = User::where('account_type','seller')->where('status','approved')->whereIn('id',ShopFollow::where('buyer_id',auth()->id())->select('seller_id'))->orderBy('business_name')->get();
+        return view('buyer.account', array_merge(compact('paymentAccounts', 'addresses','followingShops'), [
             'pendingRequest' => $this->pendingAccountUpdateRequest(),
             'lastRequest' => $this->lastAccountUpdateRequest(),
         ]));
@@ -1390,7 +1417,7 @@ class BuyerController extends Controller
     {
         $request->validate([
             'region' => 'required|string|max:255',
-            'postal_code' => ['required','regex:/^[0-9]{4}$/D'],
+            'postal_code' => ['nullable','regex:/^[0-9]{4}$/D'],
             'province' => 'required|string|max:255',
             'municipality' => 'required|string|max:255',
             'barangay' => 'required|string|max:255',

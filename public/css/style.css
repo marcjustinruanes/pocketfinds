@@ -683,3 +683,4 @@ a {
         flex-direction: column;
     }
 }
+[data-seller-document][hidden] { display: none !important; }

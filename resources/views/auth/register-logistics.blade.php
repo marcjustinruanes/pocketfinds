@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    @include('partials.favicon')
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Logistics Registration — PocketFinds</title>
@@ -212,41 +213,19 @@
             background: #fefce8;
         }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/auth-refresh.css') }}?v={{ filemtime(public_path('css/auth-refresh.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/auth-registration.css') }}?v={{ filemtime(public_path('css/auth-registration.css')) }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Allura&family=DM+Serif+Display&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
-<body class="auth-page">
+<body class="auth-page auth-register registration-steps-page">
 <div class="auth-shell">
     <main class="auth-card">
 
-        <section class="auth-brand-panel">
-            <div class="auth-brand-content">
-                <a class="auth-logo" href="{{ url('/') }}">
-                    <span class="auth-logo-mark"><img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="PocketFinds" class="brand-logo-img"></span>
-                    <span><span class="auth-logo-pocket">Pocket</span><span class="auth-logo-finds">Finds</span></span>
-                </a>
-                <h1 class="auth-brand-title">Join the logistics team.</h1>
-                <p class="auth-brand-text">
-                    Coordinate pickups, dispatch couriers, and track deliveries from the sorting center. Fill in your details and your account will be reviewed by our admin team.
-                </p>
-                <ul class="auth-brand-points">
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Secure &amp; verified registration</li>
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Admin-approved accounts</li>
-                    <li><span class="auth-check"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> Confirmation sent to your email</li>
-                </ul>
-            </div>
-            <div class="auth-brand-footer">© {{ date('Y') }} PocketFinds. All rights reserved.</div>
-        </section>
-
-        <section class="auth-form-panel">
-            <div class="auth-form-wrap">
-
-                {{-- Step indicator --}}
-                @php
-                    $regType = 'logistics';
-                    $typeIcons = [
-                        'logistics' => '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><path d="M9 14l2 2 4-4"/></svg>',
-                    ];
-                @endphp
-                <div class="steps" id="stepIndicator">
+        <aside class="auth-brand-panel registration-progress-panel" aria-label="Registration progress">
+            @include('auth.partials.registration-logo')
+            <div class="steps" id="stepIndicator">
                     <div class="step-item active" data-step="7">
                         <div class="step-circle">1</div>
                         <span class="step-label">Company</span>
@@ -276,6 +255,20 @@
                         <span class="step-label">Account</span>
                     </div>
                 </div>
+        </aside>
+
+        <section class="auth-form-panel">
+            <div class="auth-form-wrap">
+                @include('auth.partials.registration-back')
+
+                {{-- Step indicator --}}
+                @php
+                    $regType = 'logistics';
+                    $typeIcons = [
+                        'logistics' => '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><path d="M9 14l2 2 4-4"/></svg>',
+                    ];
+                @endphp
+
 
                 <form id="buyerForm" method="POST" action="{{ route('register.store') }}" enctype="multipart/form-data" novalidate>
                     @csrf
@@ -299,6 +292,7 @@
                         <div class="auth-field">
                             <label class="auth-label" for="sec_registration_no">SEC registration number <span class="auth-required">*</span></label>
                             <input class="auth-input" id="sec_registration_no" name="sec_registration_no" type="text" minlength="11" maxlength="11" pattern="[A-Za-z]{2}[0-9]{9}" placeholder="CS202012345" value="{{ old('sec_registration_no') }}" required>
+                            <span class="field-hint">Two letters and nine digits, e.g. CS202012345.</span>
                         </div>
 
                         <div class="auth-field" style="margin-bottom:10px">
@@ -320,7 +314,7 @@
                                             <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                                             Upload
                                         </span>
-                                        <span class="upload-info">JPG, PNG, WEBP · 2 MB</span>
+                                        <span class="upload-info">JPG, PNG, WEBP · 5 MB</span>
                                     </div>
                                     <div id="logoPreview" style="display:none;position:relative">
                                         <img id="logoImg" style="width:100%;max-height:110px;object-fit:cover;border-radius:6px" alt="Company logo">
@@ -331,7 +325,7 @@
                                 <input type="file" id="logo_file" name="company_logo" accept="image/*" style="display:none" onchange="handleDocUpload('logo', this)">
                             </div>
                             <div id="businessPermitField">
-                                <label class="auth-label" style="font-size:11px">Business / DTI Permit <span class="auth-required">*</span></label>
+                                <label class="auth-label" style="font-size:11px">DTI Permit <span class="auth-required">*</span></label>
                                 <div class="upload-box document-upload" id="businessPermitBox" style="cursor:pointer;min-height:110px">
                                     <div id="businessPermitIdle" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 6px;text-align:center">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:#aaa;margin-bottom:5px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
@@ -349,6 +343,7 @@
                                 </div>
                                 <input type="file" id="business_permit_file" name="business_permit_file" accept="image/*,.pdf" style="display:none" required>
                                 <span id="businessPermitError" style="display:none;color:red;font-size:11px">Please upload your business permit.</span>
+                                @include('auth.partials.logistics-documents')
                             </div>
                         </div>
 
@@ -389,16 +384,15 @@
                                     <div id="hubMuniCheckboxes"></div>
                                 </div>
                             </div>
+                            <button type="button" class="coverage-add-area" onclick="addHubArea()" aria-label="Add area" title="Add area">Add</button>
                         </div>
-                        <button type="button" onclick="addHubArea()" style="width:100%;padding:8px;border:1.5px dashed var(--auth-primary);background:#fff;color:var(--auth-primary);border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer">+ Add Selected Municipalities</button>
 
-                        <p style="margin:10px 0 4px;font-size:11px;color:var(--auth-muted)">Click <strong>View Hubs</strong> on any province to inspect, search, or change its gateway hub (★).</p>
-                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                        <div id="addedCoverageHeader" class="added-coverage-header" hidden>
                             <div style="display:flex;align-items:center;gap:6px">
                                 <span style="font-size:11.5px;font-weight:700;color:#374151">Added coverage hubs</span>
-                                <span id="hubCountBadge" style="display:none;font-size:11px;font-weight:700;color:var(--auth-primary);background:var(--auth-primary-soft);padding:2px 8px;border-radius:999px"></span>
+                                <span id="hubCountBadge" class="coverage-total-capsule" style="display:none"></span>
                             </div>
-                            <button type="button" id="hubViewAllBtn" onclick="openCoverageModal()" style="display:none;background:none;border:none;color:var(--auth-primary);font-size:11px;font-weight:700;cursor:pointer;padding:0;text-decoration:underline">View All Hubs Modal ↗</button>
+                            <button type="button" id="hubViewAllBtn" onclick="openCoverageModal()" style="display:none;background:none;border:none;color:var(--auth-primary);font-size:11px;font-weight:700;cursor:pointer;padding:0">View all areas</button>
                         </div>
                         <div id="hubAreaList" style="display:flex;flex-direction:column;gap:6px"></div>
                         <input type="hidden" id="hub_areas" name="hub_areas" value="[]">
@@ -541,6 +535,25 @@
 
                         <div class="auth-form-grid">
                             <div class="auth-field">
+                                <label class="auth-label" for="representative_email">Email address</label>
+                                <div class="email-verify-row">
+                                    <input class="auth-input" id="representative_email" name="representative_email" type="email" maxlength="255" placeholder="representative@gmail.com" autocomplete="off" required>
+                                    <button class="btn-send-otp" type="button" id="representativeSendCode">Send Code</button>
+                                </div>
+                                <span class="field-hint" id="representativeEmailHint" role="status"></span>
+                                <div id="representativeOtpGroup" hidden>
+                                    <label class="auth-label" for="representative_otp">Verification code</label>
+                                    <div class="email-verify-row"><input class="auth-input" id="representative_otp" type="text" inputmode="numeric" maxlength="6" placeholder="Enter 6-digit code" autocomplete="one-time-code"><button class="btn-send-otp" type="button" id="representativeVerifyCode">Verify</button></div>
+                                </div>
+                            </div>
+                            <div class="auth-field">
+                                <label class="auth-label" for="representative_contact_no">Contact number</label>
+                                <div class="registration-mobile"><span class="registration-mobile-prefix" aria-hidden="true">+63</span><input class="auth-input" id="representative_contact_no" name="representative_contact_no" type="tel" inputmode="numeric" autocomplete="tel-national" minlength="10" maxlength="10" pattern="9[0-9]{9}" placeholder="9XXXXXXXXX" required></div>
+                            </div>
+                        </div>
+
+                        <div class="auth-form-grid">
+                            <div class="auth-field">
                                 <label class="auth-label" for="last_name">Last name <span class="auth-required">*</span></label>
                                 <input class="auth-input" id="last_name" name="last_name" type="text" placeholder="Dela Cruz" required>
                             </div>
@@ -549,8 +562,7 @@
                                 <input class="auth-input" id="given_names" name="given_names" type="text" placeholder="Juan" required>
                             </div>
                             <div class="auth-field">
-                                <label class="auth-label" for="middle_name">Middle name</label>
-                                <input class="auth-input" id="middle_name" name="middle_name" type="text" placeholder="Santos" maxlength="50">
+                                @include('auth.partials.registration-middle-name')
                             </div>
                             <div class="auth-field">
                                 <label class="auth-label" for="suffix">Suffix</label>
@@ -565,8 +577,9 @@
                                 <label class="auth-label" for="sex">Sex <span class="auth-required">*</span></label>
                                 <select class="auth-input auth-select" id="sex" name="sex" required>
                                     <option value="" disabled selected>Select sex</option>
-                                    <option value="male">Male</option>
-                                    <option value="female">Female</option>
+                                    @foreach(\App\Enums\Sex::cases() as $sexOption)
+                                        <option value="{{ $sexOption->value }}" @selected(old('sex') === $sexOption->value)>{{ $sexOption->label() }}</option>
+                                    @endforeach
                                 </select>
                             </div>
                             <div class="auth-field">
@@ -588,11 +601,11 @@
                     {{-- ── STEP 4: Contact ── --}}
                     <div class="step-panel" id="panel-4">
                         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-                            <h2 class="auth-title" style="margin:0">Contact Person's Contact Details</h2>
+                            <h2 class="auth-title" style="margin:0">Company Contact Details</h2>
                             <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;background:var(--auth-primary-soft);border:1px solid rgba(217,70,143,.2);color:var(--auth-primary);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em">{!! $typeIcons[$regType] ?? $typeIcons['buyer'] !!} {{ ucfirst($regType) }}</span>
                         </div>
                         <div style="display:flex;align-items:center;justify-content:space-between">
-                            <p class="auth-subtitle" style="margin:0">Enter the contact person's email address and mobile number.</p>
+                            <p class="auth-subtitle" style="margin:0">Verify your company email for sign in and enter the company contact number.</p>
                             <a href="{{ route('register.delivery-team') }}" title="Change account type" style="flex-shrink:0;margin-left:8px;color:var(--auth-muted);text-decoration:none;line-height:1" onmouseover="this.style.color='var(--auth-primary)'" onmouseout="this.style.color='var(--auth-muted)'"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg></a>
                         </div>
 
@@ -606,6 +619,7 @@
                                     <button type="button" class="btn-send-otp" id="sendOtpBtn" onclick="sendOtp()" @if($isGoogleSignup ?? false) style="display:none" @endif>Send Code</button>
                                 </div>
                                 <span class="field-hint" id="emailHint">{{ ($isGoogleSignup ?? false) ? 'Prefilled from your Google account.' : '' }}</span>
+                                @include('auth.partials.google-email-verification')
                             </div>
                             <div class="auth-field full" id="otpField" style="display:none">
                                 <label class="auth-label" for="otp_code">Verification code <span class="auth-required">*</span></label>
@@ -820,6 +834,7 @@ const IS_GOOGLE_SIGNUP = @json($isGoogleSignup ?? false);
 </script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="{{ asset('js/auth.js') }}"></script>
+<script src="{{ asset('js/registration-unsaved.js') }}?v={{ filemtime(public_path('js/registration-unsaved.js')) }}"></script>
 <script src="{{ asset('js/register.js') }}?v={{ @filemtime(public_path('js/register.js')) ?: 1 }}"></script>
 <script>
 // ── Business name live check ──
@@ -1183,8 +1198,11 @@ function renderHubAreaList() {
 
     if (countBadge) {
         if (hubAreas.length > 0) {
-            countBadge.textContent = `${provinceCount} province${provinceCount !== 1 ? 's' : ''} · ${hubAreas.length} hub${hubAreas.length !== 1 ? 's' : ''}`;
-            countBadge.style.display = '';
+            const provinces = document.createElement('span'), hubs = document.createElement('span');
+            provinces.textContent = `${provinceCount} province${provinceCount !== 1 ? 's' : ''}`;
+            hubs.textContent = `${hubAreas.length} hub${hubAreas.length !== 1 ? 's' : ''}`;
+            countBadge.replaceChildren(provinces, hubs);
+            countBadge.style.display = 'inline-flex';
         } else {
             countBadge.style.display = 'none';
         }
@@ -1228,7 +1246,9 @@ function renderHubAreaList() {
         const subtitle = document.createElement('div');
         subtitle.style.cssText = 'font-size:11px;color:#64748b;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
         if (regional) {
-            subtitle.innerHTML = `★ Gateway: <strong>${regional.municipality}</strong>${otherCount > 0 ? ` <span style="color:#94a3b8">· +${otherCount} more</span>` : ''}`;
+            const municipality = document.createElement('strong');
+            municipality.textContent = regional.municipality;
+            subtitle.append(document.createTextNode('Gateway: '), municipality);
         } else {
             subtitle.textContent = `${areas.length} municipalities covered`;
         }
@@ -1284,8 +1304,6 @@ function addHubArea() {
     hubMuniSelectAll.checked = false;
     updateHubMuniLabel();
 
-    // Automatically open modal showing the added municipalities for this province
-    openCoverageModal(province);
 }
 
 function validateHubAreas() {
@@ -1319,6 +1337,7 @@ function logisticsSetStep(from, to) {
     });
 
     document.querySelector('.auth-form-panel')?.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'instant' });
 
 }
 
@@ -1340,11 +1359,26 @@ nextStep = function (current) {
         if (businessNameAvailable === false) { showError(bn, 'This company name is already registered.'); return; }
         if (businessNameAvailable === null && bn.value.trim().length >= 2) { showError(bn, 'Please wait for name check to complete.'); return; }
         if (!businessPermitBlob) { document.getElementById('businessPermitError').style.display = 'block'; return; }
+        if (!window.logisticsDocumentInputs.validate()) return;
     }
     if (current === 8) {
         if (!validateHubAreas()) return;
     }
     // Steps 2–5: delegate field validation to the original register.js validateStep.
+    if (current === 3) {
+        for (const id of ['representative_email', 'representative_contact_no']) {
+            const field = document.getElementById(id);
+            clearError(field);
+            if (!field.value.trim() || !field.checkValidity()) {
+                showError(field, id === 'representative_email' ? 'Enter a valid representative email.' : 'Enter 10 digits starting with 9 after +63.');
+                return;
+            }
+        }
+        if (!window.representativeEmailIsVerified?.()) {
+            showError(document.getElementById('representative_email'), 'Verify the representative email before continuing.');
+            return;
+        }
+    }
     if (current >= 2 && current <= 5) {
         if (!_origValidateStep(current)) return;
     }
@@ -1368,5 +1402,7 @@ validateStep = function (step) {
 };
 </script>
 <script src="{{ asset('js/logistics-service-regions.js') }}?v={{ @filemtime(public_path('js/logistics-service-regions.js')) ?: 1 }}"></script>
+<script src="{{ asset('js/registration-flow.js') }}?v={{ filemtime(public_path('js/registration-flow.js')) }}"></script>
+<script src="{{ asset('js/logistics-registration.js') }}?v={{ filemtime(public_path('js/logistics-registration.js')) }}"></script>
 </body>
 </html>
