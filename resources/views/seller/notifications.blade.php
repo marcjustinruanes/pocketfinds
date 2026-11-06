@@ -4,88 +4,93 @@
 @section('page-sub', 'Your alerts and account updates')
 
 @section('content')
-<div class="dash-grid">
-  <div class="stack">
-    <div class="card">
-      <div class="card-head">
-        <div><h2>All Notifications</h2><p>{{ $notifications->count() }} total</p></div>
-        @if($notifications->where('is_read', false)->count())
-          <form method="POST" action="{{ route('seller.notifications.read') }}">
-            @csrf
-            <button class="btn btn-sm btn-outline" type="submit" style="display:inline-flex;align-items:center;gap:6px">
-              @include('seller.partials.icon',['name'=>'check','size'=>13]) Mark all read
-            </button>
-          </form>
+@php
+  $unread = $notifications->where('is_read', false)->count();
+  $docApproved = $notifications->where('notification_type', 'doc_approved')->count();
+  $docRejected = $notifications->where('notification_type', 'doc_rejected')->count();
+  $otherUpdates = $notifications->count() - $docApproved - $docRejected;
+@endphp
+<section class="notification-center" aria-label="Notification center">
+  <div class="notification-center-column">
+    <div class="notification-panel">
+      <div class="notification-panel-head">
+        <div>
+          <h2 class="notification-panel-title">All notifications</h2>
+          <p class="notification-panel-caption">{{ $notifications->count() }} {{ \Illuminate\Support\Str::plural('update', $notifications->count()) }} in your account</p>
+        </div>
+        @if($unread)
+        <form method="POST" action="{{ route('seller.notifications.read') }}">
+          @csrf
+          <button class="btn btn-sm btn-outline" type="submit" style="display:inline-flex;align-items:center;gap:7px">
+            @include('seller.partials.icon',['name'=>'check','size'=>13]) Mark all as read
+          </button>
+        </form>
         @endif
       </div>
-      <div class="card-pad">
+      <div class="notification-panel-body">
         @forelse($notifications as $notif)
           @php
-            $isDoc = in_array($notif->notification_type, ['doc_approved','doc_rejected']);
-            $icon  = $notif->notification_type === 'doc_approved' ? 'check-circle'
-                   : ($notif->notification_type === 'doc_rejected' ? 'x' : 'bell');
-            $color = $notif->notification_type === 'doc_approved' ? 'var(--success)'
-                   : ($notif->notification_type === 'doc_rejected' ? 'var(--danger)' : 'var(--pink)');
+            $isApproved = $notif->notification_type === 'doc_approved';
+            $isRejected = $notif->notification_type === 'doc_rejected';
+            $icon = $isApproved ? 'check-circle' : ($isRejected ? 'x' : 'bell');
+            $iconState = $isApproved ? 'is-success' : ($isRejected ? 'is-danger' : '');
           @endphp
-          <a href="{{ route('seller.notifications.open', $notif->id) }}" class="notif-row" style="text-decoration:none;color:inherit;cursor:pointer">
-            <div style="width:32px;height:32px;border-radius:50%;background:var(--paper);border:1px solid var(--border);display:grid;place-items:center;flex:none;color:{{ $color }}">
-              @include('seller.partials.icon',['name'=>$icon,'size'=>15])
-            </div>
-            <div class="notif-body">
-              <div class="notif-title" style="{{ $notif->is_read ? 'font-weight:500' : '' }}">{{ $notif->title }}</div>
-              <div class="notif-sub">{{ $notif->message }}</div>
-            </div>
-            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none">
-              <div class="notif-time">{{ \Carbon\Carbon::parse($notif->created_at)->diffForHumans() }}</div>
-              @if(!$notif->is_read)
-                <div style="width:7px;height:7px;border-radius:50%;background:var(--pink)"></div>
-              @endif
-            </div>
+          <a href="{{ route('seller.notifications.open', $notif->id) }}" class="notification-entry {{ $notif->is_read ? 'is-read' : 'is-unread' }}">
+            <span class="notification-entry-icon {{ $iconState }}">@include('seller.partials.icon',['name'=>$icon,'size'=>16])</span>
+            <span class="notification-entry-copy">
+              <span class="notification-entry-title">{{ $notif->title }} @if(!$notif->is_read)<span class="notification-tag">New</span>@endif</span>
+              <span class="notification-entry-message">{{ $notif->message }}</span>
+            </span>
+            <span class="notification-entry-meta">{{ \Carbon\Carbon::parse($notif->created_at)->diffForHumans() }}</span>
           </a>
         @empty
-          <div class="empty">
-            @include('seller.partials.icon',['name'=>'bell','size'=>32,'class'=>'ic'])
-            <h3>No notifications yet</h3>
-            <p>You'll be notified here about orders and account updates.</p>
+          <div class="notification-empty">
+            <span class="notification-empty-icon">@include('seller.partials.icon',['name'=>'bell','size'=>22])</span>
+            <h3>You're all caught up</h3>
+            <p>Important order, product, and account updates will appear here.</p>
           </div>
         @endforelse
       </div>
     </div>
   </div>
 
-  <div class="stack">
-    <div class="card">
-      <div class="card-head"><h2>Summary</h2></div>
-      <div class="card-pad" style="display:flex;flex-direction:column;gap:10px">
-        @php
-          $unread  = $notifications->where('is_read', false)->count();
-          $docAppr = $notifications->where('notification_type','doc_approved')->count();
-          $docRej  = $notifications->where('notification_type','doc_rejected')->count();
-        @endphp
-        @foreach([
-          ['bell',        'Unread',           $unread,  'stamp-new'],
-          ['check-circle','Doc Approved',      $docAppr, 'stamp-approved'],
-          ['x',           'Doc Rejected',      $docRej,  'stamp-rejected'],
-        ] as [$icon,$label,$count,$stamp])
-        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:9px">
-          <span style="color:var(--pink-dark)">@include('seller.partials.icon',['name'=>$icon,'size'=>18])</span>
-          <span style="font-size:13px;font-weight:600;flex:1">{{ $label }}</span>
-          <span class="stamp {{ $stamp }}">{{ $count }}</span>
+  <aside class="notification-center-column" aria-label="Notification summary and shortcuts">
+    <section class="notification-panel">
+      <div class="notification-panel-head"><div><h2 class="notification-panel-title">Summary</h2><p class="notification-panel-caption">Your latest account activity</p></div></div>
+      <div class="notification-panel-body">
+        <div class="notification-summary-list">
+          <div class="notification-summary-item">
+            <span class="notification-summary-icon">@include('seller.partials.icon',['name'=>'bell','size'=>15])</span>
+            <span class="notification-summary-label">Unread</span>
+            <span class="notification-summary-count {{ $unread ? 'is-unread' : '' }}">{{ $unread }}</span>
+          </div>
+          <div class="notification-summary-item">
+            <span class="notification-summary-icon is-success">@include('seller.partials.icon',['name'=>'check-circle','size'=>15])</span>
+            <span class="notification-summary-label">Documents approved</span>
+            <span class="notification-summary-count">{{ $docApproved }}</span>
+          </div>
+          <div class="notification-summary-item">
+            <span class="notification-summary-icon is-danger">@include('seller.partials.icon',['name'=>'x','size'=>15])</span>
+            <span class="notification-summary-label">Documents declined</span>
+            <span class="notification-summary-count">{{ $docRejected }}</span>
+          </div>
+          <div class="notification-summary-item">
+            <span class="notification-summary-icon">@include('seller.partials.icon',['name'=>'bell','size'=>15])</span>
+            <span class="notification-summary-label">Other updates</span>
+            <span class="notification-summary-count">{{ $otherUpdates }}</span>
+          </div>
         </div>
-        @endforeach
       </div>
-    </div>
-    <div class="card">
-      <div class="card-head"><h2>Quick Actions</h2></div>
-      <div class="card-pad" style="display:flex;flex-direction:column;gap:8px">
-        <a href="{{ route('seller.orders') }}" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:7px">
-          @include('seller.partials.icon',['name'=>'orders','size'=>15]) View All Orders
-        </a>
-        <a href="{{ route('seller.account') }}" class="btn btn-outline" style="display:inline-flex;align-items:center;gap:7px">
-          @include('seller.partials.icon',['name'=>'shield','size'=>15]) My Documents
-        </a>
+    </section>
+    <section class="notification-panel">
+      <div class="notification-panel-head"><div><h2 class="notification-panel-title">Quick actions</h2><p class="notification-panel-caption">Jump to the tools you use most</p></div></div>
+      <div class="notification-panel-body">
+        <div class="notification-actions">
+          <a href="{{ route('seller.orders') }}" class="btn btn-primary">@include('seller.partials.icon',['name'=>'orders','size'=>15]) View orders</a>
+          <a href="{{ route('seller.account') }}" class="btn btn-outline">@include('seller.partials.icon',['name'=>'shield','size'=>15]) Manage documents</a>
+        </div>
       </div>
-    </div>
-  </div>
-</div>
+    </section>
+  </aside>
+</section>
 @endsection

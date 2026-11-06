@@ -608,3 +608,110 @@
 .finance-guidance ~ .settlement-workspace details,
 .finance-guidance ~ .settlement-workspace .cash-table th,
 .finance-guidance ~ .settlement-workspace .cash-table td { border-color: rgba(145,145,165,.22); }
+
+/* Logistics finance pages: compact, consistent white workspace styling. */
+.logistics-ui .finance-overview { gap: 16px; }
+.logistics-ui .finance-navigation { gap: 8px; margin-bottom: 0; }
+.logistics-ui .finance-navigation a { min-height: 40px; padding: 8px 13px; border-radius: 9px; }
+.logistics-ui .finance-guidance { padding: 14px 16px; border-radius: 12px; }
+.logistics-ui .fin-workspaces { gap: 12px; }
+.logistics-ui .fin-workspace-card { padding: 16px; border-radius: 13px; background: #fff; box-shadow: 0 1px 2px rgba(25,25,35,.03); }
+.logistics-ui .fin-workspace-icon { width: 34px; height: 34px; margin-bottom: 4px; }
+.logistics-ui .fin-settings-card { padding: 20px; border-radius: 14px; background: #fff; box-shadow: 0 1px 3px rgba(25,25,35,.04); }
+.logistics-ui .fin-settings-head { margin-bottom: 16px; }
+.logistics-ui .fin-settings-head h2 { margin-top: 0; }
+.logistics-ui .fin-comp-grid { gap: 14px; }
+.logistics-ui .fin-comp-footer { margin-top: 14px; }
+.logistics-ui .fin-save-btn { min-height: 40px; }
+.logistics-ui .fin-reference-details { border: 1px solid rgba(145,145,165,.2); border-radius: 12px; background: #fff; }
+.logistics-ui .fin-reference-details > summary { padding: 14px 16px; }
+.logistics-ui .fin-reference-body { padding: 14px 16px; }
+.logistics-ui .finance-overview .table-wrap { border: 1px solid rgba(145,145,165,.18); border-radius: 10px; overflow-x: auto; }
+@media (max-width: 650px) {
+  .logistics-ui .fin-settings-card { padding: 16px; }
+  .logistics-ui .fin-workspaces { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media (max-width: 480px) {
+  .logistics-ui .fin-workspaces { grid-template-columns: minmax(0,1fr); }
+}
+
+/* Overview & settings polish */
+.logistics-ui .fin-workspaces-section { display: grid; gap: 12px; }
+.logistics-ui .fin-workspaces-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.logistics-ui .fin-workspaces-heading h2 { margin: 0; color: var(--text,#242329); font-size: 17px; font-weight: 700; letter-spacing: -.02em; }
+.logistics-ui .fin-workspaces-heading > span { color: var(--muted,#61616b); font-size: 12px; }
+.logistics-ui .fin-workspace-card { min-height: 178px; padding: 17px; border-color: rgba(145,145,165,.18); box-shadow: 0 2px 8px rgba(25,25,35,.035); }
+.logistics-ui .fin-workspace-card:hover { border-color: rgba(200,56,131,.34); box-shadow: 0 8px 22px rgba(25,25,35,.08); transform: translateY(-2px); }
+.logistics-ui .fin-workspace-card strong { font-size: 14px; }
+.logistics-ui .fin-workspace-arrow { margin-top: auto; padding-top: 8px; }
+.logistics-ui .fin-settings-card { border-color: rgba(145,145,165,.2); }
+.logistics-ui .fin-settings-head h2 { font-size: 18px; }
+.logistics-ui .fin-comp-label { gap: 5px; }
+.logistics-ui .fin-comp-label-text { font-size: 13px; }
+.logistics-ui .fin-comp-hint { margin-bottom: 2px; }
+.logistics-ui .fin-currency-prefix,
+.logistics-ui .fin-currency-input { min-height: 42px; }
+.logistics-ui .fin-currency-input:focus-visible { outline: 2px solid #c83883; outline-offset: 2px; }
+.logistics-ui .fin-note--info { padding: 11px 13px; border-radius: 9px; }
+.logistics-ui .fin-reference-details { overflow: clip; box-shadow: 0 1px 3px rgba(25,25,35,.03); }
+.logistics-ui .fin-reference-details > summary { min-height: 52px; }
+.logistics-ui .fin-reference-details[open] > summary { border-bottom: 1px solid rgba(145,145,165,.16); }
+.logistics-ui .fin-reference-body .fin-note { margin: 0 0 12px; }
+.logistics-ui .finance-overview .table-wrap { background: #fff; }
+.logistics-ui .finance-overview .dtable th { background: #faf9fb; color: var(--muted,#61616b); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
+.logistics-ui .finance-overview .dtable td,
+.logistics-ui .finance-overview .dtable th { padding: 11px 13px; border-bottom-color: rgba(145,145,165,.16); }
+.logistics-ui .fin-save-btn { min-height: 42px; padding-inline: 17px; }
+@media (max-width: 650px) {
+  .logistics-ui .fin-workspaces-heading { align-items: flex-start; flex-direction: column; gap: 2px; }
+  .logistics-ui .fin-workspace-card { min-height: 160px; }
+}
+
+/* Match the compact card, field and table scale used by other Logistics screens. */
+.logistics-ui .finance-overview { gap: 12px; font-size: 12px; }
+.logistics-ui .fin-workspaces-section { gap: 8px; }
+.logistics-ui .fin-workspaces-heading h2 { font-size: 12.5px; font-weight: 750; letter-spacing: 0; }
+.logistics-ui .fin-workspaces-heading > span { font-size: 9.5px; }
+.logistics-ui .fin-workspaces { gap: 10px; }
+.logistics-ui .fin-workspace-card { min-height: 142px; gap: 4px; padding: 13px; border-radius: 12px; }
+.logistics-ui .fin-workspace-icon { width: 30px; height: 30px; border-radius: 9px; }
+.logistics-ui .fin-workspace-icon svg { width: 16px; height: 16px; }
+.logistics-ui .fin-workspace-card strong { font-size: 11px; font-weight: 750; }
+.logistics-ui .fin-workspace-card > span:not(.fin-workspace-icon):not(.fin-workspace-arrow) { font-size: 9.5px; line-height: 1.5; }
+.logistics-ui .fin-workspace-arrow { font-size: 10px; }
+.logistics-ui .fin-settings-card { padding: 15px; border-radius: 13px; }
+.logistics-ui .fin-settings-head { gap: 10px; margin-bottom: 12px; }
+.logistics-ui .fin-section-label { margin-bottom: 3px; font-size: 8.5px; }
+.logistics-ui .fin-settings-head h2 { margin: 0 0 4px; font-size: 12.5px; font-weight: 750; letter-spacing: 0; }
+.logistics-ui .fin-note { margin: 4px 0; font-size: 9.5px; line-height: 1.55; }
+.logistics-ui .fin-badge { padding: 3px 7px; font-size: 8px; }
+.logistics-ui .fin-comp-grid { gap: 10px; margin-bottom: 10px; }
+.logistics-ui .fin-comp-label { gap: 4px; }
+.logistics-ui .fin-comp-label-text { font-size: 9.5px; font-weight: 700; }
+.logistics-ui .fin-comp-hint { font-size: 8.5px; }
+.logistics-ui .fin-currency-prefix,
+.logistics-ui .fin-currency-input { min-height: 35px; font-size: 10px; }
+.logistics-ui .fin-currency-prefix { padding: 0 9px; }
+.logistics-ui .fin-currency-input { padding: 7px 9px; }
+.logistics-ui .fin-note--info { padding: 8px 10px; font-size: 9px; }
+.logistics-ui .fin-comp-footer { margin-top: 10px; }
+.logistics-ui .fin-save-btn { min-height: 34px; padding: 7px 11px; border-radius: 8px; font-size: 9.5px; }
+.logistics-ui .fin-reference-details { border-radius: 12px; }
+.logistics-ui .fin-reference-details > summary { min-height: 44px; padding: 11px 13px; font-size: 10px; }
+.logistics-ui .fin-reference-summary-inner { gap: 7px; }
+.logistics-ui .fin-reference-summary-inner svg { width: 13px; height: 13px; }
+.logistics-ui .fin-reference-body { padding: 11px 13px; }
+.logistics-ui .fin-reference-body .fin-note { margin-bottom: 9px; }
+.logistics-ui .finance-overview .table-wrap { border-radius: 9px; }
+.logistics-ui .finance-overview .dtable { min-width: 650px; }
+.logistics-ui .finance-overview .dtable th { padding: 9px 10px; font-size: 8px; }
+.logistics-ui .finance-overview .dtable td { padding: 9px 10px; font-size: 9.5px; }
+.logistics-ui .finance-overview .fin-empty { padding: 20px 14px; gap: 6px; }
+.logistics-ui .finance-overview .fin-empty svg { width: 25px; height: 25px; }
+.logistics-ui .finance-overview .fin-empty strong { font-size: 10px; }
+.logistics-ui .finance-overview .fin-empty p { font-size: 9px; }
+@media (max-width: 650px) {
+  .logistics-ui .fin-workspace-card { min-height: 132px; }
+  .logistics-ui .fin-settings-card { padding: 12px; }
+  .logistics-ui .fin-comp-grid { gap: 9px; }
+}

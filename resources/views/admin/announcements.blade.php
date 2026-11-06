@@ -4,10 +4,11 @@
 @section('page-sub', 'Broadcast messages to platform users')
 
 @section('content')
+<div class="admin-announcements-page">
 @include('admin.partials.ai-link', ['aiMode' => 'draft', 'aiLabel' => 'AI announcement draft'])
 @php $aiDraft = session('ai_announcement_draft', []); @endphp
 @if($aiDraft)
-<p role="status" style="padding:12px 0;color:var(--warning);font-size:13px">AI draft loaded. Check the details before posting. Nothing has been published.</p>
+<p class="announcement-draft-notice" role="status">AI draft loaded. Check the details before posting. Nothing has been published.</p>
 @endif
 @if(session('success'))
 <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px">
@@ -15,7 +16,7 @@
 </div>
 @endif
 
-<div class="kpi-grid" style="margin-bottom:18px">
+<div class="kpi-grid admin-announcement-kpis">
   <div class="kpi">
     <div class="label">Total Announcements</div><div class="value">{{ number_format($total) }}</div>
   </div>
@@ -28,9 +29,6 @@
   <div class="kpi">
     <div class="label">Latest Posted</div><div class="value" style="font-size:15px">{{ $latest?->created_at?->format('M d, Y') ?? '—' }}</div>
   </div>
-</div>
-
-<div class="kpi-grid" style="margin-bottom:18px">
   <div class="kpi tone-info">
     <div class="label">Buyers Only</div><div class="value">{{ number_format($byAudience['buyer'] ?? 0) }}</div>
   </div>
@@ -42,8 +40,8 @@
   </div>
 </div>
 
-<div class="dash-grid">
-  <div class="card">
+<div class="dash-grid admin-announcement-layout">
+  <div class="card announcement-composer-card">
     <div class="card-head">
       <div class="modal-head-main">
         <span class="modal-icon"><x-admin-icon name="megaphone" /></span>
@@ -51,7 +49,7 @@
       </div>
     </div>
     <div class="card-pad">
-      <form method="POST" action="{{ route('admin.settings.announcements.store') }}">
+      <form class="admin-announcement-form" method="POST" action="{{ route('admin.settings.announcements.store') }}">
         @csrf
         <div class="form-row">
           <label>Title</label>
@@ -75,30 +73,29 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card active-announcements-card">
     <div class="card-head"><div><h2>Active Announcements</h2><p>{{ $announcements->count() }} total</p></div></div>
-    <div style="max-height:480px;overflow-y:auto">
+    <div class="active-announcements-list">
       @forelse($announcements as $ann)
-      <div style="padding:14px 18px;border-bottom:1px solid var(--border)">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-          <div style="min-width:0">
-            <div style="font-weight:700;font-size:13.5px">{{ $ann->title }}</div>
-            <div style="font-size:12px;color:var(--muted);margin:3px 0">{{ $ann->body }}</div>
-            <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+      <article class="active-announcement-row">
+        <div class="active-announcement-copy">
+            <strong>{{ $ann->title }}</strong>
+            <p>{{ $ann->body }}</p>
+            <div class="active-announcement-meta">
               <span class="stamp stamp-approved">{{ ucfirst($ann->audience) }}</span>
-              <span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">{{ $ann->created_at?->format('Y-m-d') }}</span>
+              <span>{{ $ann->created_at?->format('Y-m-d') }}</span>
             </div>
-          </div>
-          <form method="POST" action="{{ route('admin.settings.announcements.destroy', $ann->id) }}" style="flex:none">
+        </div>
+          <form class="active-announcement-delete" method="POST" action="{{ route('admin.settings.announcements.destroy', $ann->id) }}">
             @csrf @method('DELETE')
             <button class="btn btn-sm btn-danger icon-only" type="submit" onclick="return confirm('Delete this announcement?')" aria-label="Delete announcement"><x-admin-icon name="trash" /></button>
           </form>
-        </div>
-      </div>
+      </article>
       @empty
       <div class="empty"><div class="ic"><x-admin-icon name="megaphone" /></div><h3>No announcements yet</h3></div>
       @endforelse
     </div>
   </div>
+</div>
 </div>
 @endsection

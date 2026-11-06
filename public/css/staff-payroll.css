@@ -14,3 +14,88 @@
 .attendance-detail .attendance-original{margin:24px 0 0}.attendance-original-times,.attendance-change{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin:12px 0}.attendance-original-times dd,.attendance-change dd{margin:0;font-size:14px;overflow-wrap:anywhere}
 .attendance-timeline{list-style:none;padding:0;margin:24px 0 0}.attendance-timeline>li{position:relative;padding:0 0 24px 28px;border-left:1px solid var(--line,#dedee5);margin-left:5px}.attendance-timeline>li:last-child{padding-bottom:0;border-left-color:transparent}.attendance-event-dot{position:absolute;left:-5px;top:6px;width:9px;height:9px;background:var(--primary,#c83883);border-radius:50%}.attendance-event-heading{align-items:flex-start;flex-wrap:wrap;gap:6px 16px}.attendance-detail .attendance-event-heading h3{margin:0;font-size:16px}.attendance-event-heading time{font-size:12px;color:var(--muted,#61616b)}.attendance-detail .attendance-event-person{margin:5px 0 10px;font-size:14px}.attendance-event-person span{font-size:12px}.attendance-detail .attendance-timeline article>p:last-child{margin-bottom:0}.attendance-note{padding:12px 16px;border-radius:10px;background:rgba(120,120,140,.06);margin-top:16px}.attendance-note strong{font-size:13px}.attendance-detail .attendance-note p{margin:4px 0 0;font-size:14px}
 @media(max-width:600px){.attendance-detail-toolbar,.attendance-detail-heading{align-items:flex-start;flex-direction:column}.attendance-state{text-align:left}.attendance-times{grid-template-columns:minmax(0,1fr);gap:20px}.attendance-times>div+div{padding-top:18px;border-top:1px solid var(--line,#dedee5)}.attendance-times dd{font-size:24px}.attendance-original-times,.attendance-change{grid-template-columns:minmax(0,1fr)}.attendance-activity-heading{align-items:flex-start;flex-direction:column;gap:4px}.attendance-timeline>li{padding-left:20px}.attendance-event-heading{flex-direction:column}}
+
+/* Attendance workspace aligned with the admin and seller account cards. */
+.attendance-workspace{gap:14px;font-size:13px}
+.attendance-workspace .cash-card{padding:16px 17px;border:1px solid var(--border);border-radius:14px;background:#fff;box-shadow:0 2px 8px rgba(35,24,33,.025)}
+.attendance-workspace .cash-card>h2{margin:0 0 11px;font-size:13px;font-weight:750;letter-spacing:0}
+.attendance-workspace .cash-card>p{font-size:10.5px;line-height:1.6;color:var(--muted)}
+.attendance-workspace .cash-card>form:not(.payroll-filters){display:grid;gap:9px;max-width:760px}
+.attendance-workspace .cash-card>form:not(.payroll-filters)>label{display:grid;gap:6px;margin:4px 0 0;color:var(--text);font-size:10px;font-weight:700}
+.attendance-workspace .cash-card :is(input:not([type=checkbox]),select,textarea){box-sizing:border-box;width:100%;min-width:0;min-height:37px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text);font:10.5px var(--font-body)}
+.attendance-workspace .cash-card textarea{min-height:82px;resize:vertical;line-height:1.5}
+.attendance-workspace .cash-card :is(input,select,textarea):focus{outline:0;border-color:var(--pink);box-shadow:0 0 0 3px rgba(215,63,143,.1)}
+.attendance-workspace .cash-card .payroll-filters{grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px;align-items:end;margin:0 0 12px;padding:12px;border:1px solid var(--border);border-radius:10px;background:#faf9fa}
+.attendance-workspace .payroll-filters>div{display:grid;gap:5px;min-width:0}
+.attendance-workspace .payroll-filters label{color:var(--text);font-size:9.5px;font-weight:700}
+.attendance-workspace .cash-card .btn{justify-self:start;min-height:35px;padding:8px 11px;border-radius:8px;font-size:10px;font-weight:700}
+.attendance-workspace .cash-table{max-width:100%;margin:12px 0;border:1px solid var(--border);border-radius:10px;background:#fff}
+.attendance-workspace .cash-table table{min-width:900px}
+.attendance-workspace .cash-table th{background:#faf9fa;font-size:9px;font-weight:700;letter-spacing:.04em}
+.attendance-workspace .cash-table :is(th,td){padding:10px 11px;border-color:#eee8ed}
+.attendance-workspace .cash-table td{font-size:10px;line-height:1.5}
+.attendance-workspace .cash-table td small{display:block;margin-top:3px;color:var(--muted);font-size:9px;line-height:1.45}
+.attendance-workspace .cash-table td details{min-width:230px}
+.attendance-workspace .cash-table td details summary{min-height:32px;padding:6px 0;font-size:10px;font-weight:700}
+.attendance-workspace .cash-table td details form{display:grid;gap:8px;padding:10px;border:1px solid var(--border);border-radius:9px;background:#faf9fa}
+.attendance-workspace .cash-table td details form label{font-size:9.5px;font-weight:700}
+.attendance-workspace .cash-table td details textarea{min-height:66px}
+.attendance-workspace .cash-handover{margin:10px 0 0;padding:13px;border:1px solid var(--border);border-radius:10px;background:#faf9fa}
+.attendance-workspace .cash-handover h3{margin:0;font-size:11px;font-weight:700}
+.attendance-workspace .cash-handover p{font-size:10px;line-height:1.6}
+.attendance-workspace .payroll-checkbox{display:flex!important;align-items:flex-start;gap:8px;font-size:10px!important;font-weight:500!important;line-height:1.5}
+.attendance-workspace .payroll-checkbox input{flex:0 0 16px;width:16px!important;min-width:16px!important;min-height:16px!important;margin:1px 0 0;accent-color:var(--pink)}
+@media(max-width:600px){.attendance-workspace{gap:12px}.attendance-workspace .cash-card{padding:14px}.attendance-workspace .cash-card .payroll-filters{grid-template-columns:repeat(2,minmax(0,1fr));padding:10px}.attendance-workspace .cash-card .btn{min-height:40px}.attendance-workspace .cash-card>form:not(.payroll-filters)>.payroll-checkbox{grid-column:1/-1}}
+
+/* Hub Staff Salaries: compact Logistics admin workspace styling. */
+.logistics-ui .staff-payroll { display:grid; gap:12px; font-size:11px; }
+.logistics-ui .staff-payroll > .cash-card { min-width:0; padding:14px; border:1px solid var(--border,#e7e3e8); border-radius:13px; background:#fff; box-shadow:0 2px 8px rgba(35,24,33,.025); }
+.logistics-ui .staff-payroll .cash-card > h2 { margin:0 0 5px; font-size:12.5px; font-weight:750; letter-spacing:0; }
+.logistics-ui .staff-payroll .cash-card > p { margin:5px 0 10px; font-size:9.5px; line-height:1.55; }
+.logistics-ui .staff-payroll .payroll-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(135px,1fr)); gap:9px; align-items:end; margin:0; padding:11px; border:1px solid var(--border,#e7e3e8); border-radius:10px; background:#faf9fa; }
+.logistics-ui .staff-payroll .payroll-filters > div { display:grid; gap:4px; min-width:0; }
+.logistics-ui .staff-payroll label { margin:0 0 4px; color:var(--text,#242329); font-size:9px; font-weight:700; }
+.logistics-ui .staff-payroll :is(input:not([type=checkbox]),select,textarea) { box-sizing:border-box; width:100%; min-width:0; min-height:34px; padding:7px 9px; border:1px solid var(--border,#e7e3e8); border-radius:8px; background:#fff; color:var(--text,#242329); font:10px Inter,system-ui,sans-serif; }
+.logistics-ui .staff-payroll textarea { min-height:64px; }
+.logistics-ui .staff-payroll :is(input,select,textarea):focus-visible { outline:2px solid #c83883; outline-offset:1px; }
+.logistics-ui .staff-payroll .btn { min-height:33px; padding:7px 10px; border-radius:8px; font-size:9px; font-weight:700; }
+.logistics-ui .staff-payroll .payroll-filter-actions { gap:6px; }
+.logistics-ui .staff-payroll .payroll-filter-actions .btn { align-self:end; }
+.logistics-ui .staff-payroll .payroll-summary { gap:9px; margin:12px 0; }
+.logistics-ui .staff-payroll .payroll-summary > div { min-width:0; padding:12px; border:1px solid var(--border,#e7e3e8); border-radius:10px; background:#fff; }
+.logistics-ui .staff-payroll .payroll-summary span { font-size:9px; font-weight:700; line-height:1.45; }
+.logistics-ui .staff-payroll .payroll-summary strong { margin-top:6px; font-size:19px; letter-spacing:-.03em; overflow-wrap:anywhere; }
+.logistics-ui .staff-payroll > .cash-card > .btn { margin-top:3px; }
+.logistics-ui .staff-payroll .payroll-bulk { gap:9px; padding:10px 0; align-items:end; }
+.logistics-ui .staff-payroll .payroll-bulk > div { flex:1 1 200px; }
+.logistics-ui .staff-payroll .payroll-checkbox { display:flex; align-items:flex-start; gap:8px; min-height:30px; font-size:9px; line-height:1.5; font-weight:500; }
+.logistics-ui .staff-payroll .payroll-checkbox input { flex:0 0 15px; width:15px; min-width:15px; height:15px; min-height:15px; margin:1px 0 0; accent-color:#c83883; }
+.logistics-ui .staff-payroll #payroll-selection-count { padding:7px 9px; border-radius:8px; background:#faf9fa; font-size:9px; }
+.logistics-ui .staff-payroll .cash-table { max-width:100%; margin:9px 0; overflow:auto; border:1px solid var(--border,#e7e3e8); border-radius:10px; background:#fff; }
+.logistics-ui .staff-payroll .cash-table table { min-width:980px; }
+.logistics-ui .staff-payroll .cash-table th { padding:9px 10px; background:#faf9fa; font-size:8px; font-weight:700; letter-spacing:.04em; }
+.logistics-ui .staff-payroll .cash-table td { min-width:110px; max-width:300px; padding:9px 10px; font-size:9px; line-height:1.45; }
+.logistics-ui .staff-payroll .cash-table td:first-child { min-width:40px; }
+.logistics-ui .staff-payroll .cash-table td:last-child { min-width:240px; }
+.logistics-ui .staff-payroll .cash-table td small { display:block; margin-top:3px; color:var(--muted,#77717a); font-size:8px; line-height:1.45; }
+.logistics-ui .staff-payroll details { margin:7px 0; }
+.logistics-ui .staff-payroll summary { min-height:32px; padding:6px 0; font-size:9px; font-weight:700; }
+.logistics-ui .staff-payroll details[open] { padding:8px 10px; border:1px solid rgba(145,145,165,.18); border-radius:9px; background:#fff; }
+.logistics-ui .staff-payroll details form { display:grid; gap:6px; }
+.logistics-ui .staff-payroll .payroll-attention { margin-top:4px; font-size:8.5px; }
+.logistics-ui .staff-payroll .payroll-history-row { gap:10px; padding:10px 0; border-color:var(--border,#e7e3e8); }
+.logistics-ui .staff-payroll .payroll-history-row strong { font-size:10px; }
+.logistics-ui .staff-payroll .payroll-history-row p { margin:3px 0 0; font-size:9px; }
+.logistics-ui .staff-payroll .cash-table form { margin:0; }
+@media(max-width:700px) {
+  .logistics-ui .staff-payroll > .cash-card { padding:12px; }
+  .logistics-ui .staff-payroll .payroll-filters { grid-template-columns:repeat(2,minmax(0,1fr)); padding:9px; }
+  .logistics-ui .staff-payroll .payroll-filters > div:first-child,
+  .logistics-ui .staff-payroll .payroll-filters > div:nth-child(2),
+  .logistics-ui .staff-payroll .payroll-filter-actions { grid-column:1/-1; }
+  .logistics-ui .staff-payroll .payroll-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:380px) {
+  .logistics-ui .staff-payroll .payroll-filters { grid-template-columns:minmax(0,1fr); }
+  .logistics-ui .staff-payroll .payroll-summary { grid-template-columns:minmax(0,1fr); }
+}

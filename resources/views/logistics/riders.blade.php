@@ -4,6 +4,7 @@
 @section('page-sub', "Approve/disapprove courier applications, activate or suspend riders")
 
 @section('content')
+<section class="personnel-page">
 @include('logistics.partials.personnel-tabs')
 
 <details class="card card-pad acf-create-card" style="margin-bottom:20px" @if($errors->any()) open @endif>
@@ -167,4 +168,5 @@
 {{ $riders->links() }}
 <script src="{{ asset('js/registration-unsaved.js') }}?v={{ filemtime(public_path('js/registration-unsaved.js')) }}"></script>
 <script src="{{ asset('js/license-number-input.js') }}?v={{ filemtime(public_path('js/license-number-input.js')) }}"></script>
+</section>
 @endsection

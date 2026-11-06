@@ -3,6 +3,7 @@
 @section('page-title', 'Request Hub Transfer')
 @section('page-sub', 'Select a route and eligible parcels; every request requires Logistics Admin approval')
 @section('content')
+<section class="hub-transfer-page hub-transfer-create-page">
 @if($errors->any())<div class="card card-pad">{{ $errors->first() }}</div>@endif
 <form method="GET" class="card card-pad logistics-form-grid">
 @if(auth()->user()->isHubStaff())<div>Origin: {{ $origin?->municipality }}, {{ $origin?->province }}</div>@else
@@ -19,4 +20,5 @@
 </tbody></table></div><div class="card-pad"><button class="btn btn-primary" @disabled($candidates->isEmpty())>Submit for approval</button></div>
 </form>{{ $candidates->links() }}
 @endif
+</section>
 @endsection

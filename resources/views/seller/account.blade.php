@@ -1,11 +1,10 @@
 @extends('seller.layout')
 @section('title', 'My Account')
 @section('page-title', 'My Account')
-@section('page-sub', 'Manage your seller profile and settings')
 
 @section('content')
 @include('account.partials.buyer-module-security')
-<p><a href="{{ route('seller.shop-categories.index') }}">Shop categories</a> · <a href="{{ route('account.cancellation-refunds') }}">Cancellation refunds</a></p>
+<nav class="seller-account-shortcuts" aria-label="Seller account links"><a href="{{ route('seller.shop-categories.index') }}">Shop categories</a><a href="{{ route('account.cancellation-refunds') }}">Cancellation refunds</a></nav>
 @include('commerce.messages')
 @php $u = $seller; @endphp
 
@@ -27,12 +26,12 @@
 </div>
 @endif
 
-<div class="dash-grid">
+<div class="dash-grid seller-account-page">
   <div class="stack">
 
     {{-- Profile --}}
     <div class="card">
-      <div class="card-head"><div><h2>Profile Information</h2><p>Update your personal details</p></div></div>
+      <div class="card-head"><div><h2>Profile Information</h2></div></div>
       <div class="card-pad">
         <div style="display:flex;align-items:center;gap:16px;margin-bottom:22px">
           <x-user-avatar :user="$u" size="64" />
@@ -75,7 +74,7 @@
 
     {{-- Address --}}
     <div class="card">
-      <div class="card-head"><div><h2>Address Information</h2><p>Your delivery and business address</p></div></div>
+      <div class="card-head"><div><h2>Address Information</h2></div></div>
       <div class="card-pad">
         @if(session('address_success'))
           <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px">{{ session('address_success') }}</div>
@@ -121,7 +120,7 @@
 
     {{-- Shop --}}
     <div class="card">
-      <div class="card-head"><div><h2>Shop Information</h2><p>Your store details visible to buyers</p></div></div>
+      <div class="card-head"><div><h2>Shop Information</h2></div></div>
       <div class="card-pad">
         @if(session('shop_photo_success'))<p role="status" style="color:var(--success)">{{ session('shop_photo_success') }}</p>@endif
         <form method="POST" action="{{ route('seller.account.shop-photo') }}" enctype="multipart/form-data" style="margin-bottom:24px">
@@ -171,7 +170,7 @@
 
     {{-- Documents --}}
     <div class="card">
-      <div class="card-head"><div><h2>Documents & Verification</h2><p>Your ID and business permit on file</p></div></div>
+      <div class="card-head"><div><h2>Documents & Verification</h2></div></div>
       <div class="card-pad">
 
         {{-- Pending document previews (profile/address/shop banners live at the top of the page) --}}

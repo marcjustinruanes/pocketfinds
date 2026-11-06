@@ -70,6 +70,37 @@
   .chat-input .icon-btn{width:38px;height:38px;padding:0;flex:none;border-radius:9px;display:inline-flex;align-items:center;justify-content:center}
   .file-chip{display:flex;align-items:center;gap:6px;background:var(--pink-soft);border:1px solid var(--pink-line);border-radius:8px;padding:5px 9px;font-size:11.5px;margin:0 16px 10px}
   .file-chip button{border:0;background:none;cursor:pointer;color:var(--pink-dark);font-weight:700}
+
+  .logistics-ui .content:has(.chat-shell){padding:14px 18px}
+  .logistics-ui .chat-shell{height:calc(100vh - 148px);min-height:500px;border:1px solid var(--border);border-radius:14px;background:#fff;box-shadow:0 2px 8px rgba(35,24,33,.035)}
+  .logistics-ui .chat-list{background:#fff}
+  .logistics-ui .chat-list-head{padding:11px 12px;background:#fff}
+  .logistics-ui .chat-list-head input{min-height:35px!important;background:#faf9fa;color:var(--text)}
+  .logistics-ui .chat-conv{gap:9px;padding:10px 12px;border-bottom-color:var(--border);transition:background .15s ease}
+  .logistics-ui .chat-conv:hover{background:#faf7f9}
+  .logistics-ui .chat-conv.active{background:#fff4f9;box-shadow:inset 3px 0 #c83883}
+  .logistics-ui .chat-conv strong{font-size:10.5px;font-weight:750}
+  .logistics-ui .chat-conv p{font-size:9px;line-height:1.45}
+  .logistics-ui .chat-conv .role-tag{font-size:8px;letter-spacing:.04em}
+  .logistics-ui .chat-conv-time{font-size:8px}
+  .logistics-ui .chat-head{min-height:52px;padding:10px 14px;background:#fff}
+  .logistics-ui .chat-head strong{font-size:11px!important;font-weight:750}
+  .logistics-ui .chat-head div div{font-size:9px!important}
+  .logistics-ui .chat-body{padding:16px;background:#faf9fa}
+  .logistics-ui .chat-bubble{padding:8px 11px;border-radius:11px;font-size:10px;line-height:1.55}
+  .logistics-ui .chat-time{font-size:8px}
+  .logistics-ui .chat-input{gap:8px;padding:10px 12px;background:#fff}
+  .logistics-ui .chat-input input{height:36px;min-height:36px;border-radius:8px;font-size:10px!important}
+  .logistics-ui .chat-input .icon-btn{width:35px;height:35px;border-radius:8px}
+  .logistics-ui .chat-input>.btn{min-height:35px;padding:7px 11px;border-radius:8px;font-size:9px}
+  .logistics-ui .chat-msg-action{opacity:.65;pointer-events:auto}
+  @media(max-width:700px){
+    .logistics-ui .content:has(.chat-shell){padding:10px}
+    .logistics-ui .chat-shell{height:auto;min-height:0;border-radius:12px}
+    .logistics-ui .chat-list{max-height:230px}
+    .logistics-ui .chat-main{min-height:440px}
+    .logistics-ui .chat-body{min-height:300px;padding:12px}
+  }
 </style>
 @endpush
 

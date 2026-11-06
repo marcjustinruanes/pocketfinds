@@ -81,6 +81,9 @@
       </div>
     </section>
 
+  </div>
+
+  <div class="dashboard-lower-workspace">
     <aside class="dashboard-resources" aria-labelledby="resources-title">
       <div class="dashboard-section-heading"><span class="dashboard-eyebrow">Personnel & resources</span><h2 id="resources-title">Keep your network moving</h2></div>
       <a class="dashboard-resource" href="{{ route('logistics.riders') }}"><span class="dashboard-resource-icon"><x-admin-icon name="users" /></span><span><strong>Rider Management</strong><span>{{ number_format($activeRiders) }} approved ? {{ number_format($pendingRiders) }} pending</span></span><span aria-hidden="true">?</span></a>
@@ -88,17 +91,17 @@
       <a class="dashboard-resource" href="{{ route('logistics.hubs') }}"><span class="dashboard-resource-icon"><x-admin-icon name="pin" /></span><span><strong>Coverage Hubs</strong><span>{{ number_format($municipalHubs) }} hubs ? manage coverage and hiring</span></span><span aria-hidden="true">?</span></a>
       <div class="dashboard-exceptions"><div><x-admin-icon name="flag" /><strong>{{ number_format($cancelled) }}</strong></div><p>Cancelled, failed or returned shipments</p><a href="{{ route('logistics.history') }}">Review delivery history <span aria-hidden="true">?</span></a></div>
     </aside>
-  </div>
 
-  <section class="card dashboard-activity" aria-labelledby="activity-title">
-    <div class="card-head"><div><h2 id="activity-title">Recent activity</h2><p class="dashboard-caption">Latest recorded actions by your company team</p></div><a class="btn btn-sm btn-outline" href="{{ route('logistics.activity') }}">View logs</a></div>
-    <div class="table-wrap"><table class="dtable"><thead><tr><th scope="col">Actor</th><th scope="col">Action</th><th scope="col">Record</th><th scope="col">Time</th></tr></thead><tbody>
-      @forelse($recentActivities as $entry)
-      <tr><td>{{ $entry->username ?? 'Deleted account' }}</td><td>{{ $entry->action }}</td><td class="mono">{{ $entry->record_id }}</td><td class="dashboard-date">{{ $entry->created_at }}</td></tr>
-      @empty
-      <tr><td colspan="4"><div class="empty dashboard-empty"><h3>No recorded activity yet</h3><p>Recorded team actions will appear here.</p></div></td></tr>
-      @endforelse
-    </tbody></table></div>
-  </section>
+    <section class="card dashboard-activity" aria-labelledby="activity-title">
+      <div class="card-head"><div><h2 id="activity-title">Recent activity</h2><p class="dashboard-caption">Latest recorded actions by your company team</p></div><a class="btn btn-sm btn-outline" href="{{ route('logistics.activity') }}">View logs</a></div>
+      <div class="table-wrap"><table class="dtable"><thead><tr><th scope="col">Actor</th><th scope="col">Action</th><th scope="col">Record</th><th scope="col">Time</th></tr></thead><tbody>
+        @forelse($recentActivities as $entry)
+        <tr><td>{{ $entry->username ?? 'Deleted account' }}</td><td>{{ $entry->action }}</td><td class="mono">{{ $entry->record_id }}</td><td class="dashboard-date">{{ $entry->created_at }}</td></tr>
+        @empty
+        <tr><td colspan="4"><div class="empty dashboard-empty"><h3>No recorded activity yet</h3><p>Recorded team actions will appear here.</p></div></td></tr>
+        @endforelse
+      </tbody></table></div>
+    </section>
+  </div>
 </div>
 @endsection

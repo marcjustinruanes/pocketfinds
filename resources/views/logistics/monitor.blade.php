@@ -4,7 +4,8 @@
 @section('page-sub', 'Track and manage ongoing delivery statuses')
 
 @section('content')
-<section class="card card-pad" id="parcel-lookup">
+<section class="live-monitor-page">
+<section class="card card-pad monitor-lookup" id="parcel-lookup">
   <h2>Find a parcel</h2>
   <p>Enter a tracking or order number. Search includes historical parcels within your permitted scope. Hub Staff records physical receipt; Riders confirm their assigned work.</p>
   <form method="GET" action="{{ route('logistics.monitor') }}" class="parcel-lookup-form">
@@ -14,11 +15,11 @@
   </form>
   @if($search !== '')<p role="status">{{ $shipments->total() }} matching parcels. @if(request('stage'))The selected stage filter also applies.@endif</p>@endif
 </section>
-<div class="card card-pad"><p>Hub Staff confirm physical hub arrivals. The assigned rider confirms delivery. This page provides oversight and the remaining operational actions.</p></div>
+<div class="card card-pad monitor-guidance"><p>Hub Staff confirm physical hub arrivals. The assigned rider confirms delivery. This page provides oversight and the remaining operational actions.</p></div>
 @if($errors->has('status'))
 <div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ $errors->first('status') }}</div>
 @endif
-<div class="card">
+<div class="card live-monitor-table">
   <div class="card-head"><h2>{{ $search !== '' ? 'Parcel lookup results' : 'Active Deliveries' }}</h2></div>
   <div class="table-wrap">
     <table class="dtable">
@@ -78,6 +79,7 @@
   </div>
 </div>
 {{ $shipments->links() }}
+</section>
 @endsection
 @push('head')
 <style>

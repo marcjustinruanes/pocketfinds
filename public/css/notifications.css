@@ -1,0 +1,233 @@
+/* Shared notification treatment for every signed-in account area. */
+:is(.seller, .admin, .logistics, .rider, .buyer) .dropdown-panel:has(.notif-list) {
+  width: min(380px, calc(100vw - 28px));
+  border: 1px solid #eadfe7;
+  border-radius: 16px;
+  box-shadow: 0 22px 55px rgba(37, 22, 32, .16), 0 3px 10px rgba(37, 22, 32, .06);
+}
+
+:is(.seller, .admin, .logistics, .rider, .buyer) .dropdown-panel:has(.notif-list) .dropdown-head {
+  padding: 16px 18px;
+  background: linear-gradient(180deg, #fff 0%, #fdfafd 100%);
+}
+
+:is(.seller, .admin, .logistics, .rider, .buyer) .dropdown-panel:has(.notif-list) .dropdown-head h3 {
+  font-size: 14px;
+  letter-spacing: -.01em;
+}
+
+:is(.seller, .admin, .logistics, .rider, .buyer) .notif-list {
+  max-height: min(380px, 55vh);
+  padding: 5px 8px;
+}
+
+:is(.seller, .admin, .logistics, .rider, .buyer) .notif-item {
+  position: relative;
+  align-items: flex-start;
+  gap: 11px;
+  margin: 3px 0;
+  padding: 12px 11px;
+  border: 0;
+  border-radius: 11px;
+  color: #342b33;
+  text-decoration: none;
+  transition: background-color .16s ease, transform .16s ease;
+}
+
+:is(.seller, .admin, .logistics, .rider, .buyer) .notif-item:hover {
+  background: #fbf5f9;
+}
+
+:is(.seller, .admin, .logistics, .rider, .buyer) .notif-item:not(.read) {
+  background: #fff7fb;
+}
+
+:is(.seller, .admin, .logistics, .rider, .buyer) .notif-item:not(.read):hover {
+  background: #fbedf5;
+}
+
+:is(.seller, .admin, .logistics, .rider, .buyer) .notif-item .dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: #d9468f;
+  box-shadow: 0 0 0 4px #fceaf3;
+}
+
+:is(.seller, .admin, .logistics, .rider, .buyer) .notif-item.read .dot {
+  background: #c9bdc6;
+  box-shadow: 0 0 0 4px #f2eef1;
+}
+
+:is(.seller, .admin, .logistics, .rider, .buyer) .notif-item p {
+  color: #342b33;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+:is(.seller, .admin, .logistics, .rider, .buyer) :is(.notif-item-time, .notif-item .notif-time, .notif-item small) {
+  display: block;
+  margin-top: 4px;
+  color: #827681;
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+:is(.seller, .admin, .logistics, .rider, .buyer) .notif-list form {
+  padding: 5px 7px 9px !important;
+}
+
+:is(.seller, .admin, .logistics, .rider, .buyer) .notif-list form .btn {
+  width: 100%;
+  min-height: 36px;
+  border-radius: 9px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+:is(.seller, .admin, .logistics, .rider, .buyer) .notif-view-all {
+  padding: 12px 16px;
+  border-top: 1px solid #eee6ec;
+  color: #b72f73;
+  background: #fff;
+  font-size: 11.5px;
+  text-decoration: none;
+}
+
+:is(.seller, .admin, .logistics, .rider, .buyer) .notif-view-all:hover {
+  background: #fbf5f9;
+}
+
+.pf-buyer-notifications {
+  width: min(360px, calc(100vw - 28px));
+  max-height: min(460px, 68vh);
+  padding: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  box-shadow: 0 22px 55px rgba(37, 22, 32, .16), 0 3px 10px rgba(37, 22, 32, .06);
+}
+
+.pf-buyer-notifications .notif-dropdown-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid #eee6ec;
+  background: linear-gradient(180deg, #fff 0%, #fdfafd 100%);
+}
+.pf-buyer-notifications .notif-dropdown-head strong {
+  display: block;
+  padding: 0;
+  font-size: 14px;
+}
+.pf-buyer-notifications .notif-dropdown-head small {
+  display: block;
+  margin-top: 3px;
+  color: #827681;
+  font-size: 10.5px;
+}
+.pf-buyer-notifications .notif-dropdown-head > span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #fce9f2;
+  color: #b42f70;
+  font-size: 10px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.pf-buyer-notifications .notif-list {
+  max-height: min(340px, 48vh);
+  padding: 5px 8px;
+  overflow-y: auto;
+}
+
+.pf-buyer-notifications .notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin: 3px 0;
+  padding: 11px;
+  border: 0;
+  border-radius: 11px;
+  color: #342b33;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.pf-buyer-notifications .notif-item:not(.read) { background: #fff7fb; }
+.pf-buyer-notifications .notif-item:hover { background: #fbedf5; }
+.pf-buyer-notifications .notif-item .dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: #d9468f;
+  box-shadow: 0 0 0 4px #fceaf3;
+}
+.pf-buyer-notifications .notif-item.read .dot { background: #c9bdc6; box-shadow: 0 0 0 4px #f2eef1; }
+.pf-buyer-notifications .notif-item-copy { min-width: 0; overflow-wrap: anywhere; }
+.pf-buyer-notifications .notif-item-time { display: block; margin-top: 4px; color: #827681; font-size: 10.5px; }
+.pf-buyer-notifications .notif-empty { margin: 0; padding: 24px 18px; text-align: center; color: #827681; font-size: 12.5px; }
+.pf-buyer-notifications .notif-mark-read { padding: 8px 13px; border-bottom: 1px solid #eee6ec; }
+.pf-buyer-notifications .notif-mark-read button { justify-content: center; min-height: 34px; padding: 7px 10px; border: 1px solid #eadfe7; border-radius: 9px; color: #554853; font-size: 11.5px; font-weight: 700; }
+.pf-buyer-notifications .notif-mark-read button:hover { background: #fbf5f9; }
+.pf-buyer-notifications .notif-footer { border-top: 1px solid #eee6ec; }
+.pf-buyer-notifications .notif-footer a { justify-content: center; padding: 11px 14px; color: #b72f73; font-size: 11.5px; font-weight: 700; }
+
+.notification-center { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(270px, .9fr); gap: 18px; align-items: start; }
+.notification-center-column { display: grid; gap: 18px; min-width: 0; }
+.notification-panel { overflow: hidden; border: 1px solid #e9e2e8; border-radius: 16px; background: #fff; box-shadow: 0 2px 8px rgba(38, 24, 34, .035); }
+.notification-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 18px 20px; border-bottom: 1px solid #eee8ed; }
+.notification-panel-title { margin: 0; color: #2c2530; font-size: 16px; font-weight: 750; letter-spacing: -.02em; }
+.notification-panel-caption { margin: 4px 0 0; color: #827681; font-size: 12px; }
+.notification-panel-body { padding: 12px 18px; }
+.notification-feed { display: grid; }
+.notification-entry { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: start; gap: 13px; padding: 15px 10px; border-bottom: 1px solid #f0ebef; color: inherit; text-decoration: none; transition: background-color .16s ease; }
+.notification-entry:last-child { border-bottom: 0; }
+.notification-entry:hover { border-radius: 11px; background: #fcf7fa; }
+.notification-entry.is-unread { background: linear-gradient(90deg, #fff7fb, #fff 75%); }
+.notification-entry-icon { display: grid; width: 38px; height: 38px; place-items: center; border: 1px solid #eee4eb; border-radius: 12px; background: #fbf7fa; color: #c43b7c; }
+.notification-entry-icon.is-success { border-color: #ccebdc; background: #f0fbf5; color: #198754; }
+.notification-entry-icon.is-danger { border-color: #f4d1d1; background: #fff5f5; color: #c53b3b; }
+.notification-entry-copy { min-width: 0; padding-top: 1px; }
+.notification-entry-title { display: flex; align-items: center; gap: 8px; margin: 0; color: #302832; font-size: 12.5px; font-weight: 700; line-height: 1.45; }
+.notification-entry.is-read .notification-entry-title { font-weight: 600; }
+.notification-entry-message { margin: 4px 0 0; color: #716774; font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; }
+.notification-entry-meta { display: flex; align-items: center; gap: 8px; padding-top: 2px; color: #928792; font-size: 10.5px; white-space: nowrap; }
+.notification-unread-indicator { width: 7px; height: 7px; border-radius: 50%; background: #d9468f; }
+.notification-tag { display: inline-flex; align-items: center; min-height: 20px; padding: 2px 7px; border-radius: 999px; background: #f7edf3; color: #a3366c; font-size: 9px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+.notification-summary-list { display: grid; gap: 9px; }
+.notification-summary-item { display: flex; align-items: center; gap: 11px; min-height: 48px; padding: 10px 12px; border: 1px solid #eee6ec; border-radius: 11px; background: #fff; }
+.notification-summary-icon { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 9px; background: #fbf2f7; color: #bd3978; }
+.notification-summary-icon.is-success { background: #eff9f3; color: #198754; }
+.notification-summary-icon.is-danger { background: #fff2f2; color: #c53b3b; }
+.notification-summary-label { flex: 1; color: #403540; font-size: 12px; font-weight: 650; }
+.notification-summary-count { min-width: 28px; padding: 4px 8px; border-radius: 999px; background: #f4eff3; color: #675966; font-size: 10.5px; font-weight: 750; text-align: center; }
+.notification-summary-count.is-unread { background: #fce9f2; color: #b42f70; }
+.notification-actions { display: grid; gap: 9px; }
+.notification-actions .btn { display: flex; justify-content: center; align-items: center; gap: 8px; min-height: 42px; border-radius: 10px; text-decoration: none; }
+.notification-empty { display: grid; justify-items: center; padding: 48px 20px; text-align: center; }
+.notification-empty-icon { display: grid; width: 54px; height: 54px; place-items: center; margin-bottom: 13px; border-radius: 16px; background: #faf1f6; color: #bd3978; }
+.notification-empty h3 { margin: 0; color: #302832; font-size: 14px; }
+.notification-empty p { max-width: 290px; margin: 5px 0 0; color: #827681; font-size: 12px; line-height: 1.55; }
+
+@media (max-width: 900px) {
+  .notification-center { grid-template-columns: minmax(0, 1fr); }
+  .notification-center-column:last-child { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}
+@media (max-width: 560px) {
+  .notification-center-column:last-child { grid-template-columns: minmax(0, 1fr); }
+  .notification-panel-head { padding: 15px; }
+  .notification-panel-body { padding: 10px; }
+  .notification-entry { grid-template-columns: 34px minmax(0, 1fr); gap: 10px; padding: 13px 7px; }
+  .notification-entry-icon { width: 34px; height: 34px; border-radius: 10px; }
+  .notification-entry-meta { grid-column: 2; padding-top: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.seller, .admin, .logistics, .rider, .buyer) .notif-item,
+  .notification-entry { transition: none; }
+}

@@ -4,10 +4,11 @@
 @section('page-sub', 'Sales, verified payment activity and COD payouts')
 
 @section('content')
-<p>Sales use completed orders updated in the selected period. Payment activity uses its actual verification, collection or payment date. Shipping and discounts are already included in buyer order values; they are not deducted again. No platform commission is charged.</p>
+<div class="seller-reports-page">
+<p class="reports-explainer">Sales use completed orders updated in the selected period. Payment activity uses its actual verification, collection or payment date. Shipping and discounts are already included in buyer order values; they are not deducted again. No platform commission is charged.</p>
 {{-- Date range picker --}}
-<div class="card" style="margin-bottom:18px">
-  <form method="GET" action="{{ route('seller.reports') }}" class="card-pad" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+<div class="card reports-date-card">
+  <form method="GET" action="{{ route('seller.reports') }}" class="card-pad reports-date-form">
     <span style="font-size:13px;font-weight:650;color:var(--muted)">Date Range</span>
     <div class="form-row" style="margin:0;display:flex;align-items:center;gap:8px">
       <label for="report-from" style="font-size:12px;color:var(--muted);margin:0">From</label>
@@ -37,17 +38,17 @@
   </form>
 </div>
 
-<div class="kpi-grid">
+<div class="kpi-grid reports-kpis">
   <div class="kpi"><div class="label">Buyer order value</div><div class="value">₱{{ number_format($totalRevenue, 2) }}</div><div class="delta up">This period</div></div>
   <div class="kpi"><div class="label">Item sales before discounts</div><div class="value">PHP {{ number_format($paymentReport['metrics']['item_sales']/100, 2) }}</div><div class="delta">Excludes shipping</div></div>
   <div class="kpi"><div class="label">Orders Completed</div><div class="value">{{ number_format($ordersCompleted) }}</div><div class="delta">This period</div></div>
   <div class="kpi"><div class="label">Avg. Order Value</div><div class="value">₱{{ number_format($avgOrderValue, 2) }}</div><div class="delta">Per order</div></div>
 </div>
 
-<div class="dash-grid payment-report-layout">
+<div class="dash-grid payment-report-layout reports-grid">
   <div class="stack">
     {{-- Revenue chart --}}
-    <div class="card">
+    <div class="card reports-panel reports-chart-panel">
       <div class="card-head"><div><h2>Completed order value over time</h2><p>Completed orders by last update date; not payment receipt dates</p></div></div>
       <div class="card-pad">
         <div class="chart-area">
@@ -59,7 +60,7 @@
     </div>
 
     {{-- Top products --}}
-    <div class="card">
+    <div class="card reports-panel reports-products-panel">
       <div class="card-head"><div><h2>Top Products</h2><p>Best performing items this period</p></div></div>
       <div class="card-pad" style="padding:0">
         <div class="table-wrap">
@@ -92,7 +93,7 @@
     @include('reports.payment-summary',['report'=>$paymentReport])
 
     {{-- Sales by category --}}
-    <div class="card">
+    <div class="card reports-panel reports-category-panel">
       <div class="card-head"><h2>Item sales by category</h2></div>
       <div class="card-pad" style="display:flex;flex-direction:column;gap:8px">
         @forelse($salesByCategory as $cat => $amount)
@@ -110,7 +111,7 @@
     </div>
 
     {{-- Performance metrics --}}
-    <div class="card">
+    <div class="card reports-panel reports-performance-panel">
       <div class="card-head"><h2>Performance</h2></div>
       <div class="card-pad" style="display:flex;flex-direction:column;gap:10px">
         @foreach([
@@ -125,5 +126,6 @@
       </div>
     </div>
   </div>
+</div>
 </div>
 @endsection

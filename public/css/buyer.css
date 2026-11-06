@@ -50,6 +50,71 @@
   .order-line-end .order-details-button{grid-column:auto;justify-self:auto}
   .order-detail-info-grid{grid-template-columns:1fr}
 }
+
+/* Buyer My Orders page polish */
+.buyer .orders-page-link{max-width:1180px;margin:0 auto 14px}
+.buyer .orders-page-link a{display:inline-flex;align-items:center;min-height:34px;padding:0 13px;border:1px solid var(--pink-line);border-radius:9px;background:var(--pink-soft);color:var(--pink-dark);font-size:11.5px;font-weight:700;text-decoration:none;transition:background .16s ease,border-color .16s ease}
+.buyer .orders-page-link a:hover{background:#fce7f3;border-color:#e8a8ca}
+.buyer .orders-page{max-width:1180px}
+.buyer .order-tabs-shell{top:64px;padding:6px 6px 0;border:1px solid var(--border);border-bottom:0;border-radius:13px 13px 0 0;background:rgba(255,255,255,.96);box-shadow:0 3px 12px rgba(36,25,38,.04);backdrop-filter:blur(10px)}
+.buyer .order-tabs{display:flex;gap:4px;padding:3px;border:0;border-radius:9px;background:#f8f6f8}
+.buyer .order-tabs .tab{flex:1 0 auto;min-height:39px;padding:8px 12px;border:0;border-radius:7px;color:#625b68;font-size:11.5px;font-weight:650;white-space:nowrap;transition:background .16s ease,color .16s ease,box-shadow .16s ease}
+.buyer .order-tabs .tab:hover{background:#fff;color:var(--pink-dark)}
+.buyer .order-tabs .tab.active{border:1px solid var(--pink-line);background:var(--pink-soft);color:var(--pink-dark);box-shadow:none}
+.buyer .order-tab-count{min-width:19px;height:19px;font-size:10px}
+.buyer .orders-toolbar{margin:13px 0 17px}
+.buyer .orders-toolbar input{height:43px;border-radius:10px;background:#fff;box-shadow:0 1px 2px rgba(27,22,32,.025);font-size:12px}
+.buyer .orders-toolbar input:focus{box-shadow:0 0 0 3px rgba(217,70,143,.11)}
+.buyer .shopee-order-card{margin-bottom:13px;border:1px solid var(--border);border-radius:13px;background:#fff;box-shadow:0 2px 7px rgba(36,25,38,.045);transition:border-color .16s ease,box-shadow .16s ease}
+.buyer .shopee-order-card:hover{border-color:#e5d7e1;box-shadow:0 5px 16px rgba(36,25,38,.065)}
+.buyer .shopee-order-card .order-card-head{min-height:54px;padding:12px 17px;background:#fff}
+.buyer .order-shop{gap:10px}
+.buyer .order-shop>strong{font-size:12.5px;color:var(--ink-2)}
+.buyer .order-shop .seller-actions a{font-size:10.5px;font-weight:650}
+.buyer .shopee-order-card>.order-meta{min-height:36px;padding:8px 17px;background:#faf8fa;font-size:10.5px}
+.buyer .order-products-list{padding:0 17px}
+.buyer .order-product-row{grid-template-columns:64px minmax(0,1fr) auto;gap:13px;padding:13px 0}
+.buyer .order-product-row .order-product-image{width:64px;height:64px;border:1px solid #eee8ed;border-radius:9px;background:#faf8fa;overflow:hidden}
+.buyer .order-product-copy strong{font-size:12.5px;color:var(--ink-2)}
+.buyer .order-product-copy span{font-size:10.5px}
+.buyer .order-line-price{font-size:12px;font-weight:650;color:var(--ink-2)}
+.buyer .order-line-end .order-details-button{height:30px;border-radius:7px;font-size:10px}
+.buyer .order-summary-row{padding:12px 17px;background:#fffafd}
+.buyer .order-money strong{font-size:17px}
+.buyer .shopee-order-card .order-actions{padding:11px 17px;border-top:1px solid var(--border)!important;background:#fff}
+.buyer .shopee-order-card .order-card-buttons{padding:0 17px 14px;background:#fff}
+.buyer .shopee-order-card .order-card-buttons .btn{min-height:34px;border-radius:8px}
+.buyer .shopee-order-card .order-reference{margin:0;padding:9px 17px;border-top:1px solid #f0eaf0;background:#fffafd;color:#655d68;font-size:11px}
+.buyer .orders-page>.card{border-radius:13px;box-shadow:0 2px 7px rgba(36,25,38,.045)}
+@media(max-width:700px){
+  .buyer .orders-page-link,.buyer .orders-page{width:100%}
+  .buyer .order-tabs-shell{top:58px;padding:5px 5px 0}
+  .buyer .order-tabs{justify-content:flex-start;overflow-x:auto;scrollbar-width:thin}
+  .buyer .order-tabs .tab{flex:0 0 auto;padding:8px 11px}
+}
+.buyer .refunds-page{max-width:1180px;margin:0 auto}
+.buyer .refund-card,.buyer .refunds-empty{margin:0 0 14px;border:1px solid var(--border);border-radius:13px;background:#fff;box-shadow:0 2px 7px rgba(36,25,38,.045)}
+.buyer .refund-card .card-pad,.buyer .refunds-empty .card-pad{padding:18px}
+.buyer .refund-card-header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding-bottom:13px;border-bottom:1px solid var(--border)}
+.buyer .refund-eyebrow,.buyer .refund-info>span,.buyer .refund-completion>span{display:block;color:var(--muted);font-family:var(--font-mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase}
+.buyer .refund-card-header h2{margin:4px 0 0;font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--ink-2)}
+.buyer .refund-amount{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:14px;padding:12px 14px;border:1px solid var(--pink-line);border-radius:9px;background:var(--pink-soft)}
+.buyer .refund-amount span{font-size:11px;color:var(--muted)}
+.buyer .refund-amount strong{font-family:var(--font-mono);font-size:16px;color:var(--pink-dark)}
+.buyer .refund-info,.buyer .refund-completion{display:grid;grid-template-columns:minmax(120px,.7fr) minmax(0,1.3fr);gap:8px 14px;margin-top:14px;padding:13px 14px;border:1px solid var(--border);border-radius:9px;background:#fcfafc}
+.buyer .refund-info strong,.buyer .refund-completion strong{min-width:0;font-size:11.5px;font-weight:600;overflow-wrap:anywhere}
+.buyer .refund-pending-note{margin:13px 0 0;padding:11px 13px;border-radius:8px;background:#faf8fa;color:var(--muted);font-size:11px}
+.buyer .refund-repayment-form{display:flex;flex-direction:column;gap:12px;margin-top:15px;padding:14px;border:1px solid var(--border);border-radius:9px;background:#fcfafc}
+.buyer .refund-repayment-form label{display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:600}
+.buyer .refund-repayment-form label:has(input[type=checkbox]){flex-direction:row;align-items:flex-start;font-weight:500;line-height:1.5}
+.buyer .refund-repayment-form input:not([type=checkbox]){width:100%;height:39px;padding:0 11px;border:1px solid var(--border);border-radius:8px;background:#fff;font:12px var(--font-body)}
+.buyer .refund-repayment-form input:focus{border-color:var(--pink);outline:0;box-shadow:0 0 0 3px rgba(217,70,143,.11)}
+.buyer .refund-repayment-form input[type=checkbox]{margin:2px 4px 0 0;accent-color:var(--pink)}
+.buyer .refund-repayment-form .btn{align-self:flex-start;min-height:36px;border-radius:8px}
+.buyer .refunds-empty .card-pad{padding:28px;text-align:center}
+.buyer .refunds-empty strong{font-size:13px}
+.buyer .refunds-empty p{margin:5px 0 0;color:var(--muted);font-size:11.5px}
+@media(max-width:560px){.buyer .refund-card .card-pad{padding:14px}.buyer .refund-info,.buyer .refund-completion{grid-template-columns:1fr;gap:5px}.buyer .refund-info strong,.buyer .refund-completion strong{margin-bottom:7px}}
 *{box-sizing:border-box}
 html{-webkit-tap-highlight-color:transparent}
 body{margin:0;font-family:var(--font-body);color:var(--text);-webkit-font-smoothing:antialiased}

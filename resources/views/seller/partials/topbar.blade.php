@@ -4,7 +4,9 @@
   </button>
   <div class="page-heading">
     <h1>@yield('page-title', 'Dashboard')</h1>
-    <p>@yield('page-sub', '')</p>
+    @hasSection('page-sub')
+      <p>@yield('page-sub')</p>
+    @endif
   </div>
   <div class="topbar-search">
     <span class="ic">@include('seller.partials.icon', ['name' => 'search', 'size' => 14])</span>
@@ -22,14 +24,16 @@
       </button>
       <div class="dropdown-panel" id="sellerNotifPanel">
         <div class="dropdown-head"><h3>Notifications</h3>@if($unreadNotifCount > 0)<span class="notif-new-count">{{ $unreadNotifCount }} new</span>@endif</div>
-        <form method="POST" action="{{ route('account.notifications.read-all') }}" style="padding:8px">@csrf<button class="btn btn-outline">Mark all as read</button></form>
-<div class="notif-list">
+        <div class="notif-list">
+          @if($unreadNotifCount > 0)
+          <form method="POST" action="{{ route('account.notifications.read-all') }}">@csrf<button type="submit" class="btn btn-outline">Mark all as read</button></form>
+          @endif
           @forelse($notifRows as $notif)
             <a href="{{ route('seller.notifications.open', $notif->id) }}" class="notif-item {{ $notif->is_read ? 'read' : '' }}">
               <div class="dot"></div><div><p>{{ $notif->message }}</p><div class="notif-item-time">{{ \Carbon\Carbon::parse($notif->created_at)->diffForHumans() }}</div></div>
             </a>
           @empty
-            <div class="notif-item read"><div class="dot"></div><div><p>No notifications yet.</p></div></div>
+            <div class="notif-item read"><div class="dot"></div><div><p>You're all caught up.</p><small>New account and order updates will appear here.</small></div></div>
           @endforelse
         </div>
         <a href="{{ route('seller.notifications') }}" class="notif-view-all">View all notifications</a>

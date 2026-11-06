@@ -5,7 +5,7 @@
 @push('head')<link rel="stylesheet" href="{{ asset('css/logistics-cash-desk.css') }}?v={{ filemtime(public_path('css/logistics-cash-desk.css')) }}">@endpush
 @push('scripts')<script src="{{ asset('js/logistics-finance-feedback.js') }}" defer></script>@endpush
 @section('content')
-<div class="cash-desk settlement-workspace">
+<div class="cash-desk settlement-workspace staff-salary-self-service">
   @if(session('success'))<div class="cash-alert cash-alert--success" role="alert">{{ session('success') }}</div>@endif
   @if($errors->any())<div class="cash-alert" role="alert"><ul>@foreach($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul></div>@endif
 

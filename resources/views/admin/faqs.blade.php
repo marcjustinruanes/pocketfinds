@@ -4,19 +4,19 @@
 @section('page-sub', 'Buyer and admin support')
 @push('head')<link rel="stylesheet" href="{{ asset('css/support-faqs.css') }}">@endpush
 @section('content')
-<section class="support-faqs">
+<section class="support-faqs admin-faqs-page">
   @if(session('success'))<p role="status">{{ session('success') }}</p>@endif
   @if($errors->any())<p role="alert">{{ $errors->first() }}</p>@endif
   <nav class="faq-tabs" aria-label="FAQ audience"><a href="{{ route('admin.faqs', ['audience' => 'admin']) }}" aria-current="{{ $audience === 'admin' ? 'page' : 'false' }}">Admin FAQs</a><a href="{{ route('admin.faqs', ['audience' => 'buyer']) }}" aria-current="{{ $audience === 'buyer' ? 'page' : 'false' }}">Buyer FAQs</a></nav>
   <div class="faq-management">
-    <div>
+    <div class="faq-list">
       @forelse($faqs as $faq)
       <article class="faq-entry" id="faq-{{ $faq->id }}"><div class="faq-entry-head"><strong>{{ $faq->question }}</strong><span>{{ $faq->is_published ? 'Published' : 'Draft' }}</span></div><p>{{ $faq->answer }}</p>
         <div class="faq-actions"><a class="btn btn-outline" href="{{ route('admin.faqs', ['audience' => $audience, 'edit' => $faq->id]) }}" aria-label="Edit FAQ" title="Edit FAQ"><x-admin-icon name="edit" /></a>
           <details><summary>Delete</summary><form method="POST" action="{{ route('admin.faqs.delete', $faq) }}">@csrf @method('DELETE')<p>Delete this FAQ?</p><button class="btn btn-danger" type="submit">Confirm deletion</button></form></details>
         </div>
       </article>
-      @empty<p>No {{ $audience }} FAQs yet.</p>@endforelse
+      @empty<p class="faq-empty">No {{ $audience }} FAQs yet. Add your first FAQ using the form.</p>@endforelse
       {{ $faqs->links() }}
     </div>
     <form class="faq-editor" method="POST" action="{{ $editing ? route('admin.faqs.update', $editing) : route('admin.faqs.store') }}">

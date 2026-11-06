@@ -28,19 +28,23 @@
           @if($notifications->where('is_read', false)->count())<span class="pf-buyer-dot"></span>@endif
         </summary>
         <div class="pf-buyer-dropdown pf-buyer-notifications">
-          <strong>Notifications</strong>
-          @if(\App\Services\BuyerCommerce::installed())
-          <form method="POST" action="{{ route('buyer.commerce.read-all') }}">@csrf<button type="submit">Mark all as read</button></form>
+          <div class="notif-dropdown-head">
+            <div><strong>Notifications</strong><small>Recent account activity</small></div>
+            @if($notifications->where('is_read', false)->count())<span>{{ $notifications->where('is_read', false)->count() }} new</span>@endif
+          </div>
+          @if($notifications->where('is_read', false)->count())
+          <form class="notif-mark-read" method="POST" action="{{ route('account.notifications.read-all') }}">@csrf<button type="submit">Mark all as read</button></form>
           @endif
+          <div class="notif-list">
           @forelse($notifications as $notification)
-          <a href="{{ route('buyer.notifications.open', $notification->id) }}" class="{{ $notification->is_read ? '' : 'is-unread' }}">
-            <span>{{ $notification->message }}</span>
-            <small>{{ \Carbon\Carbon::parse($notification->created_at)->diffForHumans() }}</small>
+          <a href="{{ route('buyer.notifications.open', $notification->id) }}" class="notif-item {{ $notification->is_read ? 'read' : '' }}">
+            <span class="dot"></span><span class="notif-item-copy">{{ $notification->message }}<small class="notif-item-time">{{ \Carbon\Carbon::parse($notification->created_at)->diffForHumans() }}</small></span>
           </a>
           @empty
-          <p>No notifications yet.</p>
+          <p class="notif-empty">You're all caught up. New account and order updates will appear here.</p>
           @endforelse
-          <a href="{{ route('buyer.announcements') }}">Announcements</a>
+          </div>
+          <div class="notif-footer"><a href="{{ route('buyer.announcements') }}">View announcements</a></div>
         </div>
       </details>
       @if(\App\Services\BuyerCommerce::installed())

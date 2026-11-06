@@ -4,6 +4,7 @@
 @section('page-sub', 'Create discount codes buyers can apply to your shop at checkout')
 
 @section('content')
+<div class="seller-vouchers-page">
 
 @if(session('voucher_success'))
 <div class="modal-overlay open" id="voucherResultModal">
@@ -22,14 +23,14 @@
 </div>
 @endif
 
-<div class="filter-bar">
+<div class="filter-bar vouchers-toolbar">
   <div></div>
   <button class="btn btn-primary" data-modal="addVoucherModal">
     @include('seller.partials.icon',['name'=>'plus','size'=>14]) Create Voucher
   </button>
 </div>
 
-<div class="card">
+<div class="card vouchers-table-card">
   <div class="card-pad" style="padding:0">
     <div class="table-wrap">
     <table class="tbl" style="table-layout:fixed">
@@ -102,6 +103,7 @@
     </table>
     </div>
   </div>
+</div>
 </div>
 
 <div class="modal-overlay {{ $errors->has('code') ? 'open' : '' }}" id="addVoucherModal">

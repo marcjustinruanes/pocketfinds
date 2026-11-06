@@ -5,6 +5,7 @@
 @php use Illuminate\Support\Facades\Storage; @endphp
 
 @section('content')
+<div class="admin-product-reviews-page">
 @include('admin.partials.ai-link', ['aiMode' => 'product', 'aiLabel' => 'AI product screening'])
 @if(session('success'))
 <div class="modal-overlay open" id="productActionResultModal">
@@ -30,7 +31,7 @@
   $archivedProducts  = $products->where('status', 'archived')->count();
   $outOfStockProducts = $products->filter(fn($p) => $p->total_stock <= 0)->count();
 @endphp
-<div class="kpi-grid" style="grid-template-columns:repeat(5,1fr)">
+<div class="kpi-grid product-review-kpis" style="grid-template-columns:repeat(5,1fr)">
   <button type="button" class="kpi kpi-filter active" data-status-kpi="">
     <div class="label">Total Submissions</div>
     <div class="value">{{ $products->count() }}</div>
@@ -55,12 +56,12 @@
   </button>
 </div>
 
-<div class="card">
+<div class="card product-review-table-card">
   <div class="card-head">
     <div><h2>Product Submissions</h2><p>{{ $products->count() }} total</p></div>
   </div>
   <div class="card-pad">
-    <div class="filter-bar">
+    <div class="filter-bar product-review-filters">
       <div class="search-mini">
         <span class="ic"><x-admin-icon name="search" /></span>
         <input type="text" placeholder="Search product, seller or SKU..." data-table-search="productsTable">
@@ -147,6 +148,7 @@
     </table>
     </div>
   </div>
+</div>
 </div>
 
 {{-- Per-product review modal --}}

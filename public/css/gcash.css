@@ -93,3 +93,36 @@
 .gcash-page :is(.gcash-dialog, .gcash-receipt-canvas)::-webkit-scrollbar { display: none; }
 .gcash-page .gcash-receipt-canvas:focus-visible { outline: 3px solid #1b6b91; outline-offset: 3px; }
 @media(max-width:700px) { .gcash-viewer-grid { grid-template-columns: minmax(0,1fr); } .gcash-page .gcash-dialog { padding: 18px; } }
+
+/* Buyer GCash purchase list: match the compact buyer account surfaces. */
+.buyer.gcash-payments-page .gcash-page{max-width:1180px;--gcash-accent:#b03370;--gcash-border:#eadfe7;--gcash-ink:#29222a;--gcash-muted:#827783}
+.buyer.gcash-payments-page .gcash-nav{gap:8px;margin:0 0 14px}
+.buyer.gcash-payments-page .gcash-nav a{min-height:36px;padding:0 13px;border:1px solid var(--gcash-border);border-radius:8px;background:#fff;color:var(--gcash-ink);font-size:11.5px;font-weight:650;text-decoration:none}
+.buyer.gcash-payments-page .gcash-nav a.gcash-nav-primary{border-color:#efc5da;background:#fff3f9;color:#a52f6b}
+.buyer.gcash-payments-page .gcash-muted{font-size:11.5px;line-height:1.6}
+.buyer.gcash-payments-page>.gcash-muted{margin:0;padding:11px 13px;border:1px solid #f0e2eb;border-radius:9px;background:#fffafd}
+.buyer.gcash-payments-page .gcash-purchase-list{gap:12px;margin:14px 0}
+.buyer.gcash-payments-page .gcash-purchase-list .gcash-card{padding:17px 18px;border-color:#e9e2e9;border-radius:12px;background:#fff;box-shadow:0 2px 7px rgba(42,28,40,.045);transition:border-color .16s ease,box-shadow .16s ease}
+.buyer.gcash-payments-page .gcash-purchase-list .gcash-card:hover{border-color:#e4c4d5;box-shadow:0 5px 15px rgba(42,28,40,.07)}
+.buyer.gcash-payments-page .gcash-purchase-heading{align-items:center;gap:12px}
+.buyer.gcash-payments-page .gcash-purchase-heading h2{margin:9px 0 3px;color:#302733;font-size:14px;line-height:1.5}
+.buyer.gcash-payments-page .gcash-purchase-heading .gcash-amount{margin:0;color:#a52f6b;font-size:18px;font-variant-numeric:tabular-nums}
+.buyer.gcash-payments-page .gcash-badge{padding:4px 9px;border:1px solid #e8dfe6;border-radius:999px;background:#f7f3f6;color:#625563;font-size:10px;font-weight:700;text-transform:capitalize}
+.buyer.gcash-payments-page .gcash-badge-success{border-color:#bfe6d3;background:#e8f7f0;color:#1a7f5a}
+.buyer.gcash-payments-page .gcash-purchase-list .gcash-card>p.gcash-muted{margin:8px 0 0}
+.buyer.gcash-payments-page .gcash-purchase-list .gcash-card>p:not(.gcash-muted){margin:9px 0 0;padding:9px 11px;border-radius:8px;background:#fff8ee;color:#765321;font-size:11.5px}
+.buyer.gcash-payments-page .gcash-purchase-list .gcash-notice{border-left:3px solid #d59943;background:#fff7eb}
+.buyer.gcash-payments-page .gcash-purchase-list .gcash-actions{margin-top:12px}
+.buyer.gcash-payments-page .gcash-purchase-list .gcash-button{min-height:35px;padding:7px 12px;border-radius:7px;font-size:11.5px}
+.buyer.gcash-payments-page .gcash-reference{font-size:10.5px}
+.buyer.gcash-payments-page .gcash-reference summary{display:inline-flex;color:#8e4770;font-size:10.5px}
+.buyer.gcash-payments-page .gcash-reference p{margin:2px 0;font-family:var(--font-mono);font-size:10px}
+.buyer.gcash-payments-page .gcash-purchase-list>.gcash-card:only-child:has(h2){padding:26px;text-align:center}
+.buyer.gcash-payments-page .gcash-purchase-list>.gcash-card:only-child:has(h2) h2{font-size:15px}
+.buyer.gcash-payments-page .gcash-purchase-list>.gcash-card:only-child:has(h2) .gcash-button{margin-top:10px}
+.buyer.gcash-payments-page .gcash-page nav+ p+.gcash-purchase-list{margin-top:14px}
+@media(max-width:600px){
+ .buyer.gcash-payments-page .gcash-purchase-list .gcash-card{padding:14px}
+ .buyer.gcash-payments-page .gcash-purchase-heading{align-items:flex-start}
+ .buyer.gcash-payments-page .gcash-purchase-heading .gcash-amount{font-size:16px}
+}

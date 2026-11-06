@@ -12,8 +12,11 @@
 @endif
 
 {{-- Financial workspace navigation cards --}}
-<section>
-  <p class="fin-section-label" style="margin-bottom:10px">Financial workspaces</p>
+<section class="fin-workspaces-section" aria-labelledby="fin-workspaces-heading">
+  <div class="fin-workspaces-heading">
+    <h2 id="fin-workspaces-heading">Financial workspaces</h2>
+    <span>Manage cash, settlements, rider pay and reconciliation.</span>
+  </div>
   <div class="fin-workspaces">
     <a href="{{ route('logistics.cash-desk') }}" class="fin-workspace-card">
       <span class="fin-workspace-icon" aria-hidden="true">

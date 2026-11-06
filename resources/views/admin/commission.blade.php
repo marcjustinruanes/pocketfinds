@@ -4,10 +4,11 @@
 @section('page-sub', 'Historical records only; current payments have no platform commission')
 
 @section('content')
-<p>These preserved legacy entries are not proof of collected fees, actual Seller payments or current platform revenue. No current commission deduction is calculated. Use <a href="{{ route('admin.reports') }}">Reports</a> for current sales and payment records.</p>
-<div class="card">
+<div class="admin-commission-page">
+<div class="historical-commission-note"><span aria-hidden="true">i</span><p>These preserved legacy entries are not proof of collected fees, actual Seller payments or current platform revenue. No current commission deduction is calculated. Use <a href="{{ route('admin.reports') }}">Reports</a> for current sales and payment records.</p></div>
+<div class="card historical-commission-card">
   <div class="card-head"><div><h2>Historical commission entries</h2><p>Stored values, not recalculated or applied to current payouts</p></div></div>
-  <div class="table-wrap">
+  <div class="table-wrap historical-commission-table-wrap">
     <table class="dtable">
       <thead><tr><th>Seller</th><th>Order ID</th><th>Sale Amount</th><th>Rate</th><th>Stored legacy commission</th><th>Stored legacy allocation (not payment)</th><th>Date</th></tr></thead>
       <tbody>
@@ -36,5 +37,6 @@
       </tbody>
     </table>
   </div>
+</div>
 </div>
 @endsection
