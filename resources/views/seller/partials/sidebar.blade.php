@@ -42,7 +42,7 @@
     </a>
 </x-navigation-group>
 <a class="nav-item" href="{{ route('seller.account') }}#shipping-rates">Shipping Rates & Availability</a>
-<a class="nav-item" href="{{ route('seller.inventory') }}#flash-sales">Flash Sales</a>
+<a class="nav-item" href="{{ route('seller.account') }}#flash-sales">Promotions</a>
 <a class="nav-item" href="{{ route('seller.shop-categories.index') }}">Shop Categories</a>
 <a class="nav-item" href="{{ route('account.cancellation-refunds') }}">Cancellation Refunds</a>
 <x-navigation-group id="seller-tracking-reports" label="Tracking & Reports" :active="request()->routeIs('seller.reports')">

@@ -116,6 +116,7 @@
               <button type="button" class="btn btn-sm btn-outline icon-only" data-modal="viewProductModal-{{ $product->id }}" title="View" aria-label="View">
                 @include('seller.partials.icon',['name'=>'eye','size'=>13])
               </button>
+              <form method="POST" action="{{ route('seller.inventory.duplicate',$product) }}">@csrf<button class="btn btn-sm btn-outline icon-only" title="Duplicate as draft" aria-label="Duplicate">⧉</button></form>
               @if(in_array($product->status, ['active', 'archived']))
                 <button type="button" class="btn btn-sm btn-outline icon-only" data-modal="addStockModal-{{ $product->id }}" title="Add Stock" aria-label="Add Stock">
                   @include('seller.partials.icon',['name'=>'plus','size'=>13])

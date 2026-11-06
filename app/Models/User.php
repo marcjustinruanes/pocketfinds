@@ -51,7 +51,7 @@ class User extends Authenticatable
         'password', 'id_file', 'id_type_id', 'selfie_file', 'resume_file',
         'status', 'status_reason', 'is_admin', 'is_logistics', 'logistics_role', 'logistics_hub_id',
         'interview_scheduled_at', 'interview_location', 'category_id', 'category_other',
-        'profile_picture', 'business_name', 'business_permit_file', 'shipping_fee', 'company_logo',
+        'profile_picture', 'business_name', 'store_description', 'store_banner', 'business_permit_file', 'shipping_fee', 'company_logo',
         // rider-only fields (merged in from the now-dropped rider_profiles table)
         'vehicle_type', 'vehicle_ownership', 'vehicle_brand', 'vehicle_model', 'plate_number',
         'or_file', 'cr_file', 'license_number', 'license_expiry', 'license_file',

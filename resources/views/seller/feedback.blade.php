@@ -16,7 +16,7 @@
   <div class="stack">
     <div class="card">
       <div class="card-head"><div><h2>All Reviews</h2><p>Customer feedback on your products</p></div></div>
-      <div class="card-pad">
+      <div class="card-pad"><nav style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><a class="btn btn-sm btn-outline" href="{{ route('seller.feedback') }}">All</a>@foreach([5,4,3,2,1] as $filter)<a class="btn btn-sm btn-outline" href="{{ route('seller.feedback',['star'=>$filter]) }}">{{ $filter }} ★</a>@endforeach</nav>
         @forelse($reviews as $review)
         <div style="padding:16px 0;border-bottom:1px solid var(--border)">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
@@ -38,8 +38,10 @@
           @if($review->edited_at)<small>Buyer edited this review once.</small>@endif
           @if($review->seller_reply)
           <div style="background:var(--paper);border-radius:8px;padding:10px 12px;font-size:12.5px;color:var(--text)"><strong>Your reply:</strong> {{ $review->seller_reply }}</div>
+          @if(!$review->seller_reply_edited_at)<button class="btn btn-sm btn-outline" data-modal="replyModal{{ $review->id }}">Edit reply</button>@endif
           @else
           <button class="btn btn-sm btn-outline" data-modal="replyModal{{ $review->id }}">@include('seller.partials.icon', ['name' => 'send', 'size' => 12]) Reply</button>
+          @endif
           <div class="modal-overlay" id="replyModal{{ $review->id }}">
             <div class="modal" style="max-width:440px">
               <div class="modal-head">
@@ -49,7 +51,7 @@
               <form method="POST" action="{{ route('seller.reviews.reply', $review) }}">
                 @csrf
                 <div class="modal-body">
-                  <div class="form-row"><label>Your Reply</label><textarea name="seller_reply" rows="4" placeholder="Thank the customer or address their concern…" required></textarea></div>
+                  <div class="form-row"><label>Your Reply</label><textarea name="seller_reply" rows="4" placeholder="Thank the customer or address their concern…" required>{{ $review->seller_reply }}</textarea></div>
                 </div>
                 <div class="modal-foot">
                   <button class="btn btn-outline" type="button" data-modal-close>Cancel</button>
@@ -58,7 +60,6 @@
               </form>
             </div>
           </div>
-          @endif
         </div>
         @empty
         <div class="empty" style="padding:40px 20px">

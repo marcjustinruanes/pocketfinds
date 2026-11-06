@@ -36,6 +36,8 @@ foreach (['seller', 'admin'] as $role) {
         Route::post('/shipping', [CommerceController::class, 'rate'])->name('shipping');
         Route::post('/vouchers', [CommerceController::class, 'voucher'])->name('voucher');
         Route::post('/flash-sales', [CommerceController::class, 'flashSale'])->name('flash');
+        Route::post('/sales', [CommerceController::class, 'sale'])->name('sale');
+        Route::post('/bundles', [CommerceController::class, 'bundle'])->name('bundle');
         Route::post('/promotions/{kind}/{id}/end', [CommerceController::class, 'endPromotion'])->name('end');
     });
 }

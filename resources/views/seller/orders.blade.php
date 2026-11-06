@@ -28,12 +28,13 @@
   </div>
 </div>
 
-<div class="filter-bar">
+<form class="filter-bar" method="GET" action="{{ route('seller.orders') }}">
   <div class="search-mini">
     <span class="ic">@include('seller.partials.icon', ['name' => 'search', 'size' => 13])</span>
-    <input type="text" placeholder="Search by order ID or customer…" id="orderSearch">
+    <input type="text" name="q" value="{{ request('q') }}" placeholder="Search by order ID or customer…" id="orderSearch">
   </div>
-</div>
+  <input type="date" name="from" value="{{ request('from') }}" aria-label="From date"><input type="date" name="to" value="{{ request('to') }}" aria-label="To date"><button class="btn btn-outline">Filter</button>
+</form>
 
 <div class="card">
   @php

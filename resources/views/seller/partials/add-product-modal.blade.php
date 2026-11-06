@@ -163,6 +163,7 @@
 
       <div class="modal-foot">
         <button class="btn btn-outline" type="button" data-modal-close>Cancel</button>
+        <button class="btn btn-outline" type="submit" name="save_as_draft" value="1">Save as Draft</button>
         <button class="btn btn-primary" type="submit" style="display:inline-flex;align-items:center;gap:7px">
           @include('seller.partials.icon',['name'=>'send','size'=>14]) Submit for Review
         </button>

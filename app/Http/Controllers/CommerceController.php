@@ -329,18 +329,46 @@ class CommerceController extends Controller
     public function voucher(Request $r)
     {
         $u = $this->manager($r);
-        $d = $r->validate(['code' => ['required', 'regex:/^[A-Za-z0-9]{4,12}$/D', 'unique:commerce_vouchers,code'], 'kind' => 'required|in:store,platform,shipping', 'discount_type' => 'required|in:fixed,percent', 'amount' => 'required|numeric|min:0.01|max:1000000', 'cap' => 'nullable|numeric|min:0.01', 'minimum_spend' => 'required|numeric|min:0', 'starts_at' => 'required|date', 'ends_at' => 'required|date|after:starts_at', 'usage_limit' => 'required|integer|min:1', 'per_buyer_limit' => 'required|integer|min:1']);
+        $r->merge(['code' => strtoupper(trim((string) $r->input('code')))]);
+        $d = $r->validate(['code' => ['required', 'regex:/^[A-Za-z0-9]{4,12}$/D', 'unique:commerce_vouchers,code'], 'kind' => 'required|in:store,platform,shipping', 'discount_type' => 'required|in:fixed,percent', 'amount' => 'required|numeric|min:0.01|max:1000000', 'cap' => 'nullable|numeric|min:0.01', 'minimum_spend' => 'required|numeric|min:0', 'starts_at' => 'required|date', 'ends_at' => 'required|date|after:starts_at', 'usage_limit' => 'required|integer|min:1', 'per_buyer_limit' => 'required|integer|min:1', 'display_mode' => 'nullable|in:claimable,code_only', 'product_ids' => 'nullable|array|max:9', 'product_ids.*' => 'string']);
         abort_unless($u->is_admin || $d['kind'] === 'store', 403);
-        if ($d['discount_type'] === 'percent' && $d['amount'] > 100) {
+        if ($d['discount_type'] === 'percent' && $d['amount'] >= 100) {
             $this->flow()->fail('Percentage cannot exceed 100.', 'amount');
         }
-        $d['code'] = strtoupper($d['code']);
+        if ($d['discount_type'] === 'fixed' && $d['amount'] > $d['minimum_spend']) $this->flow()->fail('The discount cannot exceed the minimum spend.', 'amount');
         $d['seller_id'] = $u->is_admin ? null : $u->id;
+        $d['display_mode'] = $d['display_mode'] ?? 'claimable';
+        $d['product_ids'] = isset($d['product_ids']) ? json_encode(array_values(array_unique($d['product_ids']))) : null;
+        if (!$u->is_admin && $d['product_ids'] && Product::where('seller_id',$u->id)->whereIn('id',json_decode($d['product_ids'],true))->count() !== count(json_decode($d['product_ids'],true))) abort(403);
         if ($u->is_admin && $d['kind'] === 'store') {
             $this->flow()->fail('Store vouchers are created by their seller.', 'kind');
         }DB::table('commerce_vouchers')->insert($d);
 
         return back()->with('success', 'Voucher created.');
+    }
+
+    public function sale(Request $r)
+    {
+        $u=$this->manager($r); abort_if($u->is_admin,403);
+        $d=$r->validate(['product_id'=>'required|string','discount_type'=>'required|in:percent,fixed','amount'=>'required|numeric|min:0.01|max:999999.99','starts_at'=>'required|date','ends_at'=>'required|date|after:starts_at']);
+        DB::transaction(function()use($u,$d){
+            $product=Product::where('seller_id',$u->id)->where('status','active')->lockForUpdate()->findOrFail($d['product_id']);
+            if(($d['discount_type']==='percent' && (floor($d['amount'])!=$d['amount'] || $d['amount']>=100)) || ($d['discount_type']==='fixed' && $d['amount'] >= $product->price)) $this->flow()->fail('Enter a valid discount below the regular price.','amount');
+            if(DB::table('commerce_sales')->where('product_id',$product->id)->where('is_active',true)->where('starts_at','<',$d['ends_at'])->where('ends_at','>',$d['starts_at'])->exists()) $this->flow()->fail('This product already has a sale in that period.','product_id');
+            DB::table('commerce_sales')->insert($d+['seller_id'=>$u->id,'created_at'=>now(),'updated_at'=>now()]);
+        });
+        return back()->with('success','Store sale scheduled.');
+    }
+
+    public function bundle(Request $r)
+    {
+        $u=$this->manager($r); abort_if($u->is_admin,403);
+        $d=$r->validate(['kind'=>'required|in:quantity_percent,buy_x_get_y','product_ids'=>'required|array|min:1|max:9','product_ids.*'=>'required|string|distinct','gift_product_id'=>'nullable|string','buy_quantity'=>'required|integer|min:1|max:99','gift_quantity'=>'nullable|integer|min:1|max:99','discount_percent'=>'nullable|numeric|min:1|max:99','starts_at'=>'nullable|date','ends_at'=>'nullable|date|after:starts_at']);
+        if(Product::where('seller_id',$u->id)->whereIn('id',$d['product_ids'])->count()!==count($d['product_ids']))abort(403);
+        if($d['kind']==='quantity_percent' && empty($d['discount_percent']))$this->flow()->fail('Set a bundle discount percentage.','discount_percent');
+        if($d['kind']==='buy_x_get_y' && (!filled($d['gift_product_id']) || !Product::where('seller_id',$u->id)->whereKey($d['gift_product_id'])->exists()))$this->flow()->fail('Choose a gift product from your shop.','gift_product_id');
+        DB::table('commerce_bundles')->insert($d+['seller_id'=>$u->id,'product_ids'=>json_encode($d['product_ids']),'is_active'=>true,'created_at'=>now(),'updated_at'=>now()]);
+        return back()->with('success','Bundle promotion created.');
     }
 
     public function flashSale(Request $r)
@@ -364,7 +392,7 @@ class CommerceController extends Controller
     {
         $u = $this->manager($r);
         $table = match ($kind) {
-            'voucher' => 'commerce_vouchers','flash' => 'commerce_flash_sales',default => abort(404)
+            'voucher' => 'commerce_vouchers','flash' => 'commerce_flash_sales','sale' => 'commerce_sales','bundle' => 'commerce_bundles',default => abort(404)
         };
         DB::transaction(function () use ($u, $table, $id) {
             $row = DB::table($table)->where('id', $id)->lockForUpdate()->first();

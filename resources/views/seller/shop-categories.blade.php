@@ -18,6 +18,8 @@
    @csrf <input type="hidden" name="id" value="{{ $category->id }}">
    <input name="name" value="{{ $category->name }}" required maxlength="50" aria-label="Category name">
    <select name="parent_id" aria-label="Parent category"><option value="">Top-level category</option>@foreach($categories->whereNull('parent_id')->where('id','!=',$category->id) as $parent)<option value="{{ $parent->id }}" @selected($category->parent_id===$parent->id)>{{ $parent->name }}</option>@endforeach</select>
+   <label style="display:flex;align-items:center;gap:5px"><input type="checkbox" name="is_visible" value="1" @checked($category->is_visible ?? true)> Visible</label>
+   <label>Order <input type="number" name="sort_order" value="{{ $category->sort_order ?? 0 }}" min="0" max="9999" style="width:70px"></label>
    <button class="btn btn-outline">Save</button>
   </form>
   <details><summary>Remove category</summary><p>Removing a parent also removes its subcategories. Products are kept.</p><form method="POST" action="{{ route('seller.shop-categories.delete',$category->id) }}">@csrf @method('DELETE')<button class="btn btn-danger">Remove category</button></form></details>

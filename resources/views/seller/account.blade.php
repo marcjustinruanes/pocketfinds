@@ -132,8 +132,8 @@
             </div>
             <div class="form-row" style="flex:1;min-width:180px">
               <label for="shop-profile-picture">Shop picture</label>
-              <input id="shop-profile-picture" type="file" name="profile_picture" accept="image/jpeg,image/png,image/webp" required>
-              <small style="color:var(--muted)">JPG, PNG or WebP, up to 2 MB. Appears on your public shop.</small>
+              <input id="shop-profile-picture" type="file" name="profile_picture" accept="image/jpeg,image/png" required>
+              <small style="color:var(--muted)">JPG or PNG, up to 5 MB. Appears on your public shop.</small>
               @error('profile_picture')<p role="alert" style="color:var(--danger)">{{ $message }}</p>@enderror
             </div>
             <button type="submit" class="btn btn-primary">Update Picture</button>
@@ -142,7 +142,7 @@
         @if(session('shop_success'))
           <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px">{{ session('shop_success') }}</div>
         @endif
-        <form method="POST" action="{{ route('seller.account.shop') }}" {{ $pendingRequest ? 'style=opacity:.5;pointer-events:none' : '' }}>
+        <form method="POST" action="{{ route('seller.account.shop') }}" enctype="multipart/form-data">
           @csrf
           <div class="form-grid-2">
             <div class="form-row"><label>Business Name</label><input type="text" name="business_name" value="{{ old('business_name', $u->business_name) }}" placeholder="Your Shop Name"></div>
@@ -157,6 +157,8 @@
               @endforeach
             </select>
           </div>
+          <div class="form-row"><label>Store description</label><textarea name="store_description" maxlength="500" rows="4" placeholder="Tell buyers about your shop">{{ old('store_description', $u->store_description) }}</textarea></div>
+          <div class="form-row"><label>Store banner (optional)</label><input type="file" name="store_banner" accept="image/jpeg,image/png"><small style="color:var(--muted)">JPG or PNG, maximum 5 MB.</small></div>
           @if(!\App\Services\BuyerCommerce::installed())<div class="form-row">
             <label>Shipping Fee (₱)</label>
             <input type="number" name="shipping_fee" min="0" step="0.01" value="{{ old('shipping_fee', $u->shipping_fee) }}" placeholder="0.00 for free shipping">
@@ -360,6 +362,12 @@ document.querySelectorAll('.doc-preview-btn').forEach(btn => {
 @if(\App\Services\BuyerCommerce::installed())
 @include('account.partials.commerce-vacation')
 @include('account.partials.commerce-shipping')
+@if(\Illuminate\Support\Facades\Schema::hasTable('commerce_sales'))
+@include('account.partials.commerce-flash')
+@endif
+@if(\Illuminate\Support\Facades\Schema::hasColumn('commerce_vouchers','display_mode'))
+@include('account.partials.commerce-vouchers')
+@endif
 @endif
 @include('account.partials.email-change')
 @endsection

@@ -100,9 +100,9 @@ class ProductVariationSet
         Validator::make(['variations' => $variations], [
             'variations' => 'required|array|size:1',
             'variations.0.name' => 'required|string|max:150',
-            'variations.0.axes' => 'required|array|min:2|max:4',
+            'variations.0.axes' => 'required|array|min:2|max:2',
             'variations.0.axes.*.name' => 'required|string|max:50|distinct',
-            'variations.0.axes.*.options' => 'required|array|min:1|max:100',
+            'variations.0.axes.*.options' => 'required|array|min:1|max:20',
             'variations.0.axes.*.options.*.value' => 'required|string|max:100',
             'variations.0.axes.*.options.*.stock' => 'prohibited',
             'variations.0.axes.*.options.*.price' => 'prohibited',

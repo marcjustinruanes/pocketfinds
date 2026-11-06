@@ -244,6 +244,7 @@ Route::prefix('seller')->name('seller.')->middleware(['web', 'seller'])->group(f
     Route::patch('/orders/{order}/confirm-pickup', [SellerController::class, 'confirmPickup'])->name('orders.confirm-pickup');
     Route::get('/inventory', [SellerController::class, 'inventory'])->name('inventory');
     Route::post('/inventory', [SellerController::class, 'storeProduct'])->name('inventory.store');
+    Route::post('/inventory/{product}/duplicate', [SellerController::class, 'duplicateProduct'])->name('inventory.duplicate');
     Route::patch('/inventory/{product}', [SellerController::class, 'updateProduct'])->name('inventory.update');
     Route::delete('/inventory/{product}', [SellerController::class, 'destroyProduct'])->name('inventory.destroy');
     Route::patch('/inventory/{product}/archive', [SellerController::class, 'archiveProduct'])->name('inventory.archive');

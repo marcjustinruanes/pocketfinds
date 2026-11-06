@@ -66,8 +66,12 @@ class SellerController extends Controller
 
         $status = $request->query('status', 'all');
         $returnRequests=\App\Services\BuyerCommerce::installed()?DB::table('commerce_returns')->where('seller_id',auth()->id())->get()->keyBy('order_id'):collect();
+        $request->validate(['q'=>'nullable|string|max:100','from'=>'nullable|date','to'=>'nullable|date|after_or_equal:from']);
         $orders = Order::with(['buyer', 'paymentMethod', 'shipment.courier', 'shipment.pickupRider'])
             ->where('seller_id', auth()->id())
+            ->when($request->filled('q'), fn($q)=>$q->where(function($lookup)use($request){$lookup->where('order_number','like','%'.$request->q.'%')->orWhereHas('buyer',fn($buyer)=>$buyer->where('given_names','like','%'.$request->q.'%')->orWhere('last_name','like','%'.$request->q.'%'));}))
+            ->when($request->filled('from'),fn($q)=>$q->whereDate('created_at','>=',$request->from))
+            ->when($request->filled('to'),fn($q)=>$q->whereDate('created_at','<=',$request->to))
             ->when($status === 'in_transit', fn ($query) => $query->whereIn('status', Order::IN_TRANSIT_STATUSES))
             ->when($status==='refunds',fn($query)=>$query->whereIn('id',$returnRequests->keys()))
             ->when(!in_array($status,['all','in_transit','refunds']), fn ($query) => $query->where('status', $status))
@@ -330,7 +334,8 @@ class SellerController extends Controller
     public function feedback()
     {
         $sellerId = auth()->id();
-        $reviews = Review::with(['buyer', 'product', 'order'])->where('seller_id', $sellerId)->latest('created_at')->get();
+        $star=request()->integer('star');
+        $reviews = Review::with(['buyer', 'product', 'order'])->where('seller_id', $sellerId)->when($star>=1&&$star<=5,fn($q)=>$q->where('rating',$star))->latest('created_at')->get();
         $total = $reviews->count();
         $avgRating = $total ? round($reviews->avg('rating'), 1) : 0;
         $breakdown = collect([5, 4, 3, 2, 1])->mapWithKeys(fn ($star) => [
@@ -345,7 +350,8 @@ class SellerController extends Controller
     {
         abort_unless($review->seller_id === auth()->id(), 403);
         $data = $request->validate(['seller_reply' => 'required|string|max:1000']);
-        $review->update(['seller_reply' => $data['seller_reply']]);
+        if($review->seller_reply && $review->seller_reply_edited_at) return back()->withErrors(['seller_reply'=>'A seller reply can only be edited once.']);
+        $review->update(['seller_reply' => $data['seller_reply'], 'seller_reply_edited_at' => $review->seller_reply ? now() : null]);
 
         DB::table('notifications')->insert([
             'id' => (string) Str::uuid(),
@@ -526,12 +532,12 @@ class SellerController extends Controller
     {
         $data = $request->validate([
             'receiver_id' => ['required', 'integer'],
-            'body' => ['nullable', 'string', 'max:2000'],
+            'body' => ['nullable', 'string', 'max:1000'],
             'product_id' => ['nullable', 'string'],
             'order_id' => ['nullable', 'string'],
             'attachments' => ['nullable', 'array', 'max:5'],
-            'attachments.*' => ['file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi'],
-            'attachment' => ['nullable', 'file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi'],
+            'attachments.*' => ['file', 'max:5120', 'mimes:jpg,jpeg,png'],
+            'attachment' => ['nullable', 'file', 'max:5120', 'mimes:jpg,jpeg,png'],
         ]);
 
         User::whereKey($data['receiver_id'])
@@ -629,34 +635,35 @@ class SellerController extends Controller
 
     public function storeProduct(Request $request)
     {
+        $draft = $request->boolean('save_as_draft');
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => $draft ? 'required|string|max:120' : 'required|string|min:5|max:120',
             'images' => 'nullable|array|max:9',
-            'images.*' => 'image|mimes:jpg,jpeg,png,webp|max:4096',
+            'images.*' => 'image|mimes:jpg,jpeg,png|max:5120',
             'video' => 'nullable|file|mimes:mp4,mov,avi,webm|max:51200',
-            'price' => 'required|numeric|min:0',
-            'discount_price' => 'nullable|numeric|min:0|lt:price',
-            'description' => 'nullable|string',
+            'price' => $draft ? 'nullable|numeric|min:1|max:1000000|decimal:0,2' : 'required|numeric|min:1|max:1000000|decimal:0,2',
+            'discount_price' => 'nullable|numeric|min:1|max:1000000|decimal:0,2|lt:price',
+            'description' => $draft ? 'nullable|string|max:3000' : 'required|string|min:20|max:3000',
             'sku' => 'nullable|string|max:100',
-            'stock' => 'nullable|integer|min:0',
+            'stock' => 'nullable|integer|min:0|max:99999',
             'restock_date' => 'nullable|date|after_or_equal:today',
             'variations' => 'nullable|json',
             'details' => 'nullable|string',
             'variation_images' => 'nullable|array',
-            'variation_images.*' => 'image|mimes:jpg,jpeg,png,webp|max:4096',
-            'weight_grams' => 'required|numeric|min:1',
+            'variation_images.*' => 'image|mimes:jpg,jpeg,png|max:5120',
+            'weight_grams' => $draft ? 'nullable|numeric|min:1' : 'required|numeric|min:1',
             'weight_grams_max' => 'nullable|numeric|gte:weight_grams',
             'length_cm' => 'nullable|numeric|min:0',
             'width_cm' => 'nullable|numeric|min:0',
             'height_cm' => 'nullable|numeric|min:0',
-            'condition' => 'required|in:new,used',
+            'condition' => $draft ? 'nullable|in:new,used' : 'required|in:new,used',
         ], [
             'discount_price.lt' => 'Discount price must be lower than the regular price.',
         ]);
 
         $seller = auth()->user();
 
-        if (! $seller->category_id) {
+        if (! $draft && ! $seller->category_id) {
             return back()->withErrors(['images' => 'Please set your shop category in Account settings before adding products.']);
         }
 
@@ -667,7 +674,7 @@ class SellerController extends Controller
 
         $firstVariationImage = $this->applyVariationImagesAndPrices($variations, $request->file('variation_images', []));
 
-        if ($imagePaths->isEmpty() && ! $firstVariationImage) {
+        if (! $draft && $imagePaths->isEmpty() && ! $firstVariationImage) {
             return back()->withErrors(['images' => 'Add at least one product photo (either general photos or a photo on a variation option).']);
         }
 
@@ -681,7 +688,7 @@ class SellerController extends Controller
             'image' => $coverImages[0],
             'images' => $coverImages,
             'video' => $videoPath,
-            'price' => $request->price,
+            'price' => $request->price ?? 1,
             'discount_price' => $request->discount_price ?: null,
             'description' => $request->description,
             'sku' => $request->sku,
@@ -689,18 +696,18 @@ class SellerController extends Controller
             'restock_date' => $request->restock_date ?: null,
             'variations' => $variations,
             'details' => $details,
-            'status' => 'pending',
-            'weight_grams' => (int) $request->weight_grams,
+            'status' => $draft ? 'draft' : 'pending',
+            'weight_grams' => (int) ($request->weight_grams ?? 1),
             'weight_grams_max' => $request->weight_grams_max ?: null,
             'length_cm' => $request->length_cm ?: null,
             'width_cm' => $request->width_cm ?: null,
             'height_cm' => $request->height_cm ?: null,
-            'condition' => $request->condition,
+            'condition' => $request->condition ?? 'new',
         ]);
 
-        $this->notifyAdminsProductPending($seller, $request->name, 'submitted a new product');
+        if (! $draft) $this->notifyAdminsProductPending($seller, $request->name, 'submitted a new product');
 
-        return back()->with('product_success', 'Product submitted for admin review.');
+        return back()->with('product_success', $draft ? 'Draft saved. It is visible only to you.' : 'Product submitted for admin review.');
     }
 
     public function updateProduct(Request $request, Product $product)
@@ -876,9 +883,24 @@ class SellerController extends Controller
     public function destroyProduct(Product $product)
     {
         abort_if($product->seller_id !== auth()->id(), 403);
+        if (Order::where('seller_id',auth()->id())->whereNotIn('status',['completed','cancelled','returned'])->get()->contains(fn($order)=>collect($order->items ?? [])->contains(fn($item)=>($item['product_id']??null)===$product->id))) {
+            return back()->withErrors(['product'=>'This product has unfinished orders and cannot be deleted. Archive it instead.']);
+        }
         $product->delete();
 
         return back()->with('product_success', 'Product removed.');
+    }
+
+    public function duplicateProduct(Product $product)
+    {
+        abort_unless($product->seller_id===auth()->id(),403);
+        $copy=$product->replicate(['id','created_at','updated_at']);
+        $copy->id=(string) Str::uuid();
+        $copy->name=Str::limit($product->name.' Copy',120,'');
+        $copy->status='draft';
+        $copy->rejection_note=null;
+        $copy->save();
+        return back()->with('product_success','Product copied as a draft.');
     }
 
     /** Archiving hides a live listing from buyers without deleting it; unarchiving restores it as active. */
@@ -1105,25 +1127,36 @@ class SellerController extends Controller
     /** Submits a shop-info-change request — nothing changes on the account until admin approves it. */
     public function updateShop(Request $request)
     {
+        $request->merge(['business_name' => trim((string) $request->input('business_name'))]);
         $request->validate([
-            'business_name' => 'nullable|string|max:255',
+            'business_name' => 'required|string|min:3|max:30',
             'username' => 'nullable|string|max:255|unique:users,username,'.auth()->id(),
             'category_id' => 'nullable|integer|exists:categories,id',
             'shipping_fee' => 'nullable|numeric|min:0|max:99999.99',
+            'store_description' => 'nullable|string|max:500',
+            'store_banner' => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
         ]);
-
-        return $this->submitAccountUpdateRequest(
-            $request,
-            ['business_name', 'username', 'category_id', 'shipping_fee'],
-            [],
-            'shop_success'
-        );
+        $seller = $request->user();
+        if (User::where('id', '!=', $seller->id)->whereRaw('LOWER(TRIM(business_name)) = ?', [mb_strtolower($request->business_name)])->exists()) {
+            return back()->withErrors(['business_name' => 'This shop name is already taken.'])->withInput();
+        }
+        DB::transaction(function () use ($request, $seller) {
+            $locked = User::whereKey($seller->id)->lockForUpdate()->firstOrFail();
+            $values = $request->only(['business_name', 'username', 'category_id', 'shipping_fee', 'store_description']);
+            if ($request->hasFile('store_banner')) {
+                $old = $locked->store_banner;
+                $values['store_banner'] = app(MediaLifecycle::class)->store($request->file('store_banner'), 'shop-banners', 'profile_images');
+                app(MediaLifecycle::class)->deleteAfterCommit($old, 'profile_images');
+            }
+            $locked->update($values);
+        });
+        return back()->with('shop_success', 'Shop information updated.');
     }
 
     public function updateShopPhoto(Request $request)
     {
         $request->validate([
-            'profile_picture' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048|dimensions:max_width=4000,max_height=4000',
+            'profile_picture' => 'required|image|mimes:jpg,jpeg,png|max:5120|dimensions:max_width=4000,max_height=4000',
         ]);
         $seller = $request->user();
         $oldPhoto = $seller->profile_picture;

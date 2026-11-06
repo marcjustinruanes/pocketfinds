@@ -10,6 +10,7 @@ use App\Services\MediaLifecycle;
 use App\Support\PhilippineMobile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class BuyerModulesController extends Controller
@@ -67,7 +68,9 @@ class BuyerModulesController extends Controller
     public function categories(Request $r)
     {
         $u=$this->actor($r); abort_unless($u->account_type==='seller',403);
-        $categories=DB::table('shop_categories')->where('seller_id',$u->id)->orderBy('name')->get();
+        $categoryQuery=DB::table('shop_categories')->where('seller_id',$u->id);
+        if (Schema::hasColumn('shop_categories','sort_order')) $categoryQuery->orderBy('sort_order');
+        $categories=$categoryQuery->orderBy('name')->get();
         $products=Product::where('seller_id',$u->id)->orderBy('name')->get();
         $assignments=DB::table('shop_category_products')->whereIn('shop_category_id',$categories->pluck('id'))->get()->groupBy('product_id');
         return view('seller.shop-categories',compact('categories','products','assignments'));
@@ -77,8 +80,9 @@ class BuyerModulesController extends Controller
     {
         $u=$this->actor($r); abort_unless($u->account_type==='seller',403);
         $r->merge(['name'=>trim((string)$r->name)]);
-        $d=$r->validate(['id'=>'nullable|integer','name'=>'required|string|max:50','parent_id'=>'nullable|integer']);
+        $d=$r->validate(['id'=>'nullable|integer','name'=>'required|string|max:50','parent_id'=>'nullable|integer','is_visible'=>'nullable|boolean','sort_order'=>'nullable|integer|min:0|max:9999']);
         DB::transaction(function()use($u,$d){
+            $hasPresentationFields=Schema::hasColumn('shop_categories','is_visible') && Schema::hasColumn('shop_categories','sort_order');
             User::whereKey($u->id)->lockForUpdate()->firstOrFail();
             $id=$d['id']??null;
             if($id)abort_unless(DB::table('shop_categories')->where('seller_id',$u->id)->where('id',$id)->exists(),404);
@@ -88,8 +92,15 @@ class BuyerModulesController extends Controller
                 if($id && DB::table('shop_categories')->where('parent_id',$id)->exists())throw ValidationException::withMessages(['parent_id'=>'A category with subcategories must remain a top-level category.']);
             }
             $values=['name'=>$d['name'],'parent_id'=>$d['parent_id']??null,'updated_at'=>now()];
+            if ($hasPresentationFields) {
+                $values['is_visible']=(bool)($d['is_visible']??true);
+                $values['sort_order']=(int)($d['sort_order']??9999);
+            }
             if($id)DB::table('shop_categories')->where('id',$id)->update($values);
-            else DB::table('shop_categories')->insert($values+['seller_id'=>$u->id,'created_at'=>now()]);
+            else {
+                if ($hasPresentationFields) $values['sort_order'] = (int) (DB::table('shop_categories')->where('seller_id',$u->id)->max('sort_order') ?? -1) + 1;
+                DB::table('shop_categories')->insert($values+['seller_id'=>$u->id,'created_at'=>now()]);
+            }
         });
         return back()->with('success','Shop category saved.');
     }

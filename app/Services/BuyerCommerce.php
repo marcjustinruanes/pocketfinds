@@ -47,7 +47,10 @@ class BuyerCommerce
 
     public function unitPrice(Product $p, float $base): float
     {
-        return (float) ($this->flash($p)?->price ?? $base);
+        $flash=$this->flash($p); if($flash)return (float)$flash->price;
+        $sale=Schema::hasTable('commerce_sales') ? DB::table('commerce_sales')->where('product_id',$p->id)->where('is_active',true)->where('starts_at','<=',now())->where('ends_at','>',now())->orderByDesc('id')->first() : null;
+        if(!$sale)return $base;
+        return round($sale->discount_type==='percent' ? $base*(1-$sale->amount/100) : $base-$sale->amount,2);
     }
 
     public function quote(User $buyer, array $ids, ?int $addressId, array $codes = [], bool $preview = false): array
@@ -100,7 +103,7 @@ class BuyerCommerce
                 }
             }
             $flash = $this->flash($p, true);
-            $price = $flash ? (float) $flash->price : $base;
+            $price = $this->unitPrice($p, $base);
             $flashQty = $flash ? min((int) $row->qty, max(0, $flash->remaining - ($flashQuantities[$flash->id] ?? 0))) : 0;
             $item = ['product_id' => $p->id, 'name' => $p->name, 'price' => $base, 'qty' => (int) $row->qty, 'variation_group' => $row->variation_group ?: null, 'variation_value' => $row->variation_value ?: null, 'img' => $row->img, 'cart_id' => $row->id, 'cart_qty' => (int) $row->qty, 'cart_price' => $row->price, 'seller_slug' => $seller->username, 'flash_sale_id' => null, 'weight_grams' => (float) $p->weight_grams];
             if ($flashQty) {
@@ -188,6 +191,8 @@ class BuyerCommerce
                 $this->fail('You have already used voucher '.$v->code.'.', 'vouchers');
             }
             $eligible = $v->seller_id !== null ? array_intersect_key($orders, [$v->seller_id => true]) : $orders;
+            $restricted=json_decode($v->product_ids ?? '[]',true) ?: [];
+            if($restricted){$eligible=array_filter($eligible,fn($order)=>collect($order['items'])->contains(fn($item)=>in_array($item['product_id'],$restricted,true)));}
             if ($v->code === DeliveryGuarantee::FREE_SHIPPING_CODE) {
                 $eligible = array_filter($eligible, fn ($order) => $order['free_shipping_eligible'] && !$order['shipping_pending']);
             }

@@ -9,12 +9,16 @@ class ShopCatalog
 {
     public function categories(int $sellerId)
     {
-        return Schema::hasTable('shop_categories') ? DB::table('shop_categories')->where('seller_id',$sellerId)->orderBy('name')->get() : collect();
+        if (! Schema::hasTable('shop_categories')) return collect();
+        $query=DB::table('shop_categories')->where('seller_id',$sellerId);
+        if (Schema::hasColumn('shop_categories','sort_order')) $query->orderBy('sort_order');
+        return $query->orderBy('name')->get();
     }
     public function filter(array $items, int $sellerId, ?string $selected): array
     {
         if(!$selected || !Schema::hasTable('shop_categories'))return $items;
         $categories=$this->categories($sellerId);
+        if (Schema::hasColumn('shop_categories','is_visible')) $categories=$categories->filter(fn($category) => (bool) $category->is_visible)->values();
         if($selected==='uncategorized'){
             $assigned=DB::table('shop_category_products')->whereIn('shop_category_id',$categories->pluck('id'))->pluck('product_id')->all();
             return array_values(array_filter($items,fn($p)=>!in_array($p['id'],$assigned,true)));
@@ -27,7 +31,9 @@ class ShopCatalog
     public function vouchers(int $sellerId)
     {
         if(!BuyerCommerce::installed())return collect();
-        return DB::table('commerce_vouchers')->where('seller_id',$sellerId)->where('is_active',true)->where('starts_at','<=',now())->where('ends_at','>',now())->get()->filter(function($v){
+        $query=DB::table('commerce_vouchers')->where('seller_id',$sellerId)->where('is_active',true)->where('starts_at','<=',now())->where('ends_at','>',now());
+        if(Schema::hasColumn('commerce_vouchers','display_mode'))$query->where('display_mode','claimable');
+        return $query->get()->filter(function($v){
             if(!DeliveryGuarantee::voucherBelongsTo($v->id,(int)auth()->id()))return false;
             $uses=DB::table('commerce_allocations')->where('voucher_id',$v->id)->whereIn('state',['held','used']);
             $v->claimed=auth()->check() && DB::table('commerce_claims')->where('buyer_id',auth()->id())->where('voucher_id',$v->id)->exists();
