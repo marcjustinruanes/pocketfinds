@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="{{ asset('css/navigation.css') }}?v={{ filemtime(public_path('css/navigation.css')) }}">
 @stack('head')
 </head>
-<body class="seller">
+<body class="seller @yield('body-class')">
 <div class="shell" id="appShell" data-navigation-shell data-collapse-key="seller_sidebar_collapsed">
   @include('seller.partials.sidebar')
   <div style="display:flex;flex-direction:column;min-width:0">

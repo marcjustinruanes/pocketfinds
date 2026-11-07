@@ -1,7 +1,8 @@
 {{-- Exact copy of the guest-homepage product card (guest.home) so product listings
      look identical wherever they appear on the guest side. --}}
-<a class="pf-product-card" href="{{ route($productRoute ?? 'guest.product', $p['id']) }}">
-  <div class="pf-product-media">
+<a class="pf-product-card{{ !empty($p['flash_sale']) || (!empty($p['old_price']) && $p['old_price'] > $p['price']) ? ' pf-product-deal' : '' }}{{ ($highlightFlash ?? false) && !empty($p['flash_sale']) ? ' shop-flash-product' : '' }}" href="{{ route($productRoute ?? 'guest.product', $p['id']) }}">
+  <div class="pf-product-media" style="position:relative">
+    @include('partials.product-stock-label', ['p'=>$p])
     @if($p['img'])
       <img src="{{ $p['img'] }}" alt="{{ $p['name'] }}" loading="lazy">
     @else
@@ -11,6 +12,7 @@
     @if(($p['badge'] ?? null) && (($catalogCard ?? false) || !($p['is_new'] ?? false)))<span class="pf-badge pf-badge-deal">{{ $p['badge'] }}</span>@endif
   </div>
   <div class="pf-product-body">
+    @if(($highlightFlash ?? false) && !empty($p['flash_sale']))<span class="shop-flash-label">Flash deal</span>@endif
     <div class="pf-product-name">{{ $p['name'] }}</div>
     <div class="pf-product-prices">
       <span class="pf-product-price">₱{{ number_format($p['price']) }}</span>

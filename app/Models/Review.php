@@ -14,10 +14,10 @@ class Review extends Model
     protected $fillable = [
         'id', 'order_id', 'buyer_id', 'seller_id', 'product_id',
         'rating', 'comment', 'seller_reply',
-        'item_key', 'photos', 'edited_at',
+        'item_key', 'photos', 'media', 'edited_at',
     ];
 
-    protected $casts = ['photos'=>'array', 'edited_at'=>'datetime'];
+    protected $casts = ['photos'=>'array', 'media'=>'array', 'edited_at'=>'datetime'];
 
     protected static function boot()
     {

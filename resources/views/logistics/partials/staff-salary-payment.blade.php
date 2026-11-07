@@ -11,7 +11,7 @@
       </header>
       @if($destination)<p>Payee: {{ $destination->institution }} / {{ $destination->account_name }} / {{ $destination->account_number }}</p>@endif
       @if($p->hold_reason)<p class="cash-warning">Hold: {{ $p->hold_reason }}</p>@endif
-      @if($p->reference)<p>Transfer reference: {{ $p->reference }} / Transfer date {{ $p->payment_date ?? 'Not recorded' }} PHT / Recorded {{ $p->paid_at }} UTC.</p>@endif
+      @if($p->reference)<p>Transfer reference: {{ $p->reference }} / Transfer date {{ $p->payment_date ?? 'Not recorded' }} / Recorded {{ $p->paid_at ? \Illuminate\Support\Carbon::parse($p->paid_at)->format('M j, Y g:i A') : '—' }}.</p>@endif
       @if($evidence)<a class="btn" href="{{ route('finance.evidence',$evidence->id) }}" target="_blank" rel="noopener">View private payment evidence</a>@endif
       @if(in_array($p->status,['prepared','verified']))
       <details><summary>Review, hold or cancel</summary>
@@ -33,7 +33,7 @@
       <details><summary>Record actual staff payment</summary>
         <form method="POST" enctype="multipart/form-data" action="{{ route('logistics.finance.staff.pay',$p->id) }}">@csrf
           <input type="hidden" name="revision" value="{{ $p->revision }}">
-          <label for="payment-date-{{ $p->id }}">Actual GCash transfer date (PHT)</label>
+          <label for="payment-date-{{ $p->id }}">Actual GCash transfer date</label>
           <input id="payment-date-{{ $p->id }}" type="date" name="payment_date" value="{{ old('payment_date') }}" max="{{ now()->setTimezone('Asia/Manila')->toDateString() }}" required>
           @include('logistics.partials.finance-receipt-fields',['prefix'=>'staff-pay-'.$p->id,'confirmationField'=>'sent','confirmationDescription'=>'salary transfer to the recorded Staff GCash account','retainInput'=>true])
           <button class="btn btn-primary">Record actual payment</button>
@@ -44,7 +44,7 @@
       <details><summary>Audit history</summary>
         @foreach($history as $h)
         @php $detail=json_decode($h->details,true); @endphp
-        <p>{{ str_replace('_',' ',ucfirst($h->event)) }} / Actor #{{ $h->actor_id }} / {{ $h->created_at }} UTC
+        <p>{{ str_replace('_',' ',ucfirst($h->event)) }} / Actor #{{ $h->actor_id }} / {{ $h->created_at ? \Illuminate\Support\Carbon::parse($h->created_at)->format('M j, Y g:i A') : '—' }}
           @if(isset($detail['notes']))<br>{{ $detail['notes'] }}@endif</p>
         @endforeach
       </details>

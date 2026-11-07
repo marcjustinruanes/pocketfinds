@@ -57,7 +57,7 @@
           <td><strong>{{ $fromHub }}, {{ $fromProvince }}</strong> &rarr; <strong>{{ $toHub }}, {{ $toProvince }}</strong><br><span style="color:var(--muted);font-size:11px">{{ ucfirst($first->leg_type) }} leg</span></td>
           <td class="mono">{{ $legs->count() }} parcel(s)</td>
           <td>{{ optional($first->requestedBy)->given_names }} {{ optional($first->requestedBy)->last_name }}</td>
-          <td class="mono">{{ optional($first->requested_at)?->format('M d, Y H:i') }}</td>
+          <td class="mono">{{ optional($first->requested_at)?->format('M d, Y g:i A') }}</td>
           <td>
             <div class="row-actions">
               <form method="POST" action="{{ route('logistics.hub-requests.approve') }}">

@@ -37,7 +37,7 @@
   </div>
 </section>
 <section class="card payment-report-summary">
-  <div class="card-head"><div><h2>Current pending instructions</h2><p>All history, as of {{ $report['snapshot_at']->format('Y-m-d H:i:s T') }}; independent of the sales date range.</p></div></div>
+  <div class="card-head"><div><h2>Current pending instructions</h2><p>All history, as of {{ $report['snapshot_at']->format('Y-m-d g:i A') }}; independent of the sales date range.</p></div></div>
   <div class="card-pad"><div class="table-wrap"><table class="{{ $tableClass ?? 'tbl' }}"><thead><tr><th>Record</th><th>PHP</th></tr></thead><tbody>
     @foreach(['pending_cod_payouts'=>'Prepared / verified COD payouts, not yet paid','held_cod_payouts'=>'Held portion of pending payouts (already included above)','unverified_platform_claims'=>'Unverified platform shipping claims, not received'] as $key=>$label)
       <tr><td>{{ $label }}</td><td class="mono">{{ $report['available'] ? number_format($report['metrics'][$key]/100,2) : 'Unavailable' }}</td></tr>

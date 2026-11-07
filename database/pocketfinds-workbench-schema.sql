@@ -72,21 +72,6 @@ CREATE TABLE `buyer_addresses` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
 
-CREATE TABLE `buyer_payment_accounts` (
-  `id` CHAR(36) NOT NULL,
-  `buyer_id` BIGINT NOT NULL,
-  `type` VARCHAR(255) NOT NULL,
-  `account_name` VARCHAR(255) NOT NULL,
-  `account_number` VARCHAR(255) NOT NULL,
-  `bank_name` VARCHAR(255) NULL,
-  `verified` BOOLEAN NOT NULL DEFAULT false,
-  `verified_at` DATETIME(0) NULL,
-  `created_at` DATETIME(0) NULL,
-  `updated_at` DATETIME(0) NULL,
-  CONSTRAINT `buyer_payment_accounts_buyer_payment_accounts_buyer_id_foreign` FOREIGN KEY (`buyer_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;
-
 CREATE TABLE `cache` (
   `key` VARCHAR(255) NOT NULL,
   `value` LONGTEXT NOT NULL,

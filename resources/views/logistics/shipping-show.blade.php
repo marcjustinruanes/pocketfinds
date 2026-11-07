@@ -35,6 +35,6 @@
     </form>@endif
   </article>@empty<p>No shipping payments submitted.</p>@endforelse
   </section>
-  <section class="cash-card"><h2>Audit history</h2>@foreach($history as $event)@php($details=json_decode($event->details,true))<p>{{ ucfirst(str_replace('_',' ',$event->event)) }} · {{ $event->created_at }} UTC @if(isset($details['notes']))<br>{{ $details['notes'] }}@endif</p>@endforeach</section>
+  <section class="cash-card"><h2>Audit history</h2>@foreach($history as $event)@php($details=json_decode($event->details,true))<p>{{ ucfirst(str_replace('_',' ',$event->event)) }} · {{ $event->created_at ? \Illuminate\Support\Carbon::parse($event->created_at)->format('M j, Y g:i A') : '—' }} @if(isset($details['notes']))<br>{{ $details['notes'] }}@endif</p>@endforeach</section>
 </div>
 @endsection

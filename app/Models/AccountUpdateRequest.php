@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Services\MediaLifecycle;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * A pending request to change one or more fields (requested_changes) and/or
@@ -51,10 +52,13 @@ class AccountUpdateRequest extends Model
                     app(MediaLifecycle::class)->deleteAfterCommit($this->user->getAttribute($key), 'sensitive_documents');
                 }
                 if (in_array($key, ['id_file', 'selfie_file', 'license_file', 'business_permit_file', 'or_file', 'cr_file', 'resume_file', 'company_logo'], true)) {
-                    app(MediaLifecycle::class)->deleteAfterCommit($this->user->getAttribute($key), 'public');
+                    $oldPath = $this->user->getAttribute($key);
+                    $oldDisk = $oldPath && Storage::disk('sensitive_documents')->exists($oldPath) ? 'sensitive_documents' : 'public';
+                    app(MediaLifecycle::class)->deleteAfterCommit($oldPath, $oldDisk);
                 }
             }
             $this->user->update($data);
+            $this->syncBuyerDefaultAddress($data);
             // Delivery addresses are managed independently; approved account changes
             // must not overwrite a buyer's edited or newly chosen default address.
         }

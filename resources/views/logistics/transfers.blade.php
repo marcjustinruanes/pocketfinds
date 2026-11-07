@@ -30,10 +30,10 @@
 <thead><tr><th>Batch</th><th>Origin</th><th>Destination</th><th>Parcels</th><th>Status</th><th>Requester / requested</th><th>Approval</th><th>Dispatch</th><th>Arrival</th><th></th></tr></thead>
 <tbody>@forelse($batches as $batch)<tr>
 <td class="mono">{{ substr($batch->id,0,8) }}</td><td>{{ $batch->from_hub }}, {{ $batch->from_province }}</td><td>{{ $batch->to_hub }}, {{ $batch->to_province }}</td><td>{{ $batch->members_count }}</td><td>{{ $batch->label() }}</td>
-<td>{{ $batch->requester?->username ?? 'Not recorded' }}<br>{{ $batch->requested_at?->format('Y-m-d H:i') }}</td>
-<td>{{ $batch->approver?->username ?? '—' }}<br>{{ $batch->approved_at?->format('Y-m-d H:i') }}</td>
-<td>{{ $batch->dispatcher?->username ?? '—' }}<br>{{ $batch->dispatched_at?->format('Y-m-d H:i') }}</td>
-<td>{{ $batch->receiver?->username ?? '—' }}<br>{{ $batch->received_at?->format('Y-m-d H:i') }}</td>
+<td>{{ $batch->requester?->username ?? 'Not recorded' }}<br>{{ $batch->requested_at?->format('Y-m-d g:i A') }}</td>
+<td>{{ $batch->approver?->username ?? '—' }}<br>{{ $batch->approved_at?->format('Y-m-d g:i A') }}</td>
+<td>{{ $batch->dispatcher?->username ?? '—' }}<br>{{ $batch->dispatched_at?->format('Y-m-d g:i A') }}</td>
+<td>{{ $batch->receiver?->username ?? '—' }}<br>{{ $batch->received_at?->format('Y-m-d g:i A') }}</td>
 <td><a class="btn btn-sm btn-outline" href="{{ route('logistics.transfers.show',$batch->id) }}">Details</a></td>
 </tr>@empty<tr><td colspan="10">No transfers match these filters.</td></tr>@endforelse</tbody></table></div></div>
 {{ $batches->links() }}

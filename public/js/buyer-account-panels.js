@@ -12,6 +12,7 @@
  for(const[key,section]of Object.entries(sections)){
   section.ids.forEach(id=>{const target=document.getElementById(id);const card=target?.closest('.card');if(card)cards.set(card,key);});
  }
+ root.querySelectorAll('[data-account-panel]').forEach(card=>cards.set(card,card.dataset.accountPanel));
  root.querySelectorAll('.account-photo-section .card').forEach(card=>cards.set(card,'profile-information'));
  const show=()=>{
   const hash=decodeURIComponent(location.hash.slice(1));
@@ -22,8 +23,10 @@
   root.querySelectorAll('[data-account-section]').forEach(link=>{
    if(link.dataset.accountSection===key)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');
   });
-  document.getElementById('accountPanelTitle').textContent=sections[key].title;
-  document.getElementById('accountPanelDescription').textContent=sections[key].description;
+  const title=document.getElementById('accountPanelTitle');
+  const description=document.getElementById('accountPanelDescription');
+  if(title)title.textContent=sections[key].title;
+  if(description)description.textContent=sections[key].description;
  };
  root.classList.add('account-panels-ready');show();
  window.addEventListener('hashchange',show);

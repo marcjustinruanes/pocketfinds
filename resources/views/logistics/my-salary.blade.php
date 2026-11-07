@@ -21,11 +21,11 @@
   <section class="cash-card" id="rate" aria-label="Configured salary rate">
     <h2>My Salary Rate</h2>
     @if($salary && $salary->monthly_cents>0)
-    <p>Next scheduled pay date: <strong>{{ $upcomingPayDate->toDateString() }} PHT</strong>. A date is a schedule, not confirmation of payment.</p>
+    <p>Next scheduled pay date: <strong>{{ $upcomingPayDate->toDateString() }}</strong>. A date is a schedule, not confirmation of payment.</p>
     <div class="cash-stats">
       <div><span>Configured monthly salary</span><strong>PHP {{ number_format($salary->monthly_cents/100,2) }}</strong></div>
       <div><span>First / second installment</span><strong>PHP {{ number_format(intdiv($salary->monthly_cents,2)/100,2) }} / PHP {{ number_format((intdiv($salary->monthly_cents,2)+$salary->monthly_cents%2)/100,2) }}</strong></div>
-      <div><span>Effective period / initial configuration</span><strong>{{ $salary->period_effective ?? \Carbon\CarbonImmutable::parse($salary->effective_from,'UTC')->setTimezone('Asia/Manila')->format('M j, Y') }}</strong></div>
+      <div><span>Effective period / initial configuration</span><strong>{{ $salary->period_effective ?? \Carbon\CarbonImmutable::parse($salary->effective_from,config('app.timezone'))->setTimezone('Asia/Manila')->format('M j, Y') }}</strong></div>
     </div>
     <p>{{ ($salary->salary_source??'individual')==='hub' ? 'Hub default / hub #'.$salary->source_hub_id : 'Individual salary override' }}. Period obligations retain their own historical salary snapshots.</p>
     <p>The 1st-15th installment is payable on the 15th; the 16th-end of month installment is payable on the 30th or earlier month end. The second installment receives an odd remaining centavo.</p>
@@ -37,7 +37,7 @@
       @foreach($salaryHistory as $h)
       <p>{{ $h->monthly_cents ? 'PHP '.number_format($h->monthly_cents/100,2).'/month' : 'Missing Salary Configuration' }} / Revision {{ $h->revision }}
         / {{ ($h->salary_source??'individual')==='hub' ? 'Hub default / hub #'.$h->source_hub_id : 'Individual override' }}
-        / Effective period or initial configuration {{ $h->period_effective ?? \Carbon\CarbonImmutable::parse($h->effective_from,'UTC')->setTimezone('Asia/Manila')->format('M j, Y') }}
+        / Effective period or initial configuration {{ $h->period_effective ?? \Carbon\CarbonImmutable::parse($h->effective_from,config('app.timezone'))->setTimezone('Asia/Manila')->format('M j, Y') }}
       </p>
       @endforeach
     </details>
@@ -96,11 +96,11 @@
           <span class="settlement-status">{{ ucfirst($p->status) }}</span>
         </div>
         <span class="settlement-acknowledgement">
-          {{ $p->acknowledged_at ? 'Acknowledged '.\Carbon\CarbonImmutable::parse($p->acknowledged_at,'UTC')->setTimezone('Asia/Manila')->format('M j, Y') : ($p->status==='paid' ? 'Acknowledgement pending' : 'Not yet sent') }}
+          {{ $p->acknowledged_at ? 'Acknowledged '.\Carbon\CarbonImmutable::parse($p->acknowledged_at,config('app.timezone'))->setTimezone('Asia/Manila')->format('M j, Y') : ($p->status==='paid' ? 'Acknowledgement pending' : 'Not yet sent') }}
         </span>
       </header>
       @if($destination)<p>To: {{ $destination->institution }} / {{ $destination->account_name }} / {{ '*******'.substr($destination->account_number,-4) }}</p>@endif
-      @if($p->reference)<p>Transfer reference: {{ $p->reference }} / Transfer date {{ $p->payment_date ?? 'Not recorded' }} PHT / Recorded {{ \Carbon\CarbonImmutable::parse($p->paid_at,'UTC')->setTimezone('Asia/Manila')->format('M j, Y g:i A') }} PHT.</p>@endif
+      @if($p->reference)<p>Transfer reference: {{ $p->reference }} / Transfer date {{ $p->payment_date ?? 'Not recorded' }} / Recorded {{ \Carbon\CarbonImmutable::parse($p->paid_at,config('app.timezone'))->setTimezone('Asia/Manila')->format('M j, Y g:i A') }}.</p>@endif
       @if(isset($evidence[$p->id]))<a class="btn" href="{{ route('finance.evidence',$evidence[$p->id]->id) }}" target="_blank" rel="noopener">View payment evidence</a>@endif
       @if($p->status === 'paid' && !$p->acknowledged_at)
       <form method="POST" action="{{ route('logistics.my-salary.acknowledge',$p->id) }}">@csrf
@@ -127,7 +127,7 @@
       <strong>{{ $d->institution }}</strong>
       <span>{{ $d->account_name }}</span>
       <span class="cash-reference">{{ '*******'.substr($d->account_number,-4) }}</span>
-      <small>Added {{ \Carbon\CarbonImmutable::parse($d->created_at,'UTC')->setTimezone('Asia/Manila')->format('M j, Y') }}</small>
+      <small>Added {{ \Carbon\CarbonImmutable::parse($d->created_at,config('app.timezone'))->setTimezone('Asia/Manila')->format('M j, Y') }}</small>
     </div>
     @empty
     <p>No receiving account added yet. Add one below so your Admin can prepare your salary payment.</p>

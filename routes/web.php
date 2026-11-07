@@ -201,10 +201,12 @@ Route::prefix('buyer')->name('buyer.')->middleware(['web', 'buyer'])->group(func
     Route::post('/cart/add', [BuyerController::class, 'cartAdd'])->name('cart.add');
     Route::patch('/cart/{key}/edit', [BuyerController::class, 'cartEdit'])->where('key', '.*')->name('cart.edit');
     Route::patch('/cart/{key}', [BuyerController::class, 'cartUpdate'])->where('key', '.*')->name('cart.update');
+    Route::delete('/cart/selected', [BuyerController::class, 'cartRemoveSelected'])->name('cart.removeSelected');
     Route::delete('/cart/{key}', [BuyerController::class, 'cartRemove'])->where('key', '.*')->name('cart.remove');
     Route::get('/orders', [BuyerController::class, 'orders'])->name('orders');
     Route::patch('/orders/{order}/cancel', [BuyerController::class, 'cancelOrder'])->name('orders.cancel');
     Route::patch('/orders/{order}/confirm-receipt', [BuyerController::class, 'confirmReceipt'])->name('orders.confirm-receipt');
+    Route::get('/orders/{order}/delivery-proof', [BuyerController::class, 'deliveryProof'])->name('orders.delivery-proof');
     Route::post('/orders/{order}/buy-again', [BuyerController::class, 'buyAgain'])->name('orders.buy-again');
     Route::post('/orders/{order}/review', [BuyerController::class, 'storeReview'])->name('orders.review');
     Route::get('/messages', [BuyerController::class, 'messages'])->name('messages');
@@ -216,11 +218,14 @@ Route::prefix('buyer')->name('buyer.')->middleware(['web', 'buyer'])->group(func
     Route::get('/announcements/{id}', [BuyerController::class, 'showAnnouncement'])->name('announcements.show');
     Route::get('/account', [BuyerController::class, 'account'])->name('account');
     Route::post('/account/profile', [BuyerController::class, 'updateProfile'])->name('account.profile');
+    Route::post('/account/photo', [BuyerController::class, 'updateProfilePhoto'])->name('account.photo');
     Route::post('/account/address', [BuyerController::class, 'updateAddress'])->name('account.address');
     Route::post('/account/password', [BuyerController::class, 'passwordUpdate'])->name('account.password');
-    Route::post('/payment-accounts/send-code', [BuyerController::class, 'sendPaymentAccountCode'])->name('payment-accounts.send-code');
-    Route::post('/payment-accounts/verify', [BuyerController::class, 'verifyPaymentAccountCode'])->name('payment-accounts.verify');
-    Route::delete('/payment-accounts/{account}', [BuyerController::class, 'destroyPaymentAccount'])->name('payment-accounts.destroy');
+    Route::post('/account/password-link', [BuyerController::class, 'passwordResetLink'])->middleware('throttle:3,5')->name('account.password-link');
+    Route::post('/account/password-change', [BuyerController::class, 'completePasswordChange'])->middleware('throttle:6,1')->name('account.password-change');
+    Route::get('/account/google/email', [SocialAuthController::class, 'redirectAccountEmailVerification'])->middleware('throttle:10,1')->name('account.google.email');
+    Route::post('/account/username', [BuyerController::class, 'usernameUpdate'])->middleware('throttle:6,1')->name('account.username');
+    Route::delete('/account', [BuyerController::class, 'destroyAccount'])->middleware('throttle:3,1')->name('account.destroy');
     Route::post('/logout', [BuyerController::class, 'logout'])->name('logout');
 });
 
@@ -525,14 +530,17 @@ Route::prefix('rider')->name('rider.')->middleware(['rider', 'logistics.activity
     Route::post('/remittances', [\App\Http\Controllers\LogisticsCashDeskController::class, 'submit'])->middleware('throttle:20,1')->name('remittances.submit');
     Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [RiderController::class, 'dashboard'])->name('dashboard');
+      Route::patch('/availability', [RiderController::class, 'availability'])->name('availability');
     Route::get('/pickup-requests', [RiderController::class, 'pickupRequests'])->name('pickup-requests');
     Route::patch('/pickup-requests/{id}/accept', [RiderController::class, 'acceptPickupRequest'])->name('pickup-requests.accept');
+      Route::patch('/pickup-requests/{id}/decline', [RiderController::class, 'declinePickupRequest'])->name('pickup-requests.decline');
     Route::get('/my-pickups', [RiderController::class, 'myPickups'])->name('my-pickups');
     Route::patch('/my-pickups/{id}/confirm', [RiderController::class, 'confirmPickupReceipt'])->name('my-pickups.confirm');
     Route::get('/hub-transfers', [RiderController::class, 'myHubTransfers'])->name('hub-transfers');
     Route::patch('/hub-transfers/{id}/confirm', [RiderController::class, 'confirmHubTransferPickup'])->name('hub-transfers.confirm');
     Route::get('/requests', [RiderController::class, 'requests'])->name('requests');
     Route::patch('/requests/{id}/accept', [RiderController::class, 'acceptRequest'])->name('requests.accept');
+      Route::patch('/requests/{id}/decline', [RiderController::class, 'declineRequest'])->name('requests.decline');
     Route::post('/deliveries/{id}/rts', [LogisticsManagementController::class,'rts'])->middleware('throttle:20,1')->name('rts');
     Route::get('/deliveries', [RiderController::class, 'deliveries'])->name('deliveries');
     Route::get('/deliveries/{id}', [RiderController::class, 'show'])->name('deliveries.show');
@@ -550,12 +558,15 @@ Route::prefix('rider')->name('rider.')->middleware(['rider', 'logistics.activity
     Route::get('/account', [RiderController::class, 'account'])->name('account');
     Route::post('/account/update', [RiderController::class, 'accountUpdate'])->name('account.update');
     Route::post('/account/address', [RiderController::class, 'accountAddressUpdate'])->name('account.address');
+      Route::post('/account/vehicle', [RiderController::class, 'vehicleUpdate'])->name('account.vehicle');
     Route::post('/account/password', [RiderController::class, 'passwordUpdate'])->name('account.password');
 });
 
 // GCash endpoints: services enforce approved Buyer/Seller ownership independently of generic role middleware.
 Route::get('/shipping-payments/{id}/proof', [\App\Http\Controllers\LogisticsShippingController::class, 'proof'])
     ->middleware(['web', 'auth', 'throttle:30,1'])->name('shipping.proof');
+Route::get('/delivery-proofs/{shipment}', [\App\Http\Controllers\DeliveryProofController::class, 'show'])
+      ->middleware(['web', 'auth', 'throttle:30,1'])->name('delivery-proofs.show');
 Route::get('/finance-evidence/{id}', [\App\Http\Controllers\SellerPayoutController::class, 'evidence'])
     ->middleware(['web','auth','throttle:30,1'])->name('finance.evidence');
 Route::middleware(['web', 'auth', 'throttle:60,1'])->prefix('gcash-purchases')->name('gcash.')->group(function () {

@@ -2,6 +2,9 @@
      page (plain list, just managing them) — pass ['addresses' => ..., 'selectable' => bool]. --}}
 @php($selectable = $selectable ?? false)
 @php($selectedDeliveryAddress=$addresses->firstWhere('id',session('buyer_checkout_address'))?->id??$addresses->firstWhere('is_default',true)?->id)
+@if($selectable)
+<div class="modal-overlay address-modal cart-address-modal" id="cartAddressModal" aria-hidden="true"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="cartAddressModalTitle"><div class="modal-head"><div><h3 id="cartAddressModalTitle">Choose delivery address</h3><p>Select the address for this order.</p></div><button class="modal-close" type="button" data-modal-close aria-label="Close address selection">&times;</button></div><div class="modal-body">
+@endif
 <div id="addressList" style="display:flex;flex-direction:column;gap:8px">
   @forelse($addresses as $addr)
     <label class="address-option" style="display:flex;gap:9px;align-items:flex-start;border:1px solid var(--border);border-radius:9px;padding:9px 11px;{{ $selectable ? 'cursor:pointer' : '' }}">
@@ -9,60 +12,44 @@
         <input type="radio" name="delivery_address_radio" value="{{ $addr->id }}" @checked($addr->id===$selectedDeliveryAddress) style="margin-top:3px;flex:none">
       @endif
       <span style="flex:1;font-size:12.5px;line-height:1.5">
-        <strong>{{ $addr->label ?: 'Address' }}</strong>{{ $addr->is_default ? ' · Default' : '' }}<br>
+        <strong>{{ $addr->label ?: 'Address' }}</strong>@if($addr->is_default) <span class="address-default-badge" data-default-address>Default</span>@endif<br>
         {{ $addr->recipient_name }}{{ $addr->contact_no ? ' · ' . $addr->contact_no : '' }}<br>
-        <span style="color:var(--muted)">{{ $addr->full_address }}</span>
-        @if(!filled($addr->region))
-        <br><strong style="color:var(--danger,#a12236)">Region is required for checkout.</strong>
-        <br><a href="{{ route('buyer.account') }}#address-information">Update account address</a><span> or add a complete delivery address.</span>
-        @endif
-        <br><button type="button" class="btn btn-outline" data-edit-delivery-address="{{ $addr->id }}" style="font-size:11px;padding:4px 8px">Edit</button>
+        <span class="saved-address-location" style="color:var(--muted)">{{ $addr->full_address }}</span>
       </span>
+      <button type="button" class="icon-btn address-action-icon" data-edit-delivery-address="{{ $addr->id }}" aria-label="Edit address" title="Edit address" style="width:24px;height:24px;flex:none">@include('buyer.partials.icon',['name'=>'edit','size'=>12])</button>
       @unless($addr->is_default)
-        <button type="button" class="icon-btn" data-delete-address="{{ $addr->id }}" aria-label="Remove {{ $addr->label ?: 'saved' }} address" title="Remove address" style="width:24px;height:24px;flex:none">
+        <button type="button" class="icon-btn address-action-icon" data-delete-address="{{ $addr->id }}" aria-label="Remove {{ $addr->label ?: 'saved' }} address" title="Remove address" style="width:24px;height:24px;flex:none">
           @include('buyer.partials.icon', ['name' => 'trash', 'size' => 12])
         </button>
       @endunless
     </label>
-    <div id="editDeliveryAddress{{ $addr->id }}" hidden>
-      <form class="delivery-address-editor" method="POST" action="{{ route('buyer.addresses.update',$addr) }}" style="padding:14px;border:1px solid var(--border);border-radius:9px">
-        @csrf @method('PATCH')
+    <div id="editDeliveryAddress{{ $addr->id }}" class="modal-overlay address-modal" aria-hidden="true">
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="editAddressTitle{{ $addr->id }}">
+      <div class="modal-head"><div><h3 id="editAddressTitle{{ $addr->id }}">Edit {{ $addr->is_default && !$selectable ? 'registered' : 'delivery' }} address</h3>@if($addr->is_default && !$selectable)<p>Changes to your registered address require admin approval.</p>@endif</div></div>
+      <form class="delivery-address-editor" method="POST" action="{{ $addr->is_default && !$selectable ? route('buyer.account.address') : route('buyer.addresses.update',$addr) }}" @if($addr->is_default && !$selectable) data-admin-address @endif>
+        @csrf @unless($addr->is_default && !$selectable) @method('PATCH') @endunless
+        <div class="modal-body">
         <div class="address-form-grid">
         @foreach(['label'=>'Label','recipient_name'=>'Recipient name','contact_no'=>'Mobile number','region'=>'Region','province'=>'Province','municipality'=>'City / municipality','barangay'=>'Barangay','postal_code'=>'Postal code','house_no'=>'House / unit','street'=>'Street'] as $field=>$label)
-         <label>{{ $label }}<input name="{{ $field }}" value="{{ $addr->$field }}" @required(!in_array($field,['label','house_no','street','postal_code'])) @if($field==='region') data-address-edit-region @endif></label>
+        @continue($addr->is_default && !$selectable && in_array($field,['label','recipient_name','contact_no']))
+         <label class="address-field-{{ $field }}">{{ $label }}<input name="{{ $field }}" value="{{ $field==='contact_no' ? substr(\App\Support\PhilippineMobile::normalize((string)$addr->contact_no),1) : $addr->$field }}" @required(!in_array($field,['label','house_no','street','postal_code'])) @if($field==='region') data-address-edit-region @endif @if($field==='postal_code') inputmode="numeric" pattern="[0-9]{4}" maxlength="4" @endif @if($field==='contact_no') type="tel" data-national-mobile inputmode="numeric" minlength="10" maxlength="10" pattern="9[0-9]{9}" @endif></label>
         @endforeach
-        </div>
-        <button class="btn btn-primary">Save delivery address</button>
-        <button class="btn btn-outline" type="button" data-edit-delivery-address="{{ $addr->id }}">Cancel</button>
+        </div></div>
+        <div class="modal-foot">@unless($addr->is_default)<button class="btn btn-outline address-make-default" type="submit" form="defaultAddressForm{{ $addr->id }}">Make default</button>@endunless<button class="btn btn-outline" type="button" data-close-address-edit>Cancel</button><button type="submit" class="btn btn-primary">{{ $addr->is_default && !$selectable ? 'Submit address for review' : 'Save delivery address' }}</button></div>
       </form>
-    </div>
-    @unless($addr->is_default)
-    <form method="POST" action="{{ route('buyer.addresses.default',$addr) }}">@csrf<button class="btn btn-outline" style="font-size:11px;padding:4px 8px">Make default</button></form>
-    @endunless
-    @if(!filled($addr->region))
-    <form data-complete-delivery-address action="{{ route('buyer.addresses.complete',$addr) }}" method="POST" style="border:1px solid var(--border);border-radius:9px;padding:12px">
-      @csrf @method('PATCH')
-      <strong>Complete missing delivery details</strong>
-      <div class="form-row" style="margin-top:10px">
-      @if(filled($addr->region))<input type="hidden" name="region" value="{{ $addr->region }}"><span>Region: {{ $addr->region }}</span>
-      @else<label>Region<select class="select" name="region" data-completion-region required><option value="">Loading regions…</option></select></label>@endif
-      </div>
-      <div class="form-row">
-      @if(preg_match('/^[0-9]{4}$/D',(string)$addr->postal_code))<input type="hidden" name="postal_code" value="{{ $addr->postal_code }}"><span>Postal code: {{ $addr->postal_code }}</span>
-      @else<input type="hidden" name="postal_code" value="">@endif
-      </div>
-      <p data-completion-feedback role="status" style="font-size:12px"></p><button class="btn btn-primary" type="submit">Save Delivery Details</button>
-    </form>
-    @endif
+      @unless($addr->is_default)<form id="defaultAddressForm{{ $addr->id }}" method="POST" action="{{ route('buyer.addresses.default',$addr) }}">@csrf</form>@endunless
+      </section></div>
   @empty
     <p id="noAddressMessage" style="font-size:12px;color:var(--muted);margin:0">No saved addresses yet — add one below.</p>
   @endforelse
 </div>
+@if($selectable)</div><div class="modal-foot"><button type="button" class="btn btn-outline" data-modal-close>Done</button><button type="button" class="btn btn-primary" data-modal-open="addAddressModal" data-modal-close>Add address</button></div></section></div>@endif
 
-@once<script src="{{ asset('js/buyer-address-completion.js') }}?v={{ filemtime(public_path('js/buyer-address-completion.js')) }}"></script>@endonce
 @once<script src="{{ asset('js/buyer-address-edit.js') }}?v={{ filemtime(public_path('js/buyer-address-edit.js')) }}"></script>@endonce
 
 <style>
+.address-default-badge{display:inline-flex;align-items:center;justify-content:center;margin-left:5px;padding:2px 8px;border:1px solid #e6bcd3;border-radius:999px;background:#fcf1f7;color:#a52d6e;font:600 10px/1.5 Inter,system-ui,sans-serif;vertical-align:middle;white-space:nowrap}
+.address-default-badge[hidden]{display:none!important}
 .delivery-address-editor label{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:12px}
 .delivery-address-editor input,.delivery-address-editor select{box-sizing:border-box;width:100%;min-width:0;padding:10px;border:1px solid var(--border);border-radius:8px;font:inherit;background:#fff;color:var(--ink)}
 .delivery-address-editor .address-form-grid{margin-bottom:14px}
@@ -94,21 +81,20 @@
 <div class="modal-overlay address-modal" id="addAddressModal" aria-hidden="true">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="addAddressTitle" aria-describedby="addAddressDescription">
     <div class="modal-head">
-      <div><h3 id="addAddressTitle">Add delivery address</h3><p id="addAddressDescription">Save an address to use at checkout. Fields marked * are required.</p></div>
-      <button class="modal-close" type="button" data-modal-close aria-label="Close address form">✕</button>
+      <div><h3 id="addAddressTitle">Add delivery address</h3><p id="addAddressDescription">Save an address to use at checkout.</p></div>
     </div>
-    <form id="addAddressForm">
+    <form id="addAddressForm" class="delivery-address-editor">
     <div class="modal-body"><div class="address-form-grid">
-      <div class="form-row"><label for="addrLabel">Label <span style="color:var(--muted);font-weight:400">(optional)</span></label><input class="auth-input" id="addrLabel" placeholder="e.g. Home, Work" maxlength="50"></div>
-      <div class="form-row"><label for="addrRecipientName">Recipient name *</label><input class="auth-input" id="addrRecipientName" maxlength="150" autocomplete="name" required></div>
-      <div class="form-row address-form-wide"><label for="addrContactNo">Mobile number *</label><div style="display:flex;align-items:center;gap:8px"><span>+63</span><input class="auth-input" id="addrContactNo" type="tel" placeholder="9XXXXXXXXX" maxlength="10" inputmode="numeric" pattern="9[0-9]{9}" autocomplete="tel-national" required aria-describedby="addrContactHint"></div><p class="address-hint" id="addrContactHint">Enter 10 digits starting with 9.</p></div>
-      <div class="form-row"><label for="addrRegion">Region *</label><select id="addrRegion" required><option value="">Loading regions…</option></select></div>
-      <div class="form-row"><label for="addrPostalCode">Postal code</label><input id="addrPostalCode" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" readonly></div>
-      <div class="form-row"><label for="addrProvince">Province *</label><select class="select" id="addrProvince" required><option value="" disabled selected>Loading provinces…</option></select></div>
-      <div class="form-row"><label for="addrMunicipality">City / municipality *</label><select class="select" id="addrMunicipality" disabled required><option value="" disabled selected>Select province first</option></select></div>
-      <div class="form-row address-form-wide"><label for="addrBarangay">Barangay *</label><select class="select" id="addrBarangay" disabled required><option value="" disabled selected>Select municipality first</option></select></div>
-        <div class="form-row"><label for="addrHouseNo">House No. / Unit</label><input class="auth-input" id="addrHouseNo" maxlength="100"></div>
-        <div class="form-row"><label for="addrStreet">Street</label><input class="auth-input" id="addrStreet" maxlength="150"></div>
+      <div class="form-row address-field-label"><label for="addrLabel">Label</label><input class="auth-input" id="addrLabel" name="label" placeholder="e.g. Home, Work" maxlength="50"></div>
+      <div class="form-row address-field-recipient_name"><label for="addrRecipientName">Recipient name</label><input class="auth-input" id="addrRecipientName" name="recipient_name" maxlength="150" autocomplete="name" required></div>
+      <div class="form-row address-field-contact_no"><label for="addrContactNo">Mobile number</label><input class="auth-input" id="addrContactNo" name="contact_no" data-national-mobile type="tel" maxlength="10" minlength="10" inputmode="numeric" pattern="9[0-9]{9}" autocomplete="tel-national" required></div>
+      <div class="form-row address-field-region"><label for="addrRegion">Region</label><select id="addrRegion" name="region" required><option value="">Loading regions…</option></select></div>
+      <div class="form-row address-field-province"><label for="addrProvince">Province</label><select class="select" id="addrProvince" name="province" required><option value="" disabled selected>Loading provinces…</option></select></div>
+      <div class="form-row address-field-municipality"><label for="addrMunicipality">City / municipality</label><select class="select" id="addrMunicipality" name="municipality" disabled required><option value="" disabled selected>Select province first</option></select></div>
+      <div class="form-row address-field-barangay"><label for="addrBarangay">Barangay</label><select class="select" id="addrBarangay" name="barangay" disabled required><option value="" disabled selected>Select municipality first</option></select></div>
+      <div class="form-row address-field-postal_code"><label for="addrPostalCode">Postal code</label><input id="addrPostalCode" name="postal_code" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" readonly></div>
+        <div class="form-row address-field-house_no"><label for="addrHouseNo">House / unit</label><input class="auth-input" id="addrHouseNo" name="house_no" maxlength="100"></div>
+        <div class="form-row address-field-street"><label for="addrStreet">Street</label><input class="auth-input" id="addrStreet" name="street" maxlength="150"></div>
       </div>
       <button type="button" class="btn btn-outline" id="retryAddressLocations" hidden>Retry loading provinces</button>
       <p id="addAddressError" class="address-error" role="alert" style="display:none"></p>
@@ -122,7 +108,7 @@
 </div>
 <div class="modal-overlay address-modal" id="removeAddressModal" aria-hidden="true">
   <div class="modal pf-confirm" role="dialog" aria-modal="true" aria-labelledby="removeAddressTitle" aria-describedby="removeAddressDescription">
-    <div class="modal-head"><h3 id="removeAddressTitle">Remove saved address?</h3><button type="button" class="modal-close" data-modal-close aria-label="Close confirmation">&times;</button></div>
+    <div class="modal-head"><h3 id="removeAddressTitle">Remove saved address?</h3></div>
     <div class="modal-body"><p id="removeAddressDescription">Remove this address from your saved list? Delivery details on existing orders will stay unchanged.</p><p class="address-error" id="removeAddressError" role="alert" hidden></p></div>
     <div class="modal-foot"><button type="button" class="btn btn-outline" data-modal-close id="keepAddressBtn">No, keep it</button><button type="button" class="btn btn-danger" id="confirmRemoveAddressBtn">Yes, remove</button></div>
   </div>
@@ -141,7 +127,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const number = addrContactNo.value;
     const message = number && !/^9[0-9]{9}$/.test(number) ? 'Enter exactly 10 digits starting with 9.' : '';
     addrContactNo.setCustomValidity(message);
-    document.getElementById('addrContactHint').textContent = message || 'Enter 10 digits after +63.';
     addrContactNo.setAttribute('aria-invalid', message ? 'true' : 'false');
   });
   const addModal = document.getElementById('addAddressModal');

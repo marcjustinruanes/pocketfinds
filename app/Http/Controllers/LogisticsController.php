@@ -104,13 +104,16 @@ class LogisticsController extends Controller
      * @param  array<string,string>  $filters  output key => raw SQL boolean condition
      * @return array<string,int>
      */
-    private function shipmentCounts(array $filters): array
+    private function shipmentCounts(array $filters, ?array $dateRange = null): array
     {
         $select = collect($filters)
             ->map(fn ($sql, $key) => 'COUNT(CASE WHEN '.$sql.' THEN 1 END) AS '.DB::connection()->getQueryGrammar()->wrap($key))
             ->implode(', ');
 
-        $row = $this->companyScope()->selectRaw($select)->first();
+        $query = $this->companyScope();
+        if ($dateRange['from'] ?? null) $query->whereDate('created_at', '>=', $dateRange['from']);
+        if ($dateRange['to'] ?? null) $query->whereDate('created_at', '<=', $dateRange['to']);
+        $row = $query->selectRaw($select)->first();
 
         return collect($filters)->keys()
             ->mapWithKeys(fn ($key) => [$key => (int) ($row->{$key} ?? 0)])
@@ -164,11 +167,13 @@ class LogisticsController extends Controller
         );
     }
 
-    public function dashboard()
+    public function dashboard(Request $request)
     {
         if (auth()->user()->isHubStaff()) {
             return $this->hubStaffDashboard();
         }
+
+        $range = $request->validate(['from' => 'nullable|date', 'to' => 'nullable|date|after_or_equal:from']);
 
         // All shipment-table numbers this page needs — the 3 sidebar badges plus the
         // 5 dashboard tiles — in one query instead of 8 separate ones.
@@ -181,17 +186,20 @@ class LogisticsController extends Controller
             'inTransit' => "shipping_status in ('picked_up','at_sorting_center','hub_transfer')",
             'inProgress' => "shipping_status in ('assigned_to_rider','out_for_delivery')",
             'failed' => "shipping_status = 'delivery_failed'",
-        ]));
+        ]), $range);
 
         $counts = array_merge($shipmentStats, $this->nonShipmentCounts(auth()->user()));
-        $recent = $this->companyScope()->with(['order.buyer', 'courier', 'pickupRider', 'hubTransferRider'])->latest('created_at')->take(8)->get();
+        $recent = $this->companyScope()->with(['order.buyer', 'courier', 'pickupRider', 'hubTransferRider'])
+            ->when($range['from'] ?? null, fn ($q, $date) => $q->whereDate('created_at', '>=', $date))
+            ->when($range['to'] ?? null, fn ($q, $date) => $q->whereDate('created_at', '<=', $date))
+            ->latest('created_at')->take(8)->get();
 
         $activeRiders = User::where('business_name', auth()->user()->business_name)->where('account_type', 'rider')->where('status', 'approved')->count();
         $municipalHubs = LogisticsHub::where('company_name', auth()->user()->business_name)->count();
         $recentActivities = DB::table('logistics_activity_logs as l')->leftJoin('users as u', 'u.id', '=', 'l.actor_id')
             ->where('l.company_name', auth()->user()->business_name)->select('l.action', 'l.record_id', 'l.created_at', 'u.username')->orderByDesc('l.id')->limit(8)->get();
 
-        return view('logistics.dashboard', array_merge($counts, compact('recent', 'activeRiders', 'municipalHubs', 'recentActivities'), [
+        return view('logistics.dashboard', array_merge($counts, compact('recent', 'activeRiders', 'municipalHubs', 'recentActivities', 'range'), [
             'pending' => $counts['pendingDeliveries'],
             'active' => $counts['activeDeliveries'],
         ]));
@@ -226,6 +234,9 @@ class LogisticsController extends Controller
             $shipment->update(['pickup_approved_at' => now()]);
             Order::notifyUser($shipment->order?->seller_id, 'Pickup Approved', $shipment->logistics_company.' approved the pickup for order #'.$shipment->order?->order_number.'. A rider will be assigned shortly.', 'order_status', $shipment->order_id);
         }, 3);
+
+        $approved = $this->companyScope()->find($id);
+        if ($approved) app(\App\Services\RiderDeliveryOffers::class)->offer($approved, 'pickup');
 
         return back();
     }
@@ -285,8 +296,9 @@ class LogisticsController extends Controller
             ->where('vehicle_type', $vehicleType)->riderVisible()
             ->pluck('logistics_hub_id')->unique();
 
-        return $riders->filter(fn ($r) => $r->vehicle_ownership !== 'company' || ! $r->logistics_hub_id
-                || $hubsWithAvailableUnit->contains($r->logistics_hub_id))
+        return $riders->filter(fn ($r) => $r->is_available
+                && app(\App\Services\RiderDeliveryOffers::class)->activeJobs($r->id) < \App\Services\RiderDeliveryOffers::LIMIT
+                && ($r->vehicle_ownership !== 'company' || ! $r->logistics_hub_id || $hubsWithAvailableUnit->contains($r->logistics_hub_id)))
             ->values();
     }
 
@@ -296,6 +308,8 @@ class LogisticsController extends Controller
         if ($rider->status !== 'approved' || $rider->business_name !== auth()->user()->business_name) {
             return 'This rider is not active in your company.';
         }
+        if (! $rider->is_available) return 'This rider is offline and cannot receive a new job.';
+        if (app(\App\Services\RiderDeliveryOffers::class)->activeJobs($rider->id) >= \App\Services\RiderDeliveryOffers::LIMIT) return 'This rider already has the maximum of three active jobs.';
         if (! $rider->logisticsHub || ! $rider->logisticsHub->is_operational || $rider->logisticsHub->company_name !== $rider->business_name) {
             return 'This rider needs an operational hub in your company.';
         }
@@ -954,6 +968,7 @@ class LogisticsController extends Controller
 
         app(\App\Services\AssignmentWork::class)->closeReceivedPickup($shipment);
         app(\App\Services\RiderCompensation::class)->shipmentCompleted($shipment->id);
+        app(\App\Services\RiderDeliveryOffers::class)->offer($shipment, 'delivery');
 
         return response()->json(['ok' => true, 'message' => 'Parcel received and sorted'.($area ? " to {$area}" : '').'.']);
     }
@@ -965,7 +980,7 @@ class LogisticsController extends Controller
         $search=trim($filters['search']??'');
         $counts = $this->sidebarCounts();
         $shipments = $this->companyScope()->when($stage==='transit',fn($q)=>$q->whereIn('shipping_status',['picked_up','at_sorting_center','hub_transfer']))->when($stage==='delivery',fn($q)=>$q->whereIn('shipping_status',['assigned_to_rider','out_for_delivery']))->with(['order.buyer', 'courier', 'pickupRider', 'hubTransferRider', 'deliveryAssignment'])
-            ->when($search !== '', fn($q)=>$q->where(fn($q)=>$q->where('tracking_number','like','%'.$search.'%')->orWhereHas('order',fn($q)=>$q->where('order_number','like','%'.$search.'%'))), fn($q)=>$q->whereIn('shipping_status', ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'hub_transfer', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'delivery_failed']))
+            ->when($search !== '', fn($q)=>$q->where(fn($q)=>$q->where('tracking_number','like','%'.$search.'%')->orWhereHas('order',fn($q)=>$q->where('order_number','like','%'.$search.'%')->orWhereHas('buyer',fn($buyer)=>$buyer->whereRaw("CONCAT(given_names, ' ', last_name) like ?",['%'.$search.'%'])))), fn($q)=>$q->whereIn('shipping_status', ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'hub_transfer', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'delivery_failed']))
             ->latest('created_at')->orderByDesc('id')->paginate(20)->withQueryString();
         $transitions = self::STATUS_TRANSITIONS;
 
@@ -995,7 +1010,7 @@ class LogisticsController extends Controller
     {
         $data = $request->validate([
             'status' => 'required|in:'.implode(',', self::STATUSES),
-            'reason' => 'required_if:status,delivery_failed,assigned_to_rider|nullable|string|min:3|max:500',
+            'reason' => 'required|string|min:10|max:300',
         ]);
         $status = $data['status'];
         abort_if($status === 'returned', 422, 'Return progress is not Seller receipt. Inventory stays reserved until an authenticated physical receipt workflow is completed.');
@@ -1292,6 +1307,19 @@ class LogisticsController extends Controller
             if ($action==='reject') {
                 app(\App\Services\ApplicationRejection::class)->reject($rider,$reason,$request);
                 return;
+            }
+            if ($action === 'suspend') {
+                // Release delivery work that has not left the hub. Parcels already picked up
+                // stay with the rider so custody is never silently reassigned.
+                $released = $this->companyScope()->where('courier_id', $rider->id)
+                    ->where('shipping_status', 'assigned_to_rider')->lockForUpdate()->get();
+                foreach ($released as $shipment) {
+                    $shipment->update(['courier_id' => null, 'shipping_status' => 'sorted', 'assigned_at' => null]);
+                    DeliveryAssignment::where('shipment_id', $shipment->id)->where('leg', 'delivery')
+                        ->update(['status' => 'cancelled', 'revision' => DB::raw('revision + 1')]);
+                    $shipment->order?->update(['status' => 'sorted']);
+                    $shipment->order?->logStatus('sorted', auth()->id());
+                }
             }
             $rider->hiringDecision=['action'=>$action,'reason'=>$reason];
             $rider->update(['status'=>match($action){'reject'=>'rejected','suspend'=>'suspended','activate'=>'approved'},'status_reason'=>$action==='activate'?null:$reason]);

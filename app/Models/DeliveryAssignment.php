@@ -18,13 +18,14 @@ class DeliveryAssignment extends Model
 
     protected $fillable = [
         'id', 'shipment_id', 'courier_id', 'status', 'leg',
-        'requested_at', 'accepted_at', 'picked_up_at', 'delivered_at',
+        'requested_at', 'accepted_at', 'picked_up_at', 'delivered_at', 'expires_at', 'declined_at',
         'revision', 'reassignment',
     ];
 
     protected $casts = [
         'revision' => 'integer', 'reassignment' => 'array',
         'requested_at' => 'datetime',
+        'expires_at' => 'datetime', 'declined_at' => 'datetime',
         'accepted_at'  => 'datetime',
         'picked_up_at' => 'datetime',
         'delivered_at' => 'datetime',

@@ -1,0 +1,1 @@
+<option value="{{ $v->code }}" data-voucher-seller="{{ $v->seller_id }}" data-minimum-spend="{{ $v->minimum_spend }}" data-products="{{ $v->product_ids ?? '[]' }}">{{ $v->code }} · {{ $v->discount_type==='percent' ? number_format($v->amount,0).'%' : '₱'.number_format($v->amount,2) }} off</option>

@@ -11,6 +11,7 @@
   <div class="pf-catalog-layout">
     <div class="pf-catalog-sidebar-stack">
       <aside class="pf-catalog-sidebar-shell" aria-label="Product categories">
+        <span class="pf-catalog-filter-label">Category</span>
         <nav class="pf-catalog-icon-rail" aria-label="Filter products by category">
           <a href="{{ route('buyer.browse', request()->except('category', 'page')) }}" aria-label="All categories" @if(!request('category')) aria-current="true" @endif>
             @include('guest.partials.category-filter-icon', ['category' => null])<span>All categories</span>
@@ -28,9 +29,9 @@
             <input type="hidden" name="{{ $key }}" value="{{ $value }}">
           @endforeach
           <div class="pf-price-filter">
-            <input type="number" name="min_price" min="0" max="1000000000" step="0.01" placeholder="Min" aria-label="Minimum price in pesos" value="{{ request('min_price') }}">
+            <label class="pf-number-field"><span>Min price (₱)</span><input type="number" name="min_price" min="0" max="1000000000" step="0.01" placeholder="0" aria-label="Minimum price in pesos" value="{{ request('min_price') }}"></label>
             <span class="pf-catalog-price-divider" aria-hidden="true">|</span>
-            <input type="number" name="max_price" min="0" max="1000000000" step="0.01" placeholder="Max" aria-label="Maximum price in pesos" value="{{ request('max_price') }}">
+            <label class="pf-number-field"><span>Max price (₱)</span><input type="number" name="max_price" min="0" max="1000000000" step="0.01" placeholder="0" aria-label="Maximum price in pesos" value="{{ request('max_price') }}"></label>
             <a class="pf-catalog-price-reset" href="{{ route('buyer.browse', request()->only('q','category','sort')) }}">Reset</a>
           </div>
           @error('min_price')<p class="pf-filter-error" role="alert">{{ $message }}</p>@enderror

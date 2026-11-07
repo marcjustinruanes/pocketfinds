@@ -26,10 +26,10 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         \Illuminate\Auth\Notifications\ResetPassword::toMailUsing(function ($user, string $token) {
-            $resetUrl = route('password.reset', ['token' => $token, 'email' => $user->getEmailForPasswordReset()]);
+            $resetUrl = rtrim(config('app.password_reset_url'), '/').route('password.reset', ['token' => $token, 'email' => $user->getEmailForPasswordReset()], false);
             return (new \Illuminate\Notifications\Messages\MailMessage)
                 ->subject('Reset your PocketFinds password')
-                ->action('Reset password', $resetUrl)
+                ->action('Confirm reset password', $resetUrl)
                 ->view('emails.password-reset', [
                     'resetUrl' => $resetUrl,
                     'expiresIn' => config('auth.passwords.'.config('auth.defaults.passwords').'.expire'),

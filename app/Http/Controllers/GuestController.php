@@ -63,15 +63,7 @@ class GuestController extends Controller
             ->sellerApproved()
             ->where('id', '!=', $id)
             ->where('seller_id', '!=', $p->seller_id)
-            ->where(function ($matches) use ($p, $titleTerms) {
-                $matches->whereRaw('1 = 0');
-                if ($p->category_id !== null) {
-                    $matches->orWhere('category_id', $p->category_id);
-                }
-                foreach ($titleTerms as $term) {
-                    $matches->orWhereLike('name', '%' . $term . '%');
-                }
-            })
+            ->when($p->category_id !== null, fn ($query) => $query->where('category_id', $p->category_id), fn ($query) => $query->whereRaw('1 = 0'))
             ->orderBy('name')
             ->limit(8)
             ->get()

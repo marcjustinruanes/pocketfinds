@@ -87,7 +87,7 @@ class HubSalaryAttendanceTest extends StaffSalaryTest
         $this->actingAs($this->staff)->post(route('logistics.my-attendance.clock',['action'=>'in']),['time_in'=>'1990-01-01','staff_id'=>$this->otherStaff->id])->assertRedirect();
         $row=DB::table('logistics_staff_attendance')->first();
         $this->assertSame($this->staff->id,(int)$row->staff_id);
-        $this->assertSame('2026-10-01 01:00:00',$row->time_in);
+        $this->assertSame('2026-10-01 09:00:00',$row->time_in);
         $this->invalid(fn()=>$this->attendance()->clock($this->staff,'in'));
         $this->travel(8)->hours();$this->attendance()->clock($this->staff,'out');
         $this->invalid(fn()=>$this->attendance()->clock($this->staff,'out'));
@@ -114,7 +114,7 @@ class HubSalaryAttendanceTest extends StaffSalaryTest
         $this->invalid(fn()=>$this->correction($row));
         $this->approve($request);$changed=DB::table('logistics_staff_attendance')->first();
         $this->assertSame($row->original_in,$changed->original_in);$this->assertNull($changed->original_out);
-        $this->assertTrue((bool)$changed->corrected);$this->assertSame('2026-10-01 02:00:00',$changed->time_out);
+        $this->assertTrue((bool)$changed->corrected);$this->assertSame('2026-10-01 10:00:00',$changed->time_out);
         $this->assertDatabaseHas('logistics_staff_attendance_events',['event'=>'correction_applied']);
         $this->attendance()->clock($this->staff,'in');$active=DB::table('logistics_staff_attendance')->whereNotNull('active_staff_id')->first();
         $request=$this->correction($active,['requested_in'=>'2026-10-01T11:00','requested_out'=>null]);
@@ -222,7 +222,7 @@ class HubSalaryAttendanceTest extends StaffSalaryTest
         $current=DB::table('logistics_staff_attendance')->first();
         $this->assertSame($first->original_in,$current->original_in);
         $this->assertSame($first->original_out,$current->original_out);
-        $this->assertSame('2026-10-01 04:00:00',$current->time_out);
+        $this->assertSame('2026-10-01 12:00:00',$current->time_out);
         $this->assertSame(2,DB::table('logistics_staff_attendance_events')->where('event','time_out')->count());
     }
 

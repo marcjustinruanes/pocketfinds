@@ -92,7 +92,7 @@
         <p class="hint">Legacy delivery: no cash collection record is available. Payment or remittance has not been inferred.</p>
         @endif
         @if($info['button'])
-        <form method="POST" action="{{ route('rider.deliveries.advance', $shipment->id) }}">
+        <form method="POST" action="{{ route('rider.deliveries.advance', $shipment->id) }}" enctype="multipart/form-data">
           @csrf @method('PATCH')
           <input type="hidden" name="from" value="{{ $shipment->shipping_status }}">
           @if(($codRequired ?? false) && $shipment->shipping_status === 'out_for_delivery')
@@ -106,6 +106,13 @@
             <p id="cod-help" style="font-size:12px;color:var(--muted);margin-bottom:0">Collection is recorded with delivery. Hub Staff must separately verify your cash remittance. Do not deduct rider earnings.</p>
           </fieldset>
           @endif
+          @if($shipment->shipping_status === 'out_for_delivery')
+          <fieldset class="cod-collection">
+            <legend>Proof of delivery</legend>
+            <div class="form-row"><label for="delivery-proof">Photo proof (JPG or PNG, maximum 5 MB)</label><input id="delivery-proof" name="delivery_proof" type="file" accept="image/jpeg,image/png" required></div>
+            <div class="form-row" style="margin-bottom:0"><label for="delivery-otp">Buyer delivery OTP</label><input id="delivery-otp" name="delivery_otp" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required></div>
+          </fieldset>
+          @endif
           <button class="btn btn-primary" style="width:100%">{{ $info['button'] }}</button>
         </form>
         @else
@@ -115,7 +122,7 @@
         <button type="button" class="btn btn-outline" style="width:100%;margin-top:10px;color:var(--danger)" onclick="document.getElementById('failedForm').hidden = !document.getElementById('failedForm').hidden">Delivery Failed?</button>
         <form id="failedForm" method="POST" action="{{ route('rider.deliveries.failed', $shipment->id) }}" hidden style="margin-top:10px">
           @csrf @method('PATCH')
-          <textarea name="reason" rows="2" maxlength="500" placeholder="What went wrong? (e.g. buyer unreachable, wrong address)" required style="width:100%;border:1px solid var(--border);border-radius:9px;padding:8px 10px;font-size:12.5px;font-family:var(--font-body)"></textarea>
+          <select name="reason" required style="width:100%;border:1px solid var(--border);border-radius:9px;padding:8px 10px;font-size:12.5px;font-family:var(--font-body)"><option value="">Choose a reason</option><option value="buyer_not_home">Buyer not home</option><option value="wrong_address">Wrong address</option><option value="refused">Buyer refused the order</option></select>
           <button type="submit" class="btn btn-danger" style="width:100%;margin-top:8px">Report Failed Delivery</button>
         </form>
         @endif

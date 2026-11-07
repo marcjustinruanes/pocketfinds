@@ -57,6 +57,14 @@ class SocialAuthController extends Controller
         return $this->googleProvider()->redirect();
     }
 
+    public function redirectAccountEmailVerification()
+    {
+        abort_unless(Auth::check() && Auth::user()->account_type === 'buyer', 403);
+        if ($redirect = $this->googleStartRedirect('buyer.account.google.email')) return $redirect;
+        session(['oauth_intent' => 'account-email', 'oauth_account_email_owner' => Auth::id(), 'oauth_account_email_expires' => now()->addMinutes(10)->timestamp]);
+        return $this->googleProvider()->with(['prompt'=>'select_account'])->redirect();
+    }
+
     public function handleGoogleCallback()
     {
         $intent = session('oauth_intent', 'login');
@@ -77,6 +85,36 @@ class SocialAuthController extends Controller
             return $this->googleFailureRedirect($intent, 'Your Google sign-in session expired. Please try again.');
         } catch (\Throwable $e) {
             return $this->googleFailureRedirect($intent, 'Google sign-in failed. Please try again.');
+        }
+
+        if ($intent === 'account-email') {
+            $owner = session()->pull('oauth_account_email_owner');
+            $expires = session()->pull('oauth_account_email_expires', 0);
+            session()->forget('oauth_intent');
+            if (!Auth::check() || (string)Auth::id() !== (string)$owner || $expires < now()->timestamp || Auth::user()->account_type !== 'buyer') {
+                return $this->googleFailureRedirect($intent, 'Email verification expired. Please try again.');
+            }
+            $email = strtolower((string)$googleUser->getEmail());
+            if (!($googleUser->user['email_verified'] ?? $googleUser->user['verified_email'] ?? false) || !preg_match('/^[^@]+@gmail\.com$/i', $email)) {
+                return $this->googleFailureRedirect($intent, 'Choose a Google account with a verified Gmail address.');
+            }
+            try {
+                \Illuminate\Support\Facades\DB::transaction(function () use ($owner, $email) {
+                    $account = User::whereKey($owner)->lockForUpdate()->firstOrFail();
+                    if (User::where('email',$email)->where('id','!=',$owner)->exists()) {
+                        throw \Illuminate\Validation\ValidationException::withMessages(['email'=>'This email is already registered. Choose another email.']);
+                    }
+                    $account->forceFill(['email'=>$email,'email_verified_at'=>now()])->save();
+                });
+            } catch (\Illuminate\Validation\ValidationException $error) {
+                return $this->googleFailureRedirect($intent, $error->validator->errors()->first());
+            } catch (\Illuminate\Database\QueryException $error) {
+                report($error);
+                return $this->googleFailureRedirect($intent, 'This email could not be updated. Choose another email or try again.');
+            }
+            \Illuminate\Support\Facades\Cache::forget('buyer-email-change:'.$owner);
+            request()->session()->forget(['buyer_password_change_pending','buyer_password_change_token']);
+            return redirect()->route('buyer.account')->withFragment('account-security')->with('account_google_email', $email)->with('success','Email verified with Google and updated.');
         }
 
         if ($intent === 'verify-email') {
@@ -256,6 +294,10 @@ class SocialAuthController extends Controller
 
     private function googleFailureRedirect(string $intent, string $message)
     {
+        if ($intent === 'account-email') {
+            session()->forget(['oauth_account_email_owner','oauth_account_email_expires','oauth_intent']);
+            return redirect()->route('buyer.account')->withFragment('account-security')->withErrors(['email'=>$message]);
+        }
         if ($intent === 'verify-email') {
             return $this->emailVerificationResult(null, $message);
         }

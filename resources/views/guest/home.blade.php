@@ -281,6 +281,7 @@ if ((window.pocketfindsReloadAtHero || (!window.location.hash && !window.locatio
     <div class="pf-catalog-layout">
     <div class="pf-catalog-sidebar-stack">
     <aside class="pf-catalog-sidebar-shell" aria-label="Product categories">
+      <span class="pf-catalog-filter-label">Category</span>
       <nav class="pf-catalog-icon-rail" aria-label="Filter products by category">
         <a href="{{ $storefrontUrl.'?'.http_build_query(array_merge(request()->only('q', 'min_price', 'max_price', 'sort'), ['category' => ''])) }}#products" data-catalog-category aria-label="All categories" @if(!$productCategoryId) aria-current="true" @endif>@include('guest.partials.category-filter-icon', ['category' => null])<span>All categories</span></a>
         @foreach($categories as $category)
@@ -294,9 +295,9 @@ if ((window.pocketfindsReloadAtHero || (!window.location.hash && !window.locatio
       <input type="hidden" name="category" value="{{ $productCategoryId ?: '' }}">
       <input type="hidden" name="sort" value="{{ $sort }}">
       <div class="pf-price-filter">
-        <input type="number" name="min_price" min="0" max="1000000000" step="0.01" placeholder="Min" aria-label="Minimum price in pesos" title="Minimum price (₱). Press Enter to apply." value="{{ old('min_price', $minPrice) }}">
+        <label class="pf-number-field"><span>Min price (₱)</span><input type="number" name="min_price" min="0" max="1000000000" step="0.01" placeholder="0" aria-label="Minimum price in pesos" title="Minimum price (₱). Press Enter to apply." value="{{ old('min_price', $minPrice) }}"></label>
         <span class="pf-catalog-price-divider" aria-hidden="true">|</span>
-        <input type="number" name="max_price" min="0" max="1000000000" step="0.01" placeholder="Max" aria-label="Maximum price in pesos" title="Maximum price (₱). Press Enter to apply." value="{{ old('max_price', $maxPrice) }}">
+        <label class="pf-number-field"><span>Max price (₱)</span><input type="number" name="max_price" min="0" max="1000000000" step="0.01" placeholder="0" aria-label="Maximum price in pesos" title="Maximum price (₱). Press Enter to apply." value="{{ old('max_price', $maxPrice) }}"></label>
         <a class="pf-catalog-price-reset" href="{{ $storefrontUrl.'?'.http_build_query(request()->only('q', 'category', 'sort')) }}#products" data-catalog-reset>Reset</a>
       </div>
       @error('min_price')<p class="pf-filter-error" role="alert">{{ $message }}</p>@enderror

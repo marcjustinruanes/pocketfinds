@@ -10,6 +10,11 @@ $storedUnread=\Illuminate\Support\Facades\DB::table('notifications')->where('use
     <p>@yield('page-sub', '')</p>
   </div>
   <div class="topbar-actions">
+    <form method="POST" action="{{ route('rider.availability') }}" style="display:flex;align-items:center;gap:7px;margin-right:6px">
+      @csrf @method('PATCH')
+      <input type="hidden" name="is_available" value="{{ auth()->user()->is_available ? 0 : 1 }}">
+      <button class="btn btn-sm {{ auth()->user()->is_available ? 'btn-primary' : 'btn-outline' }}" type="submit">{{ auth()->user()->is_available ? '● Online' : '○ Offline' }}</button>
+    </form>
     <div class="dropdown">
       <button class="icon-btn" data-dropdown-toggle="riderNotifPanel" aria-label="Notifications">
         <x-admin-icon name="bell" />

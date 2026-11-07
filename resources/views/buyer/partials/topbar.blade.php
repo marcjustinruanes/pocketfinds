@@ -48,12 +48,19 @@
           <form method="POST" action="{{ route('account.notifications.read-all') }}">@csrf<button type="submit" class="btn btn-outline">Mark all as read</button></form>
           @endif
           @forelse($notifRows as $notif)
+            @php
+              $notificationStyle = match ($notif->notification_type ?? '') {
+                'order_status', 'order_delivered', 'delivery_assigned', 'pickup_assigned' => ['package', 'is-order'],
+                'delivery_failed', 'doc_rejected', 'product_rejected' => ['x', 'is-danger'],
+                'doc_approved', 'product_approved' => ['check', 'is-success'],
+                'review_reply' => ['chat', 'is-message'],
+                default => ['bell', 'is-announcement'],
+              };
+            @endphp
             <a href="{{ route('buyer.notifications.open', $notif->id) }}" class="notif-item {{ $notif->is_read ? 'read' : '' }}">
-              <div class="dot"></div>
-              <div>
-                <p>{{ $notif->message }}</p>
-                <div class="notif-time">{{ \Carbon\Carbon::parse($notif->created_at)->diffForHumans() }}</div>
-              </div>
+              <span class="notif-entry-icon {{ $notificationStyle[1] }}">@include('buyer.partials.icon', ['name' => $notificationStyle[0], 'size' => 16])</span>
+              <span class="notif-item-copy"><strong>{{ $notif->title ?: 'PocketFinds update' }}</strong><span>{{ $notif->message }}</span><small class="notif-item-time">{{ \Carbon\Carbon::parse($notif->created_at)->diffForHumans() }}</small></span>
+              @if(! $notif->is_read)<span class="dot" aria-label="Unread"></span>@endif
             </a>
           @empty
             <div class="notif-item read">

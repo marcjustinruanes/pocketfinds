@@ -6,19 +6,19 @@
 @section('content')
 @php
     $date=fn($v)=>$v ? \Carbon\CarbonImmutable::parse($v,config('app.timezone'))->setTimezone('Asia/Manila') : null;
-    $pht=fn($v)=>$date($v)?->format('M j, Y / g:i:s A').' PHT';
+    $pht=fn($v)=>$date($v)?->format('M j, Y / g:i:s A').'';
     $seconds=$record->time_in && $record->time_out ? (int)$date($record->time_in)->diffInSeconds($date($record->time_out)) : null;
     $duration=$seconds===null ? 'Not available' : ($seconds>=3600 ? intdiv($seconds,3600).'h ' : '').($seconds>=60 ? intdiv($seconds%3600,60).'m ' : '').($seconds%60).'s';
     $name=trim(($member->given_names??'').' '.($member->last_name??''));
     $titles=['time_in'=>'Timed in','time_out'=>'Timed out','correction_applied'=>'Attendance correction applied','missing_timeout'=>'Missing Time Out flagged','void'=>'Leave or absence voided','day_leave'=>'Approved leave recorded','day_absence'=>'Confirmed absence recorded','correction_requested'=>'Correction requested','correction_approve'=>'Correction approved','correction_reject'=>'Correction rejected'];
 @endphp
 <div class="cash-desk staff-payroll attendance-detail">
-<div class="attendance-detail-toolbar"><a class="btn" href="{{ route($admin?'logistics.attendance':'logistics.my-attendance') }}">&larr; Back to attendance</a><span>All times in Philippine time (PHT)</span></div>
+<div class="attendance-detail-toolbar"><a class="btn" href="{{ route($admin?'logistics.attendance':'logistics.my-attendance') }}">&larr; Back to attendance</a><span></span></div>
 <section class="cash-card attendance-overview" aria-labelledby="shift-heading">
     <header class="attendance-detail-heading"><div><p class="attendance-eyebrow">{{ \Carbon\CarbonImmutable::parse($record->business_date)->format('l, F j, Y') }}</p><h2 id="shift-heading">{{ $name ?: 'Staff account #'.$record->staff_id }}</h2><p>Account #{{ $record->staff_id }} <span aria-hidden="true">&middot;</span> {{ $hub ? $hub->municipality.', '.$hub->province : 'Hub' }} / Hub #{{ $record->hub_id }}</p></div><div class="attendance-state"><span class="attendance-status">{{ $flow->label($record) }}</span><small>{{ $record->corrected ? 'Reviewed correction' : 'Original record' }}</small></div></header>
     <dl class="attendance-times">
-        <div><dt>Time In</dt><dd>{{ $record->time_in ? $date($record->time_in)->format('g:i:s A') : 'Not recorded' }}</dd><small>{{ $record->time_in ? $date($record->time_in)->format('M j, Y').' PHT' : 'No clock time on this record' }}</small></div>
-        <div><dt>Time Out</dt><dd>{{ $record->time_out ? $date($record->time_out)->format('g:i:s A') : 'Not recorded' }}</dd><small>{{ $record->time_out ? $date($record->time_out)->format('M j, Y').' PHT' : ($record->kind==='shift' ? 'Shift has no recorded Time Out' : 'Not applicable') }}</small></div>
+        <div><dt>Time In</dt><dd>{{ $record->time_in ? $date($record->time_in)->format('g:i:s A') : 'Not recorded' }}</dd><small>{{ $record->time_in ? $date($record->time_in)->format('M j, Y').'' : 'No clock time on this record' }}</small></div>
+        <div><dt>Time Out</dt><dd>{{ $record->time_out ? $date($record->time_out)->format('g:i:s A') : 'Not recorded' }}</dd><small>{{ $record->time_out ? $date($record->time_out)->format('M j, Y').'' : ($record->kind==='shift' ? 'Shift has no recorded Time Out' : 'Not applicable') }}</small></div>
         <div><dt>Recorded duration</dt><dd>{{ $duration }}</dd><small>{{ $seconds===null ? 'Requires both Time In and Time Out' : 'Recorded interval; not payable hours' }}</small></div>
     </dl>
     @if($record->reason)<div class="attendance-note"><strong>Recorded reason</strong><p>{{ $record->reason }}</p></div>@endif

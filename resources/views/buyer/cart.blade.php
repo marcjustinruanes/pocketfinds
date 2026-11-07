@@ -2,46 +2,48 @@
 @section('title', 'My Cart')
 @section('page-title', 'My Cart')
 @section('page-sub', 'Review your selected items')
+@section('hide-page-heading', true)
 @section('body-class', 'cart-page-layout')
 
 @section('content')
 @if($errors->any())<div class="auth-error" role="alert">@foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
-@php($subtotal = collect($items)->sum(fn ($item) => $item['price'] * $item['qty']))
+@php
+  $subtotal = collect($items)->sum(fn ($item) => $item['price'] * $item['qty']);
+@endphp
 @if(session('error'))
 <div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('error') }}</div>
 @endif
 @if(session('success'))
 <div class="auth-success" style="margin-bottom:16px">{{ session('success') }}</div>
 @endif
-<p class="cart-page-intro">Choose what to buy, check where it will go, and choose how to pay.</p>
 <div class="cart-layout">
   <div class="stack">
     <div class="card cart-items-card">
-      <div class="card-head"><h2>Your items</h2></div>
+      <div class="card-head"><h2>Your items <span class="cart-count">{{ $items->count() }}</span></h2>@if($items->isNotEmpty())<div class="cart-header-actions"><label class="cart-select-all"><input id="cartSelectAll" type="checkbox" autocomplete="off" aria-label="Select all items"></label><button type="button" class="cart-bulk-delete" data-remove-selected="all" hidden disabled aria-label="Delete selected items" title="Delete selected items">@include('buyer.partials.icon',['name'=>'trash','size'=>15])</button></div>@endif</div>
       <div class="card-pad">
         @if(count($items))
-          <div class="cart-selection-toolbar"><label class="cart-select-all">
-            <input id="cartSelectAll" type="checkbox" checked>
-            <span>Select all items ({{ $items->count() }})</span>
-          </label><a class="cart-continue-shopping" href="{{ route('buyer.browse') }}">Continue shopping</a></div>
           <div class="cart-items-scroll">
           <div class="cart-column-head" aria-hidden="true">
             <span></span><span></span><span>Product</span><span style="text-align:right">Subtotal</span><span style="text-align:right">Actions</span>
           </div>
           @foreach($groups as $slug => $shopItems)
-          @php($shopShipping = $shippingFees[$slug] ?? 0)
+          @php
+            $shopShipping = $shippingFees[$slug] ?? 0;
+          @endphp
           <section class="cart-shop" data-seller-id="{{ $shopItems->first()['seller_id'] }}" data-shipping-fee="{{ $shopShipping }}" data-shop-slug="{{ $slug }}">
             <div class="cart-shop-head">
-              <label class="cart-check-wrap">
-                <input class="cart-shop-select" type="checkbox" aria-label="Select items from {{ $shopItems->first()['seller'] }}" checked>
-                <a href="{{ route('buyer.shop', $shopItems->first()['seller_slug']) }}">{{ $shopItems->first()['seller'] }}</a>
-              </label>
-              <span>{{ $shopItems->count() }} item{{ $shopItems->count() === 1 ? '' : 's' }}</span>
+              <div class="cart-check-wrap">
+                <input class="cart-shop-select" type="checkbox" autocomplete="off" aria-label="Select items from {{ $shopItems->first()['seller'] }}">
+                <a href="{{ route('buyer.shop', $shopItems->first()['seller_slug']) }}">{{ $shopItems->first()['seller'] }} @include('buyer.partials.icon',['name'=>'shop','size'=>17])</a>
+                <span class="cart-shop-message-divider" aria-hidden="true">|</span>
+                <button type="button" class="cart-shop-message" data-messages-trigger data-messages-url="{{ route('buyer.messages',['seller'=>$shopItems->first()['seller_slug']]) }}" aria-label="Message {{ $shopItems->first()['seller'] }}" title="Message shop">@include('buyer.partials.icon',['name'=>'chat','size'=>16])</button>
+              </div>
+              <div class="cart-header-actions"><span class="cart-count">{{ $shopItems->count() }} item{{ $shopItems->count() === 1 ? '' : 's' }}</span><button type="button" class="cart-bulk-delete" data-remove-selected="shop" aria-label="Delete selected items from {{ $shopItems->first()['seller'] }}" title="Delete selected shop items">@include('buyer.partials.icon',['name'=>'trash','size'=>15])</button></div>
             </div>
             <div class="cart-items">
             @foreach($shopItems as $item)
               <div class="cart-item">
-                <input class="cart-select" type="checkbox" aria-label="Select {{ $item['name'] }}" checked data-price="{{ $item['price'] }}" data-qty="{{ $item['qty'] }}" data-shop="{{ $item['seller_slug'] }}">
+                <input class="cart-select" type="checkbox" autocomplete="off" aria-label="Select {{ $item['name'] }}" data-price="{{ $item['price'] }}" data-qty="{{ $item['qty'] }}" data-shop="{{ $item['seller_slug'] }}" data-product-id="{{ $item['product_id'] }}">
                 <div class="cart-item-image">
                   @if(filled($item['img']))
                     <img src="{{ $item['img'] }}" alt="{{ $item['name'] }}">
@@ -52,23 +54,46 @@
                 <div style="min-width:0">
                   <a class="cart-item-name" href="{{ route('buyer.product', $item['product_id']) }}">{{ $item['name'] }}</a>
                   @if($item['variation_value'])
-                    <div class="cart-item-variant">{{ $item['variation_value'] }}</div>
+                    @php
+                      $selectedAttributes = [];
+                      foreach ($item['product_variations'] as $group) {
+                        if (($group['name'] ?? '') !== $item['variation_group']) continue;
+                        foreach ($group['options'] ?? [] as $option) {
+                          if (($option['value'] ?? '') === $item['variation_value']) {
+                            $selectedAttributes = $option['attributes'] ?? [];
+                            break;
+                          }
+                        }
+                      }
+                    @endphp
+                    <div class="cart-item-variant">
+                      @if($selectedAttributes)
+                        @foreach($selectedAttributes as $optionName => $optionValue)
+                          <span>{{ $optionName }}: {{ $optionValue }}</span>@unless($loop->last) · @endunless
+                        @endforeach
+                      @else
+                        {{ $item['variation_group'] ?: 'Option' }}: {{ $item['variation_value'] }}
+                      @endif
+                    </div>
                   @endif
-                  <div class="cart-item-quantity"><span class="cart-quantity-badge">Qty {{ $item['qty'] }}</span> &#8369;{{ number_format($item['price'], 2) }} each</div>
                 </div>
-                <div class="cart-item-total">₱{{ number_format($item['price'] * $item['qty'], 2) }}</div>
+                <div class="cart-item-pricing">
+                  <div class="cart-item-total">₱{{ number_format($item['price'] * $item['qty'], 2) }}</div>
+                  <div class="cart-item-quantity">{{ $item['qty'] }} × ₱{{ number_format($item['price'], 2) }}</div>
+                </div>
                 <div class="cart-item-actions">
+                  <button type="button" class="cart-action-btn" data-messages-trigger data-messages-url="{{ route('buyer.messages',['seller'=>$item['seller_slug'],'product'=>$item['product_id'],'variation_group'=>$item['variation_group'],'variation_value'=>$item['variation_value']]) }}" aria-label="Message about {{ $item['name'] }}" title="Message about this product">@include('buyer.partials.icon',['name'=>'chat','size'=>15])</button>
                   <button type="button" class="cart-action-btn" aria-label="Change quantity or options for {{ $item['name'] }}" title="Change quantity or options"
                     data-edit-key="{{ $item['key'] }}" data-edit-qty="{{ $item['qty'] }}" data-edit-value="{{ $item['variation_value'] }}"
                     data-edit-group="{{ $item['variation_group'] }}" data-edit-variations="{{ json_encode($item['product_variations']) }}"
                     data-edit-stock="{{ $item['product_stock'] }}"
                     data-edit-name="{{ $item['name'] }}" data-edit-image="{{ $item['img'] }}" data-edit-price="{{ number_format($item['price'], 2) }}">
-                    @include('buyer.partials.icon', ['name' => 'edit', 'size' => 14]) <span>{{ empty($item['product_variations']) ? 'Change quantity' : 'Quantity & options' }}</span>
+                    @include('buyer.partials.icon', ['name' => 'edit', 'size' => 16])
                   </button>
                   <form method="POST" action="{{ route('buyer.cart.remove', ['key' => $item['key']]) }}" class="cart-remove-form">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="cart-action-btn danger" data-remove-name="{{ $item['name'] }}" aria-label="Remove {{ $item['name'] }} from cart" title="Remove item">@include('buyer.partials.icon', ['name' => 'trash', 'size' => 14])</button>
+                    <button type="submit" class="cart-action-btn danger" data-remove-name="{{ $item['name'] }}" aria-label="Remove {{ $item['name'] }} from cart" title="Remove item">@include('buyer.partials.icon', ['name' => 'trash', 'size' => 16])</button>
                   </form>
                 </div>
               </div>
@@ -105,10 +130,10 @@
         <div class="form-row" style="margin:0">
           <div style="display:flex;align-items:center;justify-content:space-between">
             <h3 class="cart-section-title">Delivery address</h3>
-            <button type="button" class="cart-view-vouchers" id="addAddressBtn" data-modal-open="addAddressModal">Add New Address</button>
+            <div class="cart-address-actions"><button type="button" class="cart-view-vouchers" id="cartAddressToggle" aria-haspopup="dialog" aria-controls="cartAddressModal">Change</button><span aria-hidden="true">|</span><button type="button" class="cart-view-vouchers" id="addAddressBtn" data-modal-open="addAddressModal">Add</button></div>
           </div>
           <div class="cart-address-picker">
-            <div class="cart-address-selected"><p id="cartAddressSummary">Your selected delivery address</p><button type="button" id="cartAddressToggle" aria-expanded="false" aria-controls="addressList">Change address</button></div>
+            <div class="cart-address-selected"><p id="cartAddressSummary">Your selected delivery address</p><span class="address-default-badge" id="cartAddressDefaultBadge" hidden>Default</span></div>
             @include('buyer.partials.delivery-addresses', ['addresses' => $addresses, 'selectable' => true])
           </div>
         </div>
@@ -139,33 +164,24 @@
         </div>
 
 </div>
-        @php($typeMeta = ['ewallet' => ['wallet', 'E-Wallet'], 'cod' => ['cash', 'Cash on Delivery'], 'other' => ['tag', 'Other']])
-        @php($firstAvailableType = collect($typeMeta)->keys()->first(fn ($type) => $paymentMethods->has($type)))
+        @php
+          $typeMeta = ['ewallet' => ['wallet', 'E-Wallet'], 'cod' => ['cash', 'Cash on Delivery'], 'other' => ['tag', 'Other']];
+          $firstAvailableType = collect($typeMeta)->keys()->first(fn ($type) => $paymentMethods->has($type));
+        @endphp
         <div class="form-row" style="margin:0">
           <h3 class="cart-section-title" id="cartPaymentHeading">Payment method</h3>
           @if($paymentMethods->isEmpty())
             <p style="font-size:12.5px;color:var(--muted);margin:4px 0 0">No payment methods available.</p>
           @else
-            <fieldset class="cart-payment-options" aria-labelledby="cartPaymentHeading"><legend class="cart-sr-only">Choose how to pay</legend>
-              @foreach($paymentMethods as $type => $methods)
-                @foreach($methods as $method)
-                  <label class="cart-payment-option">
-                    <input type="radio" name="cart_payment_choice" value="{{ $method->id }}" data-type="{{ $type }}" data-kind="{{ $method->buyerCheckoutKind() }}">
-                    <span><strong>{{ $method->buyerCheckoutKind() === 'gcash' ? 'GCash' : 'Cash on delivery' }}</strong><small>{{ $method->buyerCheckoutKind() === 'gcash' ? 'Message the seller and submit payment proof.' : 'Pay when your order arrives.' }}</small></span>
-                  </label>
-                @endforeach
-              @endforeach
-            </fieldset>
-            <div class="cart-payment-grid" hidden>
-              <label for="paymentTypeSelect">Payment type
-                <select class="select" id="paymentTypeSelect">
+            <div class="cart-payment-select-row">
+              <span class="cart-payment-selected-icon" aria-hidden="true">@foreach($typeMeta as $type=>[$icon,$label])<span class="payment-type-icon" data-type="{{ $type }}" @if($type!==$firstAvailableType) hidden @endif>@include('buyer.partials.icon',['name'=>$icon,'size'=>23])</span>@endforeach</span>
+              <div class="cart-floating-field always-floating"><select class="select" id="paymentNameSelect" aria-labelledby="cartPaymentHeading"></select><label for="paymentNameSelect">Payment method</label><fieldset aria-hidden="true"><legend><span>Payment method</span></legend></fieldset></div>
+            </div>
+                <select id="paymentTypeSelect" hidden aria-hidden="true" tabindex="-1">
                   @foreach($typeMeta as $type => [$icon, $label])
                     @if($paymentMethods->has($type))<option value="{{ $type }}">{{ $label }}</option>@endif
                   @endforeach
                 </select>
-              </label>
-              <label for="paymentNameSelect">Payment method<select class="select" id="paymentNameSelect"></select></label>
-            </div>
             <div id="paymentVerifyStatus" style="font-size:11.5px;margin-top:6px"></div>
           @endif
         </div>
@@ -216,6 +232,7 @@
     </div>
   </div>
 </div>
+<form id="removeSelectedItemsForm" method="POST" action="{{ route('buyer.cart.removeSelected') }}" hidden>@csrf @method('DELETE')<div data-selected-remove-inputs></div></form>
 <div class="cart-confirm-modal" id="removeItemModal" aria-hidden="true">
   <div class="cart-confirm-dialog pf-confirm" role="dialog" aria-modal="true" aria-labelledby="removeItemTitle" aria-describedby="removeItemMessage">
     <h3 id="removeItemTitle">Remove this item?</h3>
@@ -255,8 +272,7 @@
         <input type="hidden" name="variation_group" id="editVariationGroup">
         <div id="editVariationsContainer"></div>
         <div class="form-row">
-          <label for="editQty">Quantity</label>
-          <input id="editQty" name="qty" type="number" min="1" max="99" required>
+          <div class="cart-floating-field always-floating"><input id="editQty" name="qty" type="number" min="1" max="99" placeholder=" " required><label for="editQty">Quantity</label><fieldset aria-hidden="true"><legend><span>Quantity</span></legend></fieldset></div>
           <span id="editQtyError" style="display:none;color:var(--danger);font-size:11.5px;margin-top:4px"></span>
         </div>
         <button type="submit" class="btn btn-primary btn-block">Save item</button>
@@ -269,10 +285,9 @@
   <div class="modal" style="max-width:420px">
     <div class="modal-head">
       <div><h3>Add a Note</h3><p>Let the seller know something about your order (optional).</p></div>
-      <button class="modal-close" type="button" data-modal-close>✕</button>
     </div>
     <div class="modal-body">
-      <textarea id="orderNoteTextarea" rows="4" maxlength="200" placeholder="e.g. Please gift wrap, deliver after 6PM…" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:10px 12px;font-size:13px;resize:vertical"></textarea>
+      <div class="cart-floating-field always-floating"><textarea id="orderNoteTextarea" rows="4" maxlength="200" placeholder=" "></textarea><label for="orderNoteTextarea">Seller note</label><fieldset aria-hidden="true"><legend><span>Seller note</span></legend></fieldset></div>
       <div style="text-align:right;font-size:11px;color:var(--muted);margin-top:4px" id="orderNoteCount">0/200</div>
     </div>
     <div class="modal-foot">
@@ -318,34 +333,6 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="cartVerifyModal">
-  <div class="modal" style="max-width:400px">
-    <div class="modal-head">
-      <div><h3 id="cartVerifyTitle">Verify Account</h3><p>We'll send a verification code to your registered email.</p></div>
-      <button class="modal-close" type="button" data-modal-close>✕</button>
-    </div>
-    <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
-      <input type="hidden" id="cartVerifyType">
-      <div class="form-row">
-        <label for="cartVerifyAccountName">Account holder name</label>
-        <input class="auth-input" id="cartVerifyAccountName" type="text">
-      </div>
-      <div class="form-row">
-        <label for="cartVerifyAccountNumber" id="cartVerifyAccountNumberLabel">Account number</label>
-        <input class="auth-input" id="cartVerifyAccountNumber" type="tel" inputmode="numeric" pattern="09[0-9]{9}" maxlength="11">
-      </div>
-      <div id="cartVerifyStep1">
-        <button type="button" class="btn btn-primary btn-block" id="cartVerifySendBtn">Send verification code</button>
-      </div>
-      <div class="form-row" id="cartVerifyStep2" hidden>
-        <label for="cartVerifyOtp">Verification code</label>
-        <input class="auth-input" id="cartVerifyOtp" type="text" inputmode="numeric" maxlength="6" placeholder="6-digit code">
-        <button type="button" class="btn btn-primary btn-block" style="margin-top:8px" id="cartVerifyConfirmBtn">Verify and Save</button>
-      </div>
-      <p id="cartVerifyMessage" style="font-size:12.5px;margin:0" hidden></p>
-    </div>
-  </div>
-</div>
 @endsection
 
 @push('head')
@@ -354,6 +341,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const itemChecks = [...document.querySelectorAll('.cart-select')];
   const shopChecks = [...document.querySelectorAll('.cart-shop-select')];
   const selectAll = document.getElementById('cartSelectAll');
+  const resetCartSelection = () => {
+    [...itemChecks, ...shopChecks, selectAll].filter(Boolean).forEach(input => {
+      input.checked = false;
+      input.indeterminate = false;
+    });
+    document.querySelectorAll('[data-remove-selected]').forEach(button => { button.hidden = true; button.disabled = true; });
+  };
+  resetCartSelection();
   const checkoutButton = document.getElementById('checkoutButton');
   const checkoutForm = document.getElementById('checkoutForm');
   const itemEditModal = document.getElementById('itemEditModal');
@@ -365,17 +360,16 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateAddressSummary() {
     const selected = addressList?.querySelector('input[name="delivery_address_radio"]:checked')?.closest('.address-option');
     const summary = document.getElementById('cartAddressSummary');
-    if (summary) summary.textContent = selected ? [selected.querySelector('strong')?.textContent, selected.querySelector('span > span')?.textContent].filter(Boolean).join(' - ') : 'No address selected. Choose or add an address.';
-    if (!selected) { document.querySelector('.cart-address-picker')?.classList.add('is-open'); document.getElementById('cartAddressToggle')?.setAttribute('aria-expanded', 'true'); }
+    if (summary) summary.textContent = selected ? [selected.querySelector('strong')?.textContent, selected.querySelector('.saved-address-location')?.textContent].filter(Boolean).join(' - ') : 'No address selected. Choose or add an address.';
+    const badge=document.getElementById('cartAddressDefaultBadge');if(badge)badge.hidden=!selected?.querySelector('[data-default-address]');
   }
-  document.getElementById('cartAddressToggle')?.addEventListener('click', event => { const open = document.querySelector('.cart-address-picker').classList.toggle('is-open'); event.currentTarget.setAttribute('aria-expanded', String(open)); });
-  addressList?.addEventListener('change', () => { updateAddressSummary(); document.querySelector('.cart-address-picker').classList.remove('is-open'); document.getElementById('cartAddressToggle').setAttribute('aria-expanded', 'false'); });
+  document.getElementById('cartAddressToggle')?.addEventListener('click',()=>{const modal=document.getElementById('cartAddressModal');modal?.classList.add('open');modal?.setAttribute('aria-hidden','false');modal?.querySelector('input:checked,input,button')?.focus();});
+  addressList?.addEventListener('change',event=>{if(!event.target.matches('[name="delivery_address_radio"]'))return;updateAddressSummary();const modal=document.getElementById('cartAddressModal');modal?.classList.remove('open');modal?.setAttribute('aria-hidden','true');document.getElementById('cartAddressToggle')?.focus();});
   if (addressList) new MutationObserver(updateAddressSummary).observe(addressList, {childList:true});
   updateAddressSummary();
   const paymentTypeSelect = document.getElementById('paymentTypeSelect');
   const paymentNameSelect = document.getElementById('paymentNameSelect');
   const paymentMethodsByType = @json($paymentMethods->map(fn ($list) => $list->map(fn ($m) => ['id' => $m->id, 'name' => $m->name])->values()));
-  const verifiedLookup = @json($verifiedLookup);
   let submittingOrder = false;
   let checkoutReturnFocus = null;
   let orderNoteValue = '';
@@ -466,13 +460,18 @@ document.addEventListener('DOMContentLoaded', () => {
       const shopItems = [...check.closest('.cart-shop').querySelectorAll('.cart-select')];
       const selectedCount = shopItems.filter(item => item.checked).length;
       check.checked = selectedCount === shopItems.length;
-      check.indeterminate = selectedCount > 0 && selectedCount < shopItems.length;
+      check.indeterminate = false;
     });
     selectAll.checked = selected.length === itemChecks.length;
-    selectAll.indeterminate = selected.length > 0 && selected.length < itemChecks.length;
+    selectAll.indeterminate = false;
     if(checkoutForm.dataset.quoteUrl)document.dispatchEvent(new Event('buyer-cart-summary-changed'));
   }
   window.cartRefreshSummary = refreshSummary;
+  window.addEventListener('pageshow', event => {
+    if (!event.persisted) return;
+    resetCartSelection();
+    refreshSummary();
+  });
 
   let appliedVoucherDiscount = 0;
   let appliedVoucherFreeShipping = false;
@@ -679,6 +678,40 @@ document.addEventListener('DOMContentLoaded', () => {
   let pendingRemoveForm = null;
   let removeReturnFocus = null;
 
+  document.querySelectorAll('[data-remove-selected]').forEach(button => {
+    const scope = button.dataset.removeSelected === 'shop' ? button.closest('.cart-shop') : document;
+    const selected = () => [...scope.querySelectorAll('.cart-select:checked')];
+    const allSelected = () => {
+      const items = [...scope.querySelectorAll('.cart-select')];
+      return items.length > 0 && items.every(item => item.checked);
+    };
+    const sync = () => {
+      const visible = allSelected();
+      button.hidden = !visible;
+      button.disabled = !visible;
+    };
+    document.addEventListener('change', sync);
+    sync();
+    button.addEventListener('click', () => {
+      if (!allSelected()) return;
+      const keys = selected().map(input => input.closest('.cart-item').querySelector('[data-edit-key]')?.dataset.editKey).filter(Boolean);
+      if (!keys.length) return;
+      const form = document.getElementById('removeSelectedItemsForm');
+      const inputs = form.querySelector('[data-selected-remove-inputs]');
+      inputs.replaceChildren();
+      keys.forEach(key => { const input = document.createElement('input'); input.type = 'hidden'; input.name = 'items[]'; input.value = key; inputs.append(input); });
+      pendingRemoveForm = form;
+      removeReturnFocus = button;
+      document.getElementById('removeItemTitle').textContent = 'Remove selected items?';
+      document.getElementById('removeItemMessage').textContent = `Remove ${keys.length} selected item${keys.length === 1 ? '' : 's'} from your cart?`;
+      removeItemCancelButton.textContent = 'Cancel';
+      removeItemConfirmButton.textContent = 'Remove';
+      removeItemModal.classList.add('open');
+      removeItemModal.setAttribute('aria-hidden', 'false');
+      removeItemCancelButton.focus();
+    });
+  });
+
   function closeRemoveItemModal() {
     removeItemModal.classList.remove('open');
     removeItemModal.setAttribute('aria-hidden', 'true');
@@ -690,6 +723,9 @@ document.addEventListener('DOMContentLoaded', () => {
     event.preventDefault();
     pendingRemoveForm = form;
     removeReturnFocus = event.submitter || form.querySelector('button');
+    document.getElementById('removeItemTitle').textContent = 'Remove this item?';
+    removeItemCancelButton.textContent = 'Keep item';
+    removeItemConfirmButton.textContent = 'Remove item';
     const name = form.querySelector('[data-remove-name]')?.dataset.removeName;
     document.getElementById('removeItemMessage').textContent = name
       ? `Remove "${name}" from your cart?`
@@ -850,20 +886,21 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.payment-type-icon').forEach(span => span.hidden = span.dataset.type !== type);
   }
   function populatePaymentNames(type) {
-    const list = paymentMethodsByType[type] || [];
+    const previous = paymentNameSelect.value;
     paymentNameSelect.innerHTML = '';
-    list.forEach(pm => paymentNameSelect.add(new Option(pm.name, pm.id)));
-  }
-  function verificationKeyFor(type, name) {
-    if (type === 'ewallet' && name.toLowerCase() === 'gcash') return 'gcash';
-    return null;
+    Object.entries(paymentMethodsByType).forEach(([kind,list])=>list.forEach(pm=>{const option=new Option(pm.name,pm.id);option.dataset.type=kind;paymentNameSelect.add(option);}));
+    const matching=[...paymentNameSelect.options].find(option=>option.value===previous)||[...paymentNameSelect.options].find(option=>option.dataset.type===type);
+    if(matching)paymentNameSelect.value=matching.value;
   }
   function isGcashSelection() {
     return paymentTypeSelect?.value === 'ewallet'
       && (paymentNameSelect?.selectedOptions[0]?.text || '').trim().toLowerCase() === 'gcash';
   }
   function updateVerificationStatus() {
+    const selectedType=paymentNameSelect?.selectedOptions[0]?.dataset.type;
+    if(selectedType&&paymentTypeSelect)paymentTypeSelect.value=selectedType;
     const type = paymentTypeSelect?.value;
+    renderPaymentTypeIcon(type);
     const statusEl = document.getElementById('paymentVerifyStatus');
     checkoutButton.textContent = isGcashSelection() ? 'Continue with GCash' : 'Review & Place Order';
     const priceReview = document.querySelector('.cart-price-review');
@@ -875,13 +912,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!type || type === 'cod' || type === 'other') { statusEl.innerHTML = ''; return; }
     const name = paymentNameSelect.options[paymentNameSelect.selectedIndex]?.text || '';
     if(isGcashSelection()){ statusEl.textContent='Next: message the seller for payment details. Upload proof on your linked purchase; Place Order is available only after seller verification.'; return; }
-    const key = verificationKeyFor(type, name);
-    if (verifiedLookup[key]) {
-      statusEl.innerHTML = '<span style="color:var(--success);font-weight:600">✓ ' + name + ' verified</span>';
-    } else {
-      statusEl.innerHTML = '<span style="color:var(--muted)">' + name + ' isn\'t verified yet.</span> <button type="button" id="cartVerifyNowBtn" style="border:0;background:none;padding:0;color:var(--pink-dark);font-weight:700;cursor:pointer;text-decoration:underline">Verify now</button>';
-      document.getElementById('cartVerifyNowBtn')?.addEventListener('click', () => openCartVerifyModal(type, name));
-    }
+    statusEl.textContent = '';
   }
   if (paymentTypeSelect && paymentNameSelect) {
     populatePaymentNames(paymentTypeSelect.value);
@@ -900,80 +931,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     paymentNameSelect.addEventListener('change', updateVerificationStatus);
   }
-
-  // ---- Verify GCash account right from the cart ----
-  function openCartVerifyModal(type, name) {
-    if(type !== 'ewallet' || name.toLowerCase() !== 'gcash') return;
-    const accountType = 'gcash';
-    document.getElementById('cartVerifyType').value = accountType;
-    document.getElementById('cartVerifyTitle').textContent = 'Verify ' + name;
-    document.getElementById('cartVerifyAccountNumberLabel').textContent = 'GCash mobile number';
-    document.getElementById('cartVerifyAccountName').value = '';
-    document.getElementById('cartVerifyAccountNumber').value = '';
-    document.getElementById('cartVerifyOtp').value = '';
-    document.getElementById('cartVerifyStep1').hidden = false;
-    document.getElementById('cartVerifyStep2').hidden = true;
-    const msg = document.getElementById('cartVerifyMessage');
-    msg.hidden = true;
-    document.getElementById('cartVerifyModal').classList.add('open');
-  }
-
-  document.getElementById('cartVerifySendBtn')?.addEventListener('click', () => {
-    const type = document.getElementById('cartVerifyType').value;
-    const accountName = document.getElementById('cartVerifyAccountName').value.trim();
-    const accountNumber = document.getElementById('cartVerifyAccountNumber').value.trim();
-    const msg = document.getElementById('cartVerifyMessage');
-    if (type !== 'gcash' || !accountName || !/^09[0-9]{9}$/.test(accountNumber)) {
-      msg.hidden = false; msg.style.color = 'var(--danger)'; msg.textContent = 'Enter the GCash account name and 11-digit mobile number starting with 09.';
-      return;
-    }
-    const btn = document.getElementById('cartVerifySendBtn');
-    btn.disabled = true; btn.textContent = 'Sending…';
-    fetch('{{ route('buyer.payment-accounts.send-code') }}', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
-      body: JSON.stringify({ type, account_name: accountName, account_number: accountNumber }),
-    })
-    .then(r => r.json())
-    .then(data => {
-      btn.disabled = false; btn.textContent = 'Send verification code';
-      msg.hidden = false;
-      msg.style.color = data.success ? 'var(--success)' : 'var(--danger)';
-      msg.textContent = data.message;
-      if (data.success) {
-        document.getElementById('cartVerifyStep1').hidden = true;
-        document.getElementById('cartVerifyStep2').hidden = false;
-      }
-    })
-    .catch(() => { btn.disabled = false; btn.textContent = 'Send verification code'; msg.hidden = false; msg.style.color = 'var(--danger)'; msg.textContent = 'Network error. Try again.'; });
-  });
-
-  document.getElementById('cartVerifyConfirmBtn')?.addEventListener('click', () => {
-    const otp = document.getElementById('cartVerifyOtp').value.trim();
-    const msg = document.getElementById('cartVerifyMessage');
-    if (otp.length !== 6) {
-      msg.hidden = false; msg.style.color = 'var(--danger)'; msg.textContent = 'Enter the full 6-digit code.';
-      return;
-    }
-    fetch('{{ route('buyer.payment-accounts.verify') }}', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
-      body: JSON.stringify({ otp }),
-    })
-    .then(r => r.json())
-    .then(data => {
-      msg.hidden = false;
-      msg.style.color = data.success ? 'var(--success)' : 'var(--danger)';
-      msg.textContent = data.success ? 'Verified!' : data.message;
-      if (data.success) {
-        const key = data.account.type;
-        verifiedLookup[key] = true;
-        updateVerificationStatus();
-        setTimeout(() => document.getElementById('cartVerifyModal').classList.remove('open'), 800);
-      }
-    })
-    .catch(() => { msg.hidden = false; msg.style.color = 'var(--danger)'; msg.textContent = 'Network error. Try again.'; });
-  });
 
   const checkoutDock = document.querySelector('.cart-checkout-dock');
   const mobileNav = document.querySelector('.mobile-nav');
@@ -1003,4 +960,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
 @push('scripts')
 @if(\App\Services\BuyerCommerce::installed())<script src="{{ asset('js/buyer-cart-checkout.js') }}?v={{ filemtime(public_path('js/buyer-cart-checkout.js')) }}"></script>@endif
+<script src="{{ asset('js/cart-page.js') }}?v={{ filemtime(public_path('js/cart-page.js')) }}" defer></script>
 @endpush

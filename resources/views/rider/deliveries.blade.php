@@ -37,7 +37,7 @@
             </div>
           </td>
           <td><span class="stamp stamp-{{ $s->shipping_status }}">{{ ucfirst(str_replace('_', ' ', $s->shipping_status)) }}</span></td>
-          <td class="mono" style="font-size:11.5px">{{ $s->updated_at?->format('M d, Y H:i') }}</td>
+          <td class="mono" style="font-size:11.5px">{{ $s->updated_at?->format('M d, Y g:i A') }}</td>
           <td>
             <a href="{{ route('rider.deliveries.show', $s->id) }}" class="btn btn-sm btn-primary">
               {{ $nextLabel[$s->shipping_status] ?? 'Open' }}

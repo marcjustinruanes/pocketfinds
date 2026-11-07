@@ -44,7 +44,6 @@
   <div class="modal pf-confirm" style="max-width:380px">
     <div class="modal-head">
       <div><h3>Sign out?</h3><p>You will be returned to the login screen.</p></div>
-      <button class="modal-close" data-modal-close>✕</button>
     </div>
     <div class="modal-foot">
       <button class="btn btn-outline" data-modal-close>Cancel</button>
@@ -69,9 +68,6 @@
           <p id="cmSub" style="margin:2px 0 0;font-size:12px;color:var(--muted)"></p>
         </div>
       </div>
-      <button class="modal-close" onclick="closeCart()">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
     </div>
     <div class="modal-body" style="padding:20px 22px;display:flex;flex-direction:column;gap:16px">
 
@@ -117,7 +113,6 @@
     </div>
     <div class="modal-foot">
       <button class="btn btn-outline" onclick="closeCart()" style="display:flex;align-items:center;gap:7px">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         Cancel
       </button>
       <button class="btn btn-primary" id="cmConfirmBtn" onclick="cmConfirm()" style="display:flex;align-items:center;gap:7px">

@@ -15,10 +15,12 @@ use App\Services\GcashWorkflow;
 use App\Services\HubTransferWorkflow;
 use App\Services\LogisticsAccess;
 use App\Services\MediaLifecycle;
+use App\Services\RiderDeliveryOffers;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
 
 class RiderController extends Controller
@@ -47,7 +49,7 @@ class RiderController extends Controller
             'pickupRequests' => app(LogisticsAccess::class)->openParcelsForRider(auth()->user(), 'pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')->count(),
             'myPickups' => Shipment::where('pickup_rider_id', $riderId)->whereIn('shipping_status', ['ready_for_pickup', 'picked_up'])->count(),
             'myHubTransfers' => ShipmentHubLeg::where('rider_id', $riderId)->where('status', 'in_transit')->count(),
-            'deliveryRequests' => app(LogisticsAccess::class)->openParcelsForRider(auth()->user(), 'delivery')->whereNull('courier_id')->count(),
+            'deliveryRequests' => DeliveryAssignment::where('courier_id', $riderId)->where('leg', 'delivery')->where('status', 'offered')->where('expires_at', '>', now())->count(),
             'activeDeliveries' => Shipment::where('courier_id', $riderId)
                 ->whereIn('shipping_status', ['assigned_to_rider', 'out_for_delivery'])->count(),
             'unreadMessages' => Message::where('receiver_id', $riderId)->where('read', false)->count(),
@@ -65,6 +67,9 @@ class RiderController extends Controller
 
     public function dashboard()
     {
+        $offers = app(RiderDeliveryOffers::class);
+        $offers->expireOutstanding();
+        Shipment::where('logistics_company', auth()->user()->business_name)->where('shipping_status', 'sorted')->whereNull('courier_id')->cursor()->each(fn ($shipment) => $offers->offer($shipment));
         $counts = $this->sidebarCounts();
         $pickupsOpen = app(LogisticsAccess::class)->openParcelsForRider(auth()->user(), 'pickup')->with(['order.buyer', 'order.seller'])
             ->where('shipping_status', 'ready_for_pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')
@@ -94,9 +99,12 @@ class RiderController extends Controller
     /** Open pickup requests — a seller's parcel, approved by Logistics, awaiting a rider to claim it. */
     public function pickupRequests()
     {
+        $offers = app(RiderDeliveryOffers::class);
+        $offers->expireOutstanding();
+        Shipment::where('logistics_company', auth()->user()->business_name)->where('shipping_status', 'ready_for_pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')->cursor()->each(fn ($shipment) => $offers->offer($shipment, 'pickup'));
         $counts = $this->sidebarCounts();
-        $shipments = app(LogisticsAccess::class)->openParcelsForRider(auth()->user(), 'pickup')->with(['order.buyer', 'order.seller'])
-            ->where('shipping_status', 'ready_for_pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')
+        $shipments = Shipment::with(['order.buyer', 'order.seller'])->where('shipping_status', 'ready_for_pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')
+            ->whereHas('pickupAssignment', fn ($query) => $query->where('courier_id', auth()->id())->where('status', 'offered')->where('expires_at', '>', now()))
             ->latest('created_at')->get();
 
         return view('rider.pickup-requests', array_merge($counts, compact('shipments')));
@@ -112,6 +120,8 @@ class RiderController extends Controller
     public function acceptPickupRequest(Request $request, $id)
     {
         $riderId = auth()->id();
+        abort_unless(auth()->user()->is_available, 422, 'Go online before accepting pickup jobs.');
+        abort_if(app(RiderDeliveryOffers::class)->activeJobs($riderId) >= RiderDeliveryOffers::LIMIT, 422, 'You already have the maximum of three active jobs.');
         $shipment = app(LogisticsAccess::class)->openParcelsForRider(auth()->user(), 'pickup')->whereKey($id)->firstOrFail();
         GcashLocks::shipment((string) $id);
         $freshRider=app(\App\Services\AssignmentReassignment::class)->approvedRider(auth()->user(),$shipment);
@@ -120,6 +130,8 @@ class RiderController extends Controller
             GcashLocks::order($shipment->order_id);
             app(GcashWorkflow::class)->assertOrderOperation($shipment->order, true);
         }
+        $offer = DeliveryAssignment::where('shipment_id', $id)->where('leg', 'pickup')->where('courier_id', $riderId)->where('status', 'offered')->where('expires_at', '>', now())->lockForUpdate()->first();
+        abort_unless($offer, 422, 'This pickup offer is no longer available.');
         $claimed = app(LogisticsAccess::class)->openParcelsForRider($freshRider, 'pickup')->where('id', $id)
             ->where('shipping_status', 'ready_for_pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')
             ->update(['pickup_rider_id' => $riderId]);
@@ -128,10 +140,7 @@ class RiderController extends Controller
             return back()->withErrors(['status' => 'This pickup request was already accepted by another rider.']);
         }
 
-        DeliveryAssignment::updateOrCreate(
-            ['shipment_id' => $id, 'leg' => 'pickup'],
-            ['courier_id' => $riderId, 'status' => 'accepted', 'accepted_at' => now()]
-        );
+        $offer->update(['status' => 'accepted', 'accepted_at' => now(), 'expires_at' => null]);
 
         $shipment = Shipment::with('order')->find($id);
         if ($shipment->order) {
@@ -171,12 +180,14 @@ class RiderController extends Controller
      */
     public function confirmPickupReceipt($id)
     {
+        request()->validate(['tracking_number' => 'required|string|max:100']);
         DB::transaction(function () use ($id) {
             GcashLocks::shipment((string)$id);
             $shipment=Shipment::with('order')->where('pickup_rider_id',auth()->id())->whereKey($id)->lockForUpdate()->firstOrFail();
             $guard=app(\App\Services\AssignmentReassignment::class);
             $guard->approvedRider(auth()->user(),$shipment);$guard->assertNoPending($shipment->id,'pickup');
             abort_unless($shipment->shipping_status==='ready_for_pickup',422,'This pickup has already moved on.');
+            abort_unless(hash_equals((string) $shipment->tracking_number, trim((string) request('tracking_number'))), 422, 'That tracking number does not match this pickup.');
             abort_if($shipment->rider_confirmed_pickup_at,422,'You already confirmed receiving this parcel.');
             $shipment->update(['rider_confirmed_pickup_at'=>now()]);
             if($shipment->order?->seller_id) Order::notifyUser($shipment->order->seller_id,'Rider Confirmed Pickup','The rider confirmed receiving order #'.$shipment->order->order_number.'. Please confirm the handover.','order_status',$shipment->order_id);
@@ -214,9 +225,12 @@ class RiderController extends Controller
     /** Open delivery requests — a parcel that's been sorted and is awaiting a rider to claim it. */
     public function requests()
     {
+        $offers = app(RiderDeliveryOffers::class);
+        $offers->expireOutstanding();
+        Shipment::where('logistics_company', auth()->user()->business_name)->where('shipping_status', 'sorted')->whereNull('courier_id')->cursor()->each(fn ($shipment) => $offers->offer($shipment));
         $counts = $this->sidebarCounts();
-        $shipments = app(LogisticsAccess::class)->openParcelsForRider(auth()->user(), 'delivery')->with(['order.buyer', 'order.seller'])
-            ->where('shipping_status', 'sorted')->whereNull('courier_id')
+        $shipments = Shipment::with(['order.buyer', 'order.seller'])->where('shipping_status', 'sorted')->whereNull('courier_id')
+            ->whereHas('deliveryAssignment', fn ($query) => $query->where('courier_id', auth()->id())->where('status', 'offered')->where('expires_at', '>', now()))
             ->latest('created_at')->get();
 
         return view('rider.requests', array_merge($counts, compact('shipments')));
@@ -232,8 +246,14 @@ class RiderController extends Controller
     public function acceptRequest(Request $request, $id)
     {
         $riderId = auth()->id();
+        $actor = auth()->user();
+        abort_unless($actor->is_available, 422, 'Go online before accepting delivery jobs.');
 
-        $claimed = app(LogisticsAccess::class)->openParcelsForRider(auth()->user(), 'delivery')->where('id', $id)
+        $activeJobs = Shipment::where('courier_id', $riderId)->whereIn('shipping_status', ['assigned_to_rider', 'out_for_delivery'])->count();
+        abort_if($activeJobs >= RiderDeliveryOffers::LIMIT, 422, 'You already have the maximum of three active delivery jobs.');
+        $offer = DeliveryAssignment::where('shipment_id', $id)->where('leg', 'delivery')->where('courier_id', $riderId)->where('status', 'offered')->where('expires_at', '>', now())->first();
+        abort_unless($offer, 422, 'This delivery offer is no longer available.');
+        $claimed = Shipment::where('id', $id)->where('logistics_company', $actor->business_name)
             ->where('shipping_status', 'sorted')
             ->whereNull('courier_id')
             ->update(['courier_id' => $riderId, 'shipping_status' => 'assigned_to_rider', 'assigned_at' => now()]);
@@ -242,10 +262,7 @@ class RiderController extends Controller
             return back()->withErrors(['status' => 'This delivery request was already accepted by another courier.']);
         }
 
-        DeliveryAssignment::updateOrCreate(
-            ['shipment_id' => $id, 'leg' => 'delivery'],
-            ['courier_id' => $riderId, 'status' => 'assigned_to_rider', 'accepted_at' => now()]
-        );
+        $offer->update(['status' => 'assigned_to_rider', 'accepted_at' => now(), 'expires_at' => null]);
 
         $shipment = Shipment::find($id);
         $shipment->order?->update(['status' => 'assigned_to_rider']);
@@ -258,6 +275,33 @@ class RiderController extends Controller
         }
 
         return redirect()->route('rider.deliveries')->with('success', 'Delivery request accepted. Pick it up from the sorting center.');
+    }
+
+    public function declineRequest($id)
+    {
+        app(RiderDeliveryOffers::class)->decline(auth()->user(), $id);
+        return back()->with('success', 'Delivery offer declined. It was offered to another eligible rider.');
+    }
+
+    public function declinePickupRequest($id)
+    {
+        app(RiderDeliveryOffers::class)->decline(auth()->user(), $id, 'pickup');
+        return back()->with('success', 'Pickup offer declined. It was offered to another eligible rider.');
+    }
+
+    public function availability(Request $request)
+    {
+        $data = $request->validate(['is_available' => 'required|boolean']);
+        $rider = auth()->user();
+        abort_unless($rider->account_type === 'rider' && $rider->status === 'approved', 403);
+        $rider->update(['is_available' => (bool) $data['is_available'], 'availability_updated_at' => now()]);
+        if ($data['is_available']) {
+            $offers = app(RiderDeliveryOffers::class);
+            $offers->expireOutstanding();
+            Shipment::where('logistics_company', $rider->business_name)->where('shipping_status', 'ready_for_pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')->cursor()->each(fn ($shipment) => $offers->offer($shipment, 'pickup'));
+            Shipment::where('logistics_company', $rider->business_name)->where('shipping_status', 'sorted')->whereNull('courier_id')->cursor()->each(fn ($shipment) => $offers->offer($shipment, 'delivery'));
+        }
+        return back()->with('success', $data['is_available'] ? 'You are online and can receive delivery offers.' : 'You are offline and will not receive new delivery offers.');
     }
 
     /** "My Deliveries" — everything this rider has accepted but not yet finished, in flow order. */
@@ -324,6 +368,16 @@ class RiderController extends Controller
             app(\App\Services\AssignmentReassignment::class)->assertNoPending($shipment->id,'delivery');
 
             $cash = app(\App\Services\CodCollection::class);
+            if ($next === 'delivered') {
+                $request->validate(['delivery_proof' => 'required|file|mimes:jpg,jpeg,png|max:5120', 'delivery_otp' => 'required|digits:6']);
+                abort_if($shipment->delivery_otp_locked_until?->isFuture(), 422, 'Delivery OTP is locked. Try again after '.$shipment->delivery_otp_locked_until->format('g:i A').'.');
+                if (! $shipment->delivery_otp_hash || ! Hash::check($request->input('delivery_otp'), $shipment->delivery_otp_hash)) {
+                    $attempts = ((int) $shipment->delivery_otp_attempts) + 1;
+                    $shipment->update(['delivery_otp_attempts' => $attempts, 'delivery_otp_locked_until' => $attempts >= 5 ? now()->addMinutes(15) : null]);
+                    abort(422, $attempts >= 5 ? 'Too many incorrect OTP entries. Delivery confirmation is locked for 15 minutes.' : 'The delivery OTP is incorrect.');
+                }
+                $proofPath = app(MediaLifecycle::class)->store($request->file('delivery_proof'), 'delivery_proofs', 'sensitive_documents');
+            }
             if ($next === 'delivered' && $cash->installed() && $cash->isCod($order)) {
                 $cash->record(auth()->user(), $shipment, $request->only(['cod_amount', 'cod_confirmed', 'collection_key']));
             }
@@ -332,6 +386,14 @@ class RiderController extends Controller
             if (isset(self::STAGE_TIMESTAMPS[$next])) {
                 $updates[self::STAGE_TIMESTAMPS[$next]] = now();
             }
+            if ($next === 'out_for_delivery') {
+                $otp = (string) random_int(100000, 999999);
+                $updates['delivery_otp_hash'] = Hash::make($otp);
+                $updates['delivery_otp_ciphertext'] = Crypt::encryptString($otp);
+                $updates['delivery_otp_attempts'] = 0;
+                $updates['delivery_otp_locked_until'] = null;
+            }
+            if ($next === 'delivered') $updates['delivery_proof_file'] = $proofPath;
             $shipment->update($updates);
 
             DeliveryAssignment::where('shipment_id', $shipment->id)->where('leg', 'delivery')->where('courier_id', $actor->id)->whereNotIn('status', ['cancelled', 'rejected'])->update(array_filter([
@@ -349,6 +411,8 @@ class RiderController extends Controller
                 $order->update(['status' => $next]);
 
                 Order::notifyUser($order->buyer_id, 'Order Update', 'Your order #'.$order->order_number.' is now '.str_replace('_', ' ', $next).'.', 'order_status', $order->id);
+
+                if ($next === 'out_for_delivery') Order::notifyUser($order->buyer_id, 'Delivery OTP', 'Share this OTP only after receiving order #'.$order->order_number.': '.$otp.'.', 'delivery_otp', $order->id);
 
                 if ($next === 'delivered') {
                     Order::notifyUser($order->seller_id, 'Courier Marked as Delivered', 'Order #'.$order->order_number.' was marked delivered by the courier — awaiting the buyer\'s confirmation.', 'order_delivered', $order->id);
@@ -373,19 +437,23 @@ class RiderController extends Controller
     /** Rider reports a failed delivery attempt — "Reason Recorded" branch of the doc's flow. */
     public function markFailed(Request $request, $id)
     {
-        $data = $request->validate(['reason' => 'required|string|max:500']);
+        $data = $request->validate(['reason' => 'required|in:buyer_not_home,wrong_address,refused']);
         $shipment = Shipment::with('order')->where('courier_id', auth()->id())
             ->where('shipping_status', 'out_for_delivery')->findOrFail($id);
 
+        $attempts = (int) $shipment->delivery_attempts + 1;
+        $returned = $data['reason'] === 'refused' || $attempts >= 3;
         $shipment->update([
-            'shipping_status' => 'delivery_failed',
+            'shipping_status' => $returned ? 'returned' : 'delivery_failed',
             'delivery_failed_at' => now(),
             'delivery_failed_reason' => $data['reason'],
+            'delivery_attempts' => $attempts,
+            'returned_at' => $returned ? now() : null,
         ]);
-        $shipment->order?->update(['status' => 'delivery_failed']);
+        $shipment->order?->update(['status' => $returned ? 'returned' : 'delivery_failed']);
 
         DB::table('order_status_history')->insert([
-            'id' => (string) Str::uuid(), 'order_id' => $shipment->order_id, 'status' => 'delivery_failed',
+            'id' => (string) Str::uuid(), 'order_id' => $shipment->order_id, 'status' => $returned ? 'returned' : 'delivery_failed',
             'changed_by' => auth()->id(), 'notes' => $data['reason'], 'created_at' => now(),
         ]);
 
@@ -397,17 +465,22 @@ class RiderController extends Controller
                 'notification_type' => 'delivery_failed', 'reference_id' => $shipment->order_id,
                 'is_read' => false, 'created_at' => now(),
             ]);
+            Order::notifyUser($shipment->order->seller_id, $returned ? 'Order Returning to Sender' : 'Delivery Attempt Failed', 'Order #'.$shipment->order->order_number.' could not be delivered: '.str_replace('_', ' ', $data['reason']).'.', 'delivery_failed', $shipment->order_id);
+            User::where('is_logistics', true)->where('business_name', $shipment->logistics_company)->each(fn ($staff) => Order::notifyUser($staff->id, $returned ? 'Return to Sender Required' : 'Delivery Attempt Failed', 'Order #'.$shipment->order->order_number.' requires logistics follow-up.', 'delivery_failed', $shipment->order_id));
         }
 
-        return redirect()->route('rider.deliveries')->with('success', 'Delivery attempt marked as failed. Logistics will follow up on redelivery or return.');
+        return redirect()->route('rider.deliveries')->with('success', $returned ? 'Delivery marked for return to sender.' : 'Delivery attempt recorded. Logistics can schedule another attempt.');
     }
 
-    public function history()
+    public function history(Request $request)
     {
         $counts = $this->sidebarCounts();
+        $data = $request->validate(['from' => 'nullable|date', 'to' => 'nullable|date|after_or_equal:from']);
         $shipments = Shipment::with(['order.buyer', 'order.seller'])
             ->where('courier_id', auth()->id())
             ->whereIn('shipping_status', ['delivered', 'completed', 'delivery_failed', 'returned'])
+            ->when($data['from'] ?? null, fn ($query, $date) => $query->whereDate('updated_at', '>=', $date))
+            ->when($data['to'] ?? null, fn ($query, $date) => $query->whereDate('updated_at', '<=', $date))
             ->latest('updated_at')->get();
 
         return view('rider.history', array_merge($counts, compact('shipments')));
@@ -548,6 +621,31 @@ class RiderController extends Controller
             [],
             'address_success'
         );
+    }
+
+    /** Vehicle or document changes are reviewed before they replace approved rider records. */
+    public function vehicleUpdate(Request $request)
+    {
+        $data = $request->validate([
+            'vehicle_type' => 'required|in:two_wheels,four_wheels',
+            'vehicle_ownership' => 'required|in:own,company',
+            'vehicle_brand' => 'nullable|string|max:100', 'vehicle_model' => 'nullable|string|max:100',
+            'plate_number' => 'nullable|string|max:20',
+            'license_number' => 'required|string|max:30',
+            'license_expiry' => 'required|date|after_or_equal:'.now()->addMonth()->toDateString(),
+            'license_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'or_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'cr_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+        ]);
+        if ($data['vehicle_ownership'] === 'own') {
+            $request->validate(['vehicle_brand' => 'required|string|max:100', 'vehicle_model' => 'required|string|max:100', 'plate_number' => 'required|string|max:20']);
+            $plate = mb_strtolower(preg_replace('/\s+/', '', $data['plate_number']));
+            $duplicate = User::where('account_type', 'rider')->whereKeyNot(auth()->id())->whereRaw('LOWER(REPLACE(plate_number, " ", "")) = ?', [$plate])->exists();
+            abort_if($duplicate, 422, 'This plate number is already registered to another rider.');
+        }
+        return $this->submitAccountUpdateRequest($request,
+            ['vehicle_type', 'vehicle_ownership', 'vehicle_brand', 'vehicle_model', 'plate_number', 'license_number', 'license_expiry'],
+            ['license_file' => 'sensitive_documents', 'or_file' => 'sensitive_documents', 'cr_file' => 'sensitive_documents'], 'vehicle_success');
     }
 
     public function passwordUpdate(Request $request)

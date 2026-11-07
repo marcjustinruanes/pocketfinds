@@ -7,9 +7,9 @@
 <section class="live-monitor-page">
 <section class="card card-pad monitor-lookup" id="parcel-lookup">
   <h2>Find a parcel</h2>
-  <p>Enter a tracking or order number. Search includes historical parcels within your permitted scope. Hub Staff records physical receipt; Riders confirm their assigned work.</p>
+  <p>Search by tracking number, order number, or buyer name. Search includes historical parcels within your permitted scope. Hub Staff records physical receipt; Riders confirm their assigned work.</p>
   <form method="GET" action="{{ route('logistics.monitor') }}" class="parcel-lookup-form">
-    <label for="monitor-search">Tracking or order number<input class="input" id="monitor-search" name="search" maxlength="100" value="{{ $search }}" placeholder="Enter tracking or order number"></label>
+    <label for="monitor-search">Tracking, order, or buyer<input class="input" id="monitor-search" name="search" maxlength="100" value="{{ $search }}" placeholder="Enter tracking, order, or buyer"></label>
     @if(request('stage'))<input type="hidden" name="stage" value="{{ request('stage') }}">@endif
     <button class="btn btn-primary">Find parcel</button><a class="btn" href="{{ route('logistics.monitor') }}">Clear</a>
   </form>
@@ -47,7 +47,7 @@
           </td>
           <td>{{ optional($s->courier)->given_names ? optional($s->courier)->given_names . ' ' . optional($s->courier)->last_name : '—' }}</td>
           <td><span class="stamp stamp-{{ $s->shipping_status }}">{{ ucfirst(str_replace('_',' ',$s->shipping_status)) }}</span></td>
-          <td class="mono" style="font-size:11.5px">{{ $s->updated_at?->format('M d, Y H:i') ?? '—' }}</td>
+          <td class="mono" style="font-size:11.5px">{{ $s->updated_at?->format('M d, Y g:i A') ?? '—' }}</td>
           <td>
             @php($allowedNext = array_values(array_diff($transitions[$s->shipping_status] ?? [], ['returned','out_for_delivery'])))
             @if(count($allowedNext))
@@ -58,7 +58,7 @@
                 <option value="{{ $st }}">{{ ucfirst(str_replace('_',' ',$st)) }}</option>
                 @endforeach
               </select>
-              <label>Reason<input name="reason" minlength="3" maxlength="500" required style="min-height:44px;max-width:180px"></label><button class="btn btn-sm btn-primary">Update</button>
+              <label>Reason<input name="reason" minlength="10" maxlength="300" required style="min-height:44px;max-width:180px"></label><button class="btn btn-sm btn-primary">Update</button>
             </form>
             @elseif($s->shipping_status === 'sorted')
             <a href="{{ route('logistics.assignments') }}" style="color:var(--pink-dark);font-size:12px;font-weight:600">Assign a courier →</a>

@@ -254,7 +254,7 @@
 </script>
 <div class="modal-overlay" id="reportModal">
   <div class="modal" style="max-width:520px">
-    <div class="modal-head"><div><h3>Report Message</h3><p>Send this report to the admin team.</p></div><button class="modal-close" type="button" onclick="closeReportModal()">×</button></div>
+    <div class="modal-head"><div><h3>Report Message</h3><p>Send this report to the admin team.</p></div></div>
     <form id="reportForm" enctype="multipart/form-data">
       <div class="modal-body">
         <input type="hidden" name="message_id" id="reportMessageId">

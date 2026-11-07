@@ -40,8 +40,8 @@ class DeliveryGuarantee
     public static function window(int $minDays = 1, int $maxDays = 7, float $lateVoucherAmount = self::LATE_VOUCHER_AMOUNT): array
     {
         $today = now()->timezone(self::TIMEZONE)->startOfDay();
-        $from = $today->copy()->addDays($minDays)->utc()->toDateTimeString();
-        $by = $today->copy()->addDays($maxDays)->endOfDay()->utc()->toDateTimeString();
+        $from = $today->copy()->addDays($minDays)->toDateTimeString();
+        $by = $today->copy()->addDays($maxDays)->endOfDay()->toDateTimeString();
 
         return [
             'from' => $from,
@@ -67,8 +67,8 @@ class DeliveryGuarantee
 
     public static function label(string $from, string $by): string
     {
-        $start = Carbon::parse($from, 'UTC')->timezone(self::TIMEZONE);
-        $end = Carbon::parse($by, 'UTC')->timezone(self::TIMEZONE);
+        $start = Carbon::parse($from, config('app.timezone'))->timezone(self::TIMEZONE);
+        $end = Carbon::parse($by, config('app.timezone'))->timezone(self::TIMEZONE);
 
         return $start->format('Y-m') === $end->format('Y-m')
             ? $start->format('j').' – '.$end->format('j M')
@@ -104,7 +104,7 @@ class DeliveryGuarantee
                         $delivered = DB::table('shipments')->where('order_id', $order->id)->value('delivered_at');
                         $history = DB::table('order_status_history')->where('order_id', $order->id)->where('status', 'delivered')->min('created_at');
                         $times = array_filter([$delivered, $history]);
-                        $arrived = $times ? Carbon::parse(min($times), 'UTC') : null;
+                        $arrived = $times ? Carbon::parse(min($times), config('app.timezone')) : null;
                         if ($arrived && $arrived->lte($order->delivery_guaranteed_by)) return 0;
                         if (! $arrived && in_array($order->status, ['delivered', 'completed'])) return 0;
                         $code = 'LATE'.strtoupper(Str::random(8));

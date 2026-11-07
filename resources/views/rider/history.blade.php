@@ -6,6 +6,7 @@
 @section('content')
 <div class="card">
   <div class="card-head"><h2>Finished Deliveries</h2><span class="stamp stamp-approved">{{ $shipments->count() }} total</span></div>
+  <form method="GET" style="display:flex;gap:8px;padding:0 18px 16px;align-items:end"><label style="font-size:12px">From<input type="date" name="from" value="{{ request('from') }}"></label><label style="font-size:12px">To<input type="date" name="to" value="{{ request('to') }}"></label><button class="btn btn-sm btn-outline">Filter</button></form>
   <div class="table-wrap">
     <table class="dtable">
       <thead>
@@ -25,7 +26,7 @@
           <td>{{ optional(optional($s->order)->seller)->business_name ?? optional(optional($s->order)->seller)->given_names }}</td>
           <td>{{ optional(optional($s->order)->buyer)->given_names }} {{ optional(optional($s->order)->buyer)->last_name }}</td>
           <td class="mono">₱{{ number_format(optional($s->order)->total ?? 0, 2) }}</td>
-          <td class="mono">{{ ($s->delivered_at ?? $s->delivery_failed_at ?? $s->returned_at)?->format('M d, Y H:i') ?? '—' }}</td>
+          <td class="mono">{{ ($s->delivered_at ?? $s->delivery_failed_at ?? $s->returned_at)?->format('M d, Y g:i A') ?? '—' }}</td>
           <td><span class="stamp stamp-{{ $s->shipping_status }}">{{ ucfirst(str_replace('_', ' ', $s->shipping_status)) }}</span></td>
         </tr>
         @empty

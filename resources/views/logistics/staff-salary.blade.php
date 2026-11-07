@@ -30,7 +30,7 @@
       <div><span>Recorded paid</span><strong>PHP {{ number_format(($summary->paid??0)/100,2) }}</strong></div>
       <div><span>Not generated</span><strong>{{ $summary->ungenerated??0 }}</strong></div>
     </div>
-    <p>Totals follow the selected period and filters. Not generated is not an established payable balance. Prepared reserves funds; Verified is still unpaid. Overdue means an unpaid generated obligation is past its due date in PHT.</p>
+    <p>Totals follow the selected period and filters. Not generated is not an established payable balance. Prepared reserves funds; Verified is still unpaid. Overdue means an unpaid generated obligation is past its due date.</p>
     <a class="btn" href="{{ route('logistics.finance.staff.export',$filters) }}">Export filtered payroll CSV</a>
   </section>
 
@@ -53,7 +53,7 @@
           <td><label class="payroll-checkbox"><input form="payroll-selection" class="payroll-row-checkbox" type="checkbox" name="ids[]" value="{{ $member->id }}" @checked(in_array($member->id,old('ids',[]))) aria-label="Select {{ $member->given_names }} {{ $member->last_name }}, account {{ $member->id }}"><span class="sr-only">Select #{{ $member->id }}</span></label></td>
           <td><strong>{{ $member->given_names }} {{ $member->last_name }}</strong><small>Account #{{ $member->id }}</small><small>{{ $member->hub_name ?? 'Unassigned hub' }} / #{{ $member->logistics_hub_id }}</small></td>
           <td>{{ $member->monthly_cents ? 'PHP '.number_format($member->monthly_cents/100,2) : 'Not configured' }}<small>{{ !$member->monthly_cents ? 'Missing Salary Configuration' : ($member->salary_source==='hub' ? 'Hub default / hub #'.$member->source_hub_id : 'Individual override') }}</small>@if($member->period_effective)<small>Effective {{ $member->period_effective }}</small>@endif @if($member->snapshot_monthly_cents!==null && $member->snapshot_monthly_cents!=$member->monthly_cents)<small>Period basis: PHP {{ number_format($member->snapshot_monthly_cents/100,2) }}</small>@endif</td>
-          <td>{{ ($member->period_id || $member->snapshot_monthly_cents>0) ? 'PHP '.number_format($member->installment_cents/100,2) : 'No salary snapshot' }}<small>{{ $member->due_date }} PHT</small>@unless($member->period_id)<small>Estimate; not generated</small>@endunless</td>
+          <td>{{ ($member->period_id || $member->snapshot_monthly_cents>0) ? 'PHP '.number_format($member->installment_cents/100,2) : 'No salary snapshot' }}<small>{{ $member->due_date }}</small>@unless($member->period_id)<small>Estimate; not generated</small>@endunless</td>
           <td><strong>{{ $member->acknowledged_at ? 'Acknowledged' : ucfirst($member->period_status ?? 'Not generated') }}</strong>@foreach($member->labels as $label)<span class="payroll-attention">{{ $label }}</span>@endforeach</td>
           <td>
             @if($member->payout_id)

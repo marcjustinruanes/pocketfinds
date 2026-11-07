@@ -96,3 +96,17 @@ test('an older quote response cannot replace the latest cart calculation',async(
     pending[0](quote(999)); assert.equal(await first,false);
     assert.match(ui.nodes.cartTotal.textContent,/250\.00/);
 });
+
+test('reducing selected spend clears an ineligible voucher and increasing it makes the option available again',async()=>{
+    let body,quantity=1;
+    const ui=cart(async(url,options)=>{body=JSON.parse(options.body);return quote(340);});
+    ui.shops[0].querySelectorAll=()=>[{dataset:{price:'100',qty:String(quantity),productId:'p1'}}];
+    const option={value:'STORE10',dataset:{voucherSeller:'1',minimumSpend:'150'},selected:true};
+    ui.vouchers[0].options=[option];
+    await ui.prepare({});
+    assert.equal(option.hidden,true);assert.equal(ui.vouchers[0].value,'');
+    assert.deepEqual(body.vouchers,['PLAT30']);
+    quantity=2;
+    await ui.prepare({});
+    assert.equal(option.hidden,false);assert.equal(option.disabled,false);
+});

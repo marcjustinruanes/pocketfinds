@@ -40,6 +40,57 @@ class BuyerModulesTest extends TestCase
     {
         return BuyerAddress::create(['buyer_id'=>$owner->id,'recipient_name'=>'Ana Reyes','contact_no'=>'09171234567','region'=>'Region IV-A','province'=>'Laguna','municipality'=>'Pila','barangay'=>'A','postal_code'=>'4010','is_default'=>$default]);
     }
+    public function test_login_details_require_current_password_and_a_unique_username(): void
+    {
+        $payload=['username'=>'new.buyer','current_password'=>'Wrong@2026','password'=>'Updated@2026','password_confirmation'=>'Updated@2026'];
+        $original=$this->buyer->username;
+        $this->actingAs($this->buyer)->post(route('buyer.account.password'),$payload)->assertSessionHasErrors('current_password');
+        $this->assertSame($original,$this->buyer->fresh()->username);
+        $payload['current_password']='Pass@2026';$payload['username']=$this->seller->username;
+        $this->postJson(route('buyer.account.password'),$payload)->assertUnprocessable()->assertJsonValidationErrors('username');
+        $payload['username']='new.buyer';
+        $this->post(route('buyer.account.password'),$payload)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('new.buyer',$this->buyer->fresh()->username);
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('Updated@2026',$this->buyer->fresh()->password));
+    }
+    public function test_email_verification_in_place_is_bound_to_the_requested_email(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        $email='updated-buyer@gmail.com';
+        $this->actingAs($this->buyer)->postJson(route('buyer.commerce.email.code'), ['email'=>$email])
+            ->assertOk()->assertJson(['email'=>$email]);
+        $this->assertNotSame($email,$this->buyer->fresh()->email);
+        Cache::put('buyer-email-change:'.$this->buyer->id,['email'=>$email,'hash'=>\Illuminate\Support\Facades\Hash::make('123456')],now()->addMinutes(5));
+        $this->postJson(route('buyer.commerce.email.verify'),['email'=>'different@gmail.com','otp'=>'123456'])->assertUnprocessable();
+        $this->assertNotSame($email,$this->buyer->fresh()->email);
+        $this->postJson(route('buyer.commerce.email.verify'),['email'=>$email,'otp'=>'123456'])->assertOk()->assertJson(['email'=>$email]);
+        $this->assertSame($email,$this->buyer->fresh()->email);
+        $this->assertNotNull($this->buyer->fresh()->email_verified_at);
+    }
+    private function mockAccountGoogleEmail(string $email): void
+    {
+        $google=new \Laravel\Socialite\Two\User;
+        $google->map(['id'=>'account-google-user','email'=>$email]);$google->user=['email_verified'=>true];
+        $provider=\Mockery::mock();$provider->shouldReceive('setHttpClient')->once()->andReturnSelf();$provider->shouldReceive('user')->once()->andReturn($google);
+        \Laravel\Socialite\Facades\Socialite::shouldReceive('driver')->with('google')->once()->andReturn($provider);
+    }
+    public function test_google_verifies_a_new_account_email_without_changing_username_or_logged_in_user(): void
+    {
+        $username=$this->buyer->username;
+        $this->mockAccountGoogleEmail('new-google-buyer@gmail.com');
+        $this->actingAs($this->buyer)->withSession(['oauth_intent'=>'account-email','oauth_account_email_owner'=>$this->buyer->id,'oauth_account_email_expires'=>now()->addMinutes(10)->timestamp])
+            ->get(route('google.callback',['code'=>'test']))->assertRedirect(route('buyer.account').'#account-security')->assertSessionHas('account_google_email','new-google-buyer@gmail.com');
+        $this->assertAuthenticatedAs($this->buyer);
+        $this->assertSame('new-google-buyer@gmail.com',$this->buyer->fresh()->email);
+        $this->assertSame($username,$this->buyer->fresh()->username);
+    }
+    public function test_google_account_email_cannot_take_an_email_registered_to_another_account(): void
+    {
+        $email=$this->buyer->email;$this->mockAccountGoogleEmail($this->seller->email);
+        $this->actingAs($this->buyer)->withSession(['oauth_intent'=>'account-email','oauth_account_email_owner'=>$this->buyer->id,'oauth_account_email_expires'=>now()->addMinutes(10)->timestamp])
+            ->get(route('google.callback',['code'=>'test']))->assertSessionHasErrors('email');
+        $this->assertSame($email,$this->buyer->fresh()->email);
+    }
     public function test_buyer_and_seller_can_upload_real_profile_images_but_not_documents(): void
     {
         foreach([$this->buyer,$this->seller] as $u){
@@ -81,6 +132,16 @@ class BuyerModulesTest extends TestCase
         $this->actingAs($this->seller)->delete(route('seller.shop-categories.delete',$parent))->assertRedirect();
         $this->assertSame(0,DB::table('shop_category_products')->count());$this->assertNotNull($product->fresh());
     }
+    public function test_order_details_show_variant_thumbnail_without_column_headings(): void
+    {
+        $product = Product::create(['seller_id'=>$this->seller->id, 'name'=>'Pink bag', 'price'=>100, 'stock'=>5, 'status'=>'active', 'variations'=>[['name'=>'Color', 'options'=>[['value'=>'Pink', 'image'=>'products/pink.jpg']]]]]);
+        $order = Order::create(['order_number'=>'IMAGE-1', 'buyer_id'=>$this->buyer->id, 'seller_id'=>$this->seller->id, 'status'=>'placed', 'subtotal'=>200, 'total'=>200, 'items'=>[['product_id'=>$product->id, 'name'=>'Pink bag', 'variation_group'=>'Color', 'variation_value'=>'Pink', 'price'=>100, 'qty'=>2]]]);
+        $this->assertStringEndsWith('/products/pink.jpg', $order->itemsWithImages()[0]['img']);
+        $this->actingAs($this->buyer)->get(route('buyer.orders'))->assertOk()->assertSee('products/pink.jpg')->assertSee('Color: Pink')->assertDontSee('Count × original price')->assertDontSee('Product / variant');
+        $order->items = [array_merge($order->items[0], ['img'=>'https://example.com/saved-pink.jpg'])];
+        $this->assertSame('https://example.com/saved-pink.jpg', $order->itemsWithImages()[0]['img']);
+    }
+
     public function test_review_variation_is_read_from_order_even_if_product_changes(): void
     {
         $order=Order::create(['order_number'=>'REVIEW-1','buyer_id'=>$this->buyer->id,'seller_id'=>$this->seller->id,'status'=>'completed','subtotal'=>100,'total'=>100,'items'=>[['product_id'=>'old-product','variation_group'=>'Color / Size','variation_value'=>'Pink / M','price'=>100,'qty'=>1]]]);
@@ -110,6 +171,17 @@ class BuyerModulesTest extends TestCase
     {
         $order=Order::create(['order_number'=>'COD-1','buyer_id'=>$this->buyer->id,'seller_id'=>$this->seller->id,'status'=>'cancelled','subtotal'=>100,'total'=>100,'items'=>[]]);
         DB::transaction(fn()=>app(CancellationRefund::class)->initiate($order));$this->assertSame(0,DB::table('cancellation_refunds')->count());
+    }
+    public function test_retiring_existing_shipping_vouchers_preserves_discounts_and_claim_history(): void
+    {
+        $common=['seller_id'=>$this->seller->id,'discount_type'=>'fixed','amount'=>20,'minimum_spend'=>0,'starts_at'=>now()->subDay(),'ends_at'=>now()->addDay(),'usage_limit'=>10,'per_buyer_limit'=>1,'is_active'=>true];
+        $shipping=DB::table('commerce_vouchers')->insertGetId($common+['code'=>'SHIP20','kind'=>'shipping']);
+        $discount=DB::table('commerce_vouchers')->insertGetId($common+['code'=>'OFF20','kind'=>'store']);
+        DB::table('commerce_claims')->insert(['buyer_id'=>$this->buyer->id,'voucher_id'=>$shipping]);
+        (require database_path('migrations/2026_11_07_100000_disable_existing_free_shipping_vouchers.php'))->up();
+        $this->assertFalse((bool)DB::table('commerce_vouchers')->where('id',$shipping)->value('is_active'));
+        $this->assertTrue((bool)DB::table('commerce_vouchers')->where('id',$discount)->value('is_active'));
+        $this->assertDatabaseHas('commerce_claims',['buyer_id'=>$this->buyer->id,'voucher_id'=>$shipping]);
     }
     public function test_following_and_management_screens_are_reachable_and_scoped(): void
     {

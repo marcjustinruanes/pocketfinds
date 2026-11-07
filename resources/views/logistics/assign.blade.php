@@ -71,7 +71,7 @@
             @endif
           </td>
           <td style="font-size:12px;color:var(--muted)">
-            {{ $s->assignment?->accepted_at ? \Carbon\Carbon::parse($s->assignment->accepted_at)->format('M d, H:i') : '—' }}
+            {{ $s->assignment?->accepted_at ? \Carbon\Carbon::parse($s->assignment->accepted_at)->format('M d, g:i A') : '—' }}
           </td>
         </tr>
         @empty

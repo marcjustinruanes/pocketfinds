@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -177,8 +178,10 @@ class CommerceController extends Controller
     {
         $u = $this->emailAccount($r);
         $r->merge(['email' => strtolower(trim((string) $r->input('email')))]);
-        $d = $r->validate(['email' => ['required', 'email', 'regex:/@gmail\.com$/i', 'unique:users,email'], 'current_password' => 'required|string']);
-        if (! Hash::check($d['current_password'], $u->password)) {
+        $rules = ['email' => ['required', 'email', 'regex:/@gmail\.com$/i', 'unique:users,email']];
+        if ($u->account_type !== 'buyer') $rules['current_password'] = 'required|string';
+        $d = $r->validate($rules);
+        if ($u->account_type !== 'buyer' && ! Hash::check($d['current_password'], $u->password)) {
             $this->flow()->fail('Current password is incorrect.', 'current_password');
         }
         $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
@@ -189,18 +192,23 @@ class CommerceController extends Controller
         }
         Cache::put('buyer-email-change:'.$u->id, ['email' => $d['email'], 'hash' => Hash::make($code), 'attempts' => 0], now()->addMinutes(5));
 
+        if ($r->expectsJson()) return response()->json(['message' => 'Verification code sent.', 'email' => $d['email']]);
+
         return back()->with('success', 'Code sent to your new email. Your current email remains unchanged.');
     }
 
     public function emailVerify(Request $r)
     {
         $u = $this->emailAccount($r);
-        $d = $r->validate(['otp' => 'required|digits:6']);
+        $d = $r->validate(['otp' => 'required|digits:6', 'email' => 'sometimes|required|email']);
         $key = 'buyer-email-change:'.$u->id;
         Cache::lock($key.':lock', 10)->block(5, function () use ($u, $d, $key) {
             $pending = Cache::get($key);
             if (! $pending) {
                 $this->flow()->fail('Code expired. Request a new code.', 'otp');
+            }
+            if (isset($d['email']) && strcasecmp(trim($d['email']), $pending['email']) !== 0) {
+                $this->flow()->fail('Email changed. Request a new verification code.', 'email');
             }
             if (! Hash::check($d['otp'], $pending['hash'])) {
                 Cache::forget($key);
@@ -215,6 +223,7 @@ class CommerceController extends Controller
             Cache::forget($key);
         });
 
+        if ($r->expectsJson()) return response()->json(['message' => 'Email verified and updated.', 'email' => $u->fresh()->email]);
         return back()->with('success', 'Email verified and updated.');
     }
 
@@ -414,10 +423,49 @@ class CommerceController extends Controller
     {
         $u = $this->buyer($r);
         abort_unless($order->buyer_id === $u->id, 403);
-        if ($order->status !== 'completed' || $this->completedAt($order)->lt(now()->subDays(30))) {
+        $requestedType = $r->input('review_type', 'product');
+        $hasExistingReview = $review
+            || ($requestedType === 'product' && $r->filled('item_key') && Review::where('order_id', $order->id)->where('buyer_id', $u->id)->where('item_key', (string) $r->input('item_key'))->exists())
+            || (in_array($requestedType, ['shop', 'rider'], true) && Schema::hasTable('order_service_reviews') && DB::table('order_service_reviews')->where('order_id', $order->id)->where('buyer_id', $u->id)->where('review_type', $requestedType)->exists());
+        if ($order->status !== 'completed' || ($this->completedAt($order)->lt(now()->subDays(30)) && ! $hasExistingReview)) {
             $this->flow()->fail('Reviews are available for 30 days after completion.');
         }
-        $d = $r->validate(['item_key' => 'required|integer|min:0', 'rating' => 'required|integer|between:1,5', 'comment' => 'nullable|string|max:500', 'photos' => 'nullable|array|max:5', 'photos.*' => 'image|mimes:jpg,jpeg,png|max:5120']);
+        $d = $r->validate([
+            'review_type' => 'nullable|in:product,shop,rider',
+            'item_key' => 'required_if:review_type,product|nullable|integer|min:0',
+            'rating' => 'required|integer|between:1,5',
+            'comment' => 'nullable|string|max:500',
+            'media' => 'nullable|array|max:5',
+            'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,qt|max:20480',
+        ]);
+        foreach ($r->file('media', []) as $file) {
+            if (str_starts_with((string) $file->getMimeType(), 'image/') && $file->getSize() > 5 * 1024 * 1024) {
+                $this->flow()->fail('Each review photo must be 5 MB or smaller.', 'media');
+            }
+        }
+        $type = $d['review_type'] ?? 'product';
+
+        if ($type !== 'product') {
+            DB::transaction(function () use ($u, $order, $d, $r, $type) {
+                Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+                $media = [];
+                foreach ($r->file('media', []) as $file) {
+                    $media[] = [
+                        'path' => app(MediaLifecycle::class)->store($file, 'review-media', 'public'),
+                        'type' => str_starts_with((string) $file->getMimeType(), 'video/') ? 'video' : 'image',
+                    ];
+                }
+                $existing = DB::table('order_service_reviews')->where('order_id', $order->id)->where('review_type', $type)->lockForUpdate()->first();
+                $values = ['rating' => $d['rating'], 'comment' => $d['comment'] ?? null, 'media' => json_encode($media ?: json_decode($existing->media ?? '[]', true)), 'updated_at' => now()];
+                if ($existing) {
+                    DB::table('order_service_reviews')->where('id', $existing->id)->update($values);
+                } else {
+                    DB::table('order_service_reviews')->insert($values + ['id' => (string) Str::uuid(), 'order_id' => $order->id, 'buyer_id' => $u->id, 'seller_id' => $order->seller_id, 'review_type' => $type, 'created_at' => now()]);
+                }
+            });
+
+            return back()->with('success', ucfirst($type).' feedback saved.');
+        }
         $item = $order->items[$d['item_key']] ?? null;
         abort_unless($item, 422);
         DB::transaction(function () use ($u, $order, $review, $d, $r, $item) {
@@ -425,20 +473,22 @@ class CommerceController extends Controller
             $existing = Review::where('order_id', $order->id)->where('item_key', (string) $d['item_key'])->lockForUpdate()->first();
             if ($review) {
                 abort_unless($review->buyer_id === $u->id && $existing?->id === $review->id, 403);
-                if ($existing->edited_at) {
-                    $this->flow()->fail('This review has already been edited once.');
-                }
             } elseif ($existing) {
-                $this->flow()->fail('You already reviewed this item. Use Edit.');
+                $review = $existing;
             }
+            $media = $existing?->media ?? [];
             $photos = $existing?->photos ?? [];
-            if ($r->hasFile('photos')) {
+            if ($r->hasFile('media')) {
+                $media = [];
                 $photos = [];
-                foreach ($r->file('photos') as $file) {
-                    $photos[] = app(MediaLifecycle::class)->store($file, 'review-photos', 'public');
+                foreach ($r->file('media') as $file) {
+                    $type = str_starts_with((string) $file->getMimeType(), 'video/') ? 'video' : 'image';
+                    $path = app(MediaLifecycle::class)->store($file, 'review-media', 'public');
+                    $media[] = ['path' => $path, 'type' => $type];
+                    if ($type === 'image') $photos[] = $path;
                 }
             }
-            $values = ['order_id' => $order->id, 'item_key' => (string) $d['item_key'], 'buyer_id' => $u->id, 'seller_id' => $order->seller_id, 'product_id' => $item['product_id'], 'rating' => $d['rating'], 'comment' => $d['comment'] ?? null, 'photos' => $photos];
+            $values = ['order_id' => $order->id, 'item_key' => (string) $d['item_key'], 'buyer_id' => $u->id, 'seller_id' => $order->seller_id, 'product_id' => $item['product_id'], 'rating' => $d['rating'], 'comment' => $d['comment'] ?? null, 'photos' => $photos, 'media' => $media];
             if ($review) {
                 $values['edited_at'] = now();
             }$existing ? $existing->update($values) : Review::create($values);

@@ -317,7 +317,7 @@ class LogisticsManagementController extends LogisticsController
     public function storeIssue(Request $request)
     {
         return DB::transaction(function()use($request){
-        $data = $request->validate(['tracking_number' => 'required|string|max:100', 'kind' => 'required|in:delivery_failed,lost,damaged,transfer_problem,other', 'description' => 'required|string|max:2000', 'hub_id' => [auth()->user()->isHubStaff() ? 'nullable' : 'required', 'integer', Rule::exists('logistics_hubs', 'id')->where('company_name', auth()->user()->business_name)->where('is_operational', true)]]);
+        $data = $request->validate(['tracking_number' => 'required|string|max:100', 'kind' => 'required|in:delivery_failed,lost,damaged,transfer_problem,other', 'description' => 'required|string|min:10|max:2000', 'proof' => 'required_if:kind,damaged|file|mimes:jpg,jpeg,png|max:5120', 'hub_id' => [auth()->user()->isHubStaff() ? 'nullable' : 'required', 'integer', Rule::exists('logistics_hubs', 'id')->where('company_name', auth()->user()->business_name)->where('is_operational', true)]]);
         $shipment = $this->companyScope()->where('tracking_number', trim($data['tracking_number']))->firstOrFail();
         $hub = $this->companyHubs()->findOrFail(auth()->user()->isHubStaff() ? auth()->user()->logistics_hub_id : $data['hub_id']);
         $access = app(LogisticsAccess::class);

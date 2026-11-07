@@ -270,8 +270,18 @@ class Order extends Model
             $img = $item['img'] ?? null;
             if (! $img || (! str_starts_with($img, 'http') && ! str_starts_with($img, '/storage/'))) {
                 $product = $products->get($item['product_id'] ?? null);
-                $path = $product?->image ?: ($product?->images[0] ?? null);
-                $item['img'] = $path ? rtrim(config('filesystems.disks.public.url'), '/').'/'.ltrim($path, '/') : null;
+                $variantImage = null;
+                foreach ($product?->variations ?? [] as $group) {
+                    if (($group['name'] ?? null) !== ($item['variation_group'] ?? null)) continue;
+                    foreach ($group['options'] ?? [] as $option) {
+                        if (($option['value'] ?? null) === ($item['variation_value'] ?? $item['color'] ?? null)) {
+                            $variantImage = $option['image'] ?? null;
+                            break 2;
+                        }
+                    }
+                }
+                $path = $img ?: ($variantImage ?: ($product?->image ?: ($product?->images[0] ?? null)));
+                $item['img'] = $path ? (str_starts_with($path, 'http') || str_starts_with($path, '/storage/') ? $path : rtrim(config('filesystems.disks.public.url'), '/').'/'.ltrim($path, '/')) : null;
             }
 
             return $item;

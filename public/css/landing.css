@@ -743,6 +743,13 @@ html.hero-intro.hero-revealed #about {
 .pf-shop-view-btn:hover { border-color: #bf3c7d; color: #bf3c7d; box-shadow: none; }
 
 /* ── Deal cards (compact, horizontally-scrolling) ────────────────────────────*/
+.pf-product-card.pf-product-deal,.pf-product-card.pf-product-deal:hover{background:#382332;border-color:#765368}
+.pf-product-card.pf-product-deal .pf-product-body{background:#382332}
+.pf-product-card.pf-product-deal .pf-product-name{color:#f8edf3}
+.pf-product-card.pf-product-deal .pf-product-price{color:#ffc2df}
+.pf-product-card.pf-product-deal :is(.pf-product-old-price,.pf-product-loc){color:#d6b4c5}
+.pf-product-card.pf-product-deal .pf-product-pill{background:#61374e;border-color:#8b6076;color:#ffc2df}
+.pf-product-card.pf-product-deal :is(.pf-pill-sold,.pf-pill-rating){color:#ffc2df}
 .pf-deal-showcase { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(140px, 1fr); gap: 14px; align-items: start; }
 .pf-deal-stage { min-width: 0; }
 .pf-deal-feature { display: block; border: 1px solid var(--border); border-radius: 18px; overflow: hidden; background: var(--surface); color: var(--ink); text-decoration: none; animation: pf-deal-in .35s ease both; }

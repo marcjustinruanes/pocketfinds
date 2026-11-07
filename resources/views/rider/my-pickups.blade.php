@@ -47,8 +47,9 @@
           </td>
           <td>
             @if($s->shipping_status === 'ready_for_pickup' && !$s->rider_confirmed_pickup_at)
-            <form method="POST" action="{{ route('rider.my-pickups.confirm', $s->id) }}" onsubmit="return confirm('Confirm you received this parcel from the seller?')">
+            <form method="POST" action="{{ route('rider.my-pickups.confirm', $s->id) }}" onsubmit="return confirm('Confirm you received this parcel from the seller?')" style="display:flex;gap:6px">
               @csrf @method('PATCH')
+              <input name="tracking_number" placeholder="Scan or type tracking #" required aria-label="Tracking number" style="min-width:150px;border:1px solid var(--border);border-radius:8px;padding:6px 8px">
               <button type="submit" class="btn btn-sm btn-primary">Confirm Receipt</button>
             </form>
             @endif

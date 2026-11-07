@@ -6,9 +6,9 @@
     <article class="account-shop">
      <a class="account-shop-identity" href="{{ route('buyer.shop',$shop->username) }}">
       <img src="{{ $shop->shopPhotoUrl() }}" alt="" width="44" height="44" loading="lazy">
-      <span><strong>{{ $shop->business_name ?: trim($shop->given_names.' '.$shop->last_name) }}</strong><small>{{ collect([$shop->municipality,$shop->province])->filter()->join(', ') }}</small></span>
+      <span><strong>{{ $shop->business_name ?: trim($shop->given_names.' '.$shop->last_name) }}</strong><small class="account-shop-category">{{ $shop->category?->name ?: $shop->category_other ?: 'General merchandise' }}</small><small>{{ collect([$shop->municipality,$shop->province])->filter()->join(', ') }}</small></span>
      </a>
-     <div class="account-shop-actions"><a href="{{ route('buyer.shop',$shop->username) }}">View shop</a><button type="button" data-account-unfollow="{{ route('buyer.shop.follow',$shop->username) }}">Unfollow</button></div>
+     <div class="account-shop-actions"><a href="{{ route('buyer.shop',$shop->username) }}" aria-label="View shop" title="View shop">@include('buyer.partials.icon',['name'=>'shop','size'=>18])</a><button type="button" data-account-unfollow="{{ route('buyer.shop.follow',$shop->username) }}" aria-label="Unfollow" title="Unfollow shop"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 5a5.5 5.5 0 0 0-8 1 5.5 5.5 0 0 0-9 6l9 9 5-5M16 8h6"/></svg></button></div>
     </article>
    @empty
     <p class="account-following-empty">You aren’t following any shops yet. <a href="{{ route('buyer.browse') }}">Explore products</a></p>

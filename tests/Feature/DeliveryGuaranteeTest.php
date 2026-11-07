@@ -81,7 +81,7 @@ class DeliveryGuaranteeTest extends TestCase
     {
         $order = $this->order();
         $saved = $order->delivery_guaranteed_by->toDateTimeString();
-        $this->assertSame('2026-11-07 15:59:59', $saved);
+        $this->assertSame('2026-11-07 23:59:59', $saved);
         $this->travel(2)->days();
         $this->assertSame($saved, $order->fresh()->delivery_guaranteed_by->toDateTimeString());
         $legacy = Order::create(['buyer_id' => $this->buyer->id, 'seller_id' => $this->seller->id, 'status' => 'placed', 'items' => [], 'total' => 10]);

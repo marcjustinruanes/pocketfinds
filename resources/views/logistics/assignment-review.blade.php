@@ -31,7 +31,7 @@
 <details><summary>Recorded assignment decisions</summary>
 @forelse($events[$a->id] ?? [] as $e)
 @php($decision=json_decode($e->details,true) ?? [])
-<p>{{ $e->created_at }} &middot; {{ ucfirst(str_replace('_',' ',$e->event)) }} &middot; actor #{{ $e->actor_id }}<br>{{ $decision['reason'] ?? '' }}
+<p>{{ $e->created_at ? \Illuminate\Support\Carbon::parse($e->created_at)->format('M j, Y g:i A') : '—' }} &middot; {{ ucfirst(str_replace('_',' ',$e->event)) }} &middot; actor #{{ $e->actor_id }}<br>{{ $decision['reason'] ?? '' }}
 @if(isset($decision['old_rider_id'],$decision['replacement_rider_id']))<br>Rider #{{ $decision['old_rider_id'] }} &rarr; rider #{{ $decision['replacement_rider_id'] }}@endif
 @if(isset($decision['attested_by']))<br>Possession confirmed by #{{ $decision['attested_by'] }} at {{ $decision['attested_at'] }}@endif
 @if(isset($decision['cancel_reason']))<br>{{ $decision['cancel_reason'] }}@endif</p>

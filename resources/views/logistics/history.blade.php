@@ -35,9 +35,9 @@
           </td>
           <td>{{ optional($s->courier)->given_names ? optional($s->courier)->given_names . ' ' . optional($s->courier)->last_name : '—' }}</td>
           <td><span class="stamp stamp-{{ $s->shipping_status }}">{{ ucfirst(str_replace('_',' ',$s->shipping_status)) }}</span></td>
-          <td class="mono">{{ $s->picked_up_at ? \Carbon\Carbon::parse($s->picked_up_at)->format('M d, Y H:i') : '—' }}</td>
-          <td class="mono">{{ $s->out_for_delivery_at ? \Carbon\Carbon::parse($s->out_for_delivery_at)->format('M d, Y H:i') : '—' }}</td>
-          <td class="mono">{{ $s->delivered_at ? \Carbon\Carbon::parse($s->delivered_at)->format('M d, Y H:i') : '—' }}</td>
+          <td class="mono">{{ $s->picked_up_at ? \Carbon\Carbon::parse($s->picked_up_at)->format('M d, Y g:i A') : '—' }}</td>
+          <td class="mono">{{ $s->out_for_delivery_at ? \Carbon\Carbon::parse($s->out_for_delivery_at)->format('M d, Y g:i A') : '—' }}</td>
+          <td class="mono">{{ $s->delivered_at ? \Carbon\Carbon::parse($s->delivered_at)->format('M d, Y g:i A') : '—' }}</td>
         </tr>
         @empty
         <tr><td colspan="7"><div class="empty"><h3>No completed deliveries yet</h3></div></td></tr>

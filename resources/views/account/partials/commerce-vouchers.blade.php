@@ -15,7 +15,7 @@
         <label class="form-row">Amount / percent<input name="amount" type="number" min="0.01" step="0.01" required></label>
         <label class="form-row">Maximum discount (optional PHP)<input name="cap" type="number" min="0.01" step="0.01"></label>
         <label class="form-row">Minimum spend (PHP)<input name="minimum_spend" type="number" min="0" step="0.01" value="0" required></label>
-        <label class="form-row">Starts ({{ config('app.timezone') }})<input name="starts_at" type="datetime-local" required></label>
+        <label class="form-row">Starts<input name="starts_at" type="datetime-local" required></label>
         <label class="form-row">Ends<input name="ends_at" type="datetime-local" required></label>
         <label class="form-row">Total uses<input name="usage_limit" type="number" min="1" required></label>
         <label class="form-row">Uses per buyer<input name="per_buyer_limit" type="number" min="1" value="1" required></label>

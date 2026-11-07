@@ -1,17 +1,22 @@
 @extends(auth()->user()->account_type === 'admin' ? 'admin.layout' : (auth()->user()->account_type === 'buyer' ? 'buyer.layout' : 'seller.layout'))
 @section('title', 'GCash purchases')
 @section('page-title', 'GCash purchases')
+@section('hide-page-heading', auth()->user()->account_type === 'buyer')
 @section('page-sub', auth()->user()->account_type === 'buyer' ? 'Track your GCash checkout and payment status' : (auth()->user()->account_type === 'admin' ? 'Review GCash payment status and purchase records' : 'Review buyer GCash payments and purchase records'))
 @section('body-class', auth()->user()->account_type === 'buyer' ? 'gcash-payments-page' : '')
 @include('gcash.assets')
 @section('content')
 @php($reviewer = auth()->user()->account_type === 'admin')
 <div class="gcash-page gcash-purchases-page">
+ @if(auth()->user()->account_type !== 'buyer')
  <nav class="gcash-nav" aria-label="GCash navigation">
   @unless($reviewer)<a class="gcash-nav-primary" href="{{ route(auth()->user()->account_type === 'buyer' ? 'buyer.cart' : 'seller.orders') }}">{{ auth()->user()->account_type === 'buyer' ? 'Back to cart' : 'All orders' }}</a><a class="gcash-nav-secondary" href="{{ route(auth()->user()->account_type.'.messages') }}">Messages</a>@endunless
   @if(request()->filled('contact'))<a class="gcash-nav-secondary" href="{{ route('gcash.index') }}">Show all GCash purchases</a>@endif
  </nav>
  <p class="gcash-muted">Each purchase has its own amount, payment review and stock allocation. Sending proof does not verify payment.</p>
+ @elseif(request()->filled('contact'))
+ <a class="gcash-nav-secondary" href="{{ route('gcash.index') }}">Show all purchases</a>
+ @endif
  <div class="gcash-purchase-list">
  @forelse($purchases as $purchase)
   <article class="gcash-card">

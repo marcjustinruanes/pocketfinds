@@ -109,6 +109,30 @@ class BuyerCommerceTest extends TestCase
         $this->assertSame(100, array_sum(app(BuyerCommerce::class)->split(100, [1 => 101, 2 => 200])));
     }
 
+    public function test_checkout_offers_report_minimum_spend_without_breaking_the_preview(): void
+    {
+        $id=$this->voucher('NEEDS321','platform',20);
+        DB::table('commerce_vouchers')->where('id',$id)->update(['minimum_spend'=>321]);
+        $data=['preview'=>true,'items'=>[$this->cart->id],'delivery_address_id'=>$this->address->id,'vouchers'=>['NEEDS321']];
+        $response=$this->actingAs($this->buyer)->postJson(route('buyer.commerce.quote'),$data)->assertOk()->assertJsonPath('quote.total',380);
+        $offer=collect($response->json('quote.voucher_options'))->firstWhere('code','NEEDS321');
+        $this->assertFalse($offer['eligible']);$this->assertEquals(21,$offer['remaining_spend']);
+        $this->assertStringContainsString('Spend ₱21.00 more',$offer['reason']);
+        $this->invalid(fn()=>$this->quote(['NEEDS321']));
+        $this->cart->update(['qty'=>4]);
+        $quote=$this->quote(['NEEDS321']);
+        $this->assertTrue(collect($quote['voucher_options'])->firstWhere('code','NEEDS321')['eligible']);
+        $this->assertEquals(460,$quote['total']);
+    }
+
+    public function test_checkout_offers_exclude_a_voucher_the_buyer_already_used(): void
+    {
+        $id=$this->voucher('USED20','platform',20);
+        DB::table('commerce_allocations')->insert(['subject_id'=>(string)Str::uuid(),'usage_key'=>(string)Str::uuid(),'buyer_id'=>$this->buyer->id,'voucher_id'=>$id,'state'=>'used']);
+        $offer=collect($this->quote()['voucher_options'])->firstWhere('code','USED20');
+        $this->assertFalse($offer['eligible']);$this->assertSame('You have already used this voucher.',$offer['reason']);
+    }
+
     public function test_vacation_unserviceable_address_and_future_vouchers_are_blocked(): void
     {
         $this->seller->update(['is_on_vacation' => true]);
@@ -225,10 +249,52 @@ class BuyerCommerceTest extends TestCase
         $this->assertSame('new.address@gmail.com', $this->buyer->fresh()->email);
     }
 
+    public function test_bulk_cart_removal_only_deletes_selected_items_owned_by_the_buyer(): void
+    {
+        $kept = $this->cart->replicate();
+        $kept->save();
+        $other = $this->cart->replicate();
+        $other->buyer_id = $this->person('buyer')->id;
+        $other->save();
+
+        $this->actingAs($this->buyer)->delete(route('buyer.cart.removeSelected'), [
+            'items' => [$this->cart->id, $other->id],
+        ])->assertRedirect(route('buyer.cart'))->assertSessionHasNoErrors();
+
+        $this->assertNull($this->cart->fresh());
+        $this->assertNotNull($kept->fresh());
+        $this->assertNotNull($other->fresh());
+        $this->delete(route('buyer.cart.removeSelected'), ['items' => []])->assertSessionHasErrors('items');
+        $this->assertNotNull($kept->fresh());
+    }
+
+    public function test_sold_out_products_are_labelled_in_listings_and_cart_style_wishlist(): void
+    {
+        $this->product->update(['stock' => 0]);
+        $this->get('/')->assertOk()->assertSee('Out of stock');
+        $this->actingAs($this->buyer)->get(route('buyer.dashboard'))->assertOk()->assertSee('Out of stock');
+        $this->postJson(route('buyer.commerce.wishlist', $this->product->id), ['saved' => true])->assertOk();
+        $this->get(route('buyer.wishlist'))->assertOk()
+            ->assertSee('wishlist-shop', false)->assertSee('data-wishlist-all', false)
+            ->assertSee('Add to cart')->assertSee('Out of stock');
+    }
+
+    public function test_shop_displays_vouchers_flash_deals_and_compact_stats(): void
+    {
+        $this->voucher('SHOPSTYLE', 'store', 20);
+        DB::table('commerce_flash_sales')->insert(['seller_id' => $this->seller->id, 'product_id' => $this->product->id, 'price' => 50, 'quantity' => 2, 'starts_at' => now()->subMinute(), 'ends_at' => now()->addHour()]);
+        $this->actingAs($this->buyer)->get(route('buyer.shop', $this->seller->username))
+            ->assertOk()->assertSee('SHOPSTYLE')->assertSee('shop-voucher-copy', false)
+            ->assertSee('shop-category-select', false)->assertSee('shop-flash-product', false)
+            ->assertSee('Sold')->assertSee('sp-followers-count', false)
+            ->assertSee('data-messages-trigger', false)->assertDontSee('class="pd-back"', false);
+    }
+
     public function test_all_commerce_pages_render_for_their_roles(): void
     {
         $this->actingAs($this->buyer)->get(route('buyer.commerce.index'))->assertRedirect(route('buyer.wishlist'));
         $this->get(route('buyer.wishlist'))->assertOk();
+        $this->get(route('buyer.shop', $this->seller->username))->assertOk()->assertSee('buyer-shop-page', false)->assertSee('pf-product-card', false);
         $this->get(route('buyer.commerce.checkout'))->assertRedirect(route('buyer.cart'));
         $this->get(route('buyer.cart'))->assertOk()->assertSee('data-quote-url', false)->assertDontSee('buyer-shopping-tools', false);
         $this->get(route('buyer.account'))->assertOk()->assertSee('id="change-email"', false)->assertSee('id="my-vouchers"', false);

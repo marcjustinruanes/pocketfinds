@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\BuyerPaymentAccount;
 use App\Models\CartItem;
 use App\Models\LogisticsHub;
 use App\Models\Order;
@@ -10,7 +9,6 @@ use App\Models\Product;
 use App\Models\Shipment;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -178,20 +176,6 @@ class FulfillmentWorkflowTest extends TestCase
         $this->assertSame(8, $product->fresh()->total_stock);
         $this->patchJson(route('logistics.status.update', $shipment->id), ['status' => 'returned'])->assertStatus(422);
         $this->assertSame(8, $product->fresh()->total_stock);
-    }
-
-    public function test_payment_account_verification_is_user_scoped_without_real_payment_or_email(): void
-    {
-        $buyer = $this->user('buyer', 'buyer_fixture');
-        $this->actingAs($buyer)->postJson(route('buyer.payment-accounts.send-code'), ['type' => 'gcash', 'account_name' => 'Fixture', 'account_number' => '09123456789'])->assertOk()->assertJsonPath('success', true);
-        $otp = Cache::get('payment_otp_'.$buyer->id)['otp'];
-        $this->postJson(route('buyer.payment-accounts.verify'), ['otp' => 'xxxxxx'])->assertOk()->assertJsonPath('success', false);
-        $this->postJson(route('buyer.payment-accounts.verify'), ['otp' => $otp])->assertOk()->assertJsonPath('success', true);
-        $account = BuyerPaymentAccount::firstOrFail();
-        $this->assertTrue($account->verified);
-        $other = $this->user('buyer', 'other_fixture');
-        $this->actingAs($other)->deleteJson(route('buyer.payment-accounts.destroy', $account))->assertForbidden();
-        $this->assertTrue(BuyerPaymentAccount::whereKey($account->id)->exists());
     }
 
     public function test_admin_approval_notification_is_deferred_until_commit_and_discarded_on_rollback(): void

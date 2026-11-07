@@ -202,6 +202,16 @@
         @if($user->nbi_clearance_file)
           <a href="{{ app(\App\Services\SensitiveDocuments::class)->url($user->nbi_clearance_file) }}" target="_blank" rel="noopener" style="font-size:13px;padding:8px 0">View NBI clearance</a>
         @endif
+        @if(session('vehicle_success'))<div style="margin-top:12px;color:var(--success);font-size:13px">{{ session('vehicle_success') }}</div>@endif
+        <form method="POST" action="{{ route('rider.account.vehicle') }}" enctype="multipart/form-data" style="margin-top:14px" {{ $pendingRequest ? 'style=opacity:.5;pointer-events:none' : '' }}>
+          @csrf
+          <div class="form-grid-2"><div class="form-row"><label>Vehicle type</label><select name="vehicle_type" required><option value="two_wheels" @selected($user->vehicle_type === 'two_wheels')>Two wheels</option><option value="four_wheels" @selected($user->vehicle_type === 'four_wheels')>Four wheels</option></select></div><div class="form-row"><label>Ownership</label><select name="vehicle_ownership" required><option value="own" @selected($user->vehicle_ownership === 'own')>Own vehicle</option><option value="company" @selected($user->vehicle_ownership === 'company')>Company vehicle</option></select></div></div>
+          <div class="form-grid-2"><div class="form-row"><label>Brand</label><input name="vehicle_brand" value="{{ old('vehicle_brand', $user->vehicle_brand) }}"></div><div class="form-row"><label>Model</label><input name="vehicle_model" value="{{ old('vehicle_model', $user->vehicle_model) }}"></div></div>
+          <div class="form-row"><label>Plate number</label><input name="plate_number" value="{{ old('plate_number', $user->plate_number) }}"></div>
+          <div class="form-grid-2"><div class="form-row"><label>License number</label><input name="license_number" value="{{ old('license_number', $user->license_number) }}" required></div><div class="form-row"><label>License expiry</label><input type="date" name="license_expiry" value="{{ old('license_expiry', $user->license_expiry?->format('Y-m-d')) }}" required></div></div>
+          <div class="form-row"><label>Updated documents</label><input type="file" name="license_file" accept="image/jpeg,image/png,application/pdf"><input type="file" name="or_file" accept="image/jpeg,image/png,application/pdf" style="margin-top:7px"><input type="file" name="cr_file" accept="image/jpeg,image/png,application/pdf" style="margin-top:7px"><span style="font-size:11px;color:var(--muted)">License, OR, and CR: JPG, PNG, or PDF, maximum 5 MB each.</span></div>
+          <button class="btn btn-outline" type="submit">Request vehicle update</button>
+        </form>
       </div>
     </div>
   </div>

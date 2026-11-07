@@ -217,46 +217,41 @@ function cmConfirm() {
 }
 
 function flyToCart(originEl) {
-    const cartBtn = document.getElementById('cartIconBtn');
-    const fly     = document.getElementById('flyItem');
-    if (!cartBtn || !fly) return;
-
-    // start position: from the trigger button, or center of screen
-    const startRect = originEl
-        ? originEl.getBoundingClientRect()
-        : { left: window.innerWidth/2 - 14, top: window.innerHeight/2 - 14, width: 28, height: 28 };
-    const endRect   = cartBtn.getBoundingClientRect();
-
-    const startX = startRect.left + startRect.width / 2 - 14;
-    const startY = startRect.top + startRect.height / 2 - 14;
-    const deltaX = endRect.left + endRect.width / 2 - 14 - startX;
-    const deltaY = endRect.top + endRect.height / 2 - 14 - startY;
-    const arcX = deltaX * .48;
-    const arcY = deltaY * .28 - 80;
-
-    fly.getAnimations().forEach(animation => animation.cancel());
-    fly.style.left = startX + 'px';
-    fly.style.top = startY + 'px';
-    fly.style.opacity = '1';
-
-    const animation = fly.animate([
-        { transform: 'translate(0, 0) scale(1)', opacity: 1 },
-        { transform: `translate(${arcX}px, ${arcY}px) scale(1.18) rotate(-14deg)`, opacity: 1, offset: .42 },
-        { transform: `translate(${deltaX}px, ${deltaY}px) scale(.45) rotate(8deg)`, opacity: 1, offset: .82 },
-        { transform: `translate(${deltaX}px, ${deltaY}px) scale(.2)`, opacity: 0 }
-    ], {
-        duration: 1200,
-        easing: 'cubic-bezier(.16,.84,.44,1)',
-        fill: 'forwards'
+    const actions = originEl?.closest('.pc-actions');
+    let product = {};
+    try { product = JSON.parse(actions?.dataset.wishlistProduct || '{}'); } catch (_) {}
+    showProductFeedback({
+        id: 'cartFeedbackCard', title: 'Added to cart', origin: originEl,
+        name: originEl?.dataset.productName || product.name || actions?.dataset.name || (typeof cmName !== 'undefined' ? cmName : ''),
+        image: (originEl?.id === 'pdAddCartBtn' ? document.getElementById('pdMainImg')?.src : '') || originEl?.dataset.productImg || product.img || actions?.dataset.img || (typeof cmImg !== 'undefined' ? cmImg : ''),
+        target: document.getElementById('cartIconBtn') || document.querySelector('a[href$="/buyer/cart"]'),
+        animate: true,
     });
+}
 
-    animation.finished.then(() => {
-        fly.style.opacity   = '0';
-        fly.style.transform = '';
-        cartBtn.classList.add('cart-bounce');
-        setTimeout(() => cartBtn.classList.remove('cart-bounce'), 400);
-        showToast('Added to cart!', 'cart');
-    }).catch(() => {});
+// Cart and wishlist deliberately share the same product card and motion.
+function showProductFeedback({id, title, name, image, origin, target, animate = false}) {
+    document.getElementById('cartFeedbackCard')?.remove();
+    document.getElementById('wishlistFeedbackCard')?.remove();
+    const card = document.createElement('div');
+    card.id = id; card.setAttribute('role', 'status');
+    card.style.cssText = 'position:fixed;right:24px;bottom:30px;z-index:20500;display:flex;align-items:center;gap:12px;width:300px;max-width:calc(100vw - 48px);box-sizing:border-box;padding:14px;border:1px solid #eadfe6;border-radius:10px;background:white;box-shadow:0 8px 28px #59334626;color:#593346;font:13px Inter,system-ui,sans-serif';
+    if (image) { const img = document.createElement('img'); img.src = image; img.alt = ''; img.style.cssText = 'width:64px;height:48px;object-fit:cover;border-radius:5px;flex:none'; card.append(img); }
+    const copy = document.createElement('div'), heading = document.createElement('strong'), productName = document.createElement('div');
+    copy.style.minWidth = '0'; heading.textContent = title; productName.textContent = name;
+    productName.style.cssText = 'font-size:11px;color:#8c7381;margin-top:5px;overflow-wrap:anywhere';
+    copy.append(heading, productName); card.append(copy); document.body.append(card);
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!reduced && card.animate) card.animate([{opacity:0,transform:'translateY(16px)'},{opacity:1,transform:'translateY(0)'}],{duration:220});
+    if (animate && image && origin && target && !reduced && card.animate) {
+        const from = origin.getBoundingClientRect(), to = target.getBoundingClientRect();
+        const flying = document.createElement('img'); flying.src = image; flying.alt = '';
+        flying.style.cssText = `position:fixed;left:${from.left}px;top:${from.top}px;width:64px;height:48px;object-fit:cover;border-radius:5px;z-index:20600;pointer-events:none`;
+        document.body.append(flying);
+        flying.animate([{transform:'translate(0,0)',opacity:1},{transform:`translate(${to.left-from.left}px,${to.top-from.top}px) scale(.35)`,opacity:0}],{duration:650,easing:'ease-in-out'}).onfinish = () => flying.remove();
+        setTimeout(() => flying.remove(), 1000);
+    }
+    setTimeout(() => card.remove(), 3500);
 }
 
 function showToast(msg, type) {

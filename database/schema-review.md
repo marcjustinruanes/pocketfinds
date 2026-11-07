@@ -25,7 +25,6 @@ Source: live configured Supabase/PostgreSQL database, `public` schema. Captured 
 | [announcements](#announcements) | 10 | Keep / Change / Remove |
 | [blocked_users](#blocked-users) | 4 | Keep / Change / Remove |
 | [buyer_addresses](#buyer-addresses) | 13 | Keep / Change / Remove |
-| [buyer_payment_accounts](#buyer-payment-accounts) | 10 | Keep / Change / Remove |
 | [cache](#cache) | 3 | Keep / Change / Remove |
 | [cache_locks](#cache-locks) | 3 | Keep / Change / Remove |
 | [cart_items](#cart-items) | 13 | Keep / Change / Remove |
@@ -145,26 +144,6 @@ Constraints (current PostgreSQL definitions):
 
 - `buyer_addresses_buyer_id_foreign`: `FOREIGN KEY (buyer_id) REFERENCES users(id) ON DELETE CASCADE`
 - `buyer_addresses_pkey`: `PRIMARY KEY (id)`
-
-## buyer_payment_accounts
-
-| Column | Current PostgreSQL type | Suggested MySQL type | Nullable | Current default |
-| --- | --- | --- | --- | --- |
-| id | uuid | CHAR(36) | No | — |
-| buyer_id | bigint | BIGINT | No | — |
-| type | character varying(255) | VARCHAR(255) | No | — |
-| account_name | character varying(255) | VARCHAR(255) | No | — |
-| account_number | character varying(255) | VARCHAR(255) | No | — |
-| bank_name | character varying(255) | VARCHAR(255) | Yes | — |
-| verified | boolean | BOOLEAN (TINYINT(1)) | No | false |
-| verified_at | timestamp(0) without time zone | DATETIME(0) | Yes | — |
-| created_at | timestamp(0) without time zone | DATETIME(0) | Yes | — |
-| updated_at | timestamp(0) without time zone | DATETIME(0) | Yes | — |
-
-Constraints (current PostgreSQL definitions):
-
-- `buyer_payment_accounts_buyer_id_foreign`: `FOREIGN KEY (buyer_id) REFERENCES users(id) ON DELETE CASCADE`
-- `buyer_payment_accounts_pkey`: `PRIMARY KEY (id)`
 
 ## cache
 

@@ -6,8 +6,8 @@ use App\Http\Controllers\Concerns\FetchesProducts;
 use App\Http\Controllers\Concerns\HandlesAccountUpdateRequests;
 use App\Http\Controllers\Concerns\LoadsStorefront;
 use App\Models\Announcement;
+use App\Models\AccountUpdateRequest;
 use App\Models\BuyerAddress;
-use App\Models\BuyerPaymentAccount;
 use App\Models\CartItem;
 use App\Models\Category;
 use App\Models\Complaint;
@@ -28,10 +28,10 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -116,15 +116,7 @@ class BuyerController extends Controller
             ->sellerApproved()
             ->where('id', '!=', $id)
             ->where('seller_id', '!=', $p->seller_id)
-            ->where(function ($matches) use ($p, $titleTerms) {
-                $matches->whereRaw('1 = 0');
-                if ($p->category_id !== null) {
-                    $matches->orWhere('category_id', $p->category_id);
-                }
-                foreach ($titleTerms as $term) {
-                    $matches->orWhereLike('name', '%'.$term.'%');
-                }
-            })
+            ->when($p->category_id !== null, fn ($query) => $query->where('category_id', $p->category_id), fn ($query) => $query->whereRaw('1 = 0'))
             ->orderBy('name')
             ->limit(8)
             ->get()
@@ -234,23 +226,13 @@ class BuyerController extends Controller
             }
         }
 
-        // Which of the buyer's own verified GCash accounts match a
-        // payment method offered here, so the cart can show a "Verified"
-        // badge (or a prompt to verify) once a specific method is chosen.
-        $paymentAccounts = BuyerPaymentAccount::where('buyer_id', auth()->id())->where('type','gcash')->get();
-        $verifiedLookup = [];
-        foreach ($paymentAccounts as $account) {
-            $key = $account->type;
-            $verifiedLookup[$key] = true;
-        }
-
         // Saved delivery addresses — which one the buyer picks decides where every
         // order created by this checkout actually ships to (see checkout()). A buyer
         // who has never saved one gets their registration address seeded as the default.
         BuyerAddress::ensureDefaultFor(auth()->user());
         $addresses = BuyerAddress::where('buyer_id', auth()->id())->orderByDesc('is_default')->latest()->get();
 
-        return view('buyer.cart', compact('items', 'groups', 'paymentMethods', 'shippingFees', 'usableVouchers', 'otherVouchers', 'verifiedLookup', 'addresses'));
+        return view('buyer.cart', compact('items', 'groups', 'paymentMethods', 'shippingFees', 'usableVouchers', 'otherVouchers', 'addresses'));
     }
 
     public function storeAddress(Request $request)
@@ -512,6 +494,14 @@ class BuyerController extends Controller
         return redirect()->route('buyer.cart');
     }
 
+    public function cartRemoveSelected(Request $request)
+    {
+        $data = $request->validate(['items' => 'required|array|min:1', 'items.*' => 'required|string|distinct']);
+        CartItem::where('buyer_id', auth()->id())->whereIn('id', $data['items'])->delete();
+
+        return redirect()->route('buyer.cart');
+    }
+
     public function cartRemove(string $key)
     {
         $item = CartItem::where('buyer_id', auth()->id())->where('id', urldecode($key))->first();
@@ -529,6 +519,11 @@ class BuyerController extends Controller
 
         $allowedTabs = ['all', 'to_ship', 'in_transit', 'out_for_delivery', 'delivered', 'completed', 'cancelled', 'refunds'];
         $tab = in_array($request->query('tab'), $allowedTabs, true) ? $request->query('tab') : 'all';
+        $allowedPeriods = ['all', '30d', '6m', 'year'];
+        $period = in_array($request->query('period'), $allowedPeriods, true) ? $request->query('period') : 'all';
+        $categoryId = $request->filled('category') && ctype_digit((string) $request->query('category'))
+            ? (int) $request->query('category')
+            : null;
         $baseQuery = Order::where('buyer_id', auth()->id());
         $orderCounts = (clone $baseQuery)->selectRaw('status, count(*) as aggregate')->groupBy('status')->pluck('aggregate', 'status');
         $returnRequests=\App\Services\BuyerCommerce::installed()?DB::table('commerce_returns')->where('buyer_id',auth()->id())->get()->keyBy('order_id'):collect();
@@ -537,12 +532,35 @@ class BuyerController extends Controller
             ->when($tab === 'in_transit', fn ($query) => $query->whereIn('status', Order::BUYER_IN_TRANSIT_STATUSES))
             ->when($tab==='refunds',fn($query)=>$query->whereIn('id',$returnRequests->keys()))
             ->when(! in_array($tab, ['all', 'to_ship', 'in_transit', 'refunds'], true), fn ($query) => $query->where('status', $tab))
+            ->when($period === '30d', fn ($query) => $query->where('created_at', '>=', now()->subDays(30)))
+            ->when($period === '6m', fn ($query) => $query->where('created_at', '>=', now()->subMonths(6)))
+            ->when($period === 'year', fn ($query) => $query->where('created_at', '>=', now()->startOfYear()))
             ->latest()
             ->get();
 
+        $productIds = $orders->flatMap(fn ($order) => collect($order->items ?? [])->pluck('product_id'))->filter()->unique()->values();
+        $productCategories = Product::whereIn('id', $productIds)->pluck('category_id', 'id');
+        $orderCategories = Category::whereIn('id', $productCategories->filter()->unique())->orderBy('name')->get(['id', 'name']);
+        if ($categoryId) {
+            $orders = $orders->filter(fn ($order) => collect($order->items ?? [])->contains(
+                fn ($item) => (int) ($productCategories[$item['product_id'] ?? null] ?? 0) === $categoryId
+            ))->values();
+        }
+
         $orderHistory = DB::table('order_status_history')->whereIn('order_id', $orders->modelKeys())->orderBy('created_at')->get(['order_id', 'status', 'created_at'])->groupBy('order_id');
 
-        return view('buyer.orders', compact('orders', 'tab', 'orderCounts', 'orderHistory','returnRequests'));
+        return view('buyer.orders', compact('orders', 'tab', 'period', 'categoryId', 'orderCategories', 'orderCounts', 'orderHistory','returnRequests'));
+    }
+
+    /** Delivery proof is visible only to the buyer who owns the completed order. */
+    public function deliveryProof(Order $order)
+    {
+        abort_unless($order->buyer_id === auth()->id(), 403);
+        $shipment = $order->shipment;
+        abort_unless($shipment?->delivery_proof_file && Storage::disk('sensitive_documents')->exists($shipment->delivery_proof_file), 404);
+        return Storage::disk('sensitive_documents')->response($shipment->delivery_proof_file, 'delivery-proof.'.pathinfo($shipment->delivery_proof_file, PATHINFO_EXTENSION), [
+            'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     public function storeReview(Request $request, Order $order)
@@ -785,7 +803,7 @@ class BuyerController extends Controller
         }
         $address = $deliveryAddress
             ? $deliveryAddress->toShippingArray()
-            : collect(['house_no', 'street', 'barangay', 'municipality', 'province'])
+            : collect(['house_no', 'street', 'barangay', 'municipality', 'province', 'region', 'postal_code'])
                 ->mapWithKeys(fn ($field) => [$field => $buyer->{$field} ?: 'Not provided'])->all();
         if ($problem = $this->deliveryAddressProblem($address)) {
             return back()->with('error', $problem);
@@ -1326,9 +1344,10 @@ class BuyerController extends Controller
         return match ($notification->notification_type) {
             'flash_sale' => redirect()->route('buyer.product',$notification->reference_id),
             'gcash_purchase' => redirect()->route('gcash.show', $notification->reference_id),
-            'order_status' => redirect()->route('buyer.orders'),
+            'order_status', 'order_delivered', 'delivery_assigned', 'pickup_assigned', 'delivery_failed' => redirect()->route('buyer.orders'),
             'review_reply' => redirect()->route('buyer.orders'),
-            'announcement' => redirect()->route('buyer.announcements.show', $notification->reference_id),
+            'announcement' => redirect()->route('buyer.announcements', ['open' => $notification->reference_id]),
+            'doc_approved', 'doc_rejected' => redirect()->route('buyer.account'),
             default => redirect()->route('buyer.dashboard'),
         };
     }
@@ -1380,34 +1399,114 @@ class BuyerController extends Controller
     public function account()
     {
         app(\App\Services\DeliveryGuarantee::class)->sweep((int) auth()->id());
-        $paymentAccounts = BuyerPaymentAccount::where('buyer_id', auth()->id())->latest('created_at')->get();
         BuyerAddress::ensureDefaultFor(auth()->user());
         $addresses = BuyerAddress::where('buyer_id', auth()->id())->orderByDesc('is_default')->latest()->get();
 
-        $followingShops = User::where('account_type','seller')->where('status','approved')->whereIn('id',ShopFollow::where('buyer_id',auth()->id())->select('seller_id'))->orderBy('business_name')->get();
-        return view('buyer.account', array_merge(compact('paymentAccounts', 'addresses','followingShops'), [
+        $followingShops = User::with('category')->where('account_type','seller')->where('status','approved')->whereIn('id',ShopFollow::where('buyer_id',auth()->id())->select('seller_id'))->orderBy('business_name')->get();
+        $walletVouchers = collect();
+        if (\App\Services\BuyerCommerce::installed() && $followingShops->isNotEmpty()) {
+            $voucherQuery = DB::table('commerce_vouchers')
+                ->join('users', 'users.id', '=', 'commerce_vouchers.seller_id')
+                ->leftJoin('commerce_claims', function ($join) {
+                    $join->on('commerce_claims.voucher_id', '=', 'commerce_vouchers.id')
+                        ->where('commerce_claims.buyer_id', '=', auth()->id());
+                })
+                ->whereIn('commerce_vouchers.seller_id', $followingShops->pluck('id'))
+                ->where('commerce_vouchers.is_active', true)
+                ->where('commerce_vouchers.starts_at', '<=', now())
+                ->where('commerce_vouchers.ends_at', '>', now());
+            if (\Illuminate\Support\Facades\Schema::hasColumn('commerce_vouchers', 'display_mode')) {
+                $voucherQuery->where('commerce_vouchers.display_mode', 'claimable');
+            }
+            $walletVouchers = $voucherQuery
+                ->select('commerce_vouchers.*', 'users.business_name', 'users.given_names', 'users.last_name', 'commerce_claims.id as claim_id')
+                ->orderBy('commerce_vouchers.ends_at')
+                ->get()
+                ->filter(function ($voucher) {
+                    if (! \App\Services\DeliveryGuarantee::voucherBelongsTo((int) $voucher->id, (int) auth()->id())) {
+                        return false;
+                    }
+                    $allocations = DB::table('commerce_allocations')->where('voucher_id', $voucher->id);
+                    $activeUses = (clone $allocations)->where(function ($query) {
+                        $query->where('state', 'used')->orWhere(function ($held) {
+                            $held->where('state', 'held')->where(function ($expiry) {
+                                $expiry->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                            });
+                        });
+                    });
+                    $globalUses = (clone $activeUses)->distinct()->count('usage_key') + (int) ($voucher->legacy_used_count ?? 0);
+                    $buyerUses = (clone $allocations)->where('buyer_id', auth()->id())->where('state', 'used')->distinct()->count('usage_key');
+                    return $globalUses < (int) $voucher->usage_limit && $buyerUses < (int) $voucher->per_buyer_limit;
+                })
+                ->values();
+        }
+        $idTypes = DB::table('id_types')->orderBy('name')->get();
+        return view('buyer.account', array_merge(compact('addresses','followingShops', 'walletVouchers', 'idTypes'), [
             'pendingRequest' => $this->pendingAccountUpdateRequest(),
-            'lastRequest' => $this->lastAccountUpdateRequest(),
         ]));
     }
 
     /** Submits a profile-change request — nothing changes on the account until admin approves it. */
+    public function updateProfilePhoto(Request $request)
+    {
+        $request->validate([
+            'profile_picture' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120', 'dimensions:max_width=4000,max_height=4000'],
+        ]);
+
+        $buyer = $request->user();
+        abort_unless($buyer->account_type === 'buyer', 403);
+        DB::transaction(function () use ($buyer, $request) {
+            $oldPhoto = $buyer->profile_picture;
+            $newPhoto = app(MediaLifecycle::class)->store($request->file('profile_picture'), 'buyer-profile-photos', 'profile_images');
+            $buyer->update(['profile_picture' => $newPhoto]);
+            app(MediaLifecycle::class)->deleteAfterCommit($oldPhoto, 'profile_images');
+        });
+
+        return back()->with('profile_photo_success', 'Profile photo updated.');
+    }
+
     public function updateProfile(Request $request)
     {
         if(is_string($request->input('contact_no'))) $request->merge(['contact_no'=>\App\Support\PhilippineMobile::normalize($request->contact_no)]);
         $request->validate([
-            'given_names' => ['required','string','min:2','max:50','regex:/^[\p{L}-]+$/u'],
-            'last_name' => ['required','string','min:2','max:50','regex:/^[\p{L}-]+$/u'],
-            'middle_name' => ['nullable','string','min:2','max:50','regex:/^[\p{L}-]+$/u'],
+            'given_names' => \App\Support\AccountDetails::name(),
+            'last_name' => \App\Support\AccountDetails::name(),
+            'middle_name' => \App\Support\AccountDetails::name(true),
+            'suffix' => ['nullable', new \Illuminate\Validation\Rules\Enum(\App\Enums\Suffix::class)],
+            'sex' => ['required', new \Illuminate\Validation\Rules\Enum(\App\Enums\Sex::class)],
+            'birthday' => ['required', 'date', 'before_or_equal:'.now()->subYears(18)->toDateString()],
             'contact_no' => ['nullable', 'regex:/^09[0-9]{9}$/'],
+            'id_type_id' => ['nullable', 'integer', 'exists:id_types,id'],
+            'id_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
+            'selfie_file' => ['nullable', 'file', 'mimes:jpg,jpeg,png', 'max:5120'],
         ], [
             'contact_no.regex' => 'Contact number must start with 09 and be exactly 11 digits.',
+            'birthday.before_or_equal' => 'You must be at least 18 years old.',
         ]);
+
+        $user = $request->user();
+        $request->merge(['age' => \Carbon\Carbon::parse($request->input('birthday'))->age]);
+        $current = [
+            'given_names' => $user->given_names,
+            'middle_name' => $user->middle_name ?? '',
+            'last_name' => $user->last_name,
+            'suffix' => $user->suffix?->value ?? '',
+            'sex' => $user->sex,
+            'birthday' => $user->birthday?->toDateString(),
+        ];
+        $identityChanged = collect($current)->contains(fn ($value, $field) => (string) $request->input($field, '') !== (string) $value);
+        if ($identityChanged && (! $request->filled('id_type_id') || ! $request->hasFile('id_file') || ! $request->hasFile('selfie_file'))) {
+            throw ValidationException::withMessages([
+                'id_type_id' => 'Choose the type of replacement government ID.',
+                'id_file' => 'Upload a clear replacement government ID before changing identity details.',
+                'selfie_file' => 'Upload a current selfie before changing identity details.',
+            ]);
+        }
 
         return $this->submitAccountUpdateRequest(
             $request,
-            ['given_names', 'middle_name', 'last_name', 'contact_no'],
-            [],
+            ['given_names', 'middle_name', 'last_name', 'suffix', 'sex', 'birthday', 'age', 'contact_no', 'id_type_id'],
+            ['id_file' => 'sensitive_documents', 'selfie_file' => 'sensitive_documents'],
             'profile_success'
         );
     }
@@ -1433,84 +1532,140 @@ class BuyerController extends Controller
         );
     }
 
+    public function passwordResetLink(Request $request)
+    {
+        try {
+            $status = \Illuminate\Support\Facades\Password::sendResetLink(['email' => $request->user()->email]);
+        } catch (\Throwable $error) {
+            report($error);
+            return back()->withErrors(['password_link' => 'The email could not be sent. Please try again.'])->withFragment('account-security');
+        }
+        if ($status !== \Illuminate\Support\Facades\Password::RESET_LINK_SENT) {
+            return back()->withErrors(['password_link' => $status === \Illuminate\Support\Facades\Password::RESET_THROTTLED ? 'Please wait a minute before requesting another link.' : 'The email could not be sent. Please try again.'])->withFragment('account-security');
+        }
+        $request->session()->put('buyer_password_change_pending', ['user_id' => $request->user()->id, 'expires_at' => now()->addHour()->timestamp]);
+        $request->session()->forget('buyer_password_change_token');
+        return back()->with('password_link_sent', 'A change-password link was sent to your registered email.')->withFragment('account-security');
+    }
+
+    public function completePasswordChange(Request $request)
+    {
+        $token = $request->session()->get('buyer_password_change_token');
+        if (!is_string($token) || !\Illuminate\Support\Facades\Password::tokenExists($request->user(), $token)) {
+            return back()->withErrors(['password_link' => 'Open the change-password link in your email before saving.'])->withFragment('account-security');
+        }
+        $data = $request->validate([
+            'username' => ['required','string','min:3','max:50','regex:/^[A-Za-z0-9_.-]+$/',\Illuminate\Validation\Rule::unique('users','username')->ignore($request->user()->id)],
+            'password' => ['required','string','max:128',\Illuminate\Validation\Rules\Password::min(8)->mixedCase()->numbers()->symbols(),'confirmed'],
+        ]);
+        $status = \Illuminate\Support\Facades\Password::reset([
+            'email' => $request->user()->email, 'token' => $token,
+            'password' => $data['password'], 'password_confirmation' => $request->input('password_confirmation'),
+        ], function ($user, $password) use ($data) {
+            $user->forceFill(['username' => $data['username'], 'password' => Hash::make($password), 'remember_token' => Str::random(60)])->save();
+            event(new \Illuminate\Auth\Events\PasswordReset($user));
+        });
+        if ($status !== \Illuminate\Support\Facades\Password::PASSWORD_RESET) {
+            return back()->withErrors(['password_link' => 'This link has expired. Request another change-password email.'])->withFragment('account-security');
+        }
+        $request->session()->forget(['buyer_password_change_pending','buyer_password_change_token']);
+        $request->session()->regenerate();
+        return back()->with('password_success','Your username and password have been updated.')->withFragment('account-security');
+    }
+
+    public function usernameUpdate(Request $request)
+    {
+        $data = $request->validate(['username' => ['required','string','min:3','max:50','regex:/^[A-Za-z0-9_.-]+$/',\Illuminate\Validation\Rule::unique('users','username')->ignore($request->user()->id)], 'current_password' => ['required','current_password']]);
+        $request->user()->update(['username' => $data['username']]);
+        return back()->with('username_success', 'Username updated.')->withFragment('account-security');
+    }
+
     /** Password changes are immediate/self-service — never gated behind admin approval. */
     public function passwordUpdate(Request $request)
     {
-        $request->validate(['current_password' => 'required', 'password' => ['required','string',\Illuminate\Validation\Rules\Password::min(8)->mixedCase()->numbers()->symbols(),'confirmed']]);
+        $request->validate(['username'=>['sometimes','required','string','min:3','max:50','regex:/^[A-Za-z0-9_.-]+$/',\Illuminate\Validation\Rule::unique('users','username')->ignore($request->user()->id)],'current_password' => 'required', 'password' => ['required','string',\Illuminate\Validation\Rules\Password::min(8)->mixedCase()->numbers()->symbols(),'confirmed']]);
         if (! Hash::check($request->current_password, auth()->user()->password)) {
             return back()->withErrors(['current_password' => 'Current password is incorrect.']);
         }
         auth()->user()->update(['password' => Hash::make($request->password)]);
+        if($request->filled('username')) $request->user()->update(['username'=>$request->input('username')]);
 
         return back()->with('password_success', 'Password updated.');
     }
 
-    /** Send a real verification code to the buyer's own registered email before saving a GCash account. */
-    public function sendPaymentAccountCode(Request $request)
+    /**
+     * Removes a buyer's ability to sign in and clears profile-only data while
+     * retaining completed order records that must remain available to sellers
+     * and the platform. The original login email is released for reuse.
+     */
+    public function destroyAccount(Request $request)
     {
         $data = $request->validate([
-            'type' => 'required|in:gcash',
-            'account_name' => 'required|string|max:150',
-            'account_number' => ['required','string','regex:/^09[0-9]{9}$/D'],
-            'bank_name' => 'prohibited',
-        ]);
+            'password' => ['required', 'string'],
+            'confirmation' => ['required', 'in:yes i confirm'],
+        ], ['confirmation.in' => 'Type yes i confirm to confirm account deletion.']);
 
-        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $key = 'payment_otp_'.auth()->id();
-        Cache::put($key, ['otp' => $otp, 'data' => $data], now()->addMinutes(10));
-
-        $typeLabel = 'GCash';
-        try {
-            Mail::raw(
-                "Your PocketFinds verification code is: {$otp}\n\nThis code confirms you want to add this {$typeLabel} account to your PocketFinds profile. It expires in 10 minutes.",
-                fn ($m) => $m->to(auth()->user()->email)->subject('PocketFinds — Payment Account Verification')
-            );
-        } catch (\Exception $e) {
-            Cache::forget($key);
-
-            return response()->json(['success' => false, 'message' => 'Could not send the code. Please try again.']);
+        $buyer = $request->user();
+        if (! Hash::check($data['password'], $buyer->password)) {
+            return back()->withErrors(['delete_account' => 'Your password is incorrect.'])->withFragment('account-security');
         }
 
-        return response()->json(['success' => true, 'message' => 'Code sent to '.auth()->user()->email]);
-    }
+        DB::transaction(function () use ($buyer) {
+            $locked = User::whereKey($buyer->id)->lockForUpdate()->firstOrFail();
+            abort_unless($locked->account_type === 'buyer' && ! $locked->deleted_at, 403);
 
-    public function verifyPaymentAccountCode(Request $request)
-    {
-        $request->validate(['otp' => 'required|string|size:6']);
+            $profileImage = $locked->profile_picture;
+            $sensitiveFiles = collect(['id_file', 'selfie_file'])->mapWithKeys(fn ($field) => [$field => $locked->{$field}]);
 
-        $key = 'payment_otp_'.auth()->id();
-        $stored = Cache::get($key);
+            BuyerAddress::where('buyer_id', $locked->id)->delete();
+            CartItem::where('buyer_id', $locked->id)->delete();
+            ShopFollow::where('buyer_id', $locked->id)->delete();
+            AccountUpdateRequest::where('user_id', $locked->id)->delete();
+            foreach (['wishlist_items', 'commerce_wishlist', 'commerce_claimed_vouchers', 'flash_sale_claims'] as $table) {
+                if (\Illuminate\Support\Facades\Schema::hasTable($table)) {
+                    DB::table($table)->where('buyer_id', $locked->id)->delete();
+                }
+            }
 
-        if (! $stored || $stored['otp'] !== $request->otp) {
-            return response()->json(['success' => false, 'message' => 'Invalid or expired code.']);
-        }
+            $locked->forceFill([
+                'email' => 'deleted-'.Str::uuid().'@deleted.pocketfinds.local',
+                'username' => null,
+                'google_id' => null,
+                'auth_method' => 'manual',
+                'password' => Hash::make(Str::random(64)),
+                'remember_token' => null,
+                'given_names' => 'Deleted',
+                'last_name' => 'Account',
+                'middle_name' => null,
+                'suffix' => null,
+                'sex' => 'male',
+                'birthday' => '1900-01-01',
+                'age' => 0,
+                'contact_no' => '00000000000',
+                'province' => 'Deleted',
+                'municipality' => 'Deleted',
+                'barangay' => 'Deleted',
+                'house_no' => null,
+                'street' => null,
+                'region' => null,
+                'postal_code' => null,
+                'profile_picture' => null,
+                'id_file' => null,
+                'selfie_file' => null,
+                'status' => 'suspended',
+                'status_reason' => 'Account deleted by the buyer.',
+                'deleted_at' => now(),
+            ])->save();
 
-        if(($stored['data']['type']??null)!=='gcash' || !preg_match('/^09[0-9]{9}$/D',(string)($stored['data']['account_number']??''))){
-            Cache::forget($key);
-            return response()->json(['success'=>false,'message'=>'Only GCash accounts can be connected. Request a new code.'],422);
-        }
-        $account = BuyerPaymentAccount::create(array_merge($stored['data'], [
-            'buyer_id' => auth()->id(),
-            'verified' => true,
-            'verified_at' => now(),
-        ]));
-        Cache::forget($key);
+            app(MediaLifecycle::class)->deleteAfterCommit($profileImage, 'profile_images');
+            foreach ($sensitiveFiles as $path) app(MediaLifecycle::class)->deleteAfterCommit($path, 'sensitive_documents');
+        });
 
-        return response()->json(['success' => true, 'account' => [
-            'id' => $account->id,
-            'type' => $account->type,
-            'account_name' => $account->account_name,
-            'account_number' => $account->account_number,
-            'bank_name' => $account->bank_name,
-        ]]);
-    }
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
-    public function destroyPaymentAccount(BuyerPaymentAccount $account)
-    {
-        abort_unless($account->buyer_id === auth()->id(), 403);
-        $account->delete();
-
-        return back()->with('success', 'Payment account removed.');
+        return redirect()->route('login')->with('status', 'Your PocketFinds account has been deleted.');
     }
 
     public function logout(Request $request)

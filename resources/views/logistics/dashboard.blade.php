@@ -20,6 +20,12 @@
       <a href="{{ route('logistics.transfers') }}" class="btn btn-outline"><x-admin-icon name="truck" /> Hub transfers</a>
     </div>
   </section>
+  <form method="GET" class="card card-pad" style="display:flex;flex-wrap:wrap;align-items:end;gap:10px;margin-bottom:18px">
+    <label>From<input class="input" type="date" name="from" value="{{ $range['from'] ?? '' }}"></label>
+    <label>To<input class="input" type="date" name="to" value="{{ $range['to'] ?? '' }}"></label>
+    <button class="btn btn-outline">Filter dashboard</button>
+    @if(($range['from'] ?? null) || ($range['to'] ?? null))<a class="btn btn-outline" href="{{ route('logistics.dashboard') }}">Clear</a>@endif
+  </form>
 
   <section aria-label="Company shipment totals" class="dashboard-summary">
     @foreach([
@@ -96,7 +102,7 @@
       <div class="card-head"><div><h2 id="activity-title">Recent activity</h2><p class="dashboard-caption">Latest recorded actions by your company team</p></div><a class="btn btn-sm btn-outline" href="{{ route('logistics.activity') }}">View logs</a></div>
       <div class="table-wrap"><table class="dtable"><thead><tr><th scope="col">Actor</th><th scope="col">Action</th><th scope="col">Record</th><th scope="col">Time</th></tr></thead><tbody>
         @forelse($recentActivities as $entry)
-        <tr><td>{{ $entry->username ?? 'Deleted account' }}</td><td>{{ $entry->action }}</td><td class="mono">{{ $entry->record_id }}</td><td class="dashboard-date">{{ $entry->created_at }}</td></tr>
+        <tr><td>{{ $entry->username ?? 'Deleted account' }}</td><td>{{ $entry->action }}</td><td class="mono">{{ $entry->record_id }}</td><td class="dashboard-date">{{ $entry->created_at ? \Illuminate\Support\Carbon::parse($entry->created_at)->format('M j, Y g:i A') : '—' }}</td></tr>
         @empty
         <tr><td colspan="4"><div class="empty dashboard-empty"><h3>No recorded activity yet</h3><p>Recorded team actions will appear here.</p></div></td></tr>
         @endforelse

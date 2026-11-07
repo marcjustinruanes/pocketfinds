@@ -1,4 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll('#products .pf-catalog-price-sidebar input[name="min_price"]').forEach(input => input.placeholder = "Min");
+    document.querySelectorAll('#products .pf-catalog-price-sidebar input[name="max_price"]').forEach(input => input.placeholder = "Max");
     document.querySelectorAll('.pf-price-filter input[type="number"]').forEach(input => {
         const field = document.createElement("span");
         field.className = "pf-number-field";

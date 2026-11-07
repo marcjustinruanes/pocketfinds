@@ -38,7 +38,6 @@ document.getElementById('pdFollowShop')?.addEventListener('click', async functio
   <div class="modal" style="max-width:520px">
     <div class="modal-head">
       <div><h3>Report Listing</h3><p>Send this report to the admin team.</p></div>
-      <button class="modal-close" type="button" data-modal-close>×</button>
     </div>
     <form id="productReportForm" enctype="multipart/form-data">
       <div class="modal-body">

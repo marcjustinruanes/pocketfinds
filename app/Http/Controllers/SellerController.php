@@ -266,6 +266,8 @@ class SellerController extends Controller
             $locked->logStatus('picked_up', auth()->id());
 
             Order::notifyUser($shipment->pickup_rider_id, 'Pickup Confirmed', 'The seller confirmed you picked up order #'.$locked->order_number.'. Bring it to the sorting center.', 'order_status', $locked->id);
+            Order::notifyUser($locked->buyer_id, 'Order Picked Up', 'Order #'.$locked->order_number.' was picked up and is on its way to the sorting center.', 'order_status', $locked->id);
+            User::where('is_logistics', true)->where('business_name', $shipment->logistics_company)->each(fn ($staff) => Order::notifyUser($staff->id, 'Pickup Confirmed', 'Order #'.$locked->order_number.' was picked up by the assigned rider.', 'order_status', $locked->id));
         });
 
         return back()->with('order_success', 'Pickup confirmed.');

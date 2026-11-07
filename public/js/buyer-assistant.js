@@ -165,7 +165,7 @@
     state.conversations.forEach(chat => {
       const row = document.createElement('div'); row.className = 'pf-chat-row'; row.setAttribute('aria-current', String(chat.id === conversation?.id));
       const open = document.createElement('button'); open.type = 'button'; open.textContent = chat.title;
-      const date = document.createElement('small'); date.textContent = new Date(chat.updated_at).toLocaleDateString(); open.append(date);
+      const date = document.createElement('small'); date.textContent = new Date(chat.updated_at).toLocaleDateString('en-PH', { timeZone: 'Asia/Manila' }); open.append(date);
       open.addEventListener('click', () => historyAction(() => openChat(chat.id)));
       const rename = iconButton('rename', 'Rename conversation');
       rename.addEventListener('click', () => { editingChat = chat; root.querySelector('[data-delete-form]').hidden = true; root.querySelector('[data-rename-form]').hidden = false; const title = root.querySelector('#pfChatTitle'); title.value = chat.title; title.focus(); });

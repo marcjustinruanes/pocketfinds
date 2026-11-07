@@ -9,7 +9,8 @@
   $filterName = $filterName ?? null;
 @endphp
 <div class="product-card"@if($filterName !== null) data-product="{{ strtolower($filterName) }}"@endif onclick="window.location='{{ $pLink }}'">
-  <div class="product-img">
+  <div class="product-img" style="position:relative">
+    @include('partials.product-stock-label', ['p'=>$p])
     @if($pImg)
       <img src="{{ $pImg }}" alt="{{ $pName }}">
     @else
@@ -48,7 +49,7 @@
     </div>
     @endif
     <div class="pc-actions" data-id="{{ $p['id'] }}" data-name="{{ $pName }}" data-price="{{ $pPrice }}" data-img="{{ $pImg }}">
-      <button type="button" class="btn-cart" onclick="event.stopPropagation(); pcCart(this)" title="Add to Cart">
+      <button type="button" class="btn-cart" onclick="event.stopPropagation(); pcCart(this)" title="{{ ($p['stock'] ?? 1) <= 0 ? 'Out of stock' : 'Add to Cart' }}" @disabled(($p['stock'] ?? 1) <= 0)>
         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 5m12-5l2 5M9 21a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"/></svg>
         Cart
       </button>

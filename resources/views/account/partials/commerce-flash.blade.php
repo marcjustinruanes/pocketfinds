@@ -14,7 +14,7 @@
   <div class="card-pad">
     <div class="flash-sales-note">
       <span>@include('seller.partials.icon', ['name' => 'clock', 'size' => 15])</span>
-      <p>Schedule times use {{ config('app.timezone') }}. Quantity cannot exceed stock, and overlapping sales for the same product are blocked.</p>
+      <p>Quantity cannot exceed stock, and overlapping sales for the same product are blocked.</p>
     </div>
     <form class="flash-sale-form" method="POST" action="{{ route('seller.commerce.flash') }}">
       @csrf

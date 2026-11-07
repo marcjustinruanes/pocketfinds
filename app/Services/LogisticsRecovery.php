@@ -15,7 +15,7 @@ class LogisticsRecovery
         abort_unless(Schema::hasColumn('logistics_issues','recovery'),503,'Install the operational recovery migration.');
         $d=Validator::make($input,['key'=>'required|uuid','rider_id'=>'required|integer','leg'=>'required|in:pickup,delivery,hub_transfer','tracking_numbers'=>'required|string|max:10000',
             'condition'=>'required|string|min:3|max:1000','reason'=>'required|string|min:3|max:1000','reference'=>'required|string|min:3|max:255','observed_at'=>'required|date','confirmed'=>'required|accepted'])->validate();
-        $observed=CarbonImmutable::parse($d['observed_at'],'Asia/Manila')->utc();
+        $observed=CarbonImmutable::parse($d['observed_at'],'Asia/Manila')->setTimezone(config('app.timezone'));
         abort_if($observed->isFuture(),422,'Observation time cannot be in the future.');
         $tracking=preg_split('/[\s,]+/',trim($d['tracking_numbers']),-1,PREG_SPLIT_NO_EMPTY);
         abort_unless(count($tracking)>0 && count($tracking)<=100 && count(array_unique($tracking))===count($tracking),422,'Scan distinct parcels, up to 100.');sort($tracking);

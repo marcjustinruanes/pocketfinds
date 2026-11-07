@@ -38,7 +38,7 @@
     </nav>
   </div>
 
-  <div id="hiring-management" class="coverage-section-heading"><h2>Hiring Management</h2><p>Rider and Hub Staff hiring are independent. All closing times use {{ config('app.timezone') }}.</p></div>
+  <div id="hiring-management" class="coverage-section-heading"><h2>Hiring Management</h2><p>Rider and Hub Staff hiring are independent. </p></div>
   @forelse($allHubs as $hub)
   <article id="hiring-hub-{{ $hub->id }}" class="card coverage-hub">
     <header class="coverage-hub-header">
@@ -59,7 +59,7 @@
           <input type="hidden" name="revision" value="{{ $hub->hiring_revision }}">
           <label for="{{ $fieldId }}-open">Accept new {{ $label === 'Rider' ? 'Rider' : 'Hub Staff' }} applications<select id="{{ $fieldId }}-open" name="is_hiring"><option value="1" @selected($hub->{$prefix.'_hiring_open'} ?? $hub->is_hiring)>Open</option><option value="0" @selected(!($hub->{$prefix.'_hiring_open'} ?? $hub->is_hiring))>Closed</option></select></label>
           <label for="{{ $fieldId }}-limit">Maximum approved hires<input id="{{ $fieldId }}-limit" type="number" name="limit" min="0" max="100000" value="{{ $hub->{$prefix.'_hire_limit'} }}" placeholder="Unlimited" aria-describedby="{{ $fieldId }}-limit-help"><small id="{{ $fieldId }}-limit-help">Leave blank for unlimited hires. Zero means no vacancies.</small></label>
-          <label for="{{ $fieldId }}-deadline">Closing date and time ({{ config('app.timezone') }})<input id="{{ $fieldId }}-deadline" type="datetime-local" name="closes_at" value="{{ $hub->{$prefix.'_hiring_closes_at'}?->format('Y-m-d\TH:i') }}" aria-describedby="{{ $fieldId }}-deadline-help"><small id="{{ $fieldId }}-deadline-help">Optional. Clear this field to remove the deadline.</small></label>
+          <label for="{{ $fieldId }}-deadline">Closing date and time<input id="{{ $fieldId }}-deadline" type="datetime-local" name="closes_at" value="{{ $hub->{$prefix.'_hiring_closes_at'}?->format('Y-m-d\TH:i') }}" aria-describedby="{{ $fieldId }}-deadline-help"><small id="{{ $fieldId }}-deadline-help">Optional. Clear this field to remove the deadline.</small></label>
           <button type="submit" class="btn btn-primary">Save {{ $label }} hiring</button>
         </form>
       </section>

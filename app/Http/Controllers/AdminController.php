@@ -150,6 +150,9 @@ class AdminController extends Controller
 
     public function logout(Request $request)
     {
+        if ($request->user()?->account_type === 'rider') {
+            $request->user()->update(['is_available' => false, 'availability_updated_at' => now()]);
+        }
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

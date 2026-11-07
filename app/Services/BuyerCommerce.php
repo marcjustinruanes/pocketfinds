@@ -201,6 +201,7 @@ class BuyerCommerce
             }
             $subtotal = array_sum(array_column($eligible, 'subtotal'));
             if ($subtotal < (float) $v->minimum_spend) {
+                if ($preview) continue;
                 $this->fail('Spend ₱'.number_format($v->minimum_spend - $subtotal, 2).' more for '.$v->code.'.', 'vouchers');
             }
             $basis = $v->kind === 'shipping' ? array_sum(array_column($eligible, 'shipping_amount')) : $subtotal;
@@ -260,7 +261,39 @@ class BuyerCommerce
             $warning = app(LogisticsShipping::class)->preflight(User::findOrFail($sellerId), $address, $details, $preview);
             if ($warning) $warnings[] = $warning;
         }
-        return ['orders' => $orders, 'address' => $address, 'total' => round(array_sum(array_column($orders, 'total')), 2), 'warnings' => array_values(array_unique($warnings))];
+        return ['orders' => $orders, 'address' => $address, 'total' => round(array_sum(array_column($orders, 'total')), 2), 'warnings' => array_values(array_unique($warnings)), 'voucher_options' => $this->checkoutVoucherAvailability($buyer, $orders)];
+    }
+
+    public function checkoutVoucherAvailability(User $buyer, array $orders): array
+    {
+        $offers = DB::table('commerce_vouchers')->where('is_active',true)->where('starts_at','<=',now())->where('ends_at','>',now())
+            ->where('code','!=',DeliveryGuarantee::FREE_SHIPPING_CODE)
+            ->where(fn($query)=>$query->whereIn('seller_id',array_keys($orders))->orWhereNull('seller_id'))->get();
+        $result = [];
+        foreach ($offers as $offer) {
+            if (!DeliveryGuarantee::voucherBelongsTo((int)$offer->id,(int)$buyer->id)) continue;
+            $matching = $offer->seller_id !== null ? array_intersect_key($orders,[$offer->seller_id=>true]) : $orders;
+            $products = json_decode($offer->product_ids ?? '[]',true) ?: [];
+            if ($products) $matching = array_filter($matching,fn($order)=>collect($order['items'])->contains(fn($item)=>in_array($item['product_id'],$products,true)));
+            $subtotal = array_sum(array_column($matching,'subtotal'));
+            $remaining = max(0,round((float)$offer->minimum_spend-$subtotal,2));
+            $reason = !$matching ? 'Select eligible products for this voucher.' : ($remaining > 0 ? 'Spend ₱'.number_format($remaining,2).' more to use this voucher.' : '');
+            $uses = DB::table('commerce_allocations')->where('voucher_id',$offer->id)->whereIn('state',['held','used']);
+            $legacyUsed = (int)($offer->legacy_used_count ?? 0);
+            if ($offer->legacy_store_id ?? null) {
+                $legacy = Voucher::find($offer->legacy_store_id);
+                if (!$legacy || !$legacy->isUsable()) $reason = 'This voucher is unavailable.';
+                if ($legacy) $legacyUsed = (int)$legacy->used_count + GcashInventory::voucherSlots($legacy->id);
+            }
+            if ((clone $uses)->distinct()->count('usage_key')+$legacyUsed >= $offer->usage_limit) $reason = 'This voucher has reached its usage limit.';
+            if ((clone $uses)->where('buyer_id',$buyer->id)->distinct()->count('usage_key') >= $offer->per_buyer_limit) $reason = 'You have already used this voucher.';
+            if ($offer->kind === 'shipping' && $matching) {
+                if (in_array(true,array_column($matching,'shipping_pending'),true)) $reason = 'Complete the delivery details to check shipping.';
+                elseif (array_sum(array_column($matching,'shipping_amount')) <= 0) $reason = 'Shipping is already free.';
+            }
+            $result[] = ['code'=>$offer->code,'eligible'=>$reason==='','reason'=>$reason,'remaining_spend'=>$remaining];
+        }
+        return $result;
     }
 
     public function split(int $cents, array $weights): array

@@ -30,7 +30,7 @@
     </details>
     <details><summary>Verified funding history</summary>
       @forelse($funding as $m)
-      <p>PHP {{ number_format($m->delta_cents/100,2) }} / {{ $m->reference }} / Actor #{{ $m->actor_id }} / {{ $m->created_at }} UTC</p>
+      <p>PHP {{ number_format($m->delta_cents/100,2) }} / {{ $m->reference }} / Actor #{{ $m->actor_id }} / {{ $m->created_at ? \Illuminate\Support\Carbon::parse($m->created_at)->format('M j, Y g:i A') : '—' }}</p>
       @if(isset($fundingEvidence[$m->source_id]))<a class="btn" href="{{ route('finance.evidence',$fundingEvidence[$m->source_id]->id) }}" target="_blank" rel="noopener">View private funding evidence</a>@endif
       @empty
       <p>No verified staff payroll contributions.</p>

@@ -49,7 +49,7 @@
    <p class="gcash-notice gcash-notice-danger"><strong>Seller rejection reason:</strong> {{ $rejection->reason }}</p>
   @endif
   @if($reviewer)<p class="gcash-muted">Review access does not allow verifying payment, resolving it, or placing an order.</p>@endif
-  @if($live)<p class="gcash-notice">Stock reserved until <strong>{{ $p->expires_at->format('M j, Y g:i A') }} {{ config('app.timezone') }}</strong>. Proof submission does not extend this deadline.</p>@endif
+  @if($live)<p class="gcash-notice">Stock reserved until <strong>{{ $p->expires_at->format('M j, Y g:i A') }}</strong>. Proof submission does not extend this deadline.</p>@endif
   @if($buyer && $verified && !$placement['eligible'])<p class="gcash-notice gcash-notice-danger" role="alert">{{ $placement['reason'] }}</p>@endif
   <div class="gcash-actions">
    @if(!$reviewer && !$ordered)
@@ -103,7 +103,7 @@
    <section class="gcash-card" aria-labelledby="receipts-heading">
     <h3 id="receipts-heading">Receipt evidence</h3>
     <ul class="gcash-receipts">@forelse($proofs as $proof)
-     <li><a href="{{ route('gcash.receipt', [$p->id, $proof->id]) }}" data-private-receipt data-submitted="{{ $proof->created_at }} {{ config('app.timezone') }}">View private receipt</a><time datetime="{{ \Illuminate\Support\Carbon::parse($proof->created_at)->toIso8601String() }}">{{ \Illuminate\Support\Carbon::parse($proof->created_at)->format('M j, Y g:i A') }} {{ config('app.timezone') }}</time></li>
+     <li><a href="{{ route('gcash.receipt', [$p->id, $proof->id]) }}" data-private-receipt data-submitted="{{ $proof->created_at ? \Illuminate\Support\Carbon::parse($proof->created_at)->format('M j, Y g:i A') : '—' }}">View private receipt</a><time datetime="{{ \Illuminate\Support\Carbon::parse($proof->created_at)->toIso8601String() }}">{{ \Illuminate\Support\Carbon::parse($proof->created_at)->format('M j, Y g:i A') }}</time></li>
     @empty<li class="gcash-muted">No proof submitted.</li>@endforelse</ul>
    </section>
    @if(!$reviewer && !$buyer && $live && $p->payment_state === 'proof_submitted')
@@ -167,7 +167,7 @@
     @endunless
    </section>
    <section class="gcash-card"><details><summary>Payment history</summary>
-    <ol class="gcash-history">@foreach($history as $event)<li><strong>{{ ucfirst(str_replace('_', ' ', $event->event)) }}</strong><time datetime="{{ \Illuminate\Support\Carbon::parse($event->created_at)->toIso8601String() }}">{{ \Illuminate\Support\Carbon::parse($event->created_at)->format('M j, Y g:i A') }} {{ config('app.timezone') }}</time><span class="gcash-muted">{{ $event->actor_id ? 'Account '.$event->actor_id : 'System' }}</span>@if($event->reason)<p>{{ $event->reason }}</p>@endif</li>@endforeach</ol>
+    <ol class="gcash-history">@foreach($history as $event)<li><strong>{{ ucfirst(str_replace('_', ' ', $event->event)) }}</strong><time datetime="{{ \Illuminate\Support\Carbon::parse($event->created_at)->toIso8601String() }}">{{ \Illuminate\Support\Carbon::parse($event->created_at)->format('M j, Y g:i A') }}</time><span class="gcash-muted">{{ $event->actor_id ? 'Account '.$event->actor_id : 'System' }}</span>@if($event->reason)<p>{{ $event->reason }}</p>@endif</li>@endforeach</ol>
     {{ $history->links() }}
    </details></section>
   </aside>

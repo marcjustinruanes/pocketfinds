@@ -41,7 +41,7 @@ class PasswordResetTest extends TestCase
         $token = null;
         Notification::assertSentTo($user, ResetPassword::class, function ($notification) use (&$token, $user) {
             $token = $notification->token;
-            $this->assertStringContainsString(route('password.reset', $token), $notification->toMail($user)->actionUrl);
+            $this->assertStringContainsString('https://pocketfindsph.shop'.route('password.reset', $token, false), $notification->toMail($user)->actionUrl);
             return true;
         });
         $this->assertNotSame($token, DB::table('password_reset_tokens')->value('token'));
@@ -63,6 +63,57 @@ class PasswordResetTest extends TestCase
         $this->post(route('password.email'), ['email' => $user->email])->assertSessionHas('status', $knownMessage);
         $this->post(route('password.email'), ['email' => 'unknown@example.com'])->assertSessionHas('status', $knownMessage);
         Notification::assertSentToTimes($user, ResetPassword::class, 1);
+    }
+
+    public function test_reset_email_always_uses_the_public_domain_for_localhost_requests(): void
+    {
+        $user = $this->account();
+        config(['app.url'=>'http://127.0.0.1:8000']);
+        $this->post('http://127.0.0.1:8000/password/email', ['email'=>$user->email])->assertRedirect();
+        Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user) {
+            $mail=$notification->toMail($user);
+            $this->assertStringStartsWith('https://pocketfindsph.shop/password/reset/', $mail->actionUrl);
+            $this->assertSame('Confirm reset password',$mail->actionText);
+            $this->assertStringNotContainsString('127.0.0.1',$mail->actionUrl);
+            return true;
+        });
+    }
+
+    public function test_account_password_link_is_sent_only_to_the_signed_in_buyers_email(): void
+    {
+        $user = $this->account()->fresh();
+        $password = $user->password;
+        $this->actingAs($user)->post(route('buyer.account.password-link'), ['email' => 'someone-else@example.com'])
+            ->assertRedirect()->assertSessionHas('password_link_sent')->assertSessionHasNoErrors();
+        Notification::assertSentToTimes($user, ResetPassword::class, 1);
+        $this->assertSame($password, $user->fresh()->password);
+        $this->assertDatabaseHas('password_reset_tokens', ['email' => $user->email]);
+        $this->assertDatabaseMissing('password_reset_tokens', ['email' => 'someone-else@example.com']);
+        $this->post(route('buyer.account.password-link'))->assertSessionHasErrors('password_link');
+        Notification::assertSentToTimes($user, ResetPassword::class, 1);
+    }
+
+    public function test_inline_account_password_change_requires_the_email_link_and_uses_a_single_use_token(): void
+    {
+        Schema::table('users', function (Blueprint $table) { $table->string('username')->nullable()->unique(); });
+        $user = $this->account()->fresh();
+        $user->update(['username'=>'original-buyer']);
+        $this->actingAs($user)->post(route('buyer.account.password-link'))->assertSessionHasNoErrors();
+        $token = null;
+        Notification::assertSentTo($user, ResetPassword::class, function ($notification) use (&$token) { $token=$notification->token; return true; });
+        $data=['username'=>'new-buyer','password'=>'Changed@2026','password_confirmation'=>'Changed@2026'];
+        $this->post(route('buyer.account.password-change'),$data)->assertSessionHasErrors('password_link');
+        $this->assertSame('original-buyer',$user->fresh()->username);
+        $this->get(route('password.reset',['token'=>$token,'email'=>$user->email]))
+            ->assertRedirect(route('buyer.account').'#account-security')->assertSessionHas('buyer_password_change_token',$token);
+        $this->postJson(route('buyer.account.password-change'),array_replace($data,['password_confirmation'=>'Different@2026']))
+            ->assertUnprocessable()->assertJsonValidationErrors('password');
+        $this->post(route('buyer.account.password-change'),$data)->assertSessionHasNoErrors()->assertSessionHas('password_success');
+        $this->assertSame('new-buyer',$user->fresh()->username);
+        $this->assertSame('buyer@example.com',$user->fresh()->email);
+        $this->assertTrue(Hash::check('Changed@2026',$user->fresh()->password));
+        $this->assertDatabaseCount('password_reset_tokens',0);
+        $this->post(route('buyer.account.password-change'),$data)->assertSessionHasErrors('password_link');
     }
 
     public function test_reset_email_uses_text_branding_without_image_attachments_or_a_url_footer(): void

@@ -37,8 +37,20 @@
           @endif
           <div class="notif-list">
           @forelse($notifications as $notification)
+          @php
+            $notificationStyle = match ($notification->notification_type ?? '') {
+              'order_status', 'order_delivered', 'delivery_assigned', 'pickup_assigned' => ['package', 'is-order'],
+              'delivery_failed', 'doc_rejected', 'product_rejected' => ['x', 'is-danger'],
+              'doc_approved', 'product_approved' => ['check', 'is-success'],
+              'review_reply' => ['chat', 'is-message'],
+              'announcement' => ['bell', 'is-announcement'],
+              default => ['bell', 'is-announcement'],
+            };
+          @endphp
           <a href="{{ route('buyer.notifications.open', $notification->id) }}" class="notif-item {{ $notification->is_read ? 'read' : '' }}">
-            <span class="dot"></span><span class="notif-item-copy">{{ $notification->message }}<small class="notif-item-time">{{ \Carbon\Carbon::parse($notification->created_at)->diffForHumans() }}</small></span>
+            <span class="notif-entry-icon {{ $notificationStyle[1] }}">@include('buyer.partials.icon', ['name' => $notificationStyle[0], 'size' => 16])</span>
+            <span class="notif-item-copy"><strong>{{ $notification->title ?: 'PocketFinds update' }}</strong><span>{{ $notification->message }}</span><small class="notif-item-time">{{ \Carbon\Carbon::parse($notification->created_at)->diffForHumans() }}</small></span>
+            @if(! $notification->is_read)<span class="dot" aria-label="Unread"></span>@endif
           </a>
           @empty
           <p class="notif-empty">You're all caught up. New account and order updates will appear here.</p>
@@ -62,7 +74,6 @@
         </summary>
         <div class="pf-buyer-dropdown pf-buyer-account-navigation">
           <div class="pf-buyer-identity"><strong>{{ auth()->user()->given_names }} {{ auth()->user()->last_name }}</strong><small>Buyer account</small></div>
-<a href="{{ route('buyer.dashboard') }}" @if(request()->routeIs('buyer.dashboard')) aria-current="page" @endif>@include('buyer.partials.icon', ['name' => 'home', 'size' => 16]) Home</a>
 <a href="{{ route('buyer.orders') }}" @if(request()->routeIs('buyer.orders')) aria-current="page" @endif>@include('buyer.partials.icon', ['name' => 'package', 'size' => 16]) My Orders</a>
 @if(\App\Services\BuyerCommerce::installed())
 @endif

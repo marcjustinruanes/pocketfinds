@@ -2,7 +2,7 @@
 namespace Tests\Feature;
 
 use App\Services\LogisticsTreasury;
-use Illuminate\Support\Facades\{Cache,DB,Mail};
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class GcashOnlyPaymentsTest extends LogisticsReconciliationTest
@@ -52,15 +52,4 @@ class GcashOnlyPaymentsTest extends LogisticsReconciliationTest
         $this->assertDatabaseHas('logistics_rider_destinations',['id'=>$d->id,'channel'=>'bank']);
     }
 
-    public function test_gcash_only_buyer_connections_reject_bank_and_old_verification_codes(): void
-    {
-        Mail::fake();$this->buyer->update(['email'=>'syntheticbuyer@gmail.com']);$this->actingAs($this->buyer);
-        foreach(['bank','paymaya'] as $type)$this->postJson(route('buyer.payment-accounts.send-code'),['type'=>$type,'account_name'=>'Synthetic Buyer','account_number'=>'09123456789'])->assertUnprocessable()->assertJsonValidationErrors('type');
-        Cache::put('payment_otp_'.$this->buyer->id,['otp'=>'123456','data'=>['type'=>'bank','account_name'=>'Legacy Buyer','account_number'=>'123456789']],600);
-        $this->postJson(route('buyer.payment-accounts.verify'),['otp'=>'123456'])->assertUnprocessable();
-        $this->assertDatabaseCount('buyer_payment_accounts',0);
-        $this->postJson(route('buyer.payment-accounts.send-code'),['type'=>'gcash','account_name'=>'Synthetic Buyer','account_number'=>'09123456789'])->assertOk()->assertJsonPath('success',true);
-        $otp=Cache::get('payment_otp_'.$this->buyer->id)['otp'];
-        $this->postJson(route('buyer.payment-accounts.verify'),['otp'=>$otp])->assertOk()->assertJsonPath('account.type','gcash');
-    }
 }

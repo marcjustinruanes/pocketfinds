@@ -67,7 +67,7 @@
   @endif
 
   <time>
-    {{ \Carbon\Carbon::parse($msg->created_at)->format('M d, H:i') }}
+    {{ \Carbon\Carbon::parse($msg->created_at)->format('M d, g:i A') }}
     @if($msg->sender_id == auth()->id())
       · {{ $msg->read ? '✓✓ Seen' : '✓ Delivered' }}
     @endif

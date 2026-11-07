@@ -41,13 +41,13 @@ class LogisticsFinance
     {
         abort_unless(filled($company), 422, 'A logistics company is required.');
         $created = DB::table('logistics_finance_settings')->insertOrIgnore([
-            'company_name' => $company, 'pickup_cents' => 2500, 'transfer_cents' => 15000,
-            'delivery_cents' => 4000, 'confirmation_hours' => 168, 'revision' => 1,
+            'company_name' => $company, 'pickup_cents' => 3000, 'transfer_cents' => 15000,
+            'delivery_cents' => 5000, 'confirmation_hours' => 168, 'revision' => 1,
             'created_at' => now(), 'updated_at' => now(),
         ]);
         if ($created) {
             $this->event($company, 'rates_initialized', 'settings', $company,
-                ['pickup_cents' => 2500, 'transfer_cents' => 15000, 'delivery_cents' => 4000, 'confirmation_hours' => 168], auth()->id());
+                ['pickup_cents' => 3000, 'transfer_cents' => 15000, 'delivery_cents' => 5000, 'confirmation_hours' => 168], auth()->id());
         }
 
         return DB::table('logistics_finance_settings')->where('company_name', $company)->first();
