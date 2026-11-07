@@ -13,6 +13,9 @@
 <a @if(request()->routeIs('seller.dashboard')) aria-current="page" @endif href="{{ route('seller.dashboard') }}" class="nav-item {{ request()->routeIs('seller.dashboard') ? 'active' : '' }}">
       <span class="ic">@include('seller.partials.icon', ['name' => 'dashboard', 'size' => 16])</span> Dashboard
     </a>
+@if(app(\App\Services\CommissionLedger::class)->installed())
+<a class="nav-item {{ request()->routeIs('commissions.*') ? 'active' : '' }}" href="{{ route('commissions.index') }}" @if(request()->routeIs('commissions.*')) aria-current="page" @endif><span class="ic">@include('seller.partials.icon', ['name'=>'chart','size'=>16])</span> Commission Statements</a>
+@endif
 <a @if(request()->routeIs('seller.orders*','seller.assignments.*')) aria-current="page" @endif href="{{ route('seller.orders') }}" class="nav-item {{ request()->routeIs('seller.orders*','seller.assignments.*') ? 'active' : '' }}">
       <span class="ic">@include('seller.partials.icon', ['name' => 'orders', 'size' => 16])</span> Order Management
     </a>

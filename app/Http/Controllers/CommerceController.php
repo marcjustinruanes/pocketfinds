@@ -572,6 +572,9 @@ class CommerceController extends Controller
                 }$update = ['status' => 'refunded', 'refund_reference' => $d['reference']];
             }
             DB::table('commerce_returns')->where('id', $id)->update($update + ['updated_at' => now()]);
+            if ($update['status'] === 'refunded') {
+                app(\App\Services\CommissionLedger::class)->reverse($order->id, 'return:'.$id, json_decode($row->item_keys, true), 'Recorded product refund '.$d['reference']);
+            }
             Order::notifyUser($row->buyer_id, 'Return/refund update', 'Your request is now '.$update['status'].'.', 'order_status', $order->id);
             if ($u->id !== $row->seller_id) {
                 Order::notifyUser($row->seller_id, 'Return/refund update', 'Return for '.$order->order_number.' is now '.$update['status'].'.', 'order_status', $order->id);

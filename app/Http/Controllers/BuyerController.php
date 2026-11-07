@@ -1119,7 +1119,9 @@ class BuyerController extends Controller
                 return $contact && $contact->account_type === 'seller' && filled($contact->username);
             });
 
-        $data = compact('product', 'productVariation', 'seller', 'sellerOnline', 'messages', 'conversations', 'sellerProducts', 'sellerOrders', 'autoAttachOrder');
+        $linkedPurchase=($seller && is_string($request->query('purchase')) && \Illuminate\Support\Str::isUuid($request->query('purchase')) && \App\Services\GcashInventory::installed())
+            ? \App\Models\GcashPurchase::where('id',$request->query('purchase'))->where('buyer_id',auth()->id())->where('seller_id',$seller->id)->first():null;
+        $data = compact('product', 'productVariation', 'seller', 'sellerOnline', 'messages', 'conversations', 'sellerProducts', 'sellerOrders', 'autoAttachOrder','linkedPurchase');
 
         if ($request->boolean('embedded')) {
             return view('buyer.messages-embedded', $data);

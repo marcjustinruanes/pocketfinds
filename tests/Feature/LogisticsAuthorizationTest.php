@@ -24,7 +24,7 @@ class LogisticsAuthorizationTest extends TestCase
         parent::setUp();
         $this->assertSame('sqlite', config('database.default'));
         \Illuminate\Support\Facades\Storage::fake('sensitive_documents');
-        foreach(['id_files/id.png','selfie_files/selfie.png','license_files/license.png','vehicle_docs/or.png','vehicle_docs/cr.png'] as $path) \Illuminate\Support\Facades\Storage::disk('sensitive_documents')->put($path,'private fixture');
+        foreach(['id_files/id.png','selfie_files/selfie.png','license_files/license.png','vehicle_docs/or.png','vehicle_docs/cr.png','nbi_clearances/nbi.png'] as $path) \Illuminate\Support\Facades\Storage::disk('sensitive_documents')->put($path,'private fixture');
         \Illuminate\Support\Facades\Http::preventStrayRequests();
         \Illuminate\Support\Facades\Http::fake([
             'https://psgc.gitlab.io/api/regions/' => \Illuminate\Support\Facades\Http::response([['code'=>'040000000','name'=>'CALABARZON']]),
@@ -46,9 +46,9 @@ class LogisticsAuthorizationTest extends TestCase
         });
         Schema::create('id_types', fn (Blueprint $t) => [$t->id(), $t->string('name')]);
         DB::table('id_types')->insert(['id' => 1, 'name' => "Driver's License"]);
-        Schema::create('vehicle_types', fn (Blueprint $t) => [$t->id(), $t->string('slug')]);
-        DB::table('vehicle_types')->insert(['id' => 1, 'slug' => 'two_wheels']);
-        DB::table('vehicle_types')->insert(['id'=>2,'slug'=>'four_wheels']);
+        Schema::create('vehicle_types', fn (Blueprint $t) => [$t->id(), $t->string('slug'), $t->string('name')]);
+        DB::table('vehicle_types')->insert(['id' => 1, 'slug' => 'two_wheels','name'=>'Two wheels']);
+        DB::table('vehicle_types')->insert(['id'=>2,'slug'=>'four_wheels','name'=>'Four wheels']);
         Schema::create('logistics_hubs', function (Blueprint $t) {
             $t->id();
             $t->string('company_name');
@@ -132,12 +132,19 @@ class LogisticsAuthorizationTest extends TestCase
         (require database_path('migrations/2026_10_29_000009_add_issue_investigation_context.php'))->up();
         (require database_path('migrations/2026_10_14_000002_add_role_hiring_management.php'))->up();
         (require database_path('migrations/2026_10_14_000001_add_hub_transfer_batches.php'))->up();
+        (require database_path('migrations/2026_10_31_150000_add_rider_license_and_capacity.php'))->up();
+        (require database_path('migrations/2026_11_06_000001_add_rider_delivery_workflow_fields.php'))->up();
+        Schema::create('logistics_finance_evidence',function(Blueprint $t){
+            $t->uuid('id')->primary();$t->string('company_name',190);$t->string('source_type',24);$t->uuid('source_id');
+            $t->string('path');$t->string('mime',64);$t->string('content_hash',64)->unique();$t->bigInteger('actor_id');$t->timestamp('created_at');$t->unique(['source_type','source_id']);
+        });
+        \Illuminate\Support\Facades\Storage::fake('local');
     }
 
     private function applicationEvidence(string $role): array
     {
         $image=fn()=>\Illuminate\Http\UploadedFile::fake()->createWithContent('document.png',base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aL1kAAAAASUVORK5CYII='));
-        return ['region'=>'CALABARZON','selfie_file'=>$image()]+($role==='rider'?['license_number'=>'M01-00-000001','license_expiry'=>'2030-01-01','license_file'=>$image(),'vehicle_brand'=>'Test','vehicle_model'=>'Test','plate_number'=>'MANAGED','or_file'=>$image(),'cr_file'=>$image()]:['id_type_id'=>1,'id_file'=>$image()]);
+        return ['region'=>'CALABARZON','selfie_file'=>$image()]+($role==='rider'?['license_number'=>'M01-00-000001','license_expiry'=>'2030-01-01','license_file'=>$image(),'nbi_clearance_file'=>$image(),'vehicle_brand'=>'Test','vehicle_model'=>'Test','plate_number'=>'MANAGED','or_file'=>$image(),'cr_file'=>$image()]:['id_type_id'=>1,'id_file'=>$image()]);
     }
 
     private function hub(string $company = 'Alpha', string $town = 'Santa Cruz', string $province = 'Laguna'): LogisticsHub
@@ -149,10 +156,12 @@ class LogisticsAuthorizationTest extends TestCase
     {
         $name = 'user_'.bin2hex(random_bytes(4));
 
-        return User::create(['username' => $name, 'email' => $name.'@example.test', 'given_names' => 'Test', 'last_name' => 'Account', 'status' => $status,
+        $user=User::create(['username' => $name, 'email' => $name.'@example.test', 'given_names' => 'Test', 'last_name' => 'Account', 'status' => $status,
             'business_name' => $hub->company_name, 'logistics_hub_id' => $hub->id, 'is_admin' => $role === 'admin', 'is_logistics' => in_array($role, ['hub_staff', 'logistics_admin']),
             'account_type' => in_array($role, ['hub_staff', 'logistics_admin']) ? 'logistics' : $role, 'logistics_role' => $role === 'hub_staff' ? 'hub_staff' : ($role === 'logistics_admin' ? 'admin' : null),
-            'id_file' => $role==='rider'?'license_files/license.png':'id_files/id.png', 'id_type_id' => 1, 'selfie_file' => 'selfie_files/selfie.png', 'license_file' => 'license_files/license.png', 'license_number' => $name, 'license_expiry' => '2030-01-01', 'vehicle_brand' => 'Test', 'vehicle_model' => 'Test', 'plate_number' => $name, 'or_file' => 'vehicle_docs/or.png', 'cr_file' => 'vehicle_docs/cr.png', 'vehicle_type' => 'two_wheels', 'vehicle_ownership' => 'own', 'password' => 'TestPassword!123']);
+            'id_file' => $role==='rider'?'license_files/license.png':'id_files/id.png', 'id_type_id' => 1, 'selfie_file' => 'selfie_files/selfie.png', 'license_file' => 'license_files/license.png', 'nbi_clearance_file'=>'nbi_clearances/nbi.png', 'license_number' => $name, 'license_expiry' => '2030-01-01', 'vehicle_brand' => 'Test', 'vehicle_model' => 'Test', 'plate_number' => $name, 'or_file' => 'vehicle_docs/or.png', 'cr_file' => 'vehicle_docs/cr.png', 'vehicle_type' => 'two_wheels', 'vehicle_ownership' => 'own', 'password' => 'TestPassword!123']);
+        if($role==='rider')$user->forceFill(['is_available'=>true])->save();
+        return $user;
     }
 
     private function parcel(LogisticsHub $from, LogisticsHub $to, string $id = 'parcel', string $status = 'sorted'): Shipment
@@ -240,7 +249,7 @@ class LogisticsAuthorizationTest extends TestCase
         $other = $this->hub('Beta');
         $rider = $this->user($a, 'rider');
         $this->parcel($other, $other, 'foreign');
-        $this->actingAs($rider)->patch('/rider/requests/foreign/accept')->assertRedirect();
+        $this->actingAs($rider)->patch('/rider/requests/foreign/accept')->assertUnprocessable();
         $this->assertDatabaseHas('shipments', ['id' => 'foreign', 'courier_id' => null]);
         $this->assertDatabaseCount('delivery_assignments', 0);
         $this->assertDatabaseCount('logistics_activity_logs', 0);
@@ -308,7 +317,7 @@ class LogisticsAuthorizationTest extends TestCase
         $this->parcel($a, $a);
         $staff = $this->user($a);
         $other = $this->user($b);
-        $this->actingAs($staff)->post('/logistics/issues', ['tracking_number' => 'TRACK-parcel', 'kind' => 'damaged', 'description' => 'Box torn'])->assertRedirect();
+        $this->actingAs($staff)->post('/logistics/issues', ['tracking_number' => 'TRACK-parcel', 'kind' => 'damaged', 'description' => 'Box visibly torn on receipt','proof'=>$this->applicationEvidence('rider')['selfie_file']])->assertRedirect()->assertSessionHasNoErrors();
         $id = DB::table('logistics_issues')->value('id');
         $this->actingAs($other)->patchJson('/logistics/issues/'.$id, ['status' => 'resolved', 'resolution' => 'Checked'])->assertNotFound();
         $this->actingAs($staff)->patchJson('/logistics/issues/'.$id, ['status' => 'resolved','revision'=>0,'outcome'=>'damage_documented'])->assertUnprocessable();
@@ -400,7 +409,7 @@ class LogisticsAuthorizationTest extends TestCase
         $other = $this->user($otherHub);
         $admin = $this->user($hub, 'logistics_admin');
         $this->parcel($hub, $hub);
-        $this->actingAs($admin)->post('/logistics/issues', ['tracking_number' => 'TRACK-parcel', 'hub_id' => $hub->id, 'kind' => 'damaged', 'description' => 'Recorded torn parcel'])->assertRedirect();
+        $this->actingAs($admin)->post('/logistics/issues', ['tracking_number' => 'TRACK-parcel', 'hub_id' => $hub->id, 'kind' => 'damaged', 'description' => 'Recorded torn parcel','proof'=>$this->applicationEvidence('rider')['selfie_file']])->assertRedirect()->assertSessionHasNoErrors();
         $id = DB::table('logistics_issues')->value('id');
         $this->patch('/logistics/issues/'.$id, ['status' => 'in_progress','revision'=>0, 'assigned_to' => $staff->id])->assertRedirect();
         $this->actingAs($staff)->get('/logistics/issues')->assertOk()->assertSee('Recorded torn parcel');
@@ -690,7 +699,7 @@ class LogisticsAuthorizationTest extends TestCase
         foreach (['approve', 'reject', 'assign-pickup'] as $action) {
             $this->patchJson('/logistics/requests/foreign/'.$action, ['courier_id' => $rider->id])->assertNotFound();
         }
-        $this->patchJson('/logistics/status/foreign', ['status' => 'delivered'])->assertForbidden();
+        $this->patchJson('/logistics/status/foreign', ['status' => 'delivered','reason'=>'Foreign delivery must remain forbidden'])->assertForbidden();
         $this->getJson('/logistics/messages/poll?receiver_id='.$rider->id)->assertForbidden();
         $this->postJson('/logistics/messages/send', ['receiver_id' => $rider->id, 'body' => 'Forged'])->assertForbidden();
         $this->assertDatabaseCount('logistics_activity_logs', 0);

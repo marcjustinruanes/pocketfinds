@@ -36,12 +36,13 @@ class PaymentReporting
             $m['cod_verified']=(int)$dated(DB::table('logistics_cash_allocations as a')->join('logistics_cash_handovers as h','h.id','=','a.handover_id')->join('logistics_financial_transactions as c','c.id','=','a.collection_id')->whereIn('c.order_id',$scope(DB::table('orders'))->select('id'))
                 ->where('c.kind','cod_collection')->whereNotNull('h.counted_at'),'h.counted_at')->sum('a.verified_cents');
             $payouts=$scope(DB::table('logistics_seller_payouts'))->get();
+            $deductions=Schema::hasTable('commission_cod_settlements') ? DB::table('commission_cod_settlements')->whereIn('payout_id',$payouts->pluck('id'))->pluck('commission_cents','payout_id') : collect();
             $paid=$payouts->where('status','paid')->filter(fn($p)=>$p->paid_at && (!$from || Carbon::parse($p->paid_at)->gte($from)) && (!$to || Carbon::parse($p->paid_at)->lte($to)));
-            $m['seller_cod_paid']=(int)$paid->sum(fn($p)=>(int)$p->product_cents+(int)$p->adjustment_cents);
+            $m['seller_cod_paid']=(int)$paid->sum(fn($p)=>(int)$p->product_cents+(int)$p->adjustment_cents-(int)($deductions[$p->id]??0));
             $m['cod_shipping_retained']=(int)$paid->sum('shipping_cents');
             $pending=$payouts->whereIn('status',['prepared','verified']);
-            $m['pending_cod_payouts']=(int)$pending->sum(fn($p)=>(int)$p->product_cents+(int)$p->adjustment_cents);
-            $m['held_cod_payouts']=(int)$pending->filter(fn($p)=>filled($p->hold_reason))->sum(fn($p)=>(int)$p->product_cents+(int)$p->adjustment_cents);
+            $m['pending_cod_payouts']=(int)$pending->sum(fn($p)=>(int)$p->product_cents+(int)$p->adjustment_cents-(int)($deductions[$p->id]??0));
+            $m['held_cod_payouts']=(int)$pending->filter(fn($p)=>filled($p->hold_reason))->sum(fn($p)=>(int)$p->product_cents+(int)$p->adjustment_cents-(int)($deductions[$p->id]??0));
             $m['unverified_platform_claims']=(int)$scope(DB::table('logistics_shipping_obligations'))->where('claim_status','unverified')->sum('platform_claim_cents');
         }
         return ['orders'=>$orders,'metrics'=>$m,'available'=>$available,'from'=>$from,'to'=>$to,'snapshot_at'=>now()];

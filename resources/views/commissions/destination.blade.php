@@ -1,0 +1,2 @@
+<label>Seller GCash receiving account<select name="destination_id" required><option value="">Choose Seller receiving account</option>@foreach($destinations[$sellerId] ?? [] as $destination)<option value="{{ $destination->id }}">{{ $destination->account_name }} · {{ $destination->account_number }}</option>@endforeach</select></label>
+<p>If no account is available, the Seller must add their GCash receiving details in COD Payouts before repayment.</p>

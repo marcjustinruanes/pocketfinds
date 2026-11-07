@@ -51,7 +51,8 @@
       <span class="ic"><x-admin-icon name="chart" /></span> Reports
     </a>
 </x-navigation-group>
-<x-navigation-group id="logistics-finance" label="Finance" :active="request()->routeIs('logistics.finance*', 'logistics.cash-desk*')">
+<x-navigation-group id="logistics-finance" label="Finance" :active="request()->routeIs('logistics.finance*', 'logistics.cash-desk*', 'commissions.*')">
+@if(app(\App\Services\CommissionLedger::class)->installed())<a href="{{ route('commissions.index') }}" class="nav-item {{ request()->routeIs('commissions.*') ? 'active' : '' }}" @if(request()->routeIs('commissions.*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="peso" /></span> Platform Commissions</a>@endif
 <a href="{{ route('logistics.finance') }}" class="nav-item {{ request()->routeIs('logistics.finance', 'logistics.finance.shipping.*') ? 'active' : '' }}" @if(request()->routeIs('logistics.finance', 'logistics.finance.shipping.*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="chart" /></span> Overview & Settings</a>
 <a href="{{ route('logistics.cash-desk') }}" class="nav-item {{ request()->routeIs('logistics.cash-desk*') ? 'active' : '' }}" @if(request()->routeIs('logistics.cash-desk*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="peso" /></span> Cash Desk</a>
 <a href="{{ route('logistics.finance.payouts') }}" class="nav-item {{ request()->routeIs('logistics.finance.payouts*', 'logistics.finance.treasury.*') ? 'active' : '' }}" @if(request()->routeIs('logistics.finance.payouts*', 'logistics.finance.treasury.*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="peso" /></span> Seller Settlements</a>

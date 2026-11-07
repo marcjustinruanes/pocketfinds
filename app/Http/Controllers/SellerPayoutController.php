@@ -31,6 +31,8 @@ class SellerPayoutController extends LogisticsController
         $hubs=$seller?collect():DB::table('logistics_hubs')->where('company_name',$actor->business_name)->where('is_operational',true)->get();
         $transfers=$seller?collect():DB::table('logistics_cash_handovers')->where('company_name',$actor->business_name)->where('kind','treasury')->orderByDesc('created_at')->paginate(10,['*'],'treasury_page');
         $sellerIds=$seller?[$actor->id]:array_unique(array_merge($payouts->pluck('seller_id')->all(),$orders->pluck('seller_id')->all()));
+        $commissionDeductions=app(\App\Services\CommissionLedger::class)->installed() ? DB::table('commission_cod_settlements')->whereIn('payout_id',$payouts->pluck('id'))->pluck('commission_cents','payout_id') : collect();
+        $residualSettlements=app(\App\Services\CodRefundSettlement::class)->installed()?DB::table('cod_residual_settlements')->whereIn('payout_id',$payouts->pluck('id'))->get()->keyBy('payout_id'):collect();
         $destinations=DB::table('logistics_payout_destinations')->whereIn('seller_id',$sellerIds)->orderByDesc('created_at')->get()->keyBy('id');
         $people=DB::table('users')->whereIn('id',$sellerIds)->pluck('username','id');
         $evidence=DB::table('logistics_finance_evidence')->where('source_type','seller_payout')->whereIn('source_id',$payouts->pluck('id'))->get()->keyBy('source_id');
@@ -39,7 +41,7 @@ class SellerPayoutController extends LogisticsController
         $treasuryReceipts=$seller?collect():DB::table('logistics_treasury_movements')->whereIn('account_id',$accounts->pluck('id'))->where('source_type','treasury_receipt')->where('bucket','cod')->whereIn('source_id',$transfers->pluck('id'))->get()->keyBy('source_id');
         $fundingMovements=$seller?collect():DB::table('logistics_treasury_movements')->whereIn('account_id',$accounts->pluck('id'))->where('source_type','adjustment_funding')->orderByDesc('id')->limit(30)->get();
         $fundingEvidence=$seller?collect():DB::table('logistics_finance_evidence')->where('company_name',$actor->business_name)->where('source_type','adjustment_funding')->whereIn('source_id',$fundingMovements->pluck('source_id'))->get()->keyBy('source_id');
-        return response()->view('logistics.seller-payouts',array_merge($seller?[]:$this->sidebarCounts(),compact('seller','actor','payouts','orders','eligibility','existingPayouts','payoutEligibility','accounts','balances','hubs','transfers','destinations','people','evidence','history','treasuryEvidence','treasuryReceipts','fundingMovements','fundingEvidence')))
+        return response()->view('logistics.seller-payouts',array_merge($seller?[]:$this->sidebarCounts(),compact('residualSettlements','commissionDeductions','seller','actor','payouts','orders','eligibility','existingPayouts','payoutEligibility','accounts','balances','hubs','transfers','destinations','people','evidence','history','treasuryEvidence','treasuryReceipts','fundingMovements','fundingEvidence')))
             ->header('Cache-Control','private, no-store')->header('X-Content-Type-Options','nosniff');
     }
 

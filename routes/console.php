@@ -68,3 +68,8 @@ Artisan::command('documents:privatize {--apply : Copy, verify and remove public 
 })->purpose('Safely privatize sensitive documents; dry run unless --apply is supplied');
 Artisan::command('commerce:sweep', function () { app(\App\Services\BuyerCommerce::class)->sweep(); $this->info('Flash reminders and return deadlines processed.'); });
 Schedule::command('commerce:sweep')->everyMinute()->withoutOverlapping();
+
+Artisan::command('commissions:reconcile', function () {
+    $this->info(app(\App\Services\CommissionLedger::class)->sweep().' eligible commission obligations reconciled.');
+})->purpose('Reconcile existing commission obligations; never enroll historical orders');
+Schedule::command('commissions:reconcile')->everyFiveMinutes()->withoutOverlapping();

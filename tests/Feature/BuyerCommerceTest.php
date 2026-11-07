@@ -44,6 +44,7 @@ class BuyerCommerceTest extends TestCase
         foreach (['2026_10_14_000004_add_gcash_purchases', '2026_10_16_000001_add_registration_business_details', '2026_10_16_000002_add_logistics_registration_details', '2026_10_17_000001_add_buyer_commerce_features'] as $file) {
             (require database_path('migrations/'.$file.'.php'))->up();
         }
+        (require database_path('migrations/2026_11_07_110000_expand_order_reviews.php'))->up();
         Storage::fake('public'); Storage::fake('sensitive_documents');
         Storage::fake('local');
         $this->buyer = $this->person('buyer');
@@ -54,6 +55,48 @@ class BuyerCommerceTest extends TestCase
         DB::table('commerce_shipping_rates')->insert(['seller_id' => $this->seller->id, 'region' => 'Test Region', 'first_kg' => 60, 'additional_kg' => 20]);
         PaymentMethod::create(['id' => 1, 'name' => 'Cash on Delivery', 'type' => 'cod', 'is_active' => true]);
         PaymentMethod::create(['id' => 2, 'name' => 'GCash', 'type' => 'ewallet', 'is_active' => true]);
+    }
+
+    private function installCommissionFixture(): void
+    {
+        foreach(['2026_10_28_000001_add_logistics_financial_foundation','2026_10_28_000002_add_logistics_financial_transactions','2026_10_29_000001_add_logistics_cash_desk','2026_10_29_000002_add_logistics_shipping_settlement','2026_10_29_000003_add_cod_seller_payouts','2026_11_08_000001_add_platform_commission_ledger'] as $file)(require database_path('migrations/'.$file.'.php'))->up();
+        config(['commission.enabled'=>true,'commission.activation_at'=>now()->subMinute()->toIso8601String()]);
+    }
+    public function test_checkout_rejects_missing_weight_and_inactive_region_before_gcash_purchase(): void
+    {
+        $this->product->update(['weight_grams'=>0]);
+        $this->invalid(fn()=>$this->quote());
+        $payload=['items'=>[$this->cart->id],'payment_method'=>2,'delivery_address_id'=>$this->address->id,'checkout_id'=>(string)Str::uuid()];
+        $this->actingAs($this->buyer)->post(route('buyer.checkout'),$payload)->assertRedirect()->assertSessionHasErrors();
+        $this->assertDatabaseCount('gcash_purchases',0);$this->assertDatabaseCount('orders',0);
+        $this->product->update(['weight_grams'=>400]);DB::table('commerce_shipping_rates')->update(['is_active'=>false]);
+        session()->forget('errors');$payload['checkout_id']=(string)Str::uuid();
+        $this->post(route('buyer.checkout'),$payload)->assertRedirect()->assertSessionHasErrors();
+        $this->assertDatabaseCount('gcash_purchases',0);$this->assertDatabaseCount('orders',0);
+    }
+
+    public function test_commission_cod_checkout_uses_actual_selling_price_and_seller_funding_only(): void
+    {
+        $this->installCommissionFixture();
+        $this->voucher('COMMSELLER','store',10);$this->voucher('COMMPLATFORM','platform',30);$this->voucher('COMMSHIP','shipping',50);
+        $codes=['COMMSELLER','COMMPLATFORM','COMMSHIP'];$quote=$this->quote($codes);
+        $d=['items'=>[$this->cart->id],'delivery_address_id'=>$this->address->id,'payment_method'=>1,'checkout_id'=>(string)Str::uuid(),'vouchers'=>$codes,'quote_hash'=>hash('sha256',json_encode($quote))];
+        $this->actingAs($this->buyer)->post(route('buyer.commerce.place'),$d)->assertRedirect()->assertSessionHasNoErrors();
+        $this->post(route('buyer.commerce.place'),$d)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('commission_obligations',1);
+        $this->assertDatabaseHas('commission_obligations',['method'=>'cod','basis_cents'=>29000,'commission_cents'=>2900]);
+        $this->assertEquals(290,Order::first()->total);
+    }
+
+    public function test_commission_gcash_checkout_reserves_once_without_marking_commission_collected(): void
+    {
+        $this->installCommissionFixture();$this->voucher('COMMSELLER','store',10);$codes=['COMMSELLER'];$quote=$this->quote($codes);
+        $d=['items'=>[$this->cart->id],'delivery_address_id'=>$this->address->id,'payment_method'=>2,'checkout_id'=>(string)Str::uuid(),'vouchers'=>$codes,'quote_hash'=>hash('sha256',json_encode($quote))];
+        $this->actingAs($this->buyer)->post(route('buyer.commerce.place'),$d)->assertRedirect()->assertSessionHasNoErrors();
+        $this->post(route('buyer.commerce.place'),$d)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('commission_obligations',1);$this->assertDatabaseCount('orders',0);
+        $o=DB::table('commission_obligations')->first();$this->assertSame(2900,(int)$o->commission_cents);$this->assertNull($o->earned_at);$this->assertSame(0,app(\App\Services\CommissionLedger::class)->collected($o->id));
+        $this->assertSame(17,$this->product->fresh()->stock);
     }
 
     private function person(string $role): User
@@ -284,8 +327,8 @@ class BuyerCommerceTest extends TestCase
         $this->voucher('SHOPSTYLE', 'store', 20);
         DB::table('commerce_flash_sales')->insert(['seller_id' => $this->seller->id, 'product_id' => $this->product->id, 'price' => 50, 'quantity' => 2, 'starts_at' => now()->subMinute(), 'ends_at' => now()->addHour()]);
         $this->actingAs($this->buyer)->get(route('buyer.shop', $this->seller->username))
-            ->assertOk()->assertSee('SHOPSTYLE')->assertSee('shop-voucher-copy', false)
-            ->assertSee('shop-category-select', false)->assertSee('shop-flash-product', false)
+            ->assertOk()->assertSee('SHOPSTYLE')->assertSee('shopVouchersModal', false)
+            ->assertSee('shop-category-select', false)->assertSee('pf-product-card', false)
             ->assertSee('Sold')->assertSee('sp-followers-count', false)
             ->assertSee('data-messages-trigger', false)->assertDontSee('class="pd-back"', false);
     }
@@ -305,22 +348,25 @@ class BuyerCommerceTest extends TestCase
         $this->actingAs($admin)->get(route('admin.commerce.index'))->assertRedirect(route('admin.products').'#platform-vouchers');
     }
 
-    public function test_item_reviews_support_photos_and_only_one_edit(): void
+    public function test_item_reviews_keep_photos_when_updating_the_existing_review(): void
     {
         $order = Order::create(['buyer_id' => $this->buyer->id, 'seller_id' => $this->seller->id, 'status' => 'completed', 'order_number' => 'REVIEW1', 'items' => [['product_id' => $this->product->id, 'name' => 'Basket', 'price' => 100, 'qty' => 1]], 'subtotal' => 100, 'total' => 100]);
         $order->logStatus('completed', $this->buyer->id);
-        $d = ['item_key' => 0, 'rating' => 5, 'comment' => 'Good basket', 'photos' => [$this->image('photo.png')]];
+        $d = ['item_key' => 0, 'rating' => 5, 'comment' => 'Good basket', 'media' => [$this->image('photo.png')]];
         $this->actingAs($this->buyer)->post(route('buyer.commerce.review', $order), $d)->assertRedirect()->assertSessionHasNoErrors();
         $review = Review::first();
         $this->assertCount(1, $review->photos);
         Storage::disk('public')->assertExists($review->photos[0]);
-        $this->post(route('buyer.commerce.review', $order), ['item_key' => 0, 'rating' => 4])->assertSessionHasErrors('checkout');
+        $this->post(route('buyer.commerce.review', $order), ['item_key' => 0, 'rating' => 4])->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('reviews',1);
         $this->post(route('buyer.commerce.review.edit', [$order, $review]), ['item_key' => 0, 'rating' => 4, 'comment' => 'Updated'])->assertSessionHasNoErrors();
-        $this->post(route('buyer.commerce.review.edit', [$order, $review]), ['item_key' => 0, 'rating' => 3])->assertSessionHasErrors('checkout');
-        $this->assertEquals(4, $review->fresh()->rating);
-        $this->get(route('buyer.orders', ['tab' => 'completed']))->assertOk()->assertSee('Review Items')->assertSee('Product reviews')->assertSee('already been edited once');
+        $this->post(route('buyer.commerce.review.edit', [$order, $review]), ['item_key' => 0, 'rating' => 3])->assertSessionHasNoErrors();
+        $this->assertEquals(3, $review->fresh()->rating);
+        $this->assertCount(1,$review->fresh()->photos);Storage::disk('public')->assertExists($review->fresh()->photos[0]);
+        $this->get(route('buyer.orders', ['tab' => 'completed']))->assertOk()->assertSee('Rate your order')->assertSee('Update product review');
         $this->travel(31)->days();
-        $this->post(route('buyer.commerce.review.edit', [$order, $review]), ['item_key' => 0, 'rating' => 2])->assertSessionHasErrors('checkout');
+        $this->post(route('buyer.commerce.review.edit', [$order, $review]), ['item_key' => 0, 'rating' => 2])->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('reviews',1);$this->assertEquals(2,$review->fresh()->rating);
     }
 
     public function test_returns_require_evidence_and_restore_stock_only_once(): void
@@ -475,7 +521,7 @@ class BuyerCommerceTest extends TestCase
         $response = $this->actingAs($this->buyer)->postJson(route('buyer.addresses.store'), $data)->assertOk();
         $id = $response->json('address.id');
         $response->assertSessionHas('buyer_checkout_address', $id);
-        $html = $this->get(route('buyer.cart'))->assertOk()->assertSee('Add New Address')->getContent();
+        $html = $this->get(route('buyer.cart'))->assertOk()->assertSee('Add address')->getContent();
         $this->assertMatchesRegularExpression('/name="delivery_address_radio" value="'.$id.'"\s+checked/', $html);
         $this->assertTrue($this->address->fresh()->is_default);
         $this->assertFalse(BuyerAddress::find($id)->is_default);
@@ -484,7 +530,7 @@ class BuyerCommerceTest extends TestCase
     public function test_older_saved_addresses_can_complete_missing_checkout_fields_only(): void
     {
         $this->address->update(['region' => null, 'postal_code' => null]);
-        $this->actingAs($this->buyer)->get(route('buyer.cart'))->assertOk()->assertSee('Complete missing delivery details')->assertSee('Save Delivery Details');
+        $this->actingAs($this->buyer)->get(route('buyer.cart'))->assertOk()->assertSee('Edit delivery address')->assertSee('Save delivery address');
         $data = ['region' => 'Test Region', 'postal_code' => '0123'];
         $this->actingAs($this->person('buyer'))->patchJson(route('buyer.addresses.complete', $this->address), $data)->assertForbidden();
         $this->actingAs($this->buyer)->patchJson(route('buyer.addresses.complete', $this->address), ['region' => 'Test Region', 'postal_code' => '123'])->assertUnprocessable();
@@ -534,7 +580,7 @@ class BuyerCommerceTest extends TestCase
             ->assertSee('Contact number')
             ->assertSee('09171234567')
             ->assertSee('Order date')
-            ->assertSee('Order time');
+            ->assertSee('Order date &amp; time',false);
         $this->actingAs($this->seller)->get(route('seller.orders'))
             ->assertOk()
             ->assertSee('Customer:')
@@ -549,7 +595,7 @@ class BuyerCommerceTest extends TestCase
         DB::table('commerce_flash_sales')->insert(['seller_id' => $this->seller->id, 'product_id' => $this->product->id, 'price' => 50, 'quantity' => 2, 'starts_at' => now()->subMinute(), 'ends_at' => now()->addHour()]);
         $this->actingAs($this->buyer)->get(route('buyer.dashboard'))->assertOk()->assertSee('id="deals"', false)->assertSee('Explore deals')->assertSee('Flash sale')->assertSee('data-countdown', false)->assertDontSee('buyer-shopping-tools', false);
         $this->post(route('buyer.commerce.wishlist', $this->product->id), ['saved' => 1]);
-        $this->get(route('buyer.wishlist'))->assertOk()->assertSee('Basket')->assertSee('Remove from Wishlist')->assertDontSee('Verify a new email');
+        $this->get(route('buyer.wishlist'))->assertOk()->assertSee('Basket')->assertSee('data-wishlist-delete',false)->assertDontSee('Verify a new email');
         $this->get(route('buyer.commerce.index', ['tab' => 'returns']))->assertRedirect(route('buyer.orders', ['tab' => 'refunds']));
         $this->get(route('buyer.commerce.index', ['tab' => 'sales']))->assertRedirect(route('buyer.dashboard').'#deals');
     }

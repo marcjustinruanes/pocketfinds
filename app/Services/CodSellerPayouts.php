@@ -32,6 +32,11 @@ class CodSellerPayouts
         if(Schema::hasTable('commerce_returns')){
             $returns=DB::table('commerce_returns')->where('order_id',$order->id)->when($lock,fn($q)=>$q->lockForUpdate())->get();
             foreach($returns as $return){
+                if($return->status==='refunded' && ($reconciled=app(CodRefundSettlement::class)->approved($order->id,$return))){
+                    $result['refund_reconciliation']=$reconciled;
+                    $result['product_cents']=(int)$reconciled->remaining_cents+(int)$reconciled->seller_reimbursement_cents;
+                    continue;
+                }
                 if($return->status!=='rejected' || !$return->decided_at || CarbonImmutable::parse($return->decided_at,config('app.timezone'))->addDays(3)->isFuture()){
                     $result['reason']='Return/refund review or its existing appeal window prevents payout.';return $result;
                 }
@@ -71,11 +76,16 @@ class CodSellerPayouts
             $eligibility=$this->eligibility($order,$actor->business_name,true);
             if(!$eligibility['eligible'])$treasury->fail($eligibility['reason']);
             $account=$treasury->account($data['account_id'],$actor->business_name);$treasury->requireGcash($account);
+            if(isset($eligibility['refund_reconciliation']) && $eligibility['refund_reconciliation']->account_id!==$account->id)$treasury->fail('Use the reconciled refund treasury account for residual settlement.');
             $destination=DB::table('logistics_payout_destinations')->where('id',$data['destination_id'])->where('seller_id',$order->seller_id)->lockForUpdate()->firstOrFail();
             $treasury->requireGcash($destination);
             $old=DB::table('logistics_seller_payouts')->where('order_id',$order->id)->lockForUpdate()->first();
             abort_if($old && $old->status!=='cancelled',409,'This order already has a reserved or recorded payout.');
             $product=$eligibility['product_cents'];
+            $commission=app(CommissionLedger::class)->codCommission($order);
+            $subsidy=isset($eligibility['refund_reconciliation'])?(int)$eligibility['refund_reconciliation']->required_subsidy_cents:app(CommissionLedger::class)->platformSubsidy($order);
+            if($commission>0 && $adjustment<$subsidy)$treasury->fail('Fund and include the platform discount reimbursement as a separate positive adjustment before deducting commission.');
+            if($product+$adjustment<=$commission)$treasury->fail('There is no positive net Seller transfer after commission. Review and fund the discount/subsidy exception.');
             if($product+$adjustment<=0)$treasury->fail('There is no positive seller payment to prepare.');
             if($treasury->available($account->id,'cod')<$product || $treasury->available($account->id,'adjustment')<$adjustment)$treasury->fail('Insufficient available verified treasury funds. COD proceeds and adjustments need their own funded balances.');
             $id=$old?->id ?? (string)Str::uuid();
@@ -85,6 +95,8 @@ class CodSellerPayouts
                 'prepared_by'=>$actor->id,'verified_by'=>null,'verified_at'=>null,'hold_reason'=>null,'notes'=>null,'updated_at'=>now()];
             if($old)DB::table('logistics_seller_payouts')->where('id',$id)->update($values);
             else DB::table('logistics_seller_payouts')->insert($values+['id'=>$id,'created_at'=>now()]);
+            app(CommissionLedger::class)->prepareCod($id,$order,$account,$commission);
+            app(CodRefundSettlement::class)->attach($id,$order);
             $treasury->event($actor,'seller_payout_prepared','seller_payout',$id,['product_cents'=>$product,'shipping_cents'=>$eligibility['shipping_cents'],'adjustment_cents'=>$adjustment,
                 'adjustment_reason'=>$values['adjustment_reason'],'account_id'=>$account->id,'destination_id'=>$destination->id,'previous_revision'=>$old?->revision]);
         },3);
@@ -105,6 +117,7 @@ class CodSellerPayouts
         $treasury=app(LogisticsTreasury::class);$treasury->requireGcash($account);$treasury->requireGcash(DB::table('logistics_payout_destinations')->where('id',$p->destination_id)->firstOrFail());$eligible=$this->eligibility($order,$p->company_name,true);
         if(!$eligible['eligible'])$treasury->fail($eligible['reason']);
         if($p->hold_reason)$treasury->fail('Release the documented payout hold before continuing.');
+        if(app(CommissionLedger::class)->codCommission($order)!==app(CommissionLedger::class)->deduction($p->id))$treasury->fail('Commission changed. Cancel and prepare this payout again.');
         if($eligible['collection_id']!==$p->collection_id || $eligible['product_cents']!==(int)$p->product_cents || $eligible['shipping_cents']!==(int)$p->shipping_cents)$treasury->fail('The financial basis changed. Cancel and review this payout.');
         if($treasury->available($account->id,'cod',$p->id)<(int)$p->product_cents || $treasury->available($account->id,'adjustment',$p->id)<(int)$p->adjustment_cents)$treasury->fail('Reserved payout funds are no longer available.');
     }
@@ -136,13 +149,15 @@ class CodSellerPayouts
             [$actor,$order,$account,$p]=$this->payout($actor,$id,(int)$data['revision']);$treasury=app(LogisticsTreasury::class);
             abort_unless($p->status==='verified',409,'Verify this payout before recording actual payment.');
             $this->recheck($order,$account,$p);
-            if($amount!==(int)$p->product_cents+(int)$p->adjustment_cents)$treasury->fail('Confirm the exact prepared payout amount. Partial, excessive or negative payments are not accepted.');
+            $commission=app(CommissionLedger::class)->deduction($p->id);
+            if($amount!==(int)$p->product_cents+(int)$p->adjustment_cents-$commission)$treasury->fail('Confirm the exact prepared net payout after commission. Partial, excessive or negative payments are not accepted.');
             $reference=$treasury->reference($account,$data['reference'],'seller_payout',$id);
             $destination=DB::table('logistics_payout_destinations')->where('id',$p->destination_id)->where('seller_id',$p->seller_id)->lockForUpdate()->firstOrFail();
             $treasury->reference($destination,$data['reference'],'seller_payout',$id);
             $treasury->evidence($actor,'seller_payout',$id,$file);
             if((int)$p->product_cents>0)$treasury->move($actor,$account,'cod',-(int)$p->product_cents,'seller_payout',$id,$reference);
             if((int)$p->adjustment_cents>0)$treasury->move($actor,$account,'adjustment',-(int)$p->adjustment_cents,'seller_payout',$id,(int)$p->product_cents===0?$reference:null);
+            app(CommissionLedger::class)->withhold($p,$account,$actor);
             DB::table('logistics_financial_transactions')->insert(['id'=>(string)Str::uuid(),'company_name'=>$p->company_name,'kind'=>'seller_payout','order_id'=>$order->id,
                 'seller_payout_id'=>$id,'actor_id'=>$actor->id,'recipient_id'=>$p->seller_id,'amount_cents'=>$amount,'currency'=>'PHP','status'=>'recorded','verification_state'=>'verified',
                 'idempotency_key'=>$id,'request_hash'=>hash('sha256',$id.'|'.$reference),'details'=>json_encode(['direction'=>'out','reference'=>$reference,'shipping_cents'=>$p->shipping_cents,'product_cents'=>$p->product_cents,'adjustment_cents'=>$p->adjustment_cents]),

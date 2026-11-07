@@ -54,7 +54,7 @@ class NavigationTest extends TestCase
     public function test_all_six_roles_have_the_approved_groups_and_no_empty_groups(): void
     {
         $groups = ['admin' => ['Accounts & Recruitment', 'Marketplace & Resources', 'Compliance', 'Finance & Reports', 'Communications', 'System'],
-            'buyer' => ['Shopping', 'Orders', 'Communications', 'Support'], 'seller' => ['Orders', 'Store', 'Tracking & Reports', 'Communications'],
+            'buyer' => [], 'seller' => [],
             'logistics_admin' => ['Operations', 'Personnel & Resources', 'Tracking & Reports', 'Finance', 'Administration'],
             'hub_staff' => ['Operations', 'Hub Resources', 'Tracking', 'Finance', 'Communications'],
             'rider' => ['Pickup Operations', 'Transfer Operations', 'Delivery Operations', 'Earnings & History', 'Communications']];
@@ -70,14 +70,23 @@ class NavigationTest extends TestCase
                 $this->assertSame('false', $button->getAttribute('aria-expanded'));
             }
             $this->assertSame($expected, $labels, $role);
+            if($role==='buyer'){
+                $this->assertSame(1,$xpath->query('//nav[@aria-label="Storefront"]')->length);
+                foreach(['buyer.cart','buyer.orders','buyer.account'] as $target)$this->assertSame(1,$xpath->query('//a[@href="'.route($target).'"]')->length);
+                $this->assertSame(\App\Services\BuyerCommerce::installed()?1:0,$xpath->query('//a[@href="'.route('buyer.wishlist').'"]')->length);
+                $this->assertSame(\App\Services\GcashInventory::installed()?1:0,$xpath->query('//a[@href="'.route('gcash.index').'"]')->length);
+                continue;
+            }
             if ($role === 'seller') {
-                $this->assertSame(1, $xpath->query('//span[@class="badge" and text()="1"]')->length);
+                foreach(['seller.orders','seller.messages','seller.dashboard'] as $target)$this->assertSame(1,$xpath->query('//a[@href="'.route($target).'"]')->length);
             }
             if ($role === 'admin') {
                 $this->assertSame(1, $xpath->query('//span[@class="count" and text()="4"]')->length);
             }
             foreach ($xpath->query('//a[@href]') as $link) {
                 if (str_starts_with($link->getAttribute('href'), url('/'))) {
+                    if($link->getAttribute('href')===route('commissions.index')){$this->assertContains($role,['admin','seller','logistics_admin']);continue;}
+                    if($link->getAttribute('href')===route('account.cancellation-refunds')){$this->assertSame('seller',$role);continue;}
                     $this->assertStringContainsString('/'.$prefix.'/', $link->getAttribute('href'), $role);
                 }
             }
@@ -127,18 +136,27 @@ class NavigationTest extends TestCase
     public function test_contextual_pages_expand_their_parent_and_mark_the_parent_link(): void
     {
         foreach ([['admin', 'admin.ai.order', 'admin-system', 'admin.ai'], ['admin', 'admin.compliance', 'admin-compliance', 'admin.compliance'],
-            ['seller', 'seller.orders.waybill', 'seller-orders', 'seller.orders'], ['logistics_admin', 'logistics.accounts.edit', 'logistics-personnel-resources', 'logistics.riders'],
+            ['seller', 'seller.orders.waybill', null, 'seller.orders'], ['logistics_admin', 'logistics.accounts.edit', 'logistics-personnel-resources', 'logistics.riders'],
             ['logistics_admin', 'logistics.finance.reconciliation.export', 'logistics-finance', 'logistics.finance.reconciliation'],
             ['logistics_admin', 'logistics.finance.riders.action', 'logistics-finance', 'logistics.finance.riders'],
             ['rider', 'rider.earnings.acknowledge', 'rider-earnings-history', 'rider.profit'],
             ['hub_staff', 'logistics.transfers.show', 'hub-staff-operations', 'logistics.transfers'], ['rider', 'rider.deliveries.show', 'rider-delivery-operations', 'rider.deliveries'],
-            ['buyer', 'buyer.announcements.show', 'buyer-communications', 'buyer.announcements'],
-            ['buyer', 'buyer.product', 'buyer-shopping', 'buyer.browse'], ['buyer', 'buyer.shop', 'buyer-shopping', 'buyer.browse']] as [$role, $route, $group, $parent]) {
+            ] as [$role, $route, $group, $parent]) {
             $xpath = $this->renderNavigation($role, $route);
             $this->assertSame(1, $xpath->query('//a[@aria-current="page"]')->length);
-            $this->assertSame(1, $xpath->query('//button[@aria-controls="'.$group.'" and @aria-expanded="true"]')->length);
-            $this->assertSame(0, $xpath->query('//*[@id="'.$group.'" and @hidden]')->length);
+            if($group!==null){
+                $this->assertSame(1, $xpath->query('//button[@aria-controls="'.$group.'" and @aria-expanded="true"]')->length,$route);
+                $this->assertSame(0, $xpath->query('//*[@id="'.$group.'" and @hidden]')->length);
+            }
             $this->assertSame(1, $xpath->query('//a[@href="'.route($parent).'" and @aria-current="page"]')->length);
+        }
+    }
+    public function test_buyer_context_pages_keep_storefront_and_account_destinations(): void
+    {
+        foreach(['buyer.product','buyer.shop','buyer.announcements.show'] as $route){
+            $xpath=$this->renderNavigation('buyer',$route);
+            $this->assertSame(1,$xpath->query('//nav[@aria-label="Storefront"]/a[@href="'.route('buyer.dashboard').'#products"]')->length);
+            $this->assertSame(1,$xpath->query('//a[@href="'.route('buyer.orders').'"]')->length);
         }
     }
 }

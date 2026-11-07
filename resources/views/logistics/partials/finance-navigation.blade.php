@@ -1,4 +1,5 @@
 @if(auth()->user()->isLogisticsAdmin())
+@if(app(\App\Services\CommissionLedger::class)->installed())<p><a href="{{ route('commissions.index') }}">Platform commission remittances and credits</a></p>@endif
 <section class="finance-guidance" aria-label="Financial workflow guidance">
   @if(($financeStep ?? '') === 'cash')
   <div class="fin-guidance-icon" aria-hidden="true">

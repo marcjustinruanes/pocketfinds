@@ -42,5 +42,5 @@
     @foreach(['pending_cod_payouts'=>'Prepared / verified COD payouts, not yet paid','held_cod_payouts'=>'Held portion of pending payouts (already included above)','unverified_platform_claims'=>'Unverified platform shipping claims, not received'] as $key=>$label)
       <tr><td>{{ $label }}</td><td class="mono">{{ $report['available'] ? number_format($report['metrics'][$key]/100,2) : 'Unavailable' }}</td></tr>
     @endforeach
-  </tbody></table></div><p>Orders without prepared payout instructions are not included in pending payout amounts. Eligibility, disputes and financial review remain in COD Payouts / Seller Settlements. No commission is deducted.</p></div>
+  </tbody></table></div><p>Orders without prepared payout instructions are not included in pending payout amounts. Seller payouts show net amounts after applicable commission. Eligibility, disputes and financial review remain in COD Payouts / Seller Settlements. <a href="{{ route('commissions.index') }}">Review commission statements</a>.</p></div>
 </section>

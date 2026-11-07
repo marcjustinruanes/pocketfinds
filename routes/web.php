@@ -230,6 +230,22 @@ Route::prefix('buyer')->name('buyer.')->middleware(['web', 'buyer'])->group(func
 });
 
 // Seller routes
+Route::prefix('commissions')->name('commissions.')->middleware('web')->group(function () {
+    foreach(['recoveries'=>'recoverySubmit','recoveries/{id}/review'=>'recoveryReview','recoveries/{id}/allocate'=>'recoveryAllocate','recoveries/{id}/refund'=>'recoveryRefund','cod-refunds/{id}/reconcile'=>'codRefund','cod-refunds/{id}/reimburse'=>'codReimburse','cod-refunds/{id}/verify'=>'codVerify'] as $path=>$action) Route::post('/'.$path,[\App\Http\Controllers\CommissionController::class,$action])->middleware('throttle:20,1')->name($action);
+    Route::get('/', [\App\Http\Controllers\CommissionController::class, 'index'])->name('index');
+    Route::get('/export', [\App\Http\Controllers\CommissionController::class, 'export'])->middleware('throttle:10,1')->name('export');
+    Route::get('/export/{kind}', [\App\Http\Controllers\CommissionController::class, 'moneyExport'])->middleware('throttle:10,1')->name('money-export');
+    Route::get('/evidence/{kind}/{id}', [\App\Http\Controllers\CommissionController::class, 'evidence'])->name('evidence');
+    Route::post('/accounts', [\App\Http\Controllers\CommissionController::class, 'account'])->middleware('throttle:10,1')->name('accounts');
+    Route::post('/payments', [\App\Http\Controllers\CommissionController::class, 'submit'])->middleware('throttle:10,1')->name('submit');
+    Route::post('/remittances', [\App\Http\Controllers\CommissionController::class, 'prepareRemittance'])->middleware('throttle:10,1')->name('prepare-remittance');
+    Route::post('/remittances/{id}', [\App\Http\Controllers\CommissionController::class, 'sendRemittance'])->middleware('throttle:10,1')->name('send-remittance');
+    Route::post('/payments/{id}/review', [\App\Http\Controllers\CommissionController::class, 'review'])->middleware('throttle:20,1')->name('review');
+    Route::post('/payments/{id}/allocate', [\App\Http\Controllers\CommissionController::class, 'allocate'])->middleware('throttle:10,1')->name('allocate');
+    Route::post('/payments/{id}/refund-credit', [\App\Http\Controllers\CommissionController::class, 'refundCredit'])->middleware('throttle:10,1')->name('refund-credit');
+    Route::post('/credits/{id}/repay', [\App\Http\Controllers\CommissionController::class, 'repay'])->middleware('throttle:10,1')->name('repay');
+});
+
 Route::prefix('seller')->name('seller.')->middleware(['web', 'seller'])->group(function () {
     Route::get('/orders/assignment-review', [\App\Http\Controllers\LogisticsOperationsController::class,'index'])->name('assignments.review');
     Route::post('/orders/assignments/{id}/decision', [\App\Http\Controllers\LogisticsOperationsController::class,'decideReassignment'])->middleware('throttle:20,1')->name('assignments.decide');

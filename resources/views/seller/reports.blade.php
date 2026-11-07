@@ -5,7 +5,7 @@
 
 @section('content')
 <div class="seller-reports-page">
-<p class="reports-explainer">Sales use completed orders updated in the selected period. Payment activity uses its actual verification, collection or payment date. Shipping and discounts are already included in buyer order values; they are not deducted again. No platform commission is charged.</p>
+<p class="reports-explainer">Sales use completed orders updated in the selected period. Payment activity uses its actual verification, collection or payment date. Shipping and discounts are already included in buyer order values; they are not deducted again. Eligible new transactions apply the snapshotted 10% product commission. Actual COD payouts show the net Seller transfer; separate GCash commissions appear in Commission Statements.</p>
 {{-- Date range picker --}}
 <div class="card reports-date-card">
   <form method="GET" action="{{ route('seller.reports') }}" class="card-pad reports-date-form">

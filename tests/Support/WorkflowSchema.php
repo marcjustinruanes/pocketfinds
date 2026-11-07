@@ -7,9 +7,15 @@ use Illuminate\Support\Facades\DB;
 /** Isolated SQLite fixtures for HTTP workflows; not a MySQL migration substitute. */
 trait WorkflowSchema
 {
+    protected function deliveryEvidence(string $shipmentId): array
+    {
+        DB::table('shipments')->where('id',$shipmentId)->update(['delivery_otp_hash'=>\Illuminate\Support\Facades\Hash::make('123456')]);
+        return ['delivery_otp'=>'123456','delivery_proof'=>\Illuminate\Http\UploadedFile::fake()->createWithContent('delivered.png',base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aT1sAAAAASUVORK5CYII='))];
+    }
     private function createWorkflowSchema(bool $transfers = true, bool $hiring = true, bool $legacyRiderFields = false): void
     {
         $this->assertSame('sqlite', config('database.default'));
+        \Illuminate\Support\Facades\Storage::fake('sensitive_documents');
         foreach ([
             'CREATE TABLE "shop_follows" ("id" TEXT PRIMARY KEY, "buyer_id" INTEGER, "seller_id" INTEGER)',
             'CREATE TABLE "users" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "account_type" TEXT DEFAULT \'buyer\', "auth_method" TEXT DEFAULT \'manual\', "google_id" TEXT DEFAULT NULL, "last_name" TEXT, "given_names" TEXT, "middle_name" TEXT DEFAULT NULL, "sex" TEXT, "birthday" TEXT, "age" INTEGER, "email" TEXT, "contact_no" TEXT, "province" TEXT, "municipality" TEXT, "barangay" TEXT, "house_no" TEXT DEFAULT NULL, "street" TEXT DEFAULT NULL, "password" TEXT DEFAULT NULL, "id_file" TEXT DEFAULT NULL, "status" TEXT DEFAULT \'pending\', "remember_token" TEXT DEFAULT NULL, "created_at" TEXT DEFAULT NULL, "updated_at" TEXT DEFAULT NULL, "is_admin" INTEGER DEFAULT \'0\', "is_logistics" INTEGER DEFAULT \'0\', "profile_picture" TEXT DEFAULT NULL, "username" TEXT DEFAULT NULL, "id_type_id" INTEGER DEFAULT NULL, "selfie_file" TEXT DEFAULT NULL, "business_name" TEXT DEFAULT NULL, "business_permit_file" TEXT DEFAULT NULL, "category_id" INTEGER DEFAULT NULL, "category_other" TEXT DEFAULT NULL, "vehicle_type" TEXT DEFAULT NULL, "vehicle_brand" TEXT DEFAULT NULL, "vehicle_model" TEXT DEFAULT NULL, "plate_number" TEXT DEFAULT NULL, "or_file" TEXT DEFAULT NULL, "cr_file" TEXT DEFAULT NULL, "license_number" TEXT DEFAULT NULL, "license_expiry" TEXT DEFAULT NULL, "license_file" TEXT DEFAULT NULL, "shipping_fee" REAL DEFAULT NULL, "notify_new_requests" INTEGER DEFAULT \'1\', "notify_unassigned_shipments" INTEGER DEFAULT \'1\', "preferred_scanner" TEXT DEFAULT \'both\', "id_type" TEXT, "id_photo_path" TEXT, "selfie_photo_path" TEXT, "last_active_at" TEXT DEFAULT NULL, "facebook_url" TEXT, "instagram_url" TEXT, "twitter_url" TEXT, "tiktok_url" TEXT, "notify_enabled" INTEGER DEFAULT \'1\', "region" TEXT, "vehicle_ownership" TEXT DEFAULT NULL, "company_logo" TEXT DEFAULT NULL, "status_reason" TEXT, "is_online" INTEGER DEFAULT \'0\', "logistics_center_id" INTEGER DEFAULT NULL, "or_cr_path" TEXT, "license_photo_path" TEXT, "suffix" TEXT DEFAULT NULL, "logistics_role" TEXT DEFAULT NULL, "logistics_hub_id" INTEGER DEFAULT NULL, "resume_file" TEXT DEFAULT NULL, "interview_scheduled_at" TEXT DEFAULT NULL, "interview_location" TEXT DEFAULT NULL, "theme" TEXT DEFAULT \'system\', "preferred_language" TEXT DEFAULT \'en\')',
@@ -54,5 +60,6 @@ trait WorkflowSchema
         (require database_path('migrations/2026_11_02_235000_add_logistics_representative_contacts.php'))->up();
         (require database_path('migrations/2026_10_31_130000_add_seller_registration_documents.php'))->up();
         (require database_path('migrations/2026_11_01_100000_add_application_resubmission_permission.php'))->up();
+        (require database_path('migrations/2026_11_06_000001_add_rider_delivery_workflow_fields.php'))->up();
     }
 }

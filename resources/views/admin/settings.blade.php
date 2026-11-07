@@ -66,7 +66,7 @@
             @csrf
             <div class="form-row"><label>Platform Name</label><input type="text" name="platform_name" value="{{ old('platform_name', $setting->platform_name) }}" required></div>
             <div class="form-row"><label>Support Email</label><input type="email" name="support_email" value="{{ old('support_email', $setting->support_email) }}" required></div>
-            <div class="form-row"><label>Commission Rate (%)</label><input type="number" name="commission_rate" value="{{ old('commission_rate', $setting->commission_rate) }}" min="0" max="100" step="0.01" required></div>
+            <div class="form-row"><label>Legacy commission setting (%)</label><input type="number" name="commission_rate" value="{{ old('commission_rate', $setting->commission_rate) }}" min="0" max="100" step="0.01" required><p>Historical setting only. New commissions use the fixed 10% policy and its activation date; this field does not change ledger charges.</p></div>
             @if($setting->editor)
               <p style="font-size:11.5px;color:var(--muted);margin:0 0 12px">Last updated by {{ $setting->editor->given_names }} {{ $setting->editor->last_name }} · {{ $setting->updated_at->diffForHumans() }}</p>
             @endif

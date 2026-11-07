@@ -16,6 +16,7 @@ class GcashPurchase extends Model
 
     protected static function booted(): void
     {
+        static::created(fn ($p) => app(\App\Services\CommissionLedger::class)->capturePurchase($p));
         static::updating(function ($p) {
             if ($p->isDirty('payment_reference') && $p->getOriginal('payment_reference') !== null) {
                 throw ValidationException::withMessages(['gcash' => 'The recorded payment reference is immutable.']);
@@ -27,6 +28,11 @@ class GcashPurchase extends Model
     }
 
     protected $attributes = ['generation' => 1, 'revision' => 0];
+
+    public function save(array $options = [])
+    {
+        return \Illuminate\Support\Facades\DB::transaction(fn () => parent::save($options), 3);
+    }
 
     public $incrementing = false;
 

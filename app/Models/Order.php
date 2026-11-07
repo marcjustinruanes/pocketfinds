@@ -37,7 +37,7 @@ class Order extends Model
     public function save(array $options = [])
     {
         if (! $this->exists || ! $this->gcash_purchase_id) {
-            return parent::save($options);
+            return DB::transaction(fn () => parent::save($options), 3);
         }
 
         return DB::transaction(function () use ($options) {
@@ -51,7 +51,13 @@ class Order extends Model
 
     protected static function booted(): void
     {
+        static::created(fn ($order) => app(\App\Services\CommissionLedger::class)->captureOrder($order));
         static::updating(function ($order) {
+            if ($order->isDirty(['shipping_amount','subtotal','discount_amount','total','items','commerce_snapshot','seller_id','gcash_purchase_id','payment_method','payment_method_id'])
+                && app(\App\Services\CommissionLedger::class)->installed()
+                && DB::table('commission_obligations')->where('order_id', $order->id)->exists()) {
+                throw ValidationException::withMessages(['commission' => 'The commission financial snapshot is immutable. Use the refund workflow for adjustments.']);
+            }
             if ($order->isDirty(['shipping_amount', 'subtotal', 'discount_amount', 'total', 'items', 'shipping_address', 'commerce_snapshot', 'seller_id', 'payment_method', 'payment_method_id', 'gcash_purchase_id'])
                 && app(\App\Services\LogisticsShipping::class)->installed()
                 && DB::table('logistics_shipping_obligations')->where('order_id', $order->id)->exists()) {
@@ -69,6 +75,7 @@ class Order extends Model
             }
         });
         static::saved(function ($order) {
+            app(\App\Services\CommissionLedger::class)->onOrderSaved($order);
             if ($order->gcash_purchase_id && in_array($order->status, ['delivered', 'completed'])) {
                 $count = DB::table('gcash_stock_allocations')->where('purchase_id', $order->gcash_purchase_id)->where('state', 'transferred')->update(['state' => 'fulfilled', 'updated_at' => now()]);
                 if ($count) {

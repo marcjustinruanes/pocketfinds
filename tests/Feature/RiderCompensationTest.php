@@ -34,6 +34,7 @@ class RiderCompensationTest extends TestCase
             '2026_10_17_000001_add_buyer_commerce_features','2026_10_28_000001_add_logistics_financial_foundation','2026_10_28_000002_add_logistics_financial_transactions',
             '2026_10_29_000001_add_logistics_cash_desk','2026_10_29_000002_add_logistics_shipping_settlement','2026_10_29_000003_add_cod_seller_payouts','2026_10_29_000004_add_rider_compensation_payouts'] as $file)(require database_path('migrations/'.$file.'.php'))->up();
         Storage::fake('local');
+        DB::table('logistics_finance_settings')->insert(['company_name'=>'Alpha','pickup_cents'=>2000,'transfer_cents'=>6000,'delivery_cents'=>4000,'confirmation_hours'=>168,'revision'=>1,'created_at'=>now(),'updated_at'=>now()]);
         $this->hub=LogisticsHub::create(['company_name'=>'Alpha','municipality'=>'Santa Cruz','province'=>'Laguna','is_operational'=>true]);
         $this->seller=$this->person('seller');$this->buyer=$this->person('buyer');$this->admin=$this->person('admin');$this->staff=$this->person('hub_staff');$this->rider=$this->person('rider');
         $this->treasury=app(LogisticsTreasury::class);$this->flow=app(CodSellerPayouts::class);$this->desk=app(LogisticsCashDesk::class);
@@ -50,7 +51,7 @@ class RiderCompensationTest extends TestCase
         DB::table('orders')->where('id',$this->order->id)->update(['status'=>'out_for_delivery']);
         $assignment=DeliveryAssignment::create(['shipment_id'=>$this->shipment->id,'courier_id'=>$this->rider->id,'leg'=>'delivery','status'=>'assigned_to_rider']);
         DB::table('delivery_assignments')->where('id',$assignment->id)->update(['status'=>'out_for_delivery']);
-        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$this->shipment->id.'/advance',['from'=>'out_for_delivery','cod_amount'=>'1100','cod_confirmed'=>'1','collection_key'=>(string)Str::uuid()])->assertRedirect();
+        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$this->shipment->id.'/advance',array_merge(['from'=>'out_for_delivery','cod_amount'=>'1100','cod_confirmed'=>'1','collection_key'=>(string)Str::uuid()],$this->deliveryEvidence($this->shipment->id)))->assertRedirect()->assertSessionHasNoErrors();
         DB::table('shipments')->where('id',$this->shipment->id)->update(['delivered_at'=>now()->subHours(169)]);
         $this->order->refresh();$this->shipment->refresh();
         $this->collection=DB::table('logistics_financial_transactions')->where('collection_order_id',$this->order->id)->first();
@@ -175,7 +176,7 @@ class RiderCompensationTest extends TestCase
         DB::table('shipments')->where('id',$this->shipment->id)->update(['seller_confirmed_pickup_at'=>now(),'rider_confirmed_pickup_at'=>now(),'picked_up_at'=>now()]);
         $this->assertFalse($this->riderFlow()->recognize($c->id,$this->admin));
         DB::table('shipments')->where('id',$this->shipment->id)->update(['at_sorting_center_at'=>now()]);
-        $this->assertTrue($this->riderFlow()->recognize($c->id,$this->admin));$this->assertDatabaseHas('logistics_compensations',['id'=>$c->id,'status'=>'earned','amount_cents'=>2500]);
+        $this->assertTrue($this->riderFlow()->recognize($c->id,$this->admin));$this->assertDatabaseHas('logistics_compensations',['id'=>$c->id,'status'=>'earned','amount_cents'=>2000]);
     }
     public function test_exact_amount_and_actual_sent_confirmation_are_required(): void
     {
@@ -235,7 +236,7 @@ class RiderCompensationTest extends TestCase
         $b=$flow->request($this->staff,$this->hub->id,$to->id,$shipments);
         $flow->decide($this->admin,$b->id,'approved');
         $flow->dispatch($this->admin,$b->id,$transferRider->id);
-        $c=DB::table('logistics_compensations')->where('source_type','transfer_batch')->first();$this->assertSame(15000,(int)$c->amount_cents);
+        $c=DB::table('logistics_compensations')->where('source_type','transfer_batch')->first();$this->assertSame(6000,(int)$c->amount_cents);
         foreach(DB::table('shipment_hub_legs')->where('transfer_batch_id',$b->id)->pluck('id') as $id)$flow->confirmPickup($transferRider,$id);
         $flow->receive($receiver,$b->id,[$shipments[0]]);$this->assertDatabaseHas('logistics_compensations',['id'=>$c->id,'status'=>'pending']);
         $flow->receive($receiver,$b->id,[$shipments[1]]);$this->assertDatabaseHas('logistics_compensations',['id'=>$c->id,'status'=>'earned']);
@@ -264,15 +265,16 @@ class RiderCompensationTest extends TestCase
 
     public function test_live_hub_receipt_earns_pickup_and_audit_failure_rolls_back_receipt(): void
     {
-        DB::table('shipments')->where('id',$this->shipment->id)->update(['shipping_status'=>'picked_up','pickup_rider_id'=>$this->rider->id,'seller_confirmed_pickup_at'=>now(),'rider_confirmed_pickup_at'=>now(),'picked_up_at'=>now(),'at_sorting_center_at'=>null]);
+        DB::table('shipments')->where('id',$this->shipment->id)->update(['shipping_status'=>'picked_up','courier_id'=>null,'pickup_rider_id'=>$this->rider->id,'seller_confirmed_pickup_at'=>now(),'rider_confirmed_pickup_at'=>now(),'picked_up_at'=>now(),'at_sorting_center_at'=>null]);
         DB::table('orders')->where('id',$this->order->id)->update(['status'=>'picked_up']);
         $a=DeliveryAssignment::create(['shipment_id'=>$this->shipment->id,'courier_id'=>$this->rider->id,'leg'=>'pickup','status'=>'accepted']);
         DB::statement("CREATE TRIGGER fail_pickup_audit BEFORE INSERT ON logistics_financial_events WHEN NEW.event = 'rider_compensation_earned' BEGIN SELECT RAISE(ABORT, 'earning audit failed'); END");
         $this->actingAs($this->staff)->patchJson('/logistics/scan/'.$this->shipment->id.'/receive')->assertStatus(500);
         $this->assertDatabaseHas('shipments',['id'=>$this->shipment->id,'shipping_status'=>'picked_up','at_sorting_center_at'=>null]);
         DB::statement('DROP TRIGGER fail_pickup_audit');
-        $this->actingAs($this->staff)->patchJson('/logistics/scan/'.$this->shipment->id.'/receive')->assertOk();
-        $this->assertDatabaseHas('logistics_compensations',['source_id'=>$a->id,'status'=>'earned','amount_cents'=>2500]);
+        $response=$this->actingAs($this->staff)->patchJson('/logistics/scan/'.$this->shipment->id.'/receive');
+        $this->assertSame(200,$response->status(),$response->getContent());
+        $this->assertDatabaseHas('logistics_compensations',['source_id'=>$a->id,'status'=>'earned','amount_cents'=>2000]);
     }
     public function test_unrecorded_cod_collection_cannot_be_recognized_as_delivery_earnings(): void
     {
@@ -329,7 +331,7 @@ class RiderCompensationTest extends TestCase
         DB::table('orders')->where('id',$this->order->id)->update(['status'=>'out_for_delivery']);
         DB::table('delivery_assignments')->where('id',$c->source_id)->update(['status'=>'out_for_delivery','delivered_at'=>null]);
         DB::statement("CREATE TRIGGER fail_delivery_earning BEFORE INSERT ON logistics_financial_events WHEN NEW.event = 'rider_compensation_earned' BEGIN SELECT RAISE(ABORT, 'earning audit failed'); END");
-        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$this->shipment->id.'/advance',['from'=>'out_for_delivery','cod_amount'=>'1100','cod_confirmed'=>'1','collection_key'=>(string)Str::uuid()])->assertStatus(500);
+        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$this->shipment->id.'/advance',array_merge(['from'=>'out_for_delivery','cod_amount'=>'1100','cod_confirmed'=>'1','collection_key'=>(string)Str::uuid()],$this->deliveryEvidence($this->shipment->id)))->assertStatus(500);
         $this->assertDatabaseHas('shipments',['id'=>$this->shipment->id,'shipping_status'=>'out_for_delivery','delivered_at'=>null]);
         $this->assertDatabaseHas('delivery_assignments',['id'=>$c->source_id,'status'=>'out_for_delivery','delivered_at'=>null]);
         $this->assertSame('pending',$this->earning()->status);$this->assertDatabaseCount('logistics_financial_transactions',0);

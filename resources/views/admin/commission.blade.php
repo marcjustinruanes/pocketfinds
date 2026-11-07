@@ -1,11 +1,11 @@
 @extends('admin.layout')
 @section('title', 'Historical Commission Archive')
 @section('page-title', 'Historical Commission Archive')
-@section('page-sub', 'Historical records only; current payments have no platform commission')
+@section('page-sub', 'Preserved historical records; new commissions use the shared ledger')
 
 @section('content')
 <div class="admin-commission-page">
-<div class="historical-commission-note"><span aria-hidden="true">i</span><p>These preserved legacy entries are not proof of collected fees, actual Seller payments or current platform revenue. No current commission deduction is calculated. Use <a href="{{ route('admin.reports') }}">Reports</a> for current sales and payment records.</p></div>
+<div class="historical-commission-note"><span aria-hidden="true">i</span><p>These preserved legacy entries are not proof of collected fees, actual Seller payments or current platform revenue. New commissions and actual collections are recorded separately in Commission Management. Use <a href="{{ route('admin.reports') }}">Reports</a> for current sales and payment records.</p></div>
 <div class="card historical-commission-card">
   <div class="card-head"><div><h2>Historical commission entries</h2><p>Stored values, not recalculated or applied to current payouts</p></div></div>
   <div class="table-wrap historical-commission-table-wrap">

@@ -36,7 +36,10 @@ class DeliveryAssignment extends Model
         parent::boot();
         static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
         static::saved(function ($assignment) {
-            if ($assignment->wasRecentlyCreated || $assignment->wasChanged('courier_id')) {
+            $acceptedOffer=$assignment->wasChanged('status')
+                && in_array($assignment->getOriginal('status'),['offered','requested'],true)
+                && in_array($assignment->status,['accepted','assigned_to_rider'],true);
+            if ($assignment->wasRecentlyCreated || $assignment->wasChanged('courier_id') || $acceptedOffer) {
                 app(\App\Services\LogisticsFinance::class)->snapshotAssignment($assignment);
             }
         });

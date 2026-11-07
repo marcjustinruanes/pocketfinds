@@ -134,18 +134,41 @@ class LogisticsReconciliation
             if($h->status==='discrepancy'){$m[$h->resolved_at?'discrepancies_resolved':'discrepancies_open']++;$issue($h->resolved_at?'discrepancy_resolved':'discrepancy_open',$h->id,$h->resolved_at?'Investigation documented; original count difference remains.':'Physical cash discrepancy needs investigation.',$h->counted_at?(int)$h->counted_cents-(int)$h->expected_cents:null);}
             $history('handovers',['id'=>$h->id,'at'=>$h->counted_at??$h->dispatched_at??$h->created_at,'status'=>$h->status,'kind'=>$h->kind,'amount_cents'=>(int)$h->expected_cents,'counted_cents'=>$h->counted_cents===null?null:(int)$h->counted_cents,'released_cents'=>$released,'hub_id'=>$h->hub_id,'destination_hub_id'=>$h->destination_hub_id,'counted_at'=>$h->counted_at,'dispatched_at'=>$h->dispatched_at,'resolved_at'=>$h->resolved_at]);
         }
-        $accountRows=[];$bucketTotals=array_fill_keys(['cod','adjustment','rider_payroll','staff_payroll','unallocated'],0);$reservationTotals=$bucketTotals;
+        $commissionDeductions=Schema::hasTable('commission_cod_settlements') ? DB::table('commission_cod_settlements')->whereIn('payout_id',$sellers->pluck('id'))->pluck('commission_cents','payout_id') : collect();
+        $accountRows=[];$bucketTotals=array_fill_keys(['cod','adjustment','rider_payroll','staff_payroll','unallocated','commission','comm_transit','refund_transit'],0);$reservationTotals=$bucketTotals;
         foreach($accounts as $a){$b=array_fill_keys(array_keys($bucketTotals),0);$r=$b;foreach($b as $bucket=>$_)$b[$bucket]=(int)$treasuryByAccount->get($a->id,collect())->where('bucket',$bucket)->sum('delta_cents');
             $openS=$openSellersByAccount->get($a->id,collect());$openR=$openRidersByAccount->get($a->id,collect());
             $r['cod']=(int)$openS->sum('product_cents');$r['adjustment']=(int)$openS->sum('adjustment_cents');$r['rider_payroll']=(int)$openR->sum('amount_cents');$r['staff_payroll']=(int)$openStaffByAccount->get($a->id,collect())->sum('amount_cents');
+            if(Schema::hasTable('commission_obligations')) {
+                $withheld=(int)DB::table('commission_obligations')->where('treasury_account_id',$a->id)->sum('withheld_cents');
+                $sent=(int)DB::table('commission_payments')->where('treasury_account_id',$a->id)->where('method','cod')->whereIn('status',['pending','review','verified'])->sum('amount_cents');
+                $r['commission']=(int)DB::table('commission_payments')->where('treasury_account_id',$a->id)->where('status','draft')->sum('amount_cents');
+                $transit=(int)DB::table('commission_payments')->where('treasury_account_id',$a->id)->where('method','cod')->whereIn('status',['pending','review'])->sum('amount_cents');
+                $repaid=(int)DB::table('commission_credits as c')->join('commission_obligations as o','o.id','=','c.obligation_id')->where('o.treasury_account_id',$a->id)->where('c.payer','logistics')->where('c.status','paid')->sum('c.amount_cents');
+                if($b['commission']!==$withheld-$sent-$repaid || $b['comm_transit']!==$transit)$issue('commission_conservation',$a->id,'Protected commission or in-transit funds differ from the shared ledger.');
+            }
+            if(Schema::hasTable('cod_refund_reconciliations')){
+                $r['cod']+=(int)DB::table('cod_refund_reconciliations')->where('account_id',$a->id)->where('status','awaiting_remittance')->sum('amount_cents');
+                $refundTransit=(int)DB::table('cod_refund_reconciliations')->where('account_id',$a->id)->where('status','in_transit')->sum('amount_cents');
+                if($b['refund_transit']!==$refundTransit)$issue('refund_conservation',$a->id,'Buyer refund reimbursement transit differs from actual sent, unverified reimbursements.');
+            }
             foreach($b as $bucket=>$amount){$bucketTotals[$bucket]+=$amount;$reservationTotals[$bucket]+=$r[$bucket];if($amount<0 || $amount<$r[$bucket])$issue('treasury_balance',$a->id,'Negative or over-reserved '.$bucket.' treasury balance.',$amount-$r[$bucket]);}
             $accountRows[]=['id'=>$a->id,'name'=>$a->institution.' / '.$a->account_name,'balances'=>$b,'reserved'=>$r];
         }
         foreach($treasury as $v){
-            if(!in_array($v->source_type,['treasury_receipt','adjustment_funding','rider_funding','staff_funding','seller_payout','rider_payout','staff_payout']))$issue('movement_source',(string)$v->id,'Unknown treasury source requires review.');
+            if(!in_array($v->source_type,['treasury_receipt','adjustment_funding','rider_funding','staff_funding','seller_payout','rider_payout','staff_payout','commission_withheld','commission_remit','commission_received','commission_refund','cod_buyer_refund','cod_refund_reimburse','cod_refund_received']))$issue('movement_source',(string)$v->id,'Unknown treasury source requires review.');
             if(in_array($v->source_type,['treasury_receipt','adjustment_funding','rider_funding','staff_funding']) && (int)$v->delta_cents<0)$issue('funding_sign',(string)$v->id,'Funding/receipt movement is negative.');
             if(in_array($v->source_type,['adjustment_funding','rider_funding','staff_funding']) && $v->bucket!==match($v->source_type){'rider_funding'=>'rider_payroll','staff_funding'=>'staff_payroll',default=>'adjustment'})$issue('funding_bucket',(string)$v->id,'Contribution was credited to an incorrect bucket.');
-            if(!isset($evidenceSources[$v->source_type.'|'.$v->source_id]))$issue('missing_evidence',(string)$v->id,'Treasury source has no matching company private evidence record.');
+            if(str_starts_with($v->source_type,'commission_')) {
+                $valid=match($v->source_type){
+                    'commission_withheld'=>isset($sellerById[$v->source_id]) && $sellerById[$v->source_id]->status==='paid',
+                    'commission_remit','commission_received'=>Schema::hasTable('commission_payments') && DB::table('commission_payments')->where('id',$v->source_id)->where('company_name',$company)->exists(),
+                    'commission_refund'=>Schema::hasTable('commission_credits') && DB::table('commission_credits')->where('id',$v->source_id)->where('status','paid')->exists(),
+                    default=>false};
+                if(!$valid)$issue('commission_source',(string)$v->id,'Commission movement has no matching settlement or receipt.');
+            } elseif($v->source_type==='cod_refund_received'){
+                if(!Schema::hasTable('cod_refund_reconciliations') || !DB::table('cod_refund_reconciliations')->where('id',$v->source_id)->where('company_name',$company)->where('status','verified')->whereNotNull('platform_verified_at')->exists())$issue('refund_receipt',(string)$v->id,'Refund reimbursement has no verified Platform receipt.');
+            } elseif(!isset($evidenceSources[$v->source_type.'|'.$v->source_id]))$issue('missing_evidence',(string)$v->id,'Treasury source has no matching company private evidence record.');
             if(in_array($v->source_type,['seller_payout','rider_payout','staff_payout'])){$source=match($v->source_type){'seller_payout'=>$sellerById,'staff_payout'=>$staffById,default=>$riderById};if(!isset($source[$v->source_id]))$issue('orphan_debit',(string)$v->id,'Treasury debit has no company payout.');}
             if(!array_key_exists($v->bucket,$bucketTotals))$issue('unknown_bucket',(string)$v->id,'Unknown treasury bucket requires reconciliation.');
             $history('treasury',['id'=>(string)$v->id,'at'=>$v->created_at,'status'=>'recorded','bucket'=>$v->bucket,'amount_cents'=>(int)$v->delta_cents,'source_type'=>$v->source_type,'source_id'=>$v->source_id,'account_id'=>$v->account_id,'reference'=>$v->reference]);
@@ -181,7 +204,7 @@ class LogisticsReconciliation
                 else {$m['cod_shipping_open']+=(int)$o->amount_cents;if($o->status==='cod_retained')$issue('shipping_retention',$o->id,'COD retention has no actual recorded seller payout.');}
                 $c=$collectionsByOrder->get($o->order_id);
                 if($c){$product=(int)$c->amount_cents-(int)$o->amount_cents;if($product<0)$issue('negative_seller_basis',$o->id,'COD cannot cover gross shipping; a funding exception is required.',$product);
-                    else {$unpaid=$product-(int)($paid?->product_cents??0);$m['seller_product_unpaid']+=$unpaid;
+                    else {if(Schema::hasTable('cod_refund_reconciliations')){$refund=DB::table('cod_refund_reconciliations')->where('order_id',$o->order_id)->where('status','verified')->first();if($refund)$product=(int)$refund->remaining_cents+(int)$refund->seller_reimbursement_cents;}$unpaid=$product-(int)($paid?->product_cents??0);$m['seller_product_unpaid']+=$unpaid;
                         if(!$paid && $order){$e=$eligible->eligibility($order,$company,false);if($e['eligible'])$m['seller_eligible_unpaid']+=$product;else $issue('seller_eligibility',$o->order_id,$e['reason'],$product);}
                     }
                 }
@@ -191,16 +214,18 @@ class LogisticsReconciliation
         }
         foreach($collections as $c)if(!isset($obligationsByOrder[$c->collection_order_id]))$issue('unknown_seller_basis',$c->id,'Recorded COD lacks a validated shipping snapshot; seller proceeds cannot be calculated.');
         if(Schema::hasTable('complaints'))foreach(DB::table('complaints')->whereIn('order_id',$orders->keys())->where(fn($q)=>$q->where('status','!=','resolved')->orWhereNull('status'))->get() as $d)$issue('active_dispute',$d->order_id,'Active order dispute requires review, including any previously recorded payment.');
-        if(Schema::hasTable('commerce_returns'))foreach(DB::table('commerce_returns')->whereIn('order_id',$orders->keys())->get() as $r){if($r->status!=='rejected' || !$r->decided_at || CarbonImmutable::parse($r->decided_at,config('app.timezone'))->addDays(3)->isFuture())$issue('active_return',$r->order_id,'Return/refund or appeal protection requires financial review; no remaining payable or refund is inferred.');}
+        if(Schema::hasTable('commerce_returns'))foreach(DB::table('commerce_returns')->whereIn('order_id',$orders->keys())->get() as $r){if($r->status==='refunded' && app(CodRefundSettlement::class)->approved($r->order_id,$r))continue;if($r->status!=='rejected' || !$r->decided_at || CarbonImmutable::parse($r->decided_at,config('app.timezone'))->addDays(3)->isFuture())$issue('active_return',$r->order_id,'Return/refund or appeal protection requires financial review; no remaining payable or refund is inferred.');}
         foreach($gcash as $g)if(!isset($obligations[$g->shipping_obligation_id]))$issue('shipping_orphan',$g->id,'Verified shipping ledger receipt has no company obligation.');
         foreach(['seller'=>$sellers,'rider'=>$riders] as $type=>$payouts)foreach($payouts as $p){
-            $amount=$type==='seller'?(int)$p->product_cents+(int)$p->adjustment_cents:(int)$p->amount_cents;
+            $commission=$type==='seller'?(int)($commissionDeductions[$p->id]??0):0;
+            $amount=$type==='seller'?(int)$p->product_cents+(int)$p->adjustment_cents-$commission:(int)$p->amount_cents;
             if($type==='rider'){$basis=$earningsById->get($p->compensation_id);if(!$basis || $basis->status!=='earned' || (int)$basis->rider_id!==(int)$p->rider_id || (int)$basis->amount_cents!==$amount)$issue('rider_payout_basis',$p->id,'Rider payout does not match the company earned snapshot.');}
-            else {$basis=$collections[$p->collection_id]??null;if(!$basis || (int)$basis->amount_cents!==(int)$p->product_cents+(int)$p->shipping_cents || ($p->status!=='cancelled' && ($collectionBalances[$p->collection_id]??0)!==(int)$basis->amount_cents))$issue('seller_payout_basis',$p->id,'Seller instruction lacks full verified collection or an exact cash/shipping basis.');}
+            else {$basis=$collections[$p->collection_id]??null;$residualLink=Schema::hasTable('cod_residual_settlements')?DB::table('cod_residual_settlements')->where('payout_id',$p->id)->first():null;$refundBasis=$residualLink?(int)$residualLink->buyer_refund_cents-(int)$residualLink->seller_reimbursement_cents:0;if(!$basis || (int)$basis->amount_cents!==(int)$p->product_cents+(int)$p->shipping_cents+$refundBasis || ($p->status!=='cancelled' && ($collectionBalances[$p->collection_id]??0)!==(int)$basis->amount_cents))$issue('seller_payout_basis',$p->id,'Seller instruction lacks full verified collection or an exact cash/shipping/refund basis.');}
             $debits=$treasuryBySource->get($type.'_payout|'.$p->id,collect());$ledger=($type==='seller'?$ledgerBySellerPayout:$ledgerByRiderPayout)->get($p->id,collect());
             if($p->status==='paid'){
                 $m[$type.'_paid']+=$amount;
-                if((int)$debits->sum('delta_cents')!==-$amount || $ledger->count()!==1 || (int)$ledger->sum('amount_cents')!==$amount || $ledger->first()?->status!=='recorded' || $ledger->first()?->verification_state!=='verified')$issue('payout_mirror',$p->id,'Paid payout does not match exactly one ledger payment and its treasury debit.',$amount);
+                if((int)$debits->sum('delta_cents')!==-($amount+$commission) || $ledger->count()!==1 || (int)$ledger->sum('amount_cents')!==$amount || $ledger->first()?->status!=='recorded' || $ledger->first()?->verification_state!=='verified')$issue('payout_mirror',$p->id,'Paid payout does not match exactly one ledger payment and its gross treasury debit.',$amount);
+                if($commission && (int)$treasuryBySource->get('commission_withheld|'.$p->id,collect())->where('bucket','commission')->sum('delta_cents')!==$commission)$issue('commission_withholding',$p->id,'Withheld commission does not match the protected treasury balance.');
                 $expected=$type==='seller'?['cod'=>(int)$p->product_cents,'adjustment'=>(int)$p->adjustment_cents]:['rider_payroll'=>$amount];
                 foreach($expected as $bucket=>$value)if(-(int)$debits->where('bucket',$bucket)->sum('delta_cents')!==$value)$issue('payout_bucket',$p->id,'Payout used an incorrect funding bucket.');
             }elseif($debits->isNotEmpty() || $ledger->isNotEmpty())$issue('unpaid_debit',$p->id,'Unpaid/cancelled instruction already has a debit or payment ledger record.');
@@ -226,7 +251,8 @@ if($c->status==='earned'){$m['rider_earned']+=(int)$c->amount_cents;if(!$c->earn
         foreach($audit as $event)$rows['audit'][]=['id'=>(string)$event->id,'at'=>$event->created_at,'status'=>$event->event,'source_type'=>$event->subject_type,'source_id'=>$event->subject_id,'actor_id'=>$event->actor_id];
         if($audit->count()>20000)$issue('audit_limit','company','More than 20,000 audit events in the selected period; narrow dates for the audit export.');
         $sellerCodOut=-(int)$treasury->where('bucket','cod')->where('source_type','seller_payout')->sum('delta_cents');
-        $expected=$m['remittance_cash']+$m['transfer_variance']-$sellerCodOut;
+        $buyerRefundOut=-(int)$treasury->where('bucket','cod')->whereIn('source_type',['cod_buyer_refund','cod_refund_reimburse'])->sum('delta_cents');
+        $expected=$m['remittance_cash']+$m['transfer_variance']-$sellerCodOut-$buyerRefundOut;
         $actual=$m['hub_cash']+$m['in_transit']+$bucketTotals['cod']+$bucketTotals['unallocated'];
         $residual=$actual-$expected;if($residual!==0)$issue('cash_conservation','company','Hub cash, transit and COD treasury do not reconcile to counted cash, transfer differences and seller COD disbursements.',$residual);
         foreach($m as $key=>$value)$rows['summary'][]=['metric'=>$key,'value'=>$value,'unit'=>in_array($key,['discrepancies_open','discrepancies_resolved','legacy_shipments','legacy_delivered_cod'])?'count':'centavos'];

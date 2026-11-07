@@ -294,7 +294,8 @@ class RiderController extends Controller
         $data = $request->validate(['is_available' => 'required|boolean']);
         $rider = auth()->user();
         abort_unless($rider->account_type === 'rider' && $rider->status === 'approved', 403);
-        $rider->update(['is_available' => (bool) $data['is_available'], 'availability_updated_at' => now()]);
+        // These two validated operational fields are deliberately not generally mass assignable.
+        $rider->forceFill(['is_available' => (bool) $data['is_available'], 'availability_updated_at' => now()])->save();
         if ($data['is_available']) {
             $offers = app(RiderDeliveryOffers::class);
             $offers->expireOutstanding();
@@ -370,7 +371,7 @@ class RiderController extends Controller
             $cash = app(\App\Services\CodCollection::class);
             if ($next === 'delivered') {
                 $request->validate(['delivery_proof' => 'required|file|mimes:jpg,jpeg,png|max:5120', 'delivery_otp' => 'required|digits:6']);
-                abort_if($shipment->delivery_otp_locked_until?->isFuture(), 422, 'Delivery OTP is locked. Try again after '.$shipment->delivery_otp_locked_until->format('g:i A').'.');
+                abort_if($shipment->delivery_otp_locked_until?->isFuture(), 422, 'Delivery OTP is locked. Try again after '.$shipment->delivery_otp_locked_until?->format('g:i A').'.');
                 if (! $shipment->delivery_otp_hash || ! Hash::check($request->input('delivery_otp'), $shipment->delivery_otp_hash)) {
                     $attempts = ((int) $shipment->delivery_otp_attempts) + 1;
                     $shipment->update(['delivery_otp_attempts' => $attempts, 'delivery_otp_locked_until' => $attempts >= 5 ? now()->addMinutes(15) : null]);

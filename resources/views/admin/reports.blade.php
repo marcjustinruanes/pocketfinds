@@ -22,7 +22,7 @@
   </div>
   <div class="stack">
     <div class="card admin-report-exports"><div class="card-head"><div><h2>Sales and payment exports</h2><p>Download current records and summaries.</p></div></div><div class="card-pad">
-      <p class="admin-report-note">No platform commission is charged. Sales are completed order values, not profit or verified receipts. Payment summaries use recorded receipts and payouts without adding treasury mirrors.</p>
+      <p class="admin-report-note">Sales are completed buyer order values, not profit or verified receipts. Payment summaries use recorded receipts and net Seller payouts without adding treasury mirrors. Eligible new transactions apply the snapshotted 10% product commission; Commission Management separates earned fees, withholding, actual platform receipts and reversals.</p>
       <div class="admin-report-export-actions"><a class="btn btn-outline" href="{{ route('admin.reports.export.sales') }}">Sales CSV</a><a class="btn btn-outline" href="{{ route('admin.reports.export.sales-pdf') }}">Sales PDF</a><a class="btn btn-primary" href="{{ route('admin.reports.export.commission') }}">Payment summary CSV</a></div>
       <a class="admin-report-archive-link" href="{{ route('admin.commission') }}">Historical commission archive</a>
     </div></div>

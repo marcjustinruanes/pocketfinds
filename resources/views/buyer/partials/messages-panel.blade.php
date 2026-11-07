@@ -6,6 +6,9 @@
 <link rel="stylesheet" href="{{ asset('css/messaging.css') }}?v={{ filemtime(public_path('css/messaging.css')) }}">
 @if(\App\Services\GcashInventory::installed())
 @include('gcash.assets')
+@if($seller)
+<div class="gcash-banner"><div><strong>GCash payment</strong><p>Use the purchase page for private payment instructions and receipts. Chat messages do not verify payment.</p></div><div class="gcash-actions"><a class="gcash-button gcash-button-secondary" href="{{ route('gcash.index') }}">Your GCash purchases</a>@if($linkedPurchase??null)<a class="gcash-button" href="{{ route('gcash.show',$linkedPurchase->id) }}">Open linked purchase</a>@endif</div></div>
+@endif
 @endif
 <link rel="stylesheet" href="{{ asset('css/buyer-messaging.css') }}?v={{ filemtime(public_path('css/buyer-messaging.css')) }}">
 <div class="chat-shell" data-has-conversation="{{ $seller ? 'true' : 'false' }}">
@@ -236,6 +239,7 @@
           @include('buyer.partials.icon', ['name' => 'send', 'size' => 18])
         </button>
       </form>
+      <p class="chat-compose-hint">Enter to send &middot; Shift+Enter for a new line. Submit private payment proof on the linked purchase.</p>
     @endif
   </div>
 </div>

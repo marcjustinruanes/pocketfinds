@@ -34,6 +34,7 @@ class CodSellerPayoutTest extends TestCase
             '2026_10_17_000001_add_buyer_commerce_features','2026_10_28_000001_add_logistics_financial_foundation','2026_10_28_000002_add_logistics_financial_transactions',
             '2026_10_29_000001_add_logistics_cash_desk','2026_10_29_000002_add_logistics_shipping_settlement','2026_10_29_000003_add_cod_seller_payouts'] as $file)(require database_path('migrations/'.$file.'.php'))->up();
         Storage::fake('local');
+        DB::table('logistics_finance_settings')->insert(['company_name'=>'Alpha','pickup_cents'=>2000,'transfer_cents'=>6000,'delivery_cents'=>4000,'confirmation_hours'=>168,'revision'=>1,'created_at'=>now(),'updated_at'=>now()]);
         $this->hub=LogisticsHub::create(['company_name'=>'Alpha','municipality'=>'Santa Cruz','province'=>'Laguna','is_operational'=>true]);
         $this->seller=$this->person('seller');$this->buyer=$this->person('buyer');$this->admin=$this->person('admin');$this->staff=$this->person('hub_staff');$this->rider=$this->person('rider');
         $this->treasury=app(LogisticsTreasury::class);$this->flow=app(CodSellerPayouts::class);$this->desk=app(LogisticsCashDesk::class);
@@ -50,7 +51,8 @@ class CodSellerPayoutTest extends TestCase
         DB::table('orders')->where('id',$this->order->id)->update(['status'=>'out_for_delivery']);
         $assignment=DeliveryAssignment::create(['shipment_id'=>$this->shipment->id,'courier_id'=>$this->rider->id,'leg'=>'delivery','status'=>'assigned_to_rider']);
         DB::table('delivery_assignments')->where('id',$assignment->id)->update(['status'=>'out_for_delivery']);
-        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$this->shipment->id.'/advance',['from'=>'out_for_delivery','cod_amount'=>'1100','cod_confirmed'=>'1','collection_key'=>(string)Str::uuid()])->assertRedirect();
+        DB::table('shipments')->where('id',$this->shipment->id)->update(['delivery_otp_hash'=>\Illuminate\Support\Facades\Hash::make('123456')]);
+        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$this->shipment->id.'/advance',['from'=>'out_for_delivery','cod_amount'=>'1100','cod_confirmed'=>'1','collection_key'=>(string)Str::uuid(), 'delivery_otp'=>'123456','delivery_proof'=>UploadedFile::fake()->createWithContent('delivered.png',base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aT1sAAAAASUVORK5CYII='))])->assertRedirect()->assertSessionHasNoErrors();
         DB::table('shipments')->where('id',$this->shipment->id)->update(['delivered_at'=>now()->subHours(169)]);
         $this->order->refresh();$this->shipment->refresh();
         $this->collection=DB::table('logistics_financial_transactions')->where('collection_order_id',$this->order->id)->first();
@@ -200,7 +202,7 @@ class CodSellerPayoutTest extends TestCase
 
     public function test_exact_168_hour_boundary_and_actual_buyer_confirmation_are_supported():void
     {
-        $this->remit();$fixed=\Carbon\CarbonImmutable::parse('2026-10-29 12:00:00','UTC');
+        $this->remit();$fixed=\Carbon\CarbonImmutable::parse('2026-10-29 12:00:00',config('app.timezone'));
         \Carbon\CarbonImmutable::setTestNow($fixed);
         try{
             DB::table('shipments')->where('id',$this->shipment->id)->update(['delivered_at'=>$fixed->subHours(168)->addSecond()]);

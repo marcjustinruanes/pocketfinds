@@ -188,6 +188,7 @@ class LogisticsTreasury
         $column=$bucket==='cod'?'product_cents':'adjustment_cents';
         $reserved=DB::table('logistics_seller_payouts')->where('treasury_account_id',$account)->whereIn('status',['prepared','verified'])
             ->when($except,fn($q)=>$q->where('id','!=',$except))->when(DB::transactionLevel()>0,fn($q)=>$q->lockForUpdate())->get([$column])->sum($column);
+        if($bucket==='cod' && Schema::hasTable('cod_refund_reconciliations'))$reserved+=DB::table('cod_refund_reconciliations')->where('account_id',$account)->where('status','awaiting_remittance')->when(DB::transactionLevel()>0,fn($q)=>$q->lockForUpdate())->get(['amount_cents'])->sum('amount_cents');
         return $this->balance($account,$bucket)-(int)$reserved;
     }
 

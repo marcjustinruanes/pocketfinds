@@ -21,7 +21,7 @@
     <h1>PocketFinds — Sales Summary Report</h1>
     <p class="sub">Generated {{ now()->format('F j, Y g:i A') }}</p>
 
-    <p>All completed orders. Order values include shipping and applied discounts; they are not profit or proof of payment. No platform commission is deducted.</p>
+    <p>All completed orders. Buyer order values include shipping and applied discounts; they are not profit or proof of payment. Eligible new transactions apply the separately recorded 10% product commission. Recorded COD payouts are net of their applicable commission; platform collections and reversals remain in the commission ledger.</p>
     @include('reports.payment-summary',['report'=>$paymentReport,'tableClass'=>'data'])
     <h2>Completed order sales</h2>
     <table class="data"><thead><tr><th>Order ID</th><th>Seller ID</th><th>Items PHP</th><th>Shipping PHP</th><th>Discount PHP</th><th>Buyer value PHP</th><th>Updated</th></tr></thead><tbody>

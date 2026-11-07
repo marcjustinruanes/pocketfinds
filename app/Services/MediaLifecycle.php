@@ -121,7 +121,7 @@ class MediaLifecycle
     private function remove(string $disk, string $path): bool
     {
         try {
-            if (! $this->localPath($path) || (! in_array($disk, ['public', 'profile_images', 'messages', 'sensitive_documents'], true) && ! ($disk === 'local' && preg_match('#^(gcash-proofs|logistics-shipping-proofs|logistics-finance-proofs)/[A-Za-z0-9-]+\.(jpg|jpeg|png|webp|pdf)$#D', $path)))) {
+            if (! $this->localPath($path) || (! in_array($disk, ['public', 'profile_images', 'messages', 'sensitive_documents'], true) && ! ($disk === 'local' && preg_match('#^(gcash-proofs|logistics-shipping-proofs|logistics-finance-proofs|commission-proofs)/[A-Za-z0-9-]+\.(jpg|jpeg|png|webp|pdf)$#D', $path)))) {
                 throw new RuntimeException('Invalid cleanup target.');
             }
             if (in_array($disk, ['local', 'sensitive_documents'], true) && $this->referenced($disk, $path)) {
@@ -152,7 +152,9 @@ class MediaLifecycle
     {
         if ($disk === 'sensitive_documents') return in_array($path, app(SensitiveDocuments::class)->paths(), true);
         $references = match ($disk) {
-            'local' => ['gcash_proofs' => ['path'], 'logistics_shipping_payments' => ['proof_path'], 'logistics_finance_evidence' => ['path']],
+            'local' => ['gcash_proofs' => ['path'], 'logistics_shipping_payments' => ['proof_path'], 'logistics_finance_evidence' => ['path'],
+                'commission_payments'=>['proof_path'],'commission_credits'=>['proof_path'],
+                'commission_recoveries'=>['proof_path'],'commission_recovery_refunds'=>['proof_path']],
             'profile_images' => ['users' => ['profile_picture']],
             'messages' => ['messages' => ['attachment_path']],
             'public' => ['users' => ['id_file', 'selfie_file', 'license_file', 'business_permit_file', 'or_file', 'cr_file', 'resume_file', 'company_logo', 'id_photo_path', 'selfie_photo_path', 'license_photo_path', 'or_cr_path'],

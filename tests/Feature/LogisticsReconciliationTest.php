@@ -34,6 +34,7 @@ class LogisticsReconciliationTest extends TestCase
             '2026_10_17_000001_add_buyer_commerce_features','2026_10_28_000001_add_logistics_financial_foundation','2026_10_28_000002_add_logistics_financial_transactions',
             '2026_10_29_000001_add_logistics_cash_desk','2026_10_29_000002_add_logistics_shipping_settlement','2026_10_29_000003_add_cod_seller_payouts','2026_10_29_000004_add_rider_compensation_payouts'] as $file)(require database_path('migrations/'.$file.'.php'))->up();
         Storage::fake('local');
+        DB::table('logistics_finance_settings')->insert(['company_name'=>'Alpha','pickup_cents'=>2000,'transfer_cents'=>6000,'delivery_cents'=>4000,'confirmation_hours'=>168,'revision'=>1,'created_at'=>now(),'updated_at'=>now()]);
         $this->hub=LogisticsHub::create(['company_name'=>'Alpha','municipality'=>'Santa Cruz','province'=>'Laguna','is_operational'=>true]);
         $this->seller=$this->person('seller');$this->buyer=$this->person('buyer');$this->admin=$this->person('admin');$this->staff=$this->person('hub_staff');$this->rider=$this->person('rider');
         $this->treasury=app(LogisticsTreasury::class);$this->flow=app(CodSellerPayouts::class);$this->desk=app(LogisticsCashDesk::class);
@@ -50,7 +51,7 @@ class LogisticsReconciliationTest extends TestCase
         DB::table('orders')->where('id',$this->order->id)->update(['status'=>'out_for_delivery']);
         $assignment=DeliveryAssignment::create(['shipment_id'=>$this->shipment->id,'courier_id'=>$this->rider->id,'leg'=>'delivery','status'=>'assigned_to_rider']);
         DB::table('delivery_assignments')->where('id',$assignment->id)->update(['status'=>'out_for_delivery']);
-        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$this->shipment->id.'/advance',['from'=>'out_for_delivery','cod_amount'=>'1100','cod_confirmed'=>'1','collection_key'=>(string)Str::uuid()])->assertRedirect();
+        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$this->shipment->id.'/advance',array_merge(['from'=>'out_for_delivery','cod_amount'=>'1100','cod_confirmed'=>'1','collection_key'=>(string)Str::uuid()],$this->deliveryEvidence($this->shipment->id)))->assertRedirect()->assertSessionHasNoErrors();
         DB::table('shipments')->where('id',$this->shipment->id)->update(['delivered_at'=>now()->subHours(169)]);
         $this->order->refresh();$this->shipment->refresh();
         $this->collection=DB::table('logistics_financial_transactions')->where('collection_order_id',$this->order->id)->first();
@@ -219,6 +220,7 @@ class LogisticsReconciliationTest extends TestCase
     {
         $this->seller->update(['shipping_fee'=>100]);$this->buyer->update(['postal_code'=>'4009','barangay'=>'B','street'=>'Main Street','contact_no'=>'09123456789']);
         $this->rider->update(['vehicle_type'=>'two_wheels','vehicle_ownership'=>'own']);
+        $this->rider->forceFill(['is_available'=>true])->save();
         $shipping=app(LogisticsShipping::class);$shipping->configure($this->admin,['revision'=>0,'account_name'=>'Alpha GCash','account_number'=>'09123456789']);
         $product=\App\Models\Product::create(['seller_id'=>$this->seller->id,'name'=>'End to end parcel','status'=>'active','stock'=>5,'price'=>1000,'weight_grams'=>1000]);
         $cart=\App\Models\CartItem::create(['buyer_id'=>$this->buyer->id,'product_id'=>$product->id,'seller_slug'=>$this->seller->username,'name'=>$product->name,'price'=>1000,'qty'=>1]);
@@ -239,15 +241,16 @@ class LogisticsReconciliationTest extends TestCase
         session()->forget('errors');
         $this->actingAs($this->admin)->patch('/logistics/requests/'.$ob->shipment_id.'/approve')->assertRedirect()->assertSessionHasNoErrors();
         $this->actingAs($this->staff)->patch('/logistics/requests/'.$ob->shipment_id.'/assign-pickup',['courier_id'=>$this->rider->id])->assertRedirect()->assertSessionHasNoErrors();
-        $this->actingAs($this->rider)->patch('/rider/my-pickups/'.$ob->shipment_id.'/confirm')->assertRedirect()->assertSessionHasNoErrors();
+        $tracking=DB::table('shipments')->where('id',$ob->shipment_id)->value('tracking_number');
+        $this->actingAs($this->rider)->patch('/rider/my-pickups/'.$ob->shipment_id.'/confirm',['tracking_number'=>$tracking])->assertRedirect()->assertSessionHasNoErrors();
         $this->actingAs($this->seller)->patch(route('seller.orders.confirm-pickup',$o))->assertRedirect()->assertSessionHasNoErrors();
         $this->actingAs($this->staff)->patchJson('/logistics/scan/'.$ob->shipment_id.'/receive')->assertOk();
         $this->patch('/logistics/assignments/'.$ob->shipment_id.'/assign',['courier_id'=>$this->rider->id])->assertRedirect()->assertSessionHasNoErrors();
         $this->actingAs($this->rider)->patch('/rider/deliveries/'.$ob->shipment_id.'/advance',['from'=>'assigned_to_rider'])->assertRedirect()->assertSessionHasNoErrors();
-        $this->patch('/rider/deliveries/'.$ob->shipment_id.'/advance',['from'=>'out_for_delivery'])->assertRedirect()->assertSessionHasNoErrors();
+        $this->patch('/rider/deliveries/'.$ob->shipment_id.'/advance',array_merge(['from'=>'out_for_delivery'],$this->deliveryEvidence($ob->shipment_id)))->assertRedirect()->assertSessionHasNoErrors();
         $this->actingAs($this->buyer)->patch(route('buyer.orders.confirm-receipt',$o))->assertRedirect();
         $r=$this->report();$this->assertSame(10000,$r['metrics']['gcash_receipts']);$this->assertSame(2000,$r['metrics']['platform_claims']);$this->assertSame(110000,$r['metrics']['cod_collected']);
-        $this->assertSame(10500,$r['metrics']['rider_earned']);$this->assertSame(0,$r['metrics']['seller_paid']);$this->assertSame(0,$r['buckets']['cod']);$this->balanced($r);
+        $this->assertSame(10000,$r['metrics']['rider_earned']);$this->assertSame(0,$r['metrics']['seller_paid']);$this->assertSame(0,$r['buckets']['cod']);$this->balanced($r);
         $this->assertSame('completed',$o->fresh()->status);$this->assertSame('1080.00',number_format($o->fresh()->total,2,'.',''));
     }
     public function test_returns_and_refunds_after_payout_are_flagged_without_clawback(): void
@@ -268,7 +271,7 @@ class LogisticsReconciliationTest extends TestCase
         foreach(['seller','platform'] as $funder){$ob=$this->gcashShipping($funder,'Cash on Delivery');
             DB::table('shipments')->where('id',$ob->shipment_id)->update(['shipping_status'=>'out_for_delivery','courier_id'=>$this->rider->id]);DB::table('orders')->where('id',$ob->order_id)->update(['status'=>'out_for_delivery']);
             $a=DeliveryAssignment::create(['shipment_id'=>$ob->shipment_id,'courier_id'=>$this->rider->id,'leg'=>'delivery','status'=>'assigned_to_rider']);DB::table('delivery_assignments')->where('id',$a->id)->update(['status'=>'out_for_delivery']);
-            $this->actingAs($this->rider)->patch('/rider/deliveries/'.$ob->shipment_id.'/advance',['from'=>'out_for_delivery','cod_amount'=>'1080','cod_confirmed'=>'1','collection_key'=>(string)Str::uuid()])->assertRedirect()->assertSessionHasNoErrors();
+            $this->actingAs($this->rider)->patch('/rider/deliveries/'.$ob->shipment_id.'/advance',array_merge(['from'=>'out_for_delivery','cod_amount'=>'1080','cod_confirmed'=>'1','collection_key'=>(string)Str::uuid()],$this->deliveryEvidence($ob->shipment_id)))->assertRedirect()->assertSessionHasNoErrors();
             $this->actingAs($this->buyer)->patch(route('buyer.orders.confirm-receipt',$ob->order_id))->assertRedirect();
             $c=DB::table('logistics_financial_transactions')->where('collection_order_id',$ob->order_id)->first();$h=$this->desk->submit($this->rider,['key'=>(string)Str::uuid(),'allocations'=>[$c->id=>'1080']]);
             $this->desk->count($this->staff,$h->id,['counted'=>'1080','allocations'=>[$c->id=>'1080'],'notes'=>'Actual full COD handover']);

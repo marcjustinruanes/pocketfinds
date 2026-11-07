@@ -424,6 +424,16 @@ class GcashPurchaseTest extends TestCase
         $this->get(route('seller.messages', ['buyer' => $this->buyer->id, 'purchase' => $p->id]))->assertOk()
             ->assertSee('data-has-conversation="true"', false)->assertSee('Back to conversations')->assertSee('Shift+Enter')->assertSee('id="chatFeedback"', false);
     }
+    public function test_linked_purchase_in_buyer_messages_is_scoped_to_buyer_and_shop(): void
+    {
+        $purchase=$this->draft();
+        $url=route('buyer.messages',['seller'=>$this->seller->username,'purchase'=>$purchase->id]);
+        $this->actingAs($this->buyer)->get($url)->assertOk()->assertSee('href="'.route('gcash.show',$purchase->id).'"',false);
+        $this->actingAs($this->person('buyer'))->get($url)->assertOk()->assertDontSee('Open linked purchase');
+        $other=$this->person('seller');
+        $this->actingAs($this->buyer)->get(route('buyer.messages',['seller'=>$other->username,'purchase'=>$purchase->id]))->assertOk()->assertDontSee('Open linked purchase');
+        $this->get(route('buyer.messages',['seller'=>$this->seller->username,'purchase'=>[$purchase->id]]))->assertOk()->assertDontSee('Open linked purchase');
+    }
 
     public function test_instruction_validation_rejects_invalid_names_and_literal_phone_spaces_without_writes(): void
     {
@@ -471,7 +481,7 @@ class GcashPurchaseTest extends TestCase
             ->assertSee('css/order-details.css')->assertSee('data-order-summary', false)
             ->assertSee('id="orderDetailsTitle'.$order->id.'">Item</h3>', false)
             ->assertSee('Order reference:')->assertSee($order->order_number)
-            ->assertSee('<details class="order-tracking">', false)
+            ->assertSee('class="order-tracking order-tracking-horizontal"', false)
             ->assertSee('Scrollable order information')->assertSee('>Done</button>', false);
         $this->assertSame('placed', $order->fresh()->status);
     }
@@ -890,7 +900,7 @@ class GcashPurchaseTest extends TestCase
     public function test_actual_first_pickup_confirmation_then_rejection_blocks_second(): void
     {
         [$purchase, $order, $shipment, $rider] = $this->pickupFixture();
-        $this->actingAs($rider)->patchJson(route('rider.my-pickups.confirm', $shipment->id))->assertRedirect();
+        $this->actingAs($rider)->patchJson(route('rider.my-pickups.confirm', $shipment->id),['tracking_number'=>$shipment->tracking_number])->assertRedirect();
         $this->assertNotNull($shipment->fresh()->rider_confirmed_pickup_at);
         $this->product->fresh()->update(['status' => 'rejected']);
         $this->actingAs($this->seller)->patchJson(route('seller.orders.confirm-pickup', $order->id))->assertUnprocessable();
