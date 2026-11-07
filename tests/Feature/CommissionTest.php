@@ -14,6 +14,8 @@ class CommissionTest extends CodSellerPayoutTest
         parent::setUp();
         (require database_path('migrations/2026_11_08_000001_add_platform_commission_ledger.php'))->up();
         (require database_path('migrations/2026_11_08_000002_complete_commission_workflows.php'))->up();
+        (require database_path('migrations/2026_11_08_000003_add_commission_account_management.php'))->up();
+        (require database_path('migrations/2026_11_08_000004_add_commission_payment_messages.php'))->up();
         config(['commission.enabled' => false, 'commission.activation_at' => null]);
     }
 

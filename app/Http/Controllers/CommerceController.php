@@ -69,6 +69,17 @@ class CommerceController extends Controller
         $user = $this->emailAccount($r);
         $notification = DB::table('notifications')->where('id', $id)->where('user_id', $user->id)->first();
         abort_unless($notification, 404);
+        if($notification->notification_type==='commission'){
+            app(\App\Services\CommissionPayments::class)->actor($user);
+            DB::table('notifications')->where('id',$id)->where('user_id',$user->id)->update(['is_read'=>true]);
+            return redirect()->route('commissions.index');
+        }
+        if(in_array($notification->notification_type,['commission_payment','commission_recovery'],true)){
+            $kind=$notification->notification_type==='commission_payment'?'payment':'recovery';
+            app(\App\Services\CommissionConversations::class)->authorize($user,$kind,$notification->reference_id);
+            DB::table('notifications')->where('id',$id)->where('user_id',$user->id)->update(['is_read'=>true]);
+            return redirect()->route('commissions.conversation',[$kind,$notification->reference_id]);
+        }
         if($notification->notification_type==='cash_handover'){
             $actor=app(\App\Services\LogisticsCashDesk::class)->actor($user);
             $handover=app(\App\Services\LogisticsCashDesk::class)->scope(DB::table('logistics_cash_handovers'),$actor)->where('id',$notification->reference_id)->firstOrFail();

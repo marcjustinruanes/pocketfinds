@@ -1,0 +1,199 @@
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Unit\ExampleTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthat true is true[39m
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\AdminAssistantTest[39m
+  [32;1m✓[39;22m[90m [39m[90mguest buyer and seller cannot access admin ai[39m[90m                                                               [39m [90m0.39s[39m  
+  [32;1m✓[39;22m[90m [39m[90mall six tasks use structured read only results[39m[90m                                                              [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmissing key and consent never send data[39m[90m                                                                     [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mbusiness tasks and product copy are advisory only[39m[90m                                                           [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mquota and malformed outputs do not leak provider details[39m[90m                                                    [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mannouncement transfer saves only a session draft not a publication[39m[90m                                          [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mchat uses only this admins history and clear is scoped[39m[90m                                                      [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mvision is requested only when a photo is supplied[39m[90m                                                           [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mproduct review cannot return an inapplicable review label[39m[90m                                                   [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmissing selected record returns not found without a provider call[39m[90m                                           [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mworkspace view escapes names and does not expose the api key[39m[90m                                                [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdatabase snapshots are grounded private and read only[39m[90m                                                       [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mlocal photo consent and path boundaries[39m[90m                                                                     [39m [90m0.10s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\AutomatedAssistantTest[39m
+  [32;1m✓[39;22m[90m [39m[90mbuyer automated orders work without a key or provider call[39m[90m                                                  [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mautomated shopping topics use data and never send messages[39m[90m                                                  [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90morder consent and guest boundaries apply to automated replies[39m[90m                                               [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mautomated history is never forwarded when switching to ai[39m[90m                                                   [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90madmin automated chat uses database counts without ai or consent[39m[90m                                             [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mautomated mode cannot bypass admin permissions or ai consent[39m[90m                                                [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90madmin automated history is not sent to the ai provider[39m[90m                                                      [39m [90m0.04s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\BuyerAssistantTest[39m
+  [32;1m✓[39;22m[90m [39m[90mguest and seller cannot send messages[39m[90m                                                                       [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmissing key is honest and does not call provider[39m[90m                                                            [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mprovider reply returns only eligible database links and caps history[39m[90m                                        [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mturning order sharing off discards order aware history[39m[90m                                                      [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90minvalid messages and consent are rejected[39m[90m                                                                   [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmessage endpoint is rate limited without calling provider[39m[90m                                                   [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mprovider errors do not expose secrets or save failed turns[39m[90m                                                  [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mincomplete response is not treated as a success[39m[90m                                                             [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mgroq quota failure is explicit and never retried[39m[90m                                                            [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mold openai key does not enable groq or get sent to it[39m[90m                                                       [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mprovider history is shortened to stay lightweight[39m[90m                                                           [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mclear removes only this buyers conversation[39m[90m                                                                 [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mhistory is scoped to the buyer and does not expose credentials[39m[90m                                              [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcontext is private minimal and excludes unapproved products[39m[90m                                                 [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\BuyerCommerceTest[39m
+  [32;1m✓[39;22m[90m [39m[90mshipping rounds weight and vouchers stack with replacement[39m[90m                                                  [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mvacation unserviceable address and future vouchers are blocked[39m[90m                                              [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mseller without regional rates uses legacy flat shipping fee[39m[90m                                                 [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mseller without regional rates or legacy fee gets free shipping fallback[39m[90m                                     [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mflash sale excess units use regular price[39m[90m                                                                   [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcod checkout retry and cancel do not duplicate stock[39m[90m                                                        [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mgcash reserves one hour and releases new vouchers[39m[90m                                                           [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90maddress limit and cross buyer protection[39m[90m                                                                    [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mwishlist and mark all are scoped and idempotent[39m[90m                                                             [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90memail changes only after correct otp[39m[90m                                                                        [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mall commerce pages render for their roles[39m[90m                                                                   [39m [90m0.26s[39m  
+  [32;1m✓[39;22m[90m [39m[90mitem reviews support photos and only one edit[39m[90m                                                               [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreturns require evidence and restore stock only once[39m[90m                                                        [39m [90m0.20s[39m  
+  [32;1m✓[39;22m[90m [39m[90mother roles use native account and commerce pages[39m[90m                                                           [39m [90m0.40s[39m  
+  [32;1m✓[39;22m[90m [39m[90mall other roles enforce profile and password rules[39m[90m                                                          [39m [90m0.22s[39m  
+  [32;1m✓[39;22m[90m [39m[90mother roles cannot bypass verified email or manage another sellers returns[39m[90m                                  [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mnative return controls keep sellers and admin actions separate[39m[90m                                              [39m [90m0.23s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreturn auto approval notifies buyer and seller once[39m[90m                                                         [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mshipping settings and notification actions are owned by the signed in role[39m[90m                                  [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mnew delivery address becomes the selected checkout address[39m[90m                                                  [39m [90m0.24s[39m  
+  [32;1m✓[39;22m[90m [39m[90molder saved addresses can complete missing checkout fields only[39m[90m                                             [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90mvouchers preview without shipping setup but cannot authorize checkout[39m[90m                                       [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mnative cart quote and submit create an order without a separate checkout page[39m[90m                               [39m [90m0.21s[39m  
+  [32;1m✓[39;22m[90m [39m[90mflash sales render in the existing deals gallery and wishlist is separate[39m[90m                                   [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90mgcash payment preserves flash prices and stacked vouchers[39m[90m                                                   [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mduplicate cart lines cannot oversell and discounts cannot exceed merchandise[39m[90m                                [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mplatform voucher counts once for a checkout with two sellers[39m[90m                                                [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mflash reminder sends once and wrong email code does not change email[39m[90m                                        [39m [90m0.12s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\BuyerConversationTest[39m
+  [32;1m✓[39;22m[90m [39m[90msmart faq is api free and transcript survives session replacement[39m[90m                                           [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90msmart unmatched uses ai and unavailable ai saves support fallback[39m[90m                                           [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mautomated mode never sends unmatched questions to ai[39m[90m                                                        [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mother buyers cannot read rename send delete or list a conversation[39m[90m                                          [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrename delete and new chat only affect selected conversation[39m[90m                                                [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmode and consent changes retain transcript but isolate ai context[39m[90m                                           [39m [90m0.07s[39m  
+  [32;1m✓[39;22m[90m [39m[90mold messages are paginated not pruned[39m[90m                                                                       [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mguests sellers and admins are denied[39m[90m                                                                        [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mconversation list paginates and never exposes api key[39m[90m                                                       [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mavailable legacy session history is imported once for its owner[39m[90m                                             [39m [90m0.05s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\BuyerStorefrontTest[39m
+  [32;1m✓[39;22m[90m [39m[90mbuyer storefront uses signed in links without guest prompts[39m[90m                                                 [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mguest storefront keeps guest links and sign in dialog[39m[90m                                                       [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdashboard still requires authentication[39m[90m                                                                     [39m [90m0.03s[39m  
+  [32;1m✓[39;22m[90m [39m[90meach banner renders its saved crop[39m[90m                                                                          [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcrop editor loads saved values for the correct banner[39m[90m                                                       [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mhero uses beauty image as second slide by default[39m[90m                                                           [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90madmin second image replaces default and excludes stale uploads[39m[90m                                              [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mbuyer layout uses the shared storefront navigation and theme[39m[90m                                                [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90mseller cannot open buyer dashboard[39m[90m                                                                          [39m [90m0.04s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\CodCollectionTest[39m
+  [32;1m✓[39;22m[90m [39m[90mdelivery and exact collection commit together without verifying remittance[39m[90m                                  [39m [90m0.10s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmissing partial excess or unconfirmed collection cannot deliver[39m[90m                                             [39m [90m0.14s[39m  
+  [32;1m✓[39;22m[90m [39m[90mretries cannot duplicate collection or its audit event[39m[90m                                                      [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mconfirmation key cannot be reused on another order[39m[90m                                                          [39m [90m0.20s[39m  
+  [32;1m✓[39;22m[90m [39m[90mother rider and logistics staff cannot bypass collection[39m[90m                                                    [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mmodel updates cannot skip the collection requirement[39m[90m                                                        [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mrider page shows collection fields and separate pending verification[39m[90m                                        [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mremittance hub comes from the assignment snapshot[39m[90m                                                           [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mclient cannot forge hub verification or collection ownership[39m[90m                                                [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfinance collection list is scoped to the admin company[39m[90m                                                      [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90msecond shipment cannot collect the same order again[39m[90m                                                         [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mhistorical delivered order can be completed without inventing collection[39m[90m                                    [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mprepaid delivery does not create cod cash or change its flow[39m[90m                                                [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90maudit failure rolls back cash and delivery together[39m[90m                                                         [39m [90m0.07s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\CodSellerPayoutTest[39m
+  [32;1m✓[39;22m[90m [39m[90msuccessful cod payout retains shipping and acknowledgement is separate[39m[90m                                      [39m [90m0.22s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpartial remittance and unverified cash cannot prepare payout[39m[90m                                                [39m [90m0.20s[39m  
+  [32;1m✓[39;22m[90m [39m[90mhub cash and cash in transit are not treasury funding[39m[90m                                                       [39m [90m0.20s[39m  
+  [32;1m✓[39;22m[90m [39m[90monly qualified cod cash can be released and overages are excluded[39m[90m                                           [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreceipt shortage or overage only credits verified cod portion[39m[90m                                               [39m [90m0.18s[39m  
+  [32;1m✓[39;22m[90m [39m[90mbefore timeout auto completion is not buyer confirmation[39m[90m                                                    [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90mactive dispute after preparation blocks verification and payment[39m[90m                                            [39m [90m0.29s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreturn refund and rejected return appeal window prevent payout[39m[90m                                              [39m [90m0.22s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpositive adjustments require separate actual verified funding[39m[90m                                               [39m [90m0.30s[39m  
+  [32;1m✓[39;22m[90m [39m[90mduplicate preparation payment and reference cannot pay twice[39m[90m                                                [39m [90m0.28s[39m  
+  [32;1m✓[39;22m[90m [39m[90mdocumented holds and cancellation do not deduct and release reservations[39m[90m                                    [39m [90m0.25s[39m  
+  [32;1m✓[39;22m[90m [39m[90mseller receiving account and role scopes are enforced[39m[90m                                                       [39m [90m0.32s[39m  
+  [32;1m✓[39;22m[90m [39m[90maudit failure rolls back actual payout and private proof[39m[90m                                                    [39m [90m0.24s[39m  
+  [32;1m✓[39;22m[90m [39m[90mexact 168 hour boundary and actual buyer confirmation are supported[39m[90m                                         [39m [90m0.20s[39m  
+  [32;1m✓[39;22m[90m [39m[90mhub transfer preserves explicit verified cod qualification[39m[90m                                                  [39m [90m0.20s[39m  
+  [32;1m✓[39;22m[90m [39m[90mtreasury shortage does not credit missing funds or auto deduct earnings[39m[90m                                     [39m [90m0.21s[39m  
+  [32;1m✓[39;22m[90m [39m[90mnegative adjustments and missing reasons or wrong destinations are rejected[39m[90m                                 [39m [90m0.23s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpayout requires verification exact amount and actual transfer confirmation[39m[90m                                  [39m [90m0.26s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreference reuse and unauthorized treasury receipt cannot create funds[39m[90m                                       [39m [90m0.26s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreceipt audit failure keeps cash in transit and creates no treasury credit[39m[90m                                  [39m [90m0.24s[39m  
+  [32;1m✓[39;22m[90m [39m[90macknowledgement cannot be forged or create a payment[39m[90m                                                        [39m [90m0.27s[39m  
+  [32;1m✓[39;22m[90m [39m[90minsufficient cod to cover shipping is held without negative proceeds[39m[90m                                        [39m [90m0.19s[39m  
+  [32;1m✓[39;22m[90m [39m[90mexisting reservation prevents a second order from spending the same funds[39m[90m                                   [39m [90m0.21s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\CommerceInsightsTest[39m
+  [32;1m✓[39;22m[90m [39m[90msales use completed history and forecasts need evidence[39m[90m                                                     [39m [90m0.06s[39m  
+  [32;1m✓[39;22m[90m [39m[90mestimates and stock cover are deterministic with sufficient history[39m[90m                                         [39m [90m0.05s[39m  
+  [32;1m✓[39;22m[90m [39m[90morder flags are warnings and do not change records[39m[90m                                                          [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mreport exports are admin only and escape csv formulas[39m[90m                                                       [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mstock operations log actual changes and roll back with the transaction[39m[90m                                      [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90mvariation movements and quantity mismatches are recorded[39m[90m                                                    [39m [90m0.04s[39m  
+  [32;1m✓[39;22m[90m [39m[90morder investigation requires admin and view escapes listing text[39m[90m                                            [39m [90m0.06s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\ExampleTest[39m
+  [32;1m✓[39;22m[90m [39m[90mthe application returns a successful response[39m[90m                                                               [39m [90m0.05s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\FulfillmentWorkflowTest[39m
+  [32;1m✓[39;22m[90m [39m[90mpublic rider and staff registration store documents and preserve pending roles[39m[90m                              [39m [90m0.15s[39m  
+  [32;1m✓[39;22m[90m [39m[90mregistration failure after upload removes files and invalid hub never uploads[39m[90m                               [39m [90m0.16s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcheckout seller confirmation preparation and logistics handoff[39m[90m                                              [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mcheckout rejects foreign addresses and rolls back failed order creation[39m[90m                                     [39m [90m0.12s[39m  
+  [32;1m✓[39;22m[90m [39m[90mfailed seller confirmation rolls back stock and hides database details[39m[90m                                      [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mbuyer cancellation restock is idempotent and returned parcels restock once[39m[90m                                  [39m [90m0.13s[39m  
+  [32;1m✓[39;22m[90m [39m[90mpayment account verification is user scoped without real payment or email[39m[90m                                   [39m [90m0.08s[39m  
+  [32;1m✓[39;22m[90m [39m[90madmin approval notification is deferred until commit and discarded on rollback[39m[90m                              [39m [90m0.09s[39m  
+
+  [30;42;1m PASS [39;49;22m[39m Tests\Feature\GcashMigrationTest[39m
+  [32;1m✓[39;22m[90m [39m[90madditive schema preserves preexisting rows[39m[90m                                                                  [39m [90m0.11s[39m  
+  [32;1m✓[39;22m[90m [39m[90mforward recovery from interrupted creation keeps existing rows[39m[90m                                              [39m [90m0.09s[39m  
+  [32;1m✓[39;22m[90m [39m[90mforward recovery repairs interrupted order alter[39m[90m                                                            [39m [90m0.08s[39m  
+
+  [41;1m Pest\Exceptions\FatalException [49;22m
+
+[39;1m  Allowed memory size of 134217728 bytes exhausted (tried to allocate 5243944 bytes)[39;22m
+
+  at [32mtests\Feature\GcashPurchaseTest.php[39m:[32m1034[39m
+PHP Fatal error:  Allowed memory size of 134217728 bytes exhausted (tried to allocate 5243944 bytes) in C:\Users\LENOVO\OneDrive\Desktop\laravel\ecom\tests\Feature\GcashPurchaseTest.php on line 1034
+Stack trace:
+#0 C:\Users\LENOVO\OneDrive\Desktop\laravel\ecom\vendor\phpunit\phpunit\src\Framework\TestCase.php(1461): Tests\Feature\GcashPurchaseTest->test_receipt_size_spoofing_and_cross_purchase_ids_are_rejected()
+#1 C:\Users\LENOVO\OneDrive\Desktop\laravel\ecom\vendor\phpunit\phpunit\src\Framework\TestCase.php(1475): PHPUnit\Framework\TestCase->invokeTestMethod()
+#2 C:\Users\LENOVO\OneDrive\Desktop\laravel\ecom\vendor\phpunit\phpunit\src\Framework\TestCase.php(496): PHPUnit\Framework\TestCase->runTest()
+#3 C:\Users\LENOVO\OneDrive\Desktop\laravel\ecom\vendor\phpunit\phpunit\src\Framework\TestRunner\TestRunner.php(126): PHPUnit\Framework\TestCase->runBare()
+#4 C:\Users\LENOVO\OneDrive\Desktop\laravel\ecom\vendor\phpunit\phpunit\src\Framework\TestCase.php(328): PHPUnit\Framework\TestRunner\TestRunner->run()
+#5 C:\Users\LENOVO\OneDrive\Desktop\laravel\ecom\vendor\phpunit\phpunit\src\Framework\TestSuite.php(627): PHPUnit\Framework\TestCase->run()
+#6 C:\Users\LENOVO\OneDrive\Desktop\laravel\ecom\vendor\phpunit\phpunit\src\Framework\TestSuite.php(420): PHPUnit\Framework\TestSuite->runTests()
+#7 C:\Users\LENOVO\OneDrive\Desktop\laravel\ecom\vendor\phpunit\phpunit\src\Framework\TestSuite.php(627): PHPUnit\Framework\TestSuite->run()
+#8 C:\Users\LENOVO\OneDrive\Desktop\laravel\ecom\vendor\phpunit\phpunit\src\Framework\TestSuite.php(420): PHPUnit\Framework\TestSuite->runTests()
+#9 C:\Users\LENOVO\OneDrive\Desktop\laravel\ecom\vendor\phpunit\phpunit\src\Framework\TestSuite.php(627): PHPUnit\Framework\TestSuite->run()
+#10 C:\Users\LENOVO\OneDrive\Desktop\laravel\ecom\vendor\phpunit\phpunit\src\Framework\TestSuite.php(420): PHPUnit\Framework\TestSuite->runTests()
+#11 C:\Users\LENOVO\OneDrive\Desktop\laravel\ecom\vendor\phpunit\phpunit\src\TextUI\TestRunner.php(64): PHPUnit\Framework\TestSuite->run()
+#12 C:\Users\LENOVO\OneDrive\Desktop\laravel\ecom\vendor\phpunit\phpunit\src\TextUI\Application.php(255): PHPUnit\TextUI\TestRunner->run()
+#13 C:\Users\LENOVO\OneDrive\Desktop\laravel\ecom\vendor\pestphp\pest\src\Kernel.php(100): PHPUnit\TextUI\Application->run()
+#14 C:\Users\LENOVO\OneDrive\Desktop\laravel\ecom\vendor\pestphp\pest\bin\pest(207): Pest\Kernel->handle()
+#15 C:\Users\LENOVO\OneDrive\Desktop\laravel\ecom\vendor\pestphp\pest\bin\pest(215): {closure:C:\Users\LENOVO\OneDrive\Desktop\laravel\ecom\vendor\pestphp\pest\bin\pest:21}()
+#16 {main}
+    1030▕     {
+    1031▕         $purchase = $this->draft();
+    1032▕         $purchase = $this->flow->instructions($this->seller, $purchase->id, $purchase->revision, 'Seller', '09123456789');
+    1033▕         $this->actingAs($this->buyer);
+  ➜ 1034▕         Storage::disk('local')->put('oversized.pdf', '%PDF-1.4'.str_repeat('x', 5121 * 1024));
+    1035▕         Storage::disk('local')->put('fake.png', 'This is not an image');
+    1036▕         foreach ([new UploadedFile(Storage::disk('local')->path('oversized.pdf'), 'oversized.pdf', test: true), new UploadedFile(Storage::disk('local')->path('fake.png'), 'fake.png', test: true)] as $file) {
+    1037▕             $this->postJson(route('gcash.proof', $purchase->id), ['submission_id' => (string) Str::uuid(), 'receipt' => $file])->assertUnprocessable();
+    1038▕         }
+

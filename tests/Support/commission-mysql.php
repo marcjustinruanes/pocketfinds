@@ -55,7 +55,9 @@ if(($argv[1]??'')==='--worker'){
     touch($barrier.'.ready'.$index);$deadline=microtime(true)+20;while(!file_exists($barrier)&&microtime(true)<$deadline)usleep(10000);
     checkCommission(file_exists($barrier),'Barrier unavailable');
     try{
-        if($action==='verify')app(CommissionPayments::class)->review($actor,$id,['revision'=>1,'decision'=>'verify','amount'=>'100','reference'=>'MYSQLCOMM001','received'=>1,'reason'=>'Actual synthetic receipt verified']);
+        if($action==='reconcile'){echo (string)app(CommissionLedger::class)->sweep();exit;}
+        elseif($action==='enrollment')app(\App\Services\CommissionEnrollment::class)->change($actor,['action'=>'activate','revision'=>1,'confirmed'=>1,'reason'=>'Synthetic concurrent enrollment activation']);
+        elseif($action==='verify')app(CommissionPayments::class)->review($actor,$id,['revision'=>1,'decision'=>'verify','amount'=>'100','reference'=>'MYSQLCOMM001','received'=>1,'reason'=>'Actual synthetic receipt verified']);
         elseif($action==='verify_split'){
             $p=DB::table('commission_payments')->find($id);
             app(CommissionPayments::class)->review($actor,$id,['revision'=>1,'decision'=>'verify','amount'=>\App\Services\LogisticsReconciliation::money($p->amount_cents),'reference'=>$p->reference,'received'=>1,'reason'=>'Actual distinct receipt after partial refund']);
@@ -69,6 +71,12 @@ if(($argv[1]??'')==='--worker'){
             app(\App\Services\CommissionRecovery::class)->review($actor,$id,['revision'=>1,'decision'=>'verify','amount'=>'100','reference'=>$r->reference,'received'=>1,'ownership_checked'=>1,'reason'=>'Actual receipt and ownership verified in isolated race']);
         }elseif($action==='draft'){
             app(CommissionPayments::class)->prepareRemittance($actor,['submission_key'=>(string)Str::uuid(),'receiving_account_id'=>DB::table('commission_accounts')->value('id'),'allocations'=>[$id=>'100']]);
+        }elseif($action==='account_activate'){
+            [$accountId,$revision]=explode(':',$id);
+            app(\App\Services\CommissionAccounts::class)->manage($actor,['action'=>'activate','account_id'=>$accountId,'revision'=>$revision,'reason'=>'Synthetic competing account activation']);
+        }elseif($action==='message'){
+            [$paymentId,$submission]=explode(':',$id,2);
+            app(\App\Services\CommissionConversations::class)->send($actor,'payment',$paymentId,['submission_key'=>$submission,'message'=>'Concurrent synthetic reply']);
         }else throw new RuntimeException('Invalid worker action');
         echo 'ok';
     }catch(\Symfony\Component\HttpKernel\Exception\HttpException $e){echo 'http:'.$e->getStatusCode();}
@@ -84,12 +92,19 @@ try{
     selectCommissionDatabase($database);DB::statement('SET FOREIGN_KEY_CHECKS=0');foreach($ddl as $sql)DB::unprepared($sql);DB::statement('SET FOREIGN_KEY_CHECKS=1');
     (require database_path('migrations/2026_11_08_000001_add_platform_commission_ledger.php'))->up();
     (require database_path('migrations/2026_11_08_000002_complete_commission_workflows.php'))->up();
+    (require database_path('migrations/2026_11_08_000003_add_commission_account_management.php'))->up();
+    (require database_path('migrations/2026_11_08_000004_add_commission_payment_messages.php'))->up();
     $people=[];foreach(['seller','buyer','platform'] as $role){$attrs=synthetic('users',['username'=>'commission-'.$role,'email'=>$role.'@example.invalid','account_type'=>$role==='platform'?'buyer':$role,'status'=>'approved','is_admin'=>$role==='platform','is_logistics'=>false,'given_names'=>'Synthetic','last_name'=>'Commission']);$id=DB::table('users')->insertGetId($attrs);$people[$role]=User::findOrFail($id);}
     $method=DB::table('payment_methods')->insertGetId(synthetic('payment_methods',['name'=>'GCash','type'=>'ewallet','is_active'=>true]));
     $p=GcashPurchase::create(['id'=>(string)Str::uuid(),'buyer_id'=>$people['buyer']->id,'seller_id'=>$people['seller']->id,'checkout_id'=>(string)Str::uuid(),'request_hash'=>hash('sha256','synthetic'),'payment_method_id'=>$method,'snapshot'=>['items'=>[['name'=>'A','qty'=>1,'price'=>600],['name'=>'B','qty'=>1,'price'=>400]],'subtotal'=>'1000','shipping_amount'=>'100','discount_amount'=>'0','commerce'=>['vouchers'=>[]]],'amount_due'=>'1100','payment_state'=>'verified','reservation_state'=>'paid','verified_amount'=>'1100','verified_by'=>$people['seller']->id,'verified_at'=>now(),'payment_reference'=>'MYSQLBUY001']);
     $attrs=synthetic('orders',['id'=>(string)Str::uuid(),'buyer_id'=>$people['buyer']->id,'seller_id'=>$people['seller']->id,'payment_method'=>'GCash','payment_method_id'=>$method,'status'=>'placed','subtotal'=>1000,'total'=>1100,'shipping_amount'=>100,'discount_amount'=>0]);
     $order=(new Order)->forceFill($attrs+['gcash_purchase_id'=>$p->id,'items'=>$p->snapshot['items'],'commerce_snapshot'=>['vouchers'=>[]]]);$order->save();
-    DB::table('orders')->where('id',$order->id)->update(['status'=>'completed','buyer_confirmed_at'=>now()]);$order->logStatus('delivered',$people['buyer']->id);$order->refresh();DB::transaction(fn()=>app(CommissionLedger::class)->earn($order));
+    DB::table('orders')->where('id',$order->id)->update(['status'=>'completed','buyer_confirmed_at'=>now()]);$order->logStatus('delivered',$people['buyer']->id);$order->refresh();
+    $result=raceCommission($database,'reconcile',$people['platform']->id,$order->id);sort($result);
+    checkCommission($result===['0','1'],'Concurrent reconciliation counted a transition twice');
+    checkCommission(DB::table('commission_events')->where('kind','earned')->count()===1,'Concurrent reconciliation duplicated earning');
+    checkCommission(DB::table('notifications')->where('title','Seller commission due')->count()===1,'Concurrent reconciliation duplicated due notification');
+    echo "PASS simultaneous automatic reconciliation: one earned transition, event and notification\n";
     $ob=DB::table('commission_obligations')->where('order_id',$order->id)->first();checkCommission($ob && (int)$ob->commission_cents===10000 && $ob->earned_at,'Actual MySQL checkout snapshot/earning failed');
     echo "PASS actual-schema migration, GCash purchase/order snapshot and earning\n";
     $flow=app(CommissionPayments::class);$flow->account($people['platform'],['account_name'=>'Synthetic Platform','account_number'=>'09123456789']);$account=DB::table('commission_accounts')->first();$file=commissionProof('Synthetic MySQL receipt');
@@ -131,6 +146,34 @@ try{
     checkCommission(DB::table('commission_recoveries')->whereIn('id',$recoveryIds)->where('status','verified')->count()===1,'Recovery verified twice');
     checkCommission((int)DB::table('commission_recoveries')->whereIn('id',$recoveryIds)->sum('unapplied_cents')===10000,'Recovery duplicated actual funds');
     echo "PASS competing recovery claims: one verified transfer, one Seller credit\n";
+    $settings=app(\App\Services\CommissionAccounts::class);
+    $settings->manage($people['platform'],['action'=>'create','revision'=>$settings->settings()->revision,'account_name'=>'Second synthetic account','account_number'=>'09333333333','reason'=>'Synthetic alternate destination']);
+    $second=DB::table('commission_account_events')->orderByDesc('id')->value('account_id');
+    $revision=$settings->settings()->revision;
+    $result=raceCommission($database,'account_activate',$people['platform']->id,[$receiving->id.':'.$revision,$second.':'.$revision]);sort($result);
+    checkCommission($result===['http:409','ok'],'Stale competing destination switch was not rejected');
+    checkCommission((int)$settings->settings()->revision===$revision+1 && DB::table('commission_account_settings')->count()===1,'Account activation did not serialize');
+    checkCommission(DB::table('commission_account_events')->where('action','activate')->count()===1,'Account activation audit duplicated');
+    echo "PASS competing GCash account activation: one active pointer, one audit, stale form rejected\n";
+    $payment=DB::table('commission_payments')->where('seller_id',$people['seller']->id)->first();$original=(array)$payment;
+    $submission=(string)Str::uuid();$notifications=DB::table('notifications')->count();
+    $result=raceCommission($database,'message',$people['seller']->id,$payment->id.':'.$submission);sort($result);
+    checkCommission($result===['ok','ok'],'Message retry race failed');
+    checkCommission(DB::table('commission_payment_messages')->where('submission_key',$submission)->count()===1,'Concurrent message duplicated');
+    checkCommission(DB::table('notifications')->count()===$notifications+1,'Concurrent message notification duplicated');
+    checkCommission((array)DB::table('commission_payments')->find($payment->id)===$original,'Message changed financial state');
+    echo "PASS simultaneous message retries: one message and notification, unchanged financial state\n";
+    (require database_path('migrations/2026_11_08_000005_add_commission_enrollment_settings.php'))->up();
+    $enrollment=app(\App\Services\CommissionEnrollment::class);
+    checkCommission($enrollment->activation()===null,'Default DB policy trusted enabled environment flags');
+    $result=raceCommission($database,'enrollment',$people['platform']->id,'synthetic');sort($result);
+    checkCommission($result===['http:409','ok'],'Concurrent commission activations did not serialize');
+    checkCommission(DB::table('commission_enrollment_events')->count()===1 && (int)$enrollment->state()->revision===2,'Enrollment activation audit duplicated');
+    $firstCutoff=$enrollment->state()->activation_at;
+    $enrollment->change($people['platform'],['action'=>'deactivate','revision'=>2,'confirmed'=>1,'reason'=>'Synthetic enrollment shutdown']);
+    checkCommission($enrollment->activation()===null && $enrollment->state()->activation_at===$firstCutoff,'Deactivation lost activation history');
+    checkCommission(app(CommissionLedger::class)->collected($ob->id)===10000,'Deactivation changed verified receipt allocations');
+    echo "PASS database enrollment defaults, concurrent activation, audit serialization and preserved payments on deactivation\n";
 }finally{
     DB::disconnect('commission_test');
     if($created&&preg_match('/^pocketfinds_commission_test_[a-f0-9]{12}$/D',$database))$source->statement('DROP DATABASE `'.$database.'`');

@@ -222,10 +222,8 @@ class GcashWorkflow
                     $this->fail('Complete your delivery address.');
                 }
             }
-            if ($missing($address['street'] ?? null) && $missing($address['house_no'] ?? null)) {
-                $this->fail('A street or house number is required.');
-            }
             $grouped = [];
+            if ($missing($address['street'] ?? null) && $missing($address['house_no'] ?? null)) $this->fail('A street or house number is required.');
             foreach ($cart as $row) {
                 $product = $products->get($row->product_id);
                 if (! $product || $product->status !== 'active') {

@@ -237,6 +237,9 @@ Route::prefix('commissions')->name('commissions.')->middleware('web')->group(fun
     Route::get('/export/{kind}', [\App\Http\Controllers\CommissionController::class, 'moneyExport'])->middleware('throttle:10,1')->name('money-export');
     Route::get('/evidence/{kind}/{id}', [\App\Http\Controllers\CommissionController::class, 'evidence'])->name('evidence');
     Route::post('/accounts', [\App\Http\Controllers\CommissionController::class, 'account'])->middleware('throttle:10,1')->name('accounts');
+    Route::get('/conversations/{kind}/{id}', [\App\Http\Controllers\CommissionController::class,'conversation'])->where('kind','payment|recovery')->whereUuid('id')->name('conversation');
+    Route::post('/conversations/{kind}/{id}', [\App\Http\Controllers\CommissionController::class,'message'])->where('kind','payment|recovery')->whereUuid('id')->middleware('throttle:20,1')->name('message');
+    Route::get('/conversation-evidence/{message}', [\App\Http\Controllers\CommissionController::class,'messageProof'])->whereNumber('message')->name('message-proof');
     Route::post('/payments', [\App\Http\Controllers\CommissionController::class, 'submit'])->middleware('throttle:10,1')->name('submit');
     Route::post('/remittances', [\App\Http\Controllers\CommissionController::class, 'prepareRemittance'])->middleware('throttle:10,1')->name('prepare-remittance');
     Route::post('/remittances/{id}', [\App\Http\Controllers\CommissionController::class, 'sendRemittance'])->middleware('throttle:10,1')->name('send-remittance');
@@ -334,6 +337,7 @@ Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
     Route::delete('/settings/announcements/{id}', [AdminController::class, 'destroyAnnouncement'])->name('settings.announcements.destroy');
     Route::post('/policies/{accountType}', [AdminController::class, 'updatePolicy'])->name('policies.update');
     Route::post('/settings/general', [AdminController::class, 'updateGeneralSettings'])->name('settings.general.update');
+    Route::post('/settings/commission', [\App\Http\Controllers\CommissionEnrollmentController::class, 'update'])->name('settings.commission.update');
     Route::post('/settings/hero', [AdminController::class, 'updateHeroSettings'])->name('settings.hero.update');
     Route::post('/settings/auth-collage/{slot}', [\App\Http\Controllers\AdminAuthCollageController::class, 'update'])->whereIn('slot', ['main', 'back', 'front'])->name('settings.auth-collage.update');
     Route::post('/settings/categories/{id}/photo', [AdminController::class, 'updateCategoryPhoto'])->whereNumber('id')->name('settings.category-photo.update');

@@ -62,22 +62,22 @@
         <div class="card-pad">
         @if($isSeller && $recoveries!==null)<p>Already sent money, or your reference was claimed by another account? <a href="#commission-payment-recovery">Submit payment proof for ownership review</a>, even with no balance due.</p>@endif
         @if($actor->is_admin)
-            @if($accounts->isNotEmpty())@php($currentAccount=$accounts->first())<div class="commission-policy"><span class="commission-policy-icon"><x-admin-icon name="peso" /></span><div><strong>{{ $currentAccount->account_name }}</strong><p>GCash &middot; {{ $currentAccount->account_number }}<br>Published {{ $currentAccount->created_at }}</p></div><span class="commission-badge is-success">Latest instructions</span></div>@else<p>No platform GCash receiving account has been published yet.</p>@endif
-            <details class="commission-action"><summary>Update receiving instructions</summary><p>New instructions preserve previous account revisions and receipts.</p><form method="POST" action="{{ route('commissions.accounts') }}" data-confirm="Publish these platform GCash receiving instructions?">@csrf<label>GCash account name<input name="account_name" maxlength="150" required></label><label>GCash mobile number<input name="account_number" inputmode="numeric" pattern="09[0-9]{9}" maxlength="11" required></label><button class="btn" type="submit">Publish receiving account</button></form></details>
-        @elseif($accounts->isNotEmpty())
+            @include('commissions.account-settings')
+        @elseif($activeAccount)
             @php($payableOnPage=$obligations->filter(fn($o)=>$o->method==='gcash' && $o->due_cents>$o->reserved_cents)->isNotEmpty())
             @if($isSeller && !$payableOnPage)
                 <div class="commission-empty"><x-admin-icon name="peso" /><strong>No GCash commissions available to pay on this page</strong><p>Check your payment history for submitted receipts. Change filters or browse other pages to review more obligations. COD commission is withheld and remitted by Logistics.</p></div>
             @else
-            <p>@if($actor->account_type==='seller')Send your commission through GCash, then submit proof. Excess verified funds become your credit.@elseReserve a remittance before sending money. Select obligations from one treasury account. Sent funds stay in transit until receipt verification.@endif</p>
+            <p>@if($actor->account_type==='seller')Send your commission through GCash, then submit proof. You may pay part of the available commission balance. Excess verified funds become your credit.@elseReserve a remittance before sending money. Select obligations from one treasury account. You may remit part of the available balance; the remainder stays outstanding. Sent funds stay in transit until Platform Admin verifies actual receipt.@endif</p>
             <form method="POST" action="{{ route($actor->account_type==='seller' ? 'commissions.submit' : 'commissions.prepare-remittance') }}" enctype="multipart/form-data" data-confirm="Confirm this commission instruction?">@csrf<input type="hidden" name="submission_key" value="{{ (string)\Illuminate\Support\Str::uuid() }}">
-                <label>Platform GCash receiving account<select name="receiving_account_id" required>@foreach($accounts as $a)<option value="{{ $a->id }}">{{ $a->account_name }} &middot; {{ $a->account_number }} &middot; {{ $a->created_at }}</option>@endforeach</select></label>
+                <label>Active Platform GCash receiving account<input readonly value="{{ $activeAccount->account_name }} / {{ $activeAccount->account_number }}"></label><input type="hidden" name="receiving_account_id" value="{{ $activeAccount->id }}">
                 @foreach($obligations as $o)@if($o->due_cents>$o->reserved_cents && ($actor->account_type==='seller' ? $o->method==='gcash' : $o->method==='cod'))<label>Allocate to {{ $o->order_id }} (available &#8369;{{ $money($o->due_cents-$o->reserved_cents) }})<input name="allocations[{{ $o->id }}]" type="number" min="0" max="{{ ($o->due_cents-$o->reserved_cents)/100 }}" step="0.01" value="0"></label>@endif @endforeach
                 @if($actor->account_type==='seller')@include('commissions.receipt-fields')@endif
+                @if($actor->account_type==='seller')@include('commissions.optional-message')@endif
                 <button class="btn" type="submit">{{ $actor->account_type==='seller' ? 'Submit actual payment for verification' : 'Prepare and reserve remittance' }}</button>
             </form>
             @endif
-        @else<div class="commission-empty"><x-admin-icon name="peso" /><strong>Receiving instructions are not available</strong><p>Platform Admin must publish a GCash account before payments can be submitted.</p></div>@endif
+        @else<div class="commission-empty"><x-admin-icon name="peso" /><strong>No active GCash receiving account</strong><p>New commission payments are unavailable. Do not send money until Platform Admin activates the official GCash account. If money was already sent, use payment recovery below.</p></div>@endif
         </div>
     </section>
     <section class="card commission-panel"><div class="card-head"><h2>Payment and remittance history</h2><a class="btn btn-outline" href="{{ route('commissions.money-export','payments') }}">Export payments CSV</a></div><div class="card-pad">

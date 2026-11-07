@@ -1003,6 +1003,17 @@ class SellerController extends Controller
     {
         $notification = DB::table('notifications')->where('id', $id)->where('user_id', auth()->id())->first();
         abort_unless($notification, 404);
+        if($notification->notification_type==='commission'){
+            app(\App\Services\CommissionPayments::class)->actor(auth()->user());
+            DB::table('notifications')->where('id',$id)->where('user_id',auth()->id())->update(['is_read'=>true]);
+            return redirect()->route('commissions.index');
+        }
+        if(in_array($notification->notification_type,['commission_payment','commission_recovery'],true)){
+            $kind=$notification->notification_type==='commission_payment'?'payment':'recovery';
+            app(\App\Services\CommissionConversations::class)->authorize(auth()->user(),$kind,$notification->reference_id);
+            DB::table('notifications')->where('id',$id)->where('user_id',auth()->id())->update(['is_read'=>true]);
+            return redirect()->route('commissions.conversation',[$kind,$notification->reference_id]);
+        }
 
         DB::table('notifications')->where('id', $id)->update(['is_read' => true]);
 

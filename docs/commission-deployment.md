@@ -1,10 +1,14 @@
 # PocketFinds deployment and commission activation
 
+8 November: installed database-backed [Platform Admin enrollment controls](commission-enrollment-toggle.md) supersede the `.env` activation instructions below for this destination. Keep enrollment disabled until live readiness requirements and explicit approval are satisfied. The website does not edit `.env`.
+
+For the existing local Windows commission-only task, see [the unattended reconciliation setup](commission-automatic-reconciliation.md). It runs independently of the broader scheduler described here and does not enable enrollment.
+
 **Deployment instructions only. Collection has not been activated.** Keep enrollment disabled through steps 1–5. Step 6 requires the completed checks and your explicit activation approval.
 
 ## 1. Configure these manually
 
-- **Platform GCash:** Platform Admin opens `/commissions` and publishes the real, independently verified receiving account. No receiving account is currently configured.
+- **Platform GCash:** After the account-management migration is approved and installed, Platform Admin opens `/commissions` → Admin Commission Settings, adds the independently verified receiving account, then explicitly activates that account. New accounts start inactive. This does not activate commission enrollment. No receiving account has been configured by this work.
 - **People and accounts:** assign receipt reviewers, confirm Logistics treasury accounts and Seller payout destinations, and agree who handles disputed references, refunds and daily reconciliation.
 - **Production environment:** use HTTPS, correct proxy handling, a dedicated application database user, and these settings:
 
@@ -21,7 +25,7 @@ Keep the existing `APP_KEY`. Preserve the production `.env`, database and privat
 - **Backups:** back up the complete database, private payment-proof files and application key securely. Verify restoration and keep an off-host copy. SQL restoration alone does not restore receipt files.
 - **Legacy timezone decision:** application time is `Asia/Manila` and the MySQL connection uses `+08:00`. Have the data owner review old timestamp provenance on staging. Do not guess an eight-hour conversion.
 
-## 2. Migrations: none needed on the currently configured database
+## 2. Migrations: all four commission migrations are installed here
 
 Confirmed in the configured `pocketfinds` database:
 
@@ -29,8 +33,20 @@ Confirmed in the configured `pocketfinds` database:
 | --- | --- |
 | `2026_11_08_000001_add_platform_commission_ledger` | 110 |
 | `2026_11_08_000002_complete_commission_workflows` | 111 |
+| `2026_11_08_000003_add_commission_account_management` | 112 |
+| `2026_11_08_000004_add_commission_payment_messages` | 113 |
 
-All 15 feature tables exist. No additional migration is required for these code fixes on this database.
+Payment messaging was subsequently installed after a fresh complete backup restored and verified 129 tables / 1,095 rows. All original data matched after installation; the only migration-history addition was 000004. See [manual commission messaging](commission-payment-messaging.md). No unrelated migration or commission activation was performed.
+
+The account-management migration was applied on 7 November 2026 after explicit authorization and a successful complete backup/restore verification (127 tables / 1,070 rows). It adds an encrypted-details column, a single active-account setting and an append-only audit table. The active account is null and account audit history is empty. No old destination was rewritten. No additional commission migration is required on this configured database; do not rerun it.
+
+On a different destination that has the two earlier migrations but lacks account management, obtain approval and a verified backup before applying only this exact path:
+
+```sh
+php artisan migrate --path=database/migrations/2026_11_08_000003_add_commission_account_management.php --force
+```
+
+The command above is conditional guidance for other destinations. New payment submissions fail closed until account management is installed and an account is explicitly activated. Historical receipt verification and already-sent payment recovery remain available. Preserve the existing application encryption key: new account revisions use Laravel encryption; legacy revisions remain unchanged.
 
 If deploying to a different database, first inspect its migration status and actual schema. These are read-only checks:
 
@@ -111,4 +127,4 @@ After the cutoff, inspect the first eligible COD and GCash snapshots: 10% of mer
 
 Set `COMMISSION_ENABLED=false`, rebuild the configuration cache and restart long-lived workers. Continue servicing existing obligations and credits. Do not drop commission tables, run destructive rollback, delete audit history or restore a backup over intervening real transactions. Use a reviewed forward fix.
 
-No activation, receiving-account change, migration or historical-data update was performed while preparing this guide.
+The initial guide performed no deployment actions. The later authorized deployment installed only commission migration 000003, set production/debug/secure-cookie settings, explicitly kept commission enrollment off with a null cutoff, and restarted the verified origin after a brief maintenance window. Public application HTTP redirects and HTTPS security headers were verified. See [the final deployment status](commission-final-deployment-status.md) for remaining blockers. Historical orders and financial transactions were not changed.

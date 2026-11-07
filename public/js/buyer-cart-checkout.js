@@ -32,7 +32,7 @@
         if(error)feedback.classList?.add('is-error');
     }
     function readableMessage(message) {
-        if(message.includes('seller must configure a rate'))return 'Delivery is unavailable for this address. Choose another address.';
+        if(message.includes('seller must configure a rate'))return '';
         if(message.includes('seller must add product weights'))return 'Some items cannot be shipped yet. Contact the seller.';
         return message;
     }
@@ -133,7 +133,7 @@
             const dock = document.getElementById('cartDockTotal'); if (dock) dock.textContent = money(result.quote.total);
             form.elements.quote_hash.value = showErrors?(result.hash||''):'';
             shippingVoucherStatus(result.quote);
-            if(result.quote.warnings?.length)checkoutError([...new Set(result.quote.warnings.map(readableMessage))].join(' '),false);
+            if(result.quote.warnings?.length)checkoutError([...new Set(result.quote.warnings.map(readableMessage).filter(Boolean))].join(' '),false);
             else checkoutFeedback(rows.map(row=>row.delivery_policy ? `${row.items[0].seller_slug}: ${row.free_shipping_eligible ? 'Free shipping · ' : ''}Delivery ${row.delivery_policy.label}` : `${row.items[0].seller_slug}: ${row.chargeable_kg} kg shipping ${money(row.shipping_amount)}`).join(' · '));
             return true;
         } catch(error) { if (current === version) {shippingVoucherStatus(null,error.message);checkoutError(error.message,showErrors);document.getElementById('cartDiscountRow').style.display='none';document.getElementById('cartTotal').textContent='—';const dock=document.getElementById('cartDockTotal');if(dock)dock.textContent='—';} return false; }

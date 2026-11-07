@@ -26,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // throws off secure-cookie handling and can desync the session cookie
         // from what the server stored (the actual cause of the 419s).
         $middleware->trustProxies(at: '*');
+        $middleware->append(\App\Http\Middleware\ProductionHttps::class);
         $middleware->appendToGroup('web', MediaConsistency::class);
         // Keep the GCash number literal: surrounding spaces must be rejected.
         $middleware->trimStrings(except: [fn (Request $request) => $request->is('gcash-purchases/*/instructions')]);

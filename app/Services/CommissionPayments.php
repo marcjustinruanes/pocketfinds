@@ -43,9 +43,7 @@ class CommissionPayments
 
     public function account(User $actor, array $input): void
     {
-        $actor = $this->admin($actor);
-        $d = Validator::make($input, ['account_name' => 'required|string|max:150', 'account_number' => ['required', 'regex:/^09[0-9]{9}$/D']])->validate();
-        DB::table('commission_accounts')->insert($d + ['id' => (string) Str::uuid(), 'created_by' => $actor->id, 'created_at' => now()]);
+        app(CommissionAccounts::class)->manage($actor, $input);
     }
 
     public function prepareRemittance(User $actor, array $input): string
@@ -59,7 +57,7 @@ class CommissionPayments
             DB::table('users')->where('id',$actor->id)->lockForUpdate()->first();
             $old=DB::table('commission_payments')->where('submission_key',$d['submission_key'])->first();
             if($old){abort_unless($old->request_hash===$hash && $old->submitted_by===$actor->id,409);return $old->id;}
-            abort_unless(DB::table('commission_accounts')->where('id',$d['receiving_account_id'])->exists(),422);
+            app(CommissionAccounts::class)->requireActive($d['receiving_account_id']);
             $this->lockOrders(array_keys($alloc));
             $treasury=null;
             foreach($alloc as $id=>$c){
@@ -81,8 +79,9 @@ class CommissionPayments
     public function sendRemittance(User $actor, string $id, array $input, ?UploadedFile $file): void
     {
         $actor=$this->actor($actor);abort_unless(!$actor->is_admin && $actor->account_type==='logistics',403);
+        $note=app(CommissionConversations::class)->optionalMessage($input);
         $d=Validator::make($input,['revision'=>'required|integer|min:1','action'=>'required|in:send,cancel','amount'=>'required_if:action,send|nullable|string','reference'=>'required_if:action,send|nullable|regex:/^[A-Za-z0-9-]{6,64}$/D','sent'=>'exclude_unless:action,send|required|accepted','not_sent'=>'exclude_unless:action,cancel|required|accepted','reason'=>'required|string|min:3|max:2000'])->validate();
-        DB::transaction(function()use($actor,$id,$d,$file){
+        DB::transaction(function()use($actor,$id,$d,$file,$note){
             $ids=DB::table('commission_allocations')->where('payment_id',$id)->orderBy('obligation_id')->pluck('obligation_id');
             $this->lockOrders($ids->all());
             $obs=DB::table('commission_obligations')->whereIn('id',$ids)->orderBy('id')->lockForUpdate()->get();
@@ -102,6 +101,7 @@ class CommissionPayments
             $t->move($actor,$account,'commission',-(int)$p->amount_cents,'commission_remit',$id,$ref);
             $t->move($actor,$account,'comm_transit',(int)$p->amount_cents,'commission_remit',$id);
             foreach($obs as $o)$this->ledger->event($o->id,'remit-sent:'.$id.':'.$o->id,'remittance_sent',0,['reason'=>$d['reason'],'reference'=>$ref],$actor->id);
+            app(CommissionConversations::class)->event($actor,'payment',$id,'submitted',$note??'Manual COD remittance submitted for actual receipt verification.','payment:'.$id.':submitted');
         },3);
     }
 
@@ -115,16 +115,17 @@ class CommissionPayments
     public function submit(User $actor, array $input, UploadedFile $file): string
     {
         $actor=$this->actor($actor);abort_unless(!$actor->is_admin && $actor->account_type==='seller',403);
+        $note=app(CommissionConversations::class)->optionalMessage($input);
         $d=Validator::make($input,['submission_key'=>'required|uuid','receiving_account_id'=>'required|uuid','amount'=>'required|string','reference'=>['required','regex:/^[A-Za-z0-9-]{6,64}$/D'],'sent'=>'required|accepted','allocations'=>'required|array|min:1|max:100','allocations.*'=>'required|string'])->validate();
         $amount=$this->ledger->cents($d['amount']);$claims=[];
         foreach($d['allocations'] as $id=>$value){if(!Str::isUuid($id))$this->ledger->fail('Invalid obligation.');$c=$this->ledger->cents($value);if($c>0)$claims[$id]=$c;}ksort($claims);
         if(!$claims || $amount<=0 || array_sum($claims)>$amount)$this->ledger->fail('Select positive allocations within the amount actually sent.');
-        $reference=strtoupper(trim($d['reference']));$hash=hash('sha256',json_encode([$actor->id,$d['receiving_account_id'],$amount,$reference,$claims,hash_file('sha256',$file->getRealPath())]));
-        return DB::transaction(function()use($actor,$d,$amount,$claims,$reference,$hash,$file){
+        $reference=strtoupper(trim($d['reference']));$payload=[$actor->id,$d['receiving_account_id'],$amount,$reference,$claims,hash_file('sha256',$file->getRealPath())];if($note!==null)$payload[]=['message'=>$note];$hash=hash('sha256',json_encode($payload));
+        return DB::transaction(function()use($actor,$d,$amount,$claims,$reference,$hash,$file,$note){
             DB::table('users')->where('id',$actor->id)->lockForUpdate()->first();
             $old=DB::table('commission_payments')->where('submission_key',$d['submission_key'])->first();
             if($old){abort_unless(hash_equals($old->request_hash,$hash),409,'Retry details differ.');return $old->id;}
-            abort_unless(DB::table('commission_accounts')->where('id',$d['receiving_account_id'])->exists(),422);
+            app(CommissionAccounts::class)->requireActive($d['receiving_account_id']);
             $this->lockOrders(array_keys($claims));
             $allocations=[];
             foreach($claims as $id=>$c){
@@ -140,13 +141,14 @@ class CommissionPayments
                 DB::table('commission_allocations')->insert(['payment_id'=>$id,'obligation_id'=>$oid,'requested_cents'=>$c]);
                 $this->ledger->event($oid,'submitted:'.$id.':'.$oid,'payment_submitted',0,['payment_id'=>$id,'requested_cents'=>$c,'original_claim_cents'=>$claims[$oid],'reference'=>$reference],$actor->id);
             }
+            app(CommissionConversations::class)->event($actor,'payment',$id,'submitted',$note??'Manual Seller GCash commission payment submitted for actual receipt verification.','payment:'.$id.':submitted');
             return $id;
         },3);
     }
     public function review(User $actor, string $id, array $input): void
     {
         $actor = $this->admin($actor);
-        $d = Validator::make($input, ['revision' => 'required|integer|min:1', 'decision' => 'required|in:verify,review,reject', 'reason' => 'required|string|min:3|max:2000', 'amount' => 'required_if:decision,verify|nullable|string', 'reference' => 'required_if:decision,verify|nullable|string', 'received' => 'exclude_unless:decision,verify|required|accepted'])->validate();
+        $d = Validator::make($input, ['revision' => 'required|integer|min:1', 'decision' => 'required|in:verify,review,correction,reject', 'reason' => 'required|string|min:3|max:2000', 'amount' => 'required_if:decision,verify|nullable|string', 'reference' => 'required_if:decision,verify|nullable|string', 'received' => 'exclude_unless:decision,verify|required|accepted'])->validate();
         DB::transaction(function () use ($actor, $id, $d) {
             $peek = DB::table('commission_payments')->find($id); abort_unless($peek, 404);
             // Lock obligations before the payment, consistently with submit/reversal.
@@ -156,11 +158,15 @@ class CommissionPayments
             $p = DB::table('commission_payments')->where('id', $id)->lockForUpdate()->firstOrFail();
             abort_unless((int) $p->revision === (int) $d['revision'] && in_array($p->status, ['pending', 'review', 'rejected']), 409, 'This receipt changed or was already verified.');
             $values = ['revision' => $p->revision + 1, 'review_reason' => $d['reason'], 'reviewed_by' => $actor->id, 'updated_at' => now()];
+            $conversation=app(CommissionConversations::class);
+            if($conversation->installed())$values['review_decision']=$d['decision'];
+            $messageKind=match($d['decision']){'verify'=>'verified','reject'=>'rejected','correction'=>'corrections_requested',default=>'review_requested'};
             foreach($obligations as $o) $this->ledger->event($o->id,'review:'.$p->id.':'.$p->revision.':'.$o->id,'receipt_review',0,['decision'=>$d['decision'],'reason'=>$d['reason'],'payment_id'=>$p->id],$actor->id);
-            if ($d['decision'] === 'review') { DB::table('commission_payments')->where('id', $id)->update($values + ['status' => 'review']); return; }
+            if (in_array($d['decision'],['review','correction'])) { DB::table('commission_payments')->where('id', $id)->update($values + ['status' => 'review']);$conversation->event($actor,'payment',$id,$messageKind,$d['reason'],'payment:'.$id.':review:'.$p->revision); return; }
             if ($d['decision'] === 'reject') {
-                if ($p->method !== 'gcash') $this->ledger->fail('COD funds already sent must remain in review until their actual disposition is reconciled.');
-                DB::table('commission_payments')->where('id', $id)->update($values + ['status' => 'rejected']); return;
+                // Rejecting proof cannot undo an actual COD transfer or release its reservations.
+                DB::table('commission_payments')->where('id', $id)->update($values + ['status' => $p->method==='cod'?'review':'rejected']);
+                $conversation->event($actor,'payment',$id,$messageKind,$d['reason'],'payment:'.$id.':review:'.$p->revision); return;
             }
             if ($this->ledger->cents($d['amount']) !== (int) $p->amount_cents || strtoupper(trim($d['reference'])) !== $p->reference) $this->ledger->fail('Confirm the exact actual platform receipt and reference.');
             app(CommissionReceipts::class)->record($p->reference,'payment',$p->id,(int)$p->amount_cents,$actor->id,$p->proof_hash);
@@ -197,6 +203,7 @@ class CommissionPayments
                 // Excess is accounted as the seller credits above, not reusable company credit.
                 if ($excess) DB::table('commission_payments')->where('id', $id)->update(['unapplied_cents' => 0]);
             }
+            $conversation->event($actor,'payment',$id,'verified',$d['reason'],'payment:'.$id.':review:'.$p->revision);
         }, 3);
     }
 

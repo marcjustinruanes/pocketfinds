@@ -126,16 +126,12 @@ class BuyerCommerce
             $usesLegacyFlatRate = ! $rate && ! $hasRegionalRates;
             $shippingPending = (! $rate && ! $usesLegacyFlatRate) || $addressIncomplete;
             if (! $rate && ! $usesLegacyFlatRate) {
-                if (! $preview) {
-                    $this->fail('This shop does not deliver to the selected region. Choose another address.', 'delivery_address_id');
-                }
+                if (! $preview) $this->fail('This shop does not deliver to the selected region. Choose another address.', 'delivery_address_id');
                 $warnings[] = 'Shipping is pending: the seller must configure a rate for your delivery region.';
             }
             foreach ($order['items'] as $item) {
                 if ($item['weight_grams'] <= 0) {
-                    if (! $preview) {
-                        $this->fail('Shipping weight is missing for '.$item['name'].'. Contact the seller.');
-                    }
+                    if (! $preview) $this->fail('Shipping weight is missing for '.$item['name'].'. Contact the seller.');
                     $shippingPending = true;
                     $warnings[] = 'Shipping is pending: the seller must add product weights.';
                 }

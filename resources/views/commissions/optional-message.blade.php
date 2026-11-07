@@ -1,0 +1,1 @@
+@if($messagingInstalled??false)<label>Message to Platform Admin (optional)<textarea name="message" maxlength="4000" placeholder="Explain a partial payment or provide payment context"></textarea></label>@endif

@@ -154,7 +154,7 @@ class MediaLifecycle
         $references = match ($disk) {
             'local' => ['gcash_proofs' => ['path'], 'logistics_shipping_payments' => ['proof_path'], 'logistics_finance_evidence' => ['path'],
                 'commission_payments'=>['proof_path'],'commission_credits'=>['proof_path'],
-                'commission_recoveries'=>['proof_path'],'commission_recovery_refunds'=>['proof_path']],
+                'commission_recoveries'=>['proof_path'],'commission_recovery_refunds'=>['proof_path'],'commission_payment_messages'=>['proof_path']],
             'profile_images' => ['users' => ['profile_picture']],
             'messages' => ['messages' => ['attachment_path']],
             'public' => ['users' => ['id_file', 'selfie_file', 'license_file', 'business_permit_file', 'or_file', 'cr_file', 'resume_file', 'company_logo', 'id_photo_path', 'selfie_photo_path', 'license_photo_path', 'or_cr_path'],

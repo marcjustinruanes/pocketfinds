@@ -66,7 +66,10 @@
             @csrf
             <div class="form-row"><label>Platform Name</label><input type="text" name="platform_name" value="{{ old('platform_name', $setting->platform_name) }}" required></div>
             <div class="form-row"><label>Support Email</label><input type="email" name="support_email" value="{{ old('support_email', $setting->support_email) }}" required></div>
-            <div class="form-row"><label>Legacy commission setting (%)</label><input type="number" name="commission_rate" value="{{ old('commission_rate', $setting->commission_rate) }}" min="0" max="100" step="0.01" required><p>Historical setting only. New commissions use the fixed 10% policy and its activation date; this field does not change ledger charges.</p></div>
+            <div class="ce-rate-summary" aria-label="Commission rate: 10% fixed">
+              <div><span class="ce-rate-summary-label">Commission rate</span><div class="ce-rate-summary-value">10% <span>Fixed rate</span></div><p>Applies to eligible product value.</p></div>
+              <a href="#commission-enrollment-title">Manage enrollment <span aria-hidden="true">&darr;</span></a>
+            </div>
             @if($setting->editor)
               <p style="font-size:11.5px;color:var(--muted);margin:0 0 12px">Last updated by {{ $setting->editor->given_names }} {{ $setting->editor->last_name }} · {{ $setting->updated_at->diffForHumans() }}</p>
             @endif
@@ -74,6 +77,8 @@
           </form>
         </div>
       </div>
+
+      @include('admin.partials.commission-enrollment')
 
       <div class="card">
         <div class="card-head"><div><h2>Feature Toggles</h2><p>Turn platform features on or off</p></div></div>

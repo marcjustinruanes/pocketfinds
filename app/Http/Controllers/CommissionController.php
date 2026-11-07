@@ -38,17 +38,22 @@ class CommissionController extends Controller
     public function index(Request $r)
     {
         $actor = $this->access($r); $q = $this->query($r, $actor);
+        $focus=$r->validate(['payment_id'=>'nullable|uuid','recovery_id'=>'nullable|uuid']);
         $totals = app(CommissionReporting::class)->totals(clone $q);
         $obligations = $q->orderByDesc('created_at')->orderByDesc('id')->paginate(25)->withQueryString();
         $scopePayments = fn() => app(CommissionPayments::class)->scoped(DB::table('commission_payments'), $actor);
-        $payments = $this->historyFilter($r,$scopePayments(),'payments','payment_')->orderByDesc('created_at')->orderByDesc('id')->paginate(20, ['*'], 'payments_page')->withQueryString();
+        $payments = $this->historyFilter($r,$scopePayments(),'payments','payment_')->when($focus['payment_id']??null,fn($q,$id)=>$q->where('id',$id))->orderByDesc('created_at')->orderByDesc('id')->paginate(20, ['*'], 'payments_page')->withQueryString();
         $unapplied = (int) $scopePayments()->where('status', 'verified')->sum('unapplied_cents');
         $verifiedReceipts = (int) $scopePayments()->where('status', 'verified')->sum('amount_cents');
         $creditsQuery = DB::table('commission_credits as c')->join('commission_obligations as o', 'o.id', '=', 'c.obligation_id');
         if (!$actor->is_admin) $actor->account_type === 'seller' ? $creditsQuery->where('o.seller_id', $actor->id) : $creditsQuery->where('o.company_name', $actor->business_name)->where('o.method', 'cod');
         $repayments = (int) (clone $creditsQuery)->where('c.status', 'paid')->sum('c.amount_cents');
         $credits = $this->historyFilter($r,$creditsQuery,'credits','credit_')->select('c.*', 'o.seller_id', 'o.company_name', 'o.order_id')->where('c.amount_cents', '>', 0)->orderByDesc('c.created_at')->orderByDesc('c.id')->paginate(20, ['*'], 'credits_page')->withQueryString();
-        $accounts = DB::table('commission_accounts')->orderByDesc('created_at')->get();
+        $accountService = app(\App\Services\CommissionAccounts::class);
+        $accountSettings = $accountService->settings();
+        $accounts = DB::table('commission_accounts')->orderByDesc('created_at')->orderByDesc('id')->get()->map(fn($a) => $accountService->details($a));
+        $activeAccount = $accounts->firstWhere('id', $accountSettings?->active_account_id);
+        $accountEvents = $actor->is_admin && $accountSettings ? DB::table('commission_account_events')->orderByDesc('id')->paginate(20, ['*'], 'account_events_page')->withQueryString() : null;
         $lines = DB::table('commission_lines')->whereIn('obligation_id', $obligations->pluck('id'))->orderBy('line_key')->get()->groupBy('obligation_id');
         $events = DB::table('commission_events')->whereIn('obligation_id', $obligations->pluck('id'))->orderBy('id')->get()->groupBy('obligation_id');
         $allocations = DB::table('commission_allocations')->whereIn('payment_id', $payments->pluck('id'))->get()->groupBy('payment_id');
@@ -60,7 +65,7 @@ class CommissionController extends Controller
             $rq=DB::table('commission_recoveries')->when(!$actor->is_admin,fn($q)=>$q->where('seller_id',$actor->id));
             $unapplied+=(int)(clone $rq)->where('status','verified')->sum('unapplied_cents');$verifiedReceipts+=(int)(clone $rq)->where('status','verified')->sum('amount_cents');
             $repayments+=(int)DB::table('commission_recovery_refunds')->whereIn('recovery_id',(clone $rq)->select('id'))->sum('amount_cents');
-            $recoveries=$this->historyFilter($r,$rq,'payments','recovery_')->orderByDesc('created_at')->orderByDesc('id')->paginate(20,['*'],'recoveries_page')->withQueryString();
+            $recoveries=$this->historyFilter($r,$rq,'payments','recovery_')->when($focus['recovery_id']??null,fn($q,$id)=>$q->where('id',$id))->orderByDesc('created_at')->orderByDesc('id')->paginate(20,['*'],'recoveries_page')->withQueryString();
             $recoveryEvents=DB::table('commission_recovery_events')->whereIn('recovery_id',$recoveries->pluck('id'))->orderBy('id')->get()->groupBy('recovery_id');
             $recoveryRefunds=DB::table('commission_recovery_refunds')->whereIn('recovery_id',$recoveries->pluck('id'))->orderBy('paid_at')->get()->groupBy('recovery_id');
             if($actor->is_admin)$recoveryPriorPayments=DB::table('commission_payments')->whereIn('reference',$recoveries->pluck('reference'))->get()->keyBy('reference');
@@ -70,7 +75,37 @@ class CommissionController extends Controller
             $refundCases=DB::table('commerce_returns as r')->join('commission_obligations as o','o.order_id','=','r.order_id')->join('shipments as s','s.order_id','=','r.order_id')->leftJoin('cod_refund_reconciliations as f','f.return_id','=','r.id')->where('o.method','cod')->where('r.status','refunded')->when(!$actor->is_admin,fn($q)=>$q->where('s.logistics_company',$actor->business_name))->select('r.id as return_id','r.order_id','r.amount','r.refund_reference','s.logistics_company as company_name','f.id as reconciliation_id','f.status as reconciliation_status','f.revision','f.payer','f.platform_destination','f.reimbursement_reference','f.remaining_cents','f.seller_reimbursement_cents')->orderByDesc('r.created_at')->paginate(20,['*'],'refunds_page')->withQueryString();
             if(!$actor->is_admin)$refundAccounts=DB::table('logistics_treasury_accounts')->where('company_name',$actor->business_name)->get();
         }
-        return response()->view('commissions.index', compact('actor', 'totals', 'obligations', 'payments', 'credits', 'accounts', 'lines', 'events', 'allocations', 'unapplied', 'verifiedReceipts', 'repayments', 'pendingRegistrations','openDisputes','destinations','recoveries','recoveryEvents','recoveryRefunds','recoveryPriorPayments','refundCases','refundAccounts'))->header('Cache-Control', 'private, no-store');
+        $messagingInstalled=app(\App\Services\CommissionConversations::class)->installed();
+        $messageCounts=app(\App\Services\CommissionConversations::class)->counts($payments->pluck('id')->all(),$recoveries?$recoveries->pluck('id')->all():[]);
+        return response()->view('commissions.index', compact('actor', 'totals', 'obligations', 'payments', 'credits', 'accounts', 'activeAccount', 'accountSettings', 'accountEvents', 'lines', 'events', 'allocations', 'unapplied', 'verifiedReceipts', 'repayments', 'pendingRegistrations','openDisputes','destinations','recoveries','recoveryEvents','recoveryRefunds','recoveryPriorPayments','refundCases','refundAccounts','messagingInstalled','messageCounts'))->header('Cache-Control', 'private, no-store');
+    }
+
+    public function conversation(Request $r,string $kind,string $id,\App\Services\CommissionConversations $service)
+    {
+        $this->access($r);abort_unless($service->installed(),503,'Payment messaging installation is required.');
+        [$actor,$record]=$service->authorize($r->user(),$kind,$id);
+        $d=$r->validate(['messages_page'=>'nullable|integer|min:1']);
+        $query=$service->messages($kind,$id);$last=max(1,(int)ceil((clone $query)->count()/50));
+        $messages=$query->orderBy('id')->paginate(50,['*'],'messages_page',$d['messages_page']??$last)->withQueryString();
+        $pendingRegistrations=0;$openDisputes=0;
+        return response()->view('commissions.conversation',compact('actor','record','kind','messages','pendingRegistrations','openDisputes'))->header('Cache-Control','private, no-store');
+    }
+
+    public function message(Request $r,string $kind,string $id,\App\Services\CommissionConversations $service)
+    {
+        return $this->run($r,function()use($r,$kind,$id,$service){
+            $r->validate(['proof'=>'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:5120']);
+            $service->send($r->user(),$kind,$id,$r->all(),$r->file('proof'));
+        });
+    }
+
+    public function messageProof(Request $r,string $message,\App\Services\CommissionConversations $service)
+    {
+        $this->access($r);abort_unless($service->installed(),503);
+        $row=DB::table('commission_payment_messages')->where('id',$message)->firstOrFail();
+        $service->authorize($r->user(),$row->payment_id?'payment':'recovery',$row->payment_id??$row->recovery_id);
+        abort_unless($row->proof_path&&preg_match('#^commission-proofs/[A-Za-z0-9]+\.(jpg|jpeg|png|webp|pdf)$#D',$row->proof_path)&&Storage::disk('local')->exists($row->proof_path),404);
+        return response()->file(Storage::disk('local')->path($row->proof_path),['Content-Type'=>$row->proof_mime,'Cache-Control'=>'private, no-store','X-Content-Type-Options'=>'nosniff','Content-Security-Policy'=>"default-src 'none'; sandbox"]);
     }
 
     private function run(Request $r, callable $fn)
@@ -83,7 +118,11 @@ class CommissionController extends Controller
         return back()->with('success', 'Commission action recorded.');
     }
 
-    public function account(Request $r, CommissionPayments $p) { return $this->run($r, fn() => $p->account($r->user(), $r->all())); }
+    public function account(Request $r, CommissionPayments $p) {
+        $p->admin($r->user());
+        $r->validate(['action'=>'required|in:create,edit,activate,deactivate','revision'=>'required|integer|min:1']);
+        return $this->run($r, fn() => $p->account($r->user(), $r->all()));
+    }
     public function recoverySubmit(Request $r,CommissionRecovery $p){$r->validate(['proof'=>'required|file|mimes:jpg,jpeg,png,webp,pdf|max:5120']);return $this->run($r,fn()=>$p->submit($r->user(),$r->all(),$r->file('proof')));}
     public function recoveryReview(Request $r,string $id,CommissionRecovery $p){return $this->run($r,fn()=>$p->review($r->user(),$id,$r->all()));}
     public function recoveryAllocate(Request $r,string $id,CommissionRecovery $p){return $this->run($r,fn()=>$p->allocate($r->user(),$id,$r->all()));}

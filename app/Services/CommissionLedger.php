@@ -28,8 +28,7 @@ class CommissionLedger
 
     public function activation(): ?CarbonImmutable
     {
-        if (!config('commission.enabled') || !config('commission.activation_at')) return null;
-        return CarbonImmutable::parse(config('commission.activation_at'));
+        return app(CommissionEnrollment::class)->activation();
     }
 
     /** Largest remainder allocation, stable by the original line order. */
@@ -116,7 +115,12 @@ class CommissionLedger
 
     private function capture(string $key, int $seller, string $method, array $snapshot, $created, ?string $order, ?string $purchase): void
     {
-        if (!$this->installed() || !($activation = $this->activation()) || now()->lt($activation) || CarbonImmutable::parse($created)->lt($activation)) return;
+        DB::transaction(fn()=> $this->captureLocked($key,$seller,$method,$snapshot,$created,$order,$purchase),3);
+    }
+
+    private function captureLocked(string $key, int $seller, string $method, array $snapshot, $created, ?string $order, ?string $purchase): void
+    {
+        if (!$this->installed() || !($activation = app(CommissionEnrollment::class)->activation(true)) || now()->lt($activation) || CarbonImmutable::parse($created)->lt($activation)) return;
         if (DB::table('commission_obligations')->where('source_key', $key)->exists()) return;
         $calc = $this->calculate($snapshot); $id = (string) Str::uuid();
         DB::table('commission_obligations')->insert(['id' => $id, 'source_key' => $key, 'seller_id' => $seller, 'method' => $method, 'order_id' => $order, 'purchase_id' => $purchase, 'basis_cents' => $calc['basis_cents'], 'commission_cents' => $calc['commission_cents'], 'activation_at' => $activation, 'created_at' => now(), 'updated_at' => now()]);
@@ -189,15 +193,17 @@ class CommissionLedger
         if (!$this->installed()) return 0;
         $count = 0;
         DB::table('commission_obligations')->whereNull('cancelled_at')->orderBy('id')->chunkById(100, function($rows) use (&$count) {
-            foreach ($rows as $o) DB::transaction(function() use ($o, &$count) {
-                if (!$o->order_id) return;
+            foreach ($rows as $o) $count += DB::transaction(function() use ($o) {
+                if (!$o->order_id) return 0;
                 $order = Order::whereKey($o->order_id)->lockForUpdate()->first();
-                if (!$order) return;
+                if (!$order) return 0;
+                // The chunk may predate a concurrent sweep. Count transitions from
+                // the current locked row, and only after the transaction commits.
+                $current = DB::table('commission_obligations')->where('id', $o->id)->lockForUpdate()->first();
                 $this->onOrderSaved($order);
                 // Catch bulk status writes and already-recorded refund decisions.
                 if (Schema::hasTable('commerce_returns')) foreach (DB::table('commerce_returns')->where('order_id', $order->id)->where('status', 'refunded')->get() as $r) $this->reverse($order->id, 'return:'.$r->id, json_decode($r->item_keys, true), 'Recorded product refund');
                 $earned = $this->earn($order);
-                if (!$o->earned_at && $earned?->earned_at) $count++;
                 if ($earned && $earned->method==='gcash' && $earned->due_at && CarbonImmutable::parse($earned->due_at)->isPast() && $this->due($earned)>0) {
                     $key='reminder:'.$earned->id.':'.now()->toDateString();
                     if (!DB::table('commission_events')->where('event_key',$key)->exists()) {
@@ -205,6 +211,7 @@ class CommissionLedger
                         Order::notifyUser($earned->seller_id,'Seller commission overdue','Review your outstanding commission in Commission Statements. Pending proofs require Platform Admin verification.','commission',$order->id);
                     }
                 }
+                return !$current->earned_at && $earned?->earned_at ? 1 : 0;
             }, 3);
         });
         return $count;

@@ -469,7 +469,11 @@ class AdminController extends Controller
         $counts = $this->sidebarCounts();
         $setting = Setting::current();
 
-        return view('admin.settings', array_merge($counts, compact('setting')));
+        $enrollment = app(\App\Services\CommissionEnrollment::class);
+        $commissionEnrollment = $enrollment->state();
+        $commissionEnrollmentEvents = $commissionEnrollment && \Illuminate\Support\Facades\Schema::hasTable('commission_enrollment_events')
+            ? \Illuminate\Support\Facades\DB::table('commission_enrollment_events')->orderByDesc('id')->paginate(20, ['*'], 'commission_history') : null;
+        return view('admin.settings', array_merge($counts, compact('setting', 'commissionEnrollment', 'commissionEnrollmentEvents')));
     }
 
     /**
@@ -532,7 +536,7 @@ class AdminController extends Controller
         $data = $request->validate([
             'platform_name' => 'required|string|max:100',
             'support_email' => 'required|email|max:255',
-            'commission_rate' => 'required|numeric|min:0|max:100',
+            'commission_rate' => 'prohibited',
         ]);
         $data['updated_by'] = auth()->id();
 

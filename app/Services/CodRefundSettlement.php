@@ -70,7 +70,7 @@ class CodRefundSettlement
             $remaining=$gross-$amount;$subsidy=max(0,$retained-$sellerShipping-$remaining);
             $t=app(LogisticsTreasury::class);$account=$t->account($d['account_id'],$actor->business_name);$t->requireGcash($account);
             $id=(string)Str::uuid();app(LogisticsShipping::class)->reserveReference($ref,'cod_buyer_refund',$id);$t->evidence($actor,'cod_buyer_refund',$id,$file);
-            $platform=null;if($d['payer']==='platform')$platform=DB::table('commission_accounts')->where('id',$d['platform_account_id'])->firstOrFail();
+            $platform=null;if($d['payer']==='platform')$platform=app(CommissionAccounts::class)->details(DB::table('commission_accounts')->where('id',$d['platform_account_id'])->firstOrFail());
             if($d['payer']==='company'){
                 if($this->balance($account->id)<$amount)$this->fail('Insufficient unreserved verified COD funds for this actual company-funded refund.');
                 $t->move($actor,$account,'cod',-$amount,'cod_buyer_refund',$id,$ref);
