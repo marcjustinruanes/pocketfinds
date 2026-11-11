@@ -14,9 +14,9 @@
 .pf-assistant-launch:hover .pf-assistant-launch-label, .pf-assistant-launch:focus-visible .pf-assistant-launch-label { transform: translateX(0); opacity: 1; }
 .pf-assistant-top { display: grid; place-items: center; width: var(--assistant-button-size); height: var(--assistant-button-size); padding: 0; border: 0; background: transparent; color: var(--assistant-pink); box-shadow: none; }
 .pf-assistant-top > svg { width: var(--assistant-button-size); height: var(--assistant-button-size); }
-.pf-assistant:has(.pf-assistant-panel:not([hidden])) .pf-assistant-dock, body:has(#messagesModal.open) .pf-assistant-dock { display: none; }
+.pf-assistant:has(.pf-assistant-panel:not([hidden])) .pf-assistant-dock, body:has(#messagesModal.open, #sellerMessagesWidget.open) .pf-assistant-dock { display: none; }
 .pf-assistant-launch:hover { box-shadow: 0 6px 22px #bf3c7d55; }
-body:has(#messagesModal.open) .pf-assistant-launch { display: none; }
+body:has(#messagesModal.open, #sellerMessagesWidget.open) .pf-assistant-launch { display: none; }
 .pf-assistant-panel { position: fixed; right: 24px; bottom: 24px; z-index: 170; width: 390px; max-width: calc(100% - 32px); height: 610px; max-height: calc(100dvh - 48px); display: flex; flex-direction: column; overflow: hidden; background: white; border: 1px solid #e9d8e1; border-radius: 8px; box-shadow: 0 12px 48px #29202b30; animation: pfAssistantIn .18s ease-out; }
 .pf-assistant-head { flex: none; display: flex; align-items: center; gap: 10px; padding: 15px; border-bottom: 1px solid #eee5eb; background: #fff8fc; }
 .pf-assistant-head img { object-fit: contain; }

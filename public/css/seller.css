@@ -443,7 +443,7 @@ body:has(.chat-shell){overflow:hidden}
 .inventory-page-intro{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px}
 .inventory-page-intro p{margin:0;color:var(--muted);font-size:12.5px;line-height:1.5}
 .inventory-page-intro .orders-secondary-action{flex:none}
-.inventory-toolbar{gap:10px;padding:13px;border:1px solid var(--border);border-radius:13px;background:#fff;box-shadow:0 1px 4px rgba(27,22,32,.025)}
+.inventory-toolbar{gap:10px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
 .inventory-toolbar .search-mini input{height:40px;border-radius:9px}
 .inventory-toolbar>.btn{min-height:40px;border-radius:9px}
 .inventory-table-card{overflow:hidden;border-radius:14px}

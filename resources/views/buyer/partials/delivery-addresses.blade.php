@@ -255,6 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
     .catch(() => { btn.disabled = false; btn.textContent = 'Save address'; errorEl.textContent = 'Network error. Try again.'; errorEl.style.display = 'block'; });
   });
 
+
   document.querySelectorAll('[data-delete-address]').forEach(btn => {
     btn.addEventListener('click', (event) => {
       event.preventDefault();

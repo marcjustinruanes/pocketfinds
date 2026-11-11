@@ -15,6 +15,7 @@ class Setting extends Model
 
     protected $fillable = [
         'platform_name', 'support_email', 'commission_rate',
+        'platform_gcash_name', 'platform_gcash_number',
         'google_signin_enabled', 'new_registrations_enabled',
         'maintenance_mode', 'email_notifications_enabled', 'updated_by',
         // Hero banner — admin-controlled from Settings → Hero Banner

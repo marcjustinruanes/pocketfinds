@@ -16,6 +16,32 @@ class ProductCombinationTest extends TestCase
 {
     use WorkflowSchema;
 
+    public function test_selected_color_size_options_do_not_require_unavailable_pairs(): void
+    {
+        $group = $this->group();
+        $group['selective'] = true;
+        array_pop($group['options']);
+        ProductVariationSet::validate([$group]);
+        $product = new Product(['variations' => [$group]]);
+        $this->assertSame(0, $product->availableStock('Options', 'Blue / M'));
+        $this->assertSame(3, $product->availableStock('Options', 'Pink / S'));
+    }
+
+    public function test_nested_options_support_weight_and_dimensions_without_a_full_grid(): void
+    {
+        $group = ['name'=>'Options', 'type'=>'combinations', 'selective'=>true, 'axes'=>[
+            ['name'=>'Color', 'options'=>[['value'=>'White'],['value'=>'Black']]],
+            ['name'=>'Size', 'options'=>[['value'=>'S'],['value'=>'Not applicable']]],
+            ['name'=>'Weight', 'options'=>[['value'=>'250 g'],['value'=>'Not applicable']]],
+            ['name'=>'Dimensions', 'options'=>[['value'=>'20 x 10 x 5 cm'],['value'=>'Not applicable']]],
+        ], 'options'=>[
+            ['value'=>'White / S / 250 g / 20 x 10 x 5 cm', 'attributes'=>['Color'=>'White','Size'=>'S','Weight'=>'250 g','Dimensions'=>'20 x 10 x 5 cm'], 'stock'=>3],
+            ['value'=>'Black / Not applicable / Not applicable / Not applicable', 'attributes'=>['Color'=>'Black','Size'=>'Not applicable','Weight'=>'Not applicable','Dimensions'=>'Not applicable'], 'stock'=>4],
+        ]];
+        ProductVariationSet::validate([$group]);
+        $this->assertSame(7, (new Product(['variations'=>[$group]]))->total_stock);
+    }
+
     private function group(): array
     {
         return ['name' => 'Options', 'type' => 'combinations', 'axes' => [

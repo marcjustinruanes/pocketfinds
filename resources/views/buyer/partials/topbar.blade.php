@@ -31,46 +31,9 @@
         ->orderByDesc('created_at')
         ->limit(8)
         ->get();
-      $unreadNotifCount = $notifRows->where('is_read', false)->count();
+      $unreadNotifCount = \Illuminate\Support\Facades\DB::table('notifications')->where('user_id',auth()->id())->where('is_read',false)->count();
     @endphp
-    <div class="dropdown">
-      <button class="icon-btn" data-dropdown-toggle="buyerNotifPanel" aria-label="Notifications" title="Notifications">
-        @include('buyer.partials.icon', ['name' => 'bell', 'size' => 16])
-        @if($unreadNotifCount > 0)<span class="dot-badge"></span>@endif
-      </button>
-      <div class="dropdown-panel" id="buyerNotifPanel">
-        <div class="dropdown-head">
-          <h3>Notifications</h3>
-          @if($unreadNotifCount > 0)<span style="font-size:11px;font-weight:700;color:var(--pink-dark)">{{ $unreadNotifCount }} new</span>@endif
-        </div>
-        <div class="notif-list">
-          @if($unreadNotifCount > 0)
-          <form method="POST" action="{{ route('account.notifications.read-all') }}">@csrf<button type="submit" class="btn btn-outline">Mark all as read</button></form>
-          @endif
-          @forelse($notifRows as $notif)
-            @php
-              $notificationStyle = match ($notif->notification_type ?? '') {
-                'order_status', 'order_delivered', 'delivery_assigned', 'pickup_assigned' => ['package', 'is-order'],
-                'delivery_failed', 'doc_rejected', 'product_rejected' => ['x', 'is-danger'],
-                'doc_approved', 'product_approved' => ['check', 'is-success'],
-                'review_reply' => ['chat', 'is-message'],
-                default => ['bell', 'is-announcement'],
-              };
-            @endphp
-            <a href="{{ route('buyer.notifications.open', $notif->id) }}" class="notif-item {{ $notif->is_read ? 'read' : '' }}">
-              <span class="notif-entry-icon {{ $notificationStyle[1] }}">@include('buyer.partials.icon', ['name' => $notificationStyle[0], 'size' => 16])</span>
-              <span class="notif-item-copy"><strong>{{ $notif->title ?: 'PocketFinds update' }}</strong><span>{{ $notif->message }}</span><small class="notif-item-time">{{ \Carbon\Carbon::parse($notif->created_at)->diffForHumans() }}</small></span>
-              @if(! $notif->is_read)<span class="dot" aria-label="Unread"></span>@endif
-            </a>
-          @empty
-            <div class="notif-item read">
-              <div class="dot"></div>
-              <div><p>You're all caught up.</p><small>Order and account updates will appear here.</small></div>
-            </div>
-          @endforelse
-        </div>
-      </div>
-    </div>
+    @include('account.partials.notification-menu', ['panelNotifications'=>$notifRows, 'panelUnreadCount'=>$unreadNotifCount, 'panelOpenRoute'=>'buyer.notifications.open', 'panelFooterUrl'=>route('buyer.announcements'), 'panelFooterLabel'=>'View announcements'])
     <a href="{{ route('buyer.cart') }}" class="icon-btn" id="cartIconBtn" title="Cart">
       @include('buyer.partials.icon', ['name' => 'cart', 'size' => 16])
       @php($cartCount = (int) \App\Models\CartItem::where('buyer_id', auth()->id())->sum('qty'))

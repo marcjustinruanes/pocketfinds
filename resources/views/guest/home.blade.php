@@ -77,6 +77,10 @@ if ((window.pocketfindsReloadAtHero || (!window.location.hash && !window.locatio
 <link rel="stylesheet" href="{{ asset('css/guest-catalog.css') }}?v={{ filemtime(public_path('css/guest-catalog.css')) }}">
 @if($buyerMode)<link rel="stylesheet" href="{{ asset('css/buyer-storefront.css') }}?v={{ filemtime(public_path('css/buyer-storefront.css')) }}">@endif
 @if($buyerMode)<link rel="stylesheet" href="{{ asset('css/navigation.css') }}?v={{ filemtime(public_path('css/navigation.css')) }}">@endif
+@if($buyerMode)
+<link rel="stylesheet" href="{{ asset('css/notifications.css') }}?v={{ filemtime(public_path('css/notifications.css')) }}">
+@include('account.partials.notification-assets')
+@endif
 </head>
 <body class="marketplace storefront-home {{ $buyerMode ? 'buyer-storefront' : '' }}">
 

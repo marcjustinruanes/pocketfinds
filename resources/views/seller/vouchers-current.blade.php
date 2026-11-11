@@ -1,9 +1,10 @@
-@extends('seller.layout')
-@section('title','Vouchers')
-@section('page-title','Vouchers')
+﻿@extends('seller.layout')
+@section('title','Promotions · Vouchers')
+@section('page-title','Promotions')
+@push('head')
+<link rel="stylesheet" href="{{ asset('css/seller-promotions.css') }}?v={{ filemtime(public_path('css/seller-promotions.css')) }}">
+@endpush
 @section('content')
-<div class="seller-vouchers-page">
-@include('commerce.messages')
-@include('account.partials.commerce-vouchers')
-</div>
+@include('seller.partials.promotions-workspace',['promotionType'=>'voucher'])
 @endsection
+@push('scripts')<script src="{{ asset('js/seller-promotions.js') }}?v={{ filemtime(public_path('js/seller-promotions.js')) }}"></script>@endpush

@@ -41,7 +41,6 @@
 
       </div>
       <div class="modal-foot">
-        <button class="btn btn-outline" type="button" data-modal-close>Cancel</button>
         <button class="btn btn-primary" type="submit">
           @include('seller.partials.icon',['name'=>'plus','size'=>13]) {{ $needsPairStock ? 'Save Combination Stock' : 'Add Stock' }}
         </button>

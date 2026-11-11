@@ -148,6 +148,18 @@ class BuyerModulesTest extends TestCase
         $review=Review::create(['order_id'=>$order->id,'buyer_id'=>$this->buyer->id,'seller_id'=>$this->seller->id,'product_id'=>'old-product','item_key'=>'0','rating'=>5]);
         $this->assertSame('Color / Size: Pink / M',$review->variationLabel());
     }
+    public function test_review_modal_uses_the_order_details_product_summary(): void
+    {
+        $product=Product::create(['seller_id'=>$this->seller->id,'name'=>'Review summary product','price'=>100,'stock'=>5,'status'=>'active','image'=>'products/review.jpg']);
+        $order=Order::create(['order_number'=>'REVIEW-SUMMARY','buyer_id'=>$this->buyer->id,'seller_id'=>$this->seller->id,'status'=>'completed','subtotal'=>100,'total'=>100,'items'=>[['product_id'=>$product->id,'name'=>$product->name,'variation_group'=>'Size','variation_value'=>'M','price'=>100,'qty'=>1]]]);
+        $this->actingAs($this->buyer);
+        $html=view('buyer.partials.order-reviews',['order'=>$order])->render();
+        $this->assertStringContainsString('order-summary-product-image',$html);
+        $this->assertStringContainsString('products/review.jpg',$html);
+        $this->assertStringContainsString('Size: M',$html);
+        $this->assertStringContainsString('aria-label="5 stars"',$html);
+        $this->assertStringContainsString('name="item_key" value="0"',$html);
+    }
     public function test_paid_cancellation_creates_one_refund_and_only_own_seller_can_record_repayment(): void
     {
         $purchase=GcashPurchase::create(['id'=>(string)Str::uuid(),'buyer_id'=>$this->buyer->id,'seller_id'=>$this->seller->id,'checkout_id'=>(string)Str::uuid(),'request_hash'=>str_repeat('a',64),'payment_method_id'=>1,'snapshot'=>['items'=>[]],'amount_due'=>150,'verified_amount'=>150,'verified_at'=>now(),'payment_reference'=>'PAID12345','payment_state'=>'order_placed','reservation_state'=>'transferred']);
@@ -191,7 +203,7 @@ class BuyerModulesTest extends TestCase
         $this->get(route('account.cancellation-refunds'))->assertOk()->assertSee('No cancellation refunds.');
         $this->actingAs($this->person('buyer'))->get(route('buyer.account'))->assertOk()->assertSee('You aren’t following any shops yet.');
         $this->actingAs($this->seller)->get(route('seller.shop-categories.index'))->assertOk()->assertSee('Add category');
-        $this->get(route('account.cancellation-refunds'))->assertOk();
+        $this->get(route('account.cancellation-refunds'))->assertRedirect(route('seller.orders',['status'=>'refunds']));
     }
     public function test_product_and_shop_show_claimable_vouchers_and_flash_details(): void
     {

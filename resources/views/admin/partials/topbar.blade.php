@@ -17,37 +17,14 @@ $storedUnread=\Illuminate\Support\Facades\DB::table('notifications')->where('use
     @php
       $notifItems = [];
       if (($pendingRegistrations ?? 0) > 0)
-          $notifItems[] = ['text' => $pendingRegistrations . ' registration' . ($pendingRegistrations > 1 ? 's' : '') . ' pending review.', 'link' => route('admin.registrations'), 'read' => false];
+          $notifItems[] = ['title'=>'Registrations', 'type'=>'registration', 'text' => $pendingRegistrations . ' registration' . ($pendingRegistrations > 1 ? 's' : '') . ' pending review.', 'link' => route('admin.registrations'), 'read' => false];
       if (($openDisputes ?? 0) > 0)
-          $notifItems[] = ['text' => $openDisputes . ' open dispute' . ($openDisputes > 1 ? 's' : '') . ' need attention.', 'link' => route('admin.complaints'), 'read' => false];
+          $notifItems[] = ['title'=>'Disputes', 'type'=>'dispute', 'text' => $openDisputes . ' open dispute' . ($openDisputes > 1 ? 's' : '') . ' need attention.', 'link' => route('admin.complaints'), 'read' => false];
       if (($pendingProducts ?? 0) > 0)
-          $notifItems[] = ['text' => $pendingProducts . ' product' . ($pendingProducts > 1 ? 's' : '') . ' pending approval.', 'link' => route('admin.products'), 'read' => false];
-      if (empty($notifItems) && !$storedUnread)
-          $notifItems[] = ['text' => 'No new notifications.', 'link' => '#', 'read' => true];
-      $unreadCount = collect($notifItems)->where('read', false)->count()+$storedUnread;
+          $notifItems[] = ['title'=>'Product approvals', 'type'=>'product_pending', 'text' => $pendingProducts . ' product' . ($pendingProducts > 1 ? 's' : '') . ' pending approval.', 'link' => route('admin.products'), 'read' => false];
     @endphp
 
-    <div class="dropdown">
-      <button class="icon-btn" data-dropdown-toggle="notifPanel" aria-label="Notifications">
-        <x-admin-icon name="bell" />
-        @if($unreadCount > 0)<span class="dot-badge"></span>@endif
-      </button>
-      <div class="dropdown-panel" id="notifPanel">
-        <div class="dropdown-head">
-          <h3>Notifications</h3>
-          @if($unreadCount > 0)<span style="font-size:11px;color:var(--pink-dark);font-weight:700">{{ $unreadCount }} new</span>@endif
-        </div>
-        <div class="notif-list">
-@include('account.partials.notifications')
-          @foreach($notifItems as $notif)
-          <a href="{{ $notif['link'] }}" class="notif-item {{ $notif['read'] ? 'read' : '' }}" style="text-decoration:none;color:inherit;display:flex">
-            <div class="dot"></div>
-            <div><p>{{ $notif['text'] }}</p></div>
-          </a>
-          @endforeach
-        </div>
-      </div>
-    </div>
+    @include('account.partials.notification-menu', ['panelUnreadCount'=>$storedUnread, 'panelSummaries'=>array_map(fn($item)=>['title'=>$item['title'], 'message'=>$item['text'], 'url'=>$item['link'], 'notification_type'=>$item['type']], array_filter($notifItems, fn($item)=>!$item['read']))])
 
     <a href="{{ route('admin.account') }}" class="topbar-avatar" aria-label="My Account">
       <x-user-avatar :user="auth()->user()" size="38" />

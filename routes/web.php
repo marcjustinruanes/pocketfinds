@@ -294,6 +294,7 @@ Route::prefix('seller')->name('seller.')->middleware(['web', 'seller'])->group(f
     Route::post('/account/shop', [SellerController::class, 'updateShop'])->name('account.shop');
     Route::post('/account/shop-photo', [SellerController::class, 'updateShopPhoto'])->name('account.shop-photo');
     Route::get('/vouchers', [SellerController::class, 'vouchers'])->name('vouchers');
+    Route::view('/promotions/flash-sales', 'seller.flash-sales')->name('promotions.flash');
     Route::post('/vouchers', [SellerController::class, 'storeVoucher'])->name('vouchers.store');
     Route::patch('/vouchers/{voucher}', [SellerController::class, 'updateVoucher'])->name('vouchers.update');
     Route::delete('/vouchers/{voucher}', [SellerController::class, 'destroyVoucher'])->name('vouchers.destroy');
@@ -589,9 +590,14 @@ Route::get('/delivery-proofs/{shipment}', [\App\Http\Controllers\DeliveryProofCo
       ->middleware(['web', 'auth', 'throttle:30,1'])->name('delivery-proofs.show');
 Route::get('/finance-evidence/{id}', [\App\Http\Controllers\SellerPayoutController::class, 'evidence'])
     ->middleware(['web','auth','throttle:30,1'])->name('finance.evidence');
-Route::middleware(['web', 'auth', 'throttle:60,1'])->prefix('gcash-purchases')->name('gcash.')->group(function () {
+Route::middleware(['web', 'auth', 'gcash.seller.block', 'throttle:60,1'])->prefix('gcash-purchases')->name('gcash.')->group(function () {
     Route::get('/', [GcashPurchaseController::class, 'index'])->name('index');
     Route::post('/cart-prices', [GcashPurchaseController::class, 'refreshPrices'])->name('refreshPrices');
+    Route::post('/platform-account', [GcashPurchaseController::class, 'platformAccount'])->name('platformAccount');
+    Route::post('/{id}/refund-overpayment', [GcashPurchaseController::class, 'refundOverpayment'])->name('refundOverpayment');
+    Route::post('/{id}/refund-details', [GcashPurchaseController::class, 'refundDetails'])->name('refundDetails');
+    Route::post('/{id}/remind-underpayment', [GcashPurchaseController::class, 'remindUnderpayment'])->name('remindUnderpayment');
+    Route::get('/{id}/admin-evidence/{history}', [GcashPurchaseController::class, 'adminEvidence'])->name('adminEvidence');
     Route::post('/', [GcashPurchaseController::class, 'create'])->name('create');
     Route::get('/{id}', [GcashPurchaseController::class, 'show'])->name('show');
     foreach (['instructions', 'proof', 'reportPaid', 'decide', 'resolve', 'place', 'abandon', 'requestResolution'] as $action) {

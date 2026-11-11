@@ -17,6 +17,29 @@
   const selections = {};
   const tab = document.getElementById('tab-options');
 
+  function refreshConditionalOptions() {
+    if (!group.selective) return;
+    const axes = [...group.axes].sort((a,b)=>(/^colou?rs?$/i.test(b.name)?1:0)-(/^colou?rs?$/i.test(a.name)?1:0));
+    const prior = {};
+    axes.forEach((axis,index) => {
+      const candidates = group.options.filter(option=>Object.entries(prior).every(([key,value])=>option.attributes[key]===value));
+      const values = [...new Set(candidates.map(option=>option.attributes[axis.name]))];
+      if (!values.includes(selections[axis.name])) delete selections[axis.name];
+      if (values.length===1 && values[0]==='Not applicable') selections[axis.name]='Not applicable';
+      const buttons = [...tab.querySelectorAll('.pd-opt-btn')].filter(button=>button.dataset.group===axis.name);
+      buttons.forEach(button=>{
+        button.hidden = !values.includes(button.dataset.value);
+        button.disabled = !candidates.some(option=>option.attributes[axis.name]===button.dataset.value && Number(option.stock)>0);
+        const active = selections[axis.name]===button.dataset.value;
+        button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));
+      });
+      const row = buttons[0]?.closest('.pd-opt-row');
+      const container = row?.closest?.('.pd-opt-group') || row;
+      if (container) container.hidden = values.every(value=>value==='Not applicable') || (index>0 && !selections[axes[0].name]);
+      if (selections[axis.name]) prior[axis.name]=selections[axis.name];
+    });
+  }
+
   window.productCombinations = {
     selected() {
       const option = resolveCombination(group, selections);
@@ -35,6 +58,7 @@
         option.classList.toggle('active', active);
         option.setAttribute('aria-pressed', String(active));
       });
+      refreshConditionalOptions();
       const selected = this.selected();
       const image = selected?.dataset.image || button.dataset.image;
       if (image) {
@@ -52,4 +76,5 @@
       if (button && !button.disabled) this.select(button);
     },
   };
+  refreshConditionalOptions();
 })();

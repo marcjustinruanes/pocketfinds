@@ -5,18 +5,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>@yield('title', 'Seller') — PocketFinds</title>
-<link rel="stylesheet" href="/css/seller.css">
+<link rel="stylesheet" href="{{ asset('css/seller.css') }}?v={{ filemtime(public_path('css/seller.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/notifications.css') }}?v={{ filemtime(public_path('css/notifications.css')) }}">
 @include('seller.partials.product-form-script')
 <link rel="stylesheet" href="{{ asset('css/navigation.css') }}?v={{ filemtime(public_path('css/navigation.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/seller-shell.css') }}?v={{ filemtime(public_path('css/seller-shell.css')) }}">
 @stack('head')
+@include('account.partials.notification-assets')
 </head>
 <body class="seller @yield('body-class')">
-<div class="shell" id="appShell" data-navigation-shell data-collapse-key="seller_sidebar_collapsed">
+<div class="shell" id="appShell" data-navigation-shell data-sidebar-hover data-collapse-key="seller_sidebar_collapsed">
   @include('seller.partials.sidebar')
   <div style="display:flex;flex-direction:column;min-width:0">
     @include('seller.partials.topbar')
     <main class="content">
+      @unless(request()->routeIs('seller.orders'))
+        @include('seller.partials.workspace-tabs')
+      @endunless
       @yield('content')
     </main>
   </div>
@@ -40,7 +45,10 @@
 </div>
 
 <div class="toast-stack" id="toastStack"></div>
+@include('seller.partials.messages-widget')
+@include('buyer.partials.assistant', ['assistantGuest'=>true, 'assistantSeller'=>true])
 <script src="/js/seller.js"></script>
+<script src="{{ asset('js/seller-messages-widget.js') }}?v={{ filemtime(public_path('js/seller-messages-widget.js')) }}"></script>
 @stack('scripts')
 <script src="{{ asset('js/navigation.js') }}?v={{ filemtime(public_path('js/navigation.js')) }}"></script>
 </body>

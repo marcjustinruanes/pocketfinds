@@ -1,4 +1,4 @@
-@extends('seller.layout')
+@extends(request()->boolean('embedded') ? 'seller.messages-embedded-layout' : 'seller.layout')
 @section('title', 'Messages')
 @section('page-title', 'Messages')
 
@@ -6,20 +6,10 @@
 @php $myId = auth()->id(); @endphp
 
 <link rel="stylesheet" href="{{ asset('css/messaging.css') }}?v={{ filemtime(public_path('css/messaging.css')) }}">
-@if(\App\Services\GcashInventory::installed())
-@include('gcash.assets')
-<div class="gcash-context" role="region" aria-label="GCash payment navigation">
-  <div><strong>GCash payment</strong><p>Send payment details and review private receipts on the linked purchase. Chat alone does not verify payment.</p></div>
-  <div class="gcash-actions"><a class="gcash-button gcash-button-secondary" href="{{ route('gcash.index',['contact'=>$buyer?->id]) }}">GCash purchases and payment review</a>
-  @if(request('purchase'))
-    <a class="gcash-button" href="{{ route('gcash.show',request('purchase')) }}">Open linked purchase</a>
-  @endif
-  </div>
-</div>
-@endif
+<link rel="stylesheet" href="{{ asset('css/buyer-messaging.css') }}?v={{ filemtime(public_path('css/buyer-messaging.css')) }}">
 <div class="chat-shell" data-has-conversation="{{ $buyer ? 'true' : 'false' }}">
   <div class="chat-list" id="chatList">
-    <div class="chat-list-head"><strong style="font-size:13.5px">Conversations</strong></div>
+    <div class="chat-list-head"><label class="chat-search"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7"/><path d="m16 16 5 5"/></svg><input type="search" id="conversationSearch" placeholder="Search conversations" aria-label="Search conversations" autocomplete="off"></label></div>
     @if($admin && !$conversations->has($admin->id))
       <a href="{{ route('seller.messages', ['buyer' => $admin->id]) }}" class="chat-list-item {{ $buyer && $buyer->id === $admin->id ? 'active' : '' }}">
         <x-user-avatar :user="$admin" size="36" class="cli-av" />
@@ -40,7 +30,7 @@
         <x-user-avatar :user="$other" size="36" class="cli-av" />
         <div class="cli-body">
           <div class="cli-name">{{ $otherName }}</div>
-          <div class="cli-preview">{{ $last->displayBody() ?: ($last->product_id ? '📦 Product' : '📎 Attachment') }} · {{ $last->created_at?->format('g:i A') ?? '—' }} {{ $last->sender_id === $myId ? ($last->read ? '✓✓ Seen' : '✓ Delivered') : '' }}</div>
+          <div class="cli-preview">{{ $last->displayBody() ?: ($last->product_id ? '📦 Product' : '📎 Attachment') }} · {{ $last->created_at?->format('g:i A') ?? '—' }} {{ $last->sender_id === $myId ? ($last->read ? '✓✓' : '✓') : '' }}</div>
         </div>
       </a>
     @empty
@@ -53,7 +43,7 @@
 
   <div class="chat-main">
     <div class="chat-head">
-      @if($buyer)<a class="chat-mobile-back" href="{{ route('seller.messages') }}" aria-label="Back to conversations">&larr;</a>@endif
+      @if($buyer)<a class="chat-mobile-back" href="{{ route('seller.messages') }}" aria-label="Back to conversations">@include('buyer.partials.icon',['name'=>'arrow-right','size'=>18,'class'=>'chat-back-icon'])</a>@endif
       @if($buyer)
         @php $buyerName = $buyer->given_names . ' ' . $buyer->last_name; @endphp
         <x-user-avatar :user="$buyer" size="34" class="chat-head-av" />
@@ -69,7 +59,7 @@
     <div class="chat-body" id="chatBody" tabindex="0" role="region" aria-label="Conversation messages" style="{{ !$buyer ? 'align-items:center;justify-content:center' : '' }}">
       @if(!$buyer)
         <div style="text-align:center;color:var(--muted)">
-          <div style="margin-bottom:8px;opacity:.4">@include('seller.partials.icon', ['name' => 'chat', 'size' => 36])</div>
+          @include('account.partials.chat-empty-icon')
           <p style="font-size:13px">No conversation selected</p>
         </div>
       @else
@@ -120,14 +110,14 @@
             <div class="chat-time">
               <span>{{ $msg->created_at?->format('g:i A') ?? '' }}</span>
               @if($isMe)
-                <span class="chat-status">{{ $msg->read ? '✓✓ Seen' : '✓ Delivered' }}</span>
+                <span class="chat-status" title="{{ $msg->read ? 'Seen' : 'Delivered' }}" aria-label="{{ $msg->read ? 'Seen' : 'Delivered' }}">{{ $msg->read ? '✓✓' : '✓' }}</span>
               @endif
-            </div>
-            </div>
             <div class="chat-msg-actions">
               <button type="button" class="chat-msg-action" title="React" onclick="toggleReaction(this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 8.7c0 5.2-8.8 10.3-8.8 10.3S3.2 13.9 3.2 8.7A4.7 4.7 0 0112 6.1a4.7 4.7 0 018.8 2.6z"/></svg></button>
               <button type="button" class="chat-msg-action" title="Reply" onclick="replyToMessage(this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 17l-5-5 5-5M4 12h10a6 6 0 016 6v1"/></svg></button>
               <button type="button" class="chat-msg-action" title="Report" onclick="reportMessage(this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4m0 1h10l-2 3 2 3H5"/></svg></button>
+            </div>
+            </div>
             </div>
           </div>
         @endforeach
@@ -178,26 +168,35 @@
       <div class="chat-feedback" id="chatFeedback" role="status" aria-live="polite" tabindex="-1"></div>
       <form class="chat-input" id="chatForm">
         <input type="file" id="fileInput" style="display:none" accept="image/*,video/*" multiple onchange="previewFile(this)">
+        <div class="chat-compose-tools">
         <button class="icon-btn" type="button" onclick="document.getElementById('fileInput').click()" title="Attach file">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
         </button>
-        <button class="icon-btn" type="button" title="Products" onclick="togglePicker('products')">@include('seller.partials.icon', ['name' => 'inventory', 'size' => 16])</button>
-        <button class="icon-btn" type="button" title="Orders" onclick="togglePicker('orders')">@include('seller.partials.icon', ['name' => 'orders', 'size' => 16])</button>
+        <button class="icon-btn" type="button" title="Products" onclick="togglePicker('products')">@include('buyer.partials.icon', ['name' => 'bag', 'size' => 16])</button>
+        <button class="icon-btn" type="button" title="Orders" onclick="togglePicker('orders')">@include('buyer.partials.icon', ['name' => 'package', 'size' => 16])</button>
+        </div>
         <textarea id="chatInput" rows="1" aria-label="Message" aria-describedby="chatComposeHint" placeholder="Write a message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();sendMessage()}"></textarea>
-        <button type="submit" class="btn btn-primary">
-          @include('seller.partials.icon', ['name' => 'send', 'size' => 15]) <span class="send-button-label">Send</span>
+        <button type="submit" class="btn btn-primary" aria-label="Send message" title="Send message">
+          @include('buyer.partials.icon', ['name' => 'send', 'size' => 18])
         </button>
       </form>
-      <p class="chat-compose-hint" id="chatComposeHint">Enter to send &middot; Shift+Enter for a new line. Use the linked purchase to submit private GCash proof.</p>
-    @else
-      <div class="chat-input">
-        <input type="text" placeholder="Type a message…" disabled>
-        <button class="btn btn-primary" disabled>@include('seller.partials.icon', ['name' => 'send', 'size' => 15]) Send</button>
-      </div>
+      <p class="chat-compose-hint" id="chatComposeHint">Enter to send &middot; Shift+Enter for a new line.</p>
     @endif
   </div>
 </div>
 
+<script>
+(() => {
+ const search=document.getElementById('conversationSearch'),list=document.getElementById('chatList');
+ const empty=document.createElement('p');empty.className='chat-search-empty';empty.textContent='No matching conversations.';empty.hidden=true;empty.setAttribute('role','status');list.append(empty);
+ search.addEventListener('input',()=>{
+  const term=search.value.trim().toLocaleLowerCase();let visible=0;
+  list.querySelectorAll('.chat-list-item').forEach(item=>{const matches=item.querySelector('.cli-name').textContent.toLocaleLowerCase().includes(term);item.hidden=!matches;if(matches)visible++;});
+  empty.hidden=!term||visible>0;
+  list.querySelectorAll('.empty').forEach(item=>item.hidden=!!term);
+ });
+})();
+</script>
 <div class="modal-overlay" id="reportModal">
   <div class="modal" style="max-width:520px">
     <div class="modal-head"><div><h3>Report Message</h3><p>Send this report to the admin team.</p></div><button class="modal-close" type="button" onclick="closeReportModal()">×</button></div>
@@ -381,14 +380,13 @@ async function sendMessage(event) {
   attachedFiles.forEach(file => fd.append('attachments[]', file));
 
   const sendButton = document.querySelector('.chat-input .btn-primary');
-  const sendButtonLabel = sendButton.querySelector('.send-button-label');
   messageSending = true;
   document.getElementById('chatFeedback').textContent = '';
   document.getElementById('chatForm').setAttribute('aria-busy', 'true');
   const draftControls = [...document.querySelectorAll('#chatForm input, #chatForm textarea, #chatForm button, .chat-picker-send, .chat-attach-remove')];
   draftControls.forEach(control => control.disabled = true);
   sendButton.disabled = true;
-  sendButtonLabel.textContent = 'Sending...';
+  sendButton.setAttribute('aria-label', 'Sending message');
   try {
     const res = await fetch(SEND_URL, { method: 'POST', body: fd, headers: { Accept: 'application/json' } });
     const raw = await res.text();
@@ -412,7 +410,7 @@ async function sendMessage(event) {
     document.getElementById('chatForm').removeAttribute('aria-busy');
     draftControls.forEach(control => control.disabled = false);
     sendButton.disabled = false;
-    sendButtonLabel.textContent = 'Send';
+    sendButton.setAttribute('aria-label', 'Send message');
     if (!document.getElementById('chatFeedback').textContent) input.focus();
   }
 }
@@ -496,14 +494,16 @@ function appendMessage(msg, isMe = msg.sender_id === MY_ID, localMediaUrl = null
   if (isMe) {
     const status = document.createElement('span');
     status.className = 'chat-status';
-    status.textContent = msg.read ? '✓✓ Seen' : '✓ Delivered';
+    status.textContent = msg.read ? '✓✓' : '✓';
+    status.title = msg.read ? 'Seen' : 'Delivered';
+    status.setAttribute('aria-label', status.title);
     time.appendChild(status);
   }
   content.appendChild(time);
   wrap.appendChild(content);
   const actions = document.createElement('div'); actions.className = 'chat-msg-actions';
   actions.innerHTML = '<button type="button" class="chat-msg-action" title="React" onclick="toggleReaction(this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 8.7c0 5.2-8.8 10.3-8.8 10.3S3.2 13.9 3.2 8.7A4.7 4.7 0 0112 6.1a4.7 4.7 0 018.8 2.6z"/></svg></button><button type="button" class="chat-msg-action" title="Reply" onclick="replyToMessage(this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 17l-5-5 5-5M4 12h10a6 6 0 016 6v1"/></svg></button><button type="button" class="chat-msg-action" title="Report" onclick="reportMessage(this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4m0 1h10l-2 3 2 3H5"/></svg></button>';
-  wrap.appendChild(actions);
+  time.appendChild(actions);
 
   const nearBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 100;
   body.appendChild(wrap);
@@ -524,11 +524,13 @@ async function pollMessages() {
           const timeText = time.querySelector('span');
           const status = time.querySelector('.chat-status');
           if (timeText) timeText.textContent = msg.created_at;
-          if (status) status.textContent = msg.read ? '✓✓ Seen' : '✓ Delivered';
+          if (status) { status.textContent = msg.read ? '✓✓' : '✓'; status.title = msg.read ? 'Seen' : 'Delivered'; status.setAttribute('aria-label',status.title); }
           else {
             const newStatus = document.createElement('span');
             newStatus.className = 'chat-status';
-            newStatus.textContent = msg.read ? '✓✓ Seen' : '✓ Delivered';
+            newStatus.textContent = msg.read ? '✓✓' : '✓';
+            newStatus.title = msg.read ? 'Seen' : 'Delivered';
+            newStatus.setAttribute('aria-label',newStatus.title);
             time.appendChild(newStatus);
           }
         }

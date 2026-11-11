@@ -16,6 +16,7 @@
 <link rel="stylesheet" href="{{ asset('css/navigation.css') }}?v={{ filemtime(public_path('css/navigation.css')) }}">
 @stack('head')
 <link rel="stylesheet" href="{{ asset('css/logistics-ui.css') }}?v={{ filemtime(public_path('css/logistics-ui.css')) }}">
+@include('account.partials.notification-assets')
 </head>
 <body class="admin logistics-ui">
 <div class="shell" id="logisticsShell" data-navigation-shell data-collapse-key="logistics_sidebar_collapsed">

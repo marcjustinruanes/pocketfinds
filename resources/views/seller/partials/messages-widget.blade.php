@@ -1,0 +1,1 @@
+@include('account.partials.messages-widget',['messageWidgetId'=>'sellerMessagesWidget','messageWidgetBodyId'=>'sellerMessagesWidgetBody','messageWidgetTitleId'=>'sellerMessagesTitle','sellerMessageWidget'=>true])

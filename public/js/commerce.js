@@ -1,7 +1,7 @@
 (() => {
     const renderCountdowns = () => document.querySelectorAll('[data-countdown]').forEach(el => {
         const seconds = Math.max(0, Math.floor((new Date(el.dataset.countdown) - Date.now()) / 1000));
-        el.textContent = seconds ? `${Math.floor(seconds / 86400)}d ${Math.floor(seconds / 3600) % 24}h ${Math.floor(seconds / 60) % 60}m ${seconds % 60}s` : 'Now';
+        el.textContent = seconds ? `${Math.floor(seconds / 86400)}d ${Math.floor(seconds / 3600) % 24}h ${Math.floor(seconds / 60) % 60}m ${seconds % 60}s` : (el.dataset.countdownFinished || 'Now');
     });
     renderCountdowns(); setInterval(renderCountdowns, 1000);
     document.querySelectorAll('[data-commerce-regions]').forEach(async select => {

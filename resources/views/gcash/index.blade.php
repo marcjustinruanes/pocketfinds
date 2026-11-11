@@ -1,19 +1,26 @@
-@extends(auth()->user()->account_type === 'admin' ? 'admin.layout' : (auth()->user()->account_type === 'buyer' ? 'buyer.layout' : 'seller.layout'))
-@section('title', 'GCash purchases')
-@section('page-title', 'GCash purchases')
-@section('hide-page-heading', auth()->user()->account_type === 'buyer')
-@section('page-sub', auth()->user()->account_type === 'buyer' ? 'Track your GCash checkout and payment status' : (auth()->user()->account_type === 'admin' ? 'Review GCash payment status and purchase records' : 'Review buyer GCash payments and purchase records'))
-@section('body-class', auth()->user()->account_type === 'buyer' ? 'gcash-payments-page' : '')
+@extends(auth()->user()->is_admin ? 'admin.layout' : (auth()->user()->account_type === 'buyer' ? 'buyer.layout' : 'seller.layout'))
+@section('title', auth()->user()->is_admin ? 'GCash payments' : 'GCash purchases')
+@section('page-title', auth()->user()->is_admin ? 'GCash payments' : 'GCash purchases')
+@section('hide-page-heading', !auth()->user()->is_admin && auth()->user()->account_type === 'buyer')
+@section('page-sub', auth()->user()->is_admin ? 'Review GCash payment status and purchase records' : (auth()->user()->account_type === 'buyer' ? 'Track your GCash checkout and payment status' : 'Review buyer GCash payments and purchase records'))
+@section('body-class', auth()->user()->is_admin ? '' : (auth()->user()->account_type === 'buyer' ? 'gcash-payments-page' : 'seller-orders-page seller-gcash-page'))
 @include('gcash.assets')
 @section('content')
-@php($reviewer = auth()->user()->account_type === 'admin')
+@php
+ $reviewer = (bool) auth()->user()->is_admin && auth()->user()->status === 'approved';
+@endphp
+@if($reviewer)
+ @include('gcash.partials.admin-purchases')
+@elseif(auth()->user()->account_type === 'seller')
+ @include('gcash.partials.seller-purchases')
+@else
 <div class="gcash-page gcash-purchases-page">
+ @if($reviewer && \Illuminate\Support\Facades\Schema::hasColumn('gcash_purchases','review_flow'))@include('gcash.partials.admin-review-queue')@endif
  @if(auth()->user()->account_type !== 'buyer')
  <nav class="gcash-nav" aria-label="GCash navigation">
   @unless($reviewer)<a class="gcash-nav-primary" href="{{ route(auth()->user()->account_type === 'buyer' ? 'buyer.cart' : 'seller.orders') }}">{{ auth()->user()->account_type === 'buyer' ? 'Back to cart' : 'All orders' }}</a><a class="gcash-nav-secondary" href="{{ route(auth()->user()->account_type.'.messages') }}">Messages</a>@endunless
   @if(request()->filled('contact'))<a class="gcash-nav-secondary" href="{{ route('gcash.index') }}">Show all GCash purchases</a>@endif
  </nav>
- <p class="gcash-muted">Each purchase has its own amount, payment review and stock allocation. Sending proof does not verify payment.</p>
  @elseif(request()->filled('contact'))
  <a class="gcash-nav-secondary" href="{{ route('gcash.index') }}">Show all purchases</a>
  @endif
@@ -39,4 +46,5 @@
  </div>
  {{ $purchases->links() }}
 </div>
+@endif
 @endsection

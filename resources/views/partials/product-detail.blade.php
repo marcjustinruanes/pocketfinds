@@ -67,6 +67,7 @@
     <div class="pd-info-card">
       <div class="pd-crumb-row">
         <span class="pd-crumb">{{ $product['cat'] }}</span>
+        @include('partials.product-promotions')
         @if($product['badge'])<span class="pd-pill">{{ $product['badge'] }}</span>@endif
 
       </div>
@@ -89,7 +90,6 @@
         </button>
       </div>
       @include('partials.product-price')
-      @include('partials.product-promotions')
     </div>
 
     <section class="pd-tabs-wrap pd-product-information" aria-label="Product information">
@@ -218,6 +218,9 @@
       </div>
 
     </section>{{-- end pd-tabs-wrap --}}
+    @if(isset($product['seller_id']))
+      @include('partials.claimable-vouchers',['claimableVouchers'=>app(\App\Services\ShopCatalog::class)->vouchers((int)$product['seller_id'])])
+    @endif
     <div class="pd-purchase">
 
     <div class="pd-actions">

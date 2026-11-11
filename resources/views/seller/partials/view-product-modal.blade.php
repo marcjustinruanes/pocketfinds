@@ -1,6 +1,6 @@
 @php
 use Illuminate\Support\Facades\Storage;
-$galleryImages = collect($product->images ?? ($product->image ? [$product->image] : []))->map(fn ($p) => Storage::url($p))->values();
+$galleryImages = collect($product->images ?? [])->filter()->whenEmpty(fn ($images) => $product->image ? collect([$product->image]) : $images)->map(fn ($p) => Storage::url($p))->values();
 $hasVariations = !empty($product->variations);
 $hasDetails    = !empty($product->details);
 $allOptions    = collect($product->variations ?? [])->flatMap(fn ($v) => $v['options'] ?? []);
@@ -11,78 +11,69 @@ $statusMeta = match($product->status) {
     'pending'  => ['stamp' => 'stamp-pending', 'icon' => 'clock', 'label' => 'Pending Review'],
     'active'   => ['stamp' => 'stamp-active', 'icon' => 'check-circle', 'label' => 'Active'],
     'rejected' => ['stamp' => 'stamp-rejected', 'icon' => 'x', 'label' => 'Rejected'],
+    'archived' => ['stamp' => 'product-state is-archived', 'icon' => 'inventory', 'label' => 'Archived'],
+    'draft' => ['stamp' => 'product-state is-draft', 'icon' => 'file', 'label' => 'Draft'],
     default    => ['stamp' => 'stamp-pending', 'icon' => 'tag', 'label' => ucfirst($product->status)],
 };
 @endphp
-<div class="modal-overlay" id="viewProductModal-{{ $product->id }}">
-  <div class="modal" style="max-width:720px;width:100%">
-    <div class="modal-head" style="background:var(--pink-soft);border-bottom-color:var(--pink-line)">
+<div class="modal-overlay product-details-modal" id="viewProductModal-{{ $product->id }}">
+  <div class="modal product-details-dialog" role="dialog" aria-modal="true" aria-labelledby="productDetailsTitle-{{ $product->id }}">
+    <div class="modal-head product-details-header">
       <div style="min-width:0">
-        <h3 style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ $product->name }}</h3>
-        <p style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span class="stamp {{ $statusMeta['stamp'] }}" style="display:inline-flex;align-items:center;gap:5px">
-            @include('seller.partials.icon',['name'=>$statusMeta['icon'],'size'=>11]) {{ $statusMeta['label'] }}
-          </span>
-          <span>Submitted {{ $product->created_at->format('M d, Y') }}</span>
-        </p>
+        <div class="product-details-heading-line"><span class="product-details-eyebrow">Product details</span><span class="stamp {{ $statusMeta['stamp'] }}">{{ $statusMeta['label'] }}</span></div>
+        <h3 id="productDetailsTitle-{{ $product->id }}">{{ $product->name }}</h3>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex:none">
-        <button type="button" class="modal-close" title="Edit product" aria-label="Edit product"
+        <button type="button" class="btn btn-outline product-details-edit" title="Edit product" aria-label="Edit product"
           onclick="document.getElementById('viewProductModal-{{ $product->id }}').classList.remove('open');document.getElementById('editProductModal-{{ $product->id }}').classList.add('open')">
-          @include('seller.partials.icon',['name'=>'edit','size'=>14])
+          @include('buyer.partials.icon',['name'=>'edit','size'=>16])
         </button>
         <button class="modal-close" data-modal-close title="Close" aria-label="Close">@include('seller.partials.icon',['name'=>'x','size'=>14])</button>
       </div>
     </div>
 
-    <div class="modal-body" style="max-height:72vh;overflow-y:auto;display:flex;flex-direction:column;gap:20px">
+    <div class="modal-body product-details-body">
 
       {{-- Gallery + KPI stat cards --}}
-      <div style="display:grid;grid-template-columns:210px 1fr;gap:18px">
-        <div>
-          <div style="width:210px;height:210px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:flex;align-items:center;justify-content:center;background:var(--paper);box-shadow:var(--shadow-sm);cursor:zoom-in" onclick="sellerOpenImgViewer('{{ $product->id }}')">
+      <div class="product-details-overview">
+        <div class="product-details-gallery">
+          <button type="button" class="product-details-main-image" aria-label="Enlarge product image" onclick="sellerOpenImgViewer('{{ $product->id }}')">
             @if($galleryImages->isNotEmpty())
-              <img id="viewMainImg-{{ $product->id }}" src="{{ $galleryImages->first() }}" style="max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block">
+              <img id="viewMainImg-{{ $product->id }}" src="{{ $galleryImages->first() }}" alt="{{ $product->name }}">
             @else
               <span style="color:var(--pink-line)">@include('seller.partials.icon',['name'=>'bag','size'=>40])</span>
             @endif
-          </div>
+          </button>
           @if($galleryImages->count() > 1)
-          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+          <div class="product-gallery-thumbnails">
             @foreach($galleryImages as $i => $src)
-            <img src="{{ $src }}" onclick="document.getElementById('viewMainImg-{{ $product->id }}').src=this.src;this.closest('div').querySelectorAll('img').forEach(t=>t.style.borderColor='var(--border)');this.style.borderColor='var(--pink)'"
-              style="width:32px;height:32px;object-fit:cover;border-radius:6px;cursor:pointer;border:2px solid {{ $i === 0 ? 'var(--pink)' : 'var(--border)' }}">
+            <button type="button" class="product-gallery-thumbnail {{ $i===0?'is-selected':'' }}" aria-label="Show product image {{ $i+1 }}" aria-pressed="{{ $i===0?'true':'false' }}" onclick="document.getElementById('viewMainImg-{{ $product->id }}').src=this.querySelector('img').src;this.parentElement.querySelectorAll('button').forEach(button=>{button.classList.remove('is-selected');button.setAttribute('aria-pressed','false')});this.classList.add('is-selected');this.setAttribute('aria-pressed','true')"><img src="{{ $src }}" alt="Product image {{ $i+1 }}"></button>
             @endforeach
           </div>
           @endif
           @if($product->video)
-          <video src="{{ Storage::url($product->video) }}" controls style="width:210px;margin-top:8px;border-radius:8px"></video>
+          <video src="{{ Storage::url($product->video) }}" controls class="product-details-video"></video>
           @endif
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-content:start">
-          <div>
-            <div class="field-label">Price</div>
-            <div class="field-value mono" style="font-size:19px;font-weight:700;color:var(--pink-dark)">
-              @if($maxPrice > $minPrice)
-                ₱{{ number_format($minPrice, 0) }}–{{ number_format($maxPrice, 0) }}
-              @else
-                ₱{{ number_format($product->price, 2) }}
-              @endif
-            </div>
-          </div>
-          <div>
-            <div class="field-label">Stock</div>
-            <div class="field-value mono" style="font-size:19px;font-weight:700;{{ $product->total_stock <= 0 ? 'color:var(--danger)' : '' }}">{{ (\App\Support\ProductVariationSet::combination($product->variations)['requires_stock_setup'] ?? false) ? 'Set combination stock' : $product->total_stock }}</div>
-            @if($product->total_stock <= 0)<div style="font-size:11px;color:var(--danger)">Out of stock</div>@endif
-          </div>
-          <div><div class="field-label">Category</div><div class="field-value">{{ $product->category->name ?? '—' }}</div></div>
-          <div><div class="field-label">SKU</div><div class="field-value mono">{{ $product->sku ?: '—' }}</div></div>
-          <div style="grid-column:1/-1">
-            <div class="field-label">Shipping</div>
-            <div class="field-value">{{ $product->weight_grams }}@if($product->weight_grams_max)–{{ $product->weight_grams_max }}@endif g @if($product->length_cm) · {{ $product->length_cm }}×{{ $product->width_cm }}×{{ $product->height_cm }}cm @endif · {{ ucfirst($product->condition ?? 'new') }}</div>
-          </div>
-        </div>
+        <dl class="product-facts-list">
+          <div class="product-fact-row product-fact-price"><dt>Selling price</dt><dd>
+            @if($product->discount_price && $product->discount_price < $product->price)
+              <strong>&#8369;{{ number_format($product->discount_price,2) }}</strong><del>&#8369;{{ number_format($product->price,2) }}</del>
+            @elseif($maxPrice > $minPrice)
+              <strong>&#8369;{{ number_format($minPrice,2) }} &ndash; &#8369;{{ number_format($maxPrice,2) }}</strong>
+            @else<strong>&#8369;{{ number_format($product->price,2) }}</strong>@endif
+          </dd></div>
+          <div class="product-fact-row"><dt>Available stock</dt><dd class="product-fact-stock"><span class="product-fact-stock-value">{{ (\App\Support\ProductVariationSet::combination($product->variations)['requires_stock_setup'] ?? false) ? 'Set combination stock' : number_format($product->total_stock) }}</span>
+            @if(in_array($product->status,['active','archived'],true))
+            <button type="button" class="btn btn-outline product-details-edit" onclick="document.getElementById('viewProductModal-{{ $product->id }}').classList.remove('open');document.getElementById('addStockModal-{{ $product->id }}').classList.add('open')">Add stock</button>
+            @endif
+          </dd></div>
+          <div class="product-fact-row"><dt>SKU</dt><dd class="product-fact-sku">{{ $product->sku ?: 'Not assigned' }}</dd></div>
+          <div class="product-fact-row"><dt>Weight</dt><dd>{{ number_format($product->weight_grams) }}@if($product->weight_grams_max) &ndash; {{ number_format($product->weight_grams_max) }}@endif g</dd></div>
+          @if($product->width_cm && $product->height_cm)<div class="product-fact-row"><dt>Dimensions</dt><dd>@if($product->length_cm){{ $product->length_cm }} &times; @endif{{ $product->width_cm }} &times; {{ $product->height_cm }} cm <small>(@if($product->length_cm)L &times; @endif W &times; H)</small></dd></div>@endif
+          <div class="product-fact-row"><dt>Condition</dt><dd>{{ ucfirst($product->condition ?? 'new') }}</dd></div>
+        </dl>
       </div>
 
       {{-- Rejection reason --}}
@@ -93,57 +84,24 @@ $statusMeta = match($product->status) {
       </div>
       @endif
 
-      {{-- Description --}}
       @if($product->description)
-      <div>
-        <div style="font-size:13px;font-weight:700;margin-bottom:6px;color:var(--pink-dark)">Description</div>
-        <p style="font-size:13px;line-height:1.6;color:var(--text);white-space:pre-line;margin:0;background:var(--paper);border-radius:9px;padding:12px 14px">{{ $product->description }}</p>
-      </div>
+      <section class="product-detail-section"><h4>Description</h4><p class="product-detail-description">{{ $product->description }}</p></section>
       @endif
-
-      {{-- Specifications --}}
       @if($hasDetails)
-      <div>
-        <div style="font-size:13px;font-weight:700;margin-bottom:6px;color:var(--pink-dark)">Specifications</div>
-        <div style="border:1px solid var(--border);border-radius:9px;overflow:hidden">
-          @foreach($product->details as $row)
-          <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:9px 14px;{{ !$loop->last ? 'border-bottom:1px solid var(--border)' : '' }};{{ $loop->even ? 'background:var(--paper)' : '' }}">
-            <span style="color:var(--muted)">{{ $row['label'] ?? '—' }}</span>
-            <span style="font-weight:600">{{ $row['value'] ?? '—' }}</span>
-          </div>
-          @endforeach
-        </div>
-      </div>
+      <section class="product-detail-section"><h4>Specifications</h4><dl class="product-specification-list">
+        @foreach($product->details as $row)<div><dt>{{ $row['label'] ?? '—' }}</dt><dd>{{ $row['value'] ?? '—' }}</dd></div>@endforeach
+      </dl></section>
       @endif
-
-      {{-- Variations --}}
       @if($hasVariations)
-      <div>
-        <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--pink-dark)">Variations</div>
-        @foreach($product->variations as $group)
-        <div style="margin-bottom:12px">
-          <div style="font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">{{ ($group['type'] ?? null) === 'combinations' ? implode(' / ', array_column($group['axes'], 'name')) : ($group['name'] ?? 'Option') }}</div>
-          <div style="display:flex;flex-wrap:wrap;gap:8px">
-            @forelse(($group['options'] ?? []) as $opt)
-            <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:12.5px;background:#fff">
-              @if(!empty($opt['image']))
-                <img src="{{ Storage::url($opt['image']) }}" style="width:32px;height:32px;object-fit:cover;border-radius:7px">
-              @endif
-              <div>
-                <div style="font-weight:700">{{ $opt['value'] ?? '—' }}</div>
-                <div style="display:flex;gap:6px;align-items:center;margin-top:1px">
-                  @if(isset($opt['price']))<span class="mono" style="color:var(--pink-dark);font-weight:600">₱{{ number_format($opt['price'], 2) }}</span>@endif
-                  <span class="stamp {{ ($opt['stock'] ?? 0) <= 0 ? 'stamp-rejected' : 'stamp-active' }}" style="padding:1px 6px 1px 5px;font-size:9px">{{ $opt['stock'] ?? 0 }} left</span>
-                </div>
-              </div>
-            </div>
-            @empty
-            <span style="font-size:12px;color:var(--muted)">No options listed.</span>
-            @endforelse
-          </div>
-        </div>
-        @endforeach
-      </div>
+      <section class="product-variants-section" aria-label="Product variants">
+       @foreach($product->variations as $group)
+       <div class="product-variant-table-wrap"><table class="product-variant-table"><thead><tr><th>Variant</th><th>Price</th><th>Stock</th></tr></thead><tbody>
+        @forelse(($group['options'] ?? []) as $opt)
+        <tr><td><div class="product-variant-identity">@if(!empty($opt['image']))<img src="{{ Storage::url($opt['image']) }}" alt="{{ $opt['value'] ?? 'Variant' }}">@endif<span>{{ $opt['value'] ?? '—' }}</span></div></td><td>&#8369;{{ number_format($opt['price'] ?? $product->price,2) }}</td><td><span class="product-variant-stock {{ ($opt['stock'] ?? 0)<=0?'is-empty':'' }}">{{ number_format($opt['stock'] ?? 0) }}</span></td></tr>
+        @empty<tr><td colspan="3">No options listed.</td></tr>@endforelse
+       </tbody></table></div>
+       @endforeach
+      </section>
       @endif
 
     </div>

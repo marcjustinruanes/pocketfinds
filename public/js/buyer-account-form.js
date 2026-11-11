@@ -64,10 +64,12 @@
     const confirm=document.getElementById('buyerConfirmPassword');if(confirm){const check=()=>confirm.setCustomValidity(confirm.value&&confirm.value!==newPassword.value?'Passwords do not match.':'');confirm.addEventListener('input',check);newPassword.addEventListener('input',check);}
   }
   const documentModal=document.getElementById('accountDocumentModal'),image=document.getElementById('accountDocumentImage'),pdf=document.getElementById('accountDocumentPdf');
-  const closeDoc=()=>{documentModal.classList.remove('open');documentModal.setAttribute('aria-hidden','true');image.removeAttribute('src');pdf.removeAttribute('src');};
+  const closeDoc=()=>{documentModal.classList.remove('open');documentModal.setAttribute('aria-hidden','true');image.removeAttribute('src');pdf.pdfPreviewToken=null;pdf.replaceChildren();};
   document.addEventListener('click',event=>{const button=event.target.closest('[data-document-view]');if(!button)return;event.preventDefault();
     const isPdf=button.dataset.documentKind==='pdf';image.hidden=isPdf;pdf.hidden=!isPdf;
-    (isPdf?pdf:image).src=button.dataset.documentSrc;documentModal.classList.add('open');documentModal.setAttribute('aria-hidden','false');documentModal.querySelector('button').focus();
+    if(isPdf){const script=document.querySelector('script[src*="buyer-account-form.js"]');import(new URL('pdf-paper-preview.mjs',script.src).href).then(module=>{if(documentModal.classList.contains('open')&&!pdf.hidden)module.renderPdfPaper(pdf,button.dataset.documentSrc);});}
+    else {pdf.pdfPreviewToken=null;pdf.replaceChildren();image.src=button.dataset.documentSrc;}
+    documentModal.classList.add('open');documentModal.setAttribute('aria-hidden','false');documentModal.querySelector('button').focus();
   });
   const idFile=document.getElementById('profileIdFile');
   idFile?.addEventListener('change',()=>{

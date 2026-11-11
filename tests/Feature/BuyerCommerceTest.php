@@ -45,6 +45,7 @@ class BuyerCommerceTest extends TestCase
             (require database_path('migrations/'.$file.'.php'))->up();
         }
         (require database_path('migrations/2026_11_07_110000_expand_order_reviews.php'))->up();
+        (require database_path('migrations/2026_11_10_220000_add_review_follow_ups.php'))->up();
         Storage::fake('public'); Storage::fake('sensitive_documents');
         Storage::fake('local');
         $this->buyer = $this->person('buyer');
@@ -134,6 +135,30 @@ class BuyerCommerceTest extends TestCase
     private function image(string $name): UploadedFile
     {
         return UploadedFile::fake()->createWithContent($name, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jX1sAAAAASUVORK5CYII='));
+    }
+
+    public function test_seller_promotion_workspace_renders_live_scheduled_and_finished_offers(): void
+    {
+        foreach(['LIVE2026'=>[now()->subHour(),now()->addDay(),true],'SOON2026'=>[now()->addDay(),now()->addDays(2),true],'ENDED2026'=>[now()->subDays(2),now()->subDay(),false]] as $code=>[$starts,$ends,$active]){
+            DB::table('commerce_vouchers')->insert(['code'=>$code,'kind'=>'store','seller_id'=>$this->seller->id,'discount_type'=>'fixed','amount'=>20,'minimum_spend'=>100,'starts_at'=>$starts,'ends_at'=>$ends,'usage_limit'=>10,'per_buyer_limit'=>1,'is_active'=>$active]);
+        }
+        DB::table('commerce_flash_sales')->insert(['seller_id'=>$this->seller->id,'product_id'=>$this->product->id,'price'=>80,'quantity'=>5,'starts_at'=>now()->subHour(),'ends_at'=>now()->addDay(),'is_active'=>true]);
+        DB::table('commerce_allocations')->insert(['subject_id'=>'promotion-test','usage_key'=>'promotion-test','buyer_id'=>$this->buyer->id,'voucher_id'=>DB::table('commerce_vouchers')->where('code','LIVE2026')->value('id'),'quantity'=>1,'state'=>'used']);
+        DB::table('commerce_allocations')->insert(['subject_id'=>'promotion-test','usage_key'=>'promotion-test','buyer_id'=>$this->buyer->id,'flash_sale_id'=>DB::table('commerce_flash_sales')->value('id'),'quantity'=>2,'state'=>'used']);
+        $this->actingAs($this->seller)->get(route('seller.vouchers'))->assertOk()->assertSee('LIVE2026')->assertSee('SOON2026')->assertSee('ENDED2026')->assertSee('data-status="active"',false)->assertSee('data-status="scheduled"',false)->assertSee('data-status="ended"',false)->assertSee('Create a voucher');
+        $this->get(route('seller.promotions.flash'))->assertOk()->assertSee('Basket')->assertSee('80.00')->assertSee('2 / 5 units sold')->assertSee('Create a flash sale');
+        DB::table('commerce_vouchers')->delete();
+        $this->get(route('seller.vouchers'))->assertOk()->assertSee('Your first voucher starts here');
+    }
+
+    public function test_flash_sale_can_start_now_or_be_scheduled_for_later(): void
+    {
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-11 12:00:00'));
+        $this->actingAs($this->seller)->post(route('seller.commerce.flash'),['product_id'=>$this->product->id,'price'=>80,'quantity'=>5,'start_mode'=>'now','ends_at'=>now()->addHour()->toDateTimeString()])->assertSessionHasNoErrors()->assertSessionHas('success','Flash sale created and live now.');
+        $this->assertDatabaseHas('commerce_flash_sales',['product_id'=>$this->product->id,'starts_at'=>now()->toDateTimeString(),'price'=>80]);
+        $this->post(route('seller.commerce.flash'),['product_id'=>$this->product->id,'price'=>75,'quantity'=>3,'start_mode'=>'scheduled','starts_at'=>now()->addDays(2)->toDateTimeString(),'ends_at'=>now()->addDays(3)->toDateTimeString()])->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('commerce_flash_sales',2);
+        $this->post(route('seller.commerce.flash'),['product_id'=>$this->product->id,'price'=>70,'quantity'=>3,'start_mode'=>'scheduled','starts_at'=>now()->subDay()->toDateTimeString(),'ends_at'=>now()->addHour()->toDateTimeString()])->assertSessionHasErrors('starts_at');
     }
 
     public function test_shipping_rounds_weight_and_vouchers_stack_with_replacement(): void
@@ -333,6 +358,27 @@ class BuyerCommerceTest extends TestCase
             ->assertSee('data-messages-trigger', false)->assertDontSee('class="pd-back"', false);
     }
 
+    public function test_product_vouchers_keep_readable_terms_and_claim_state(): void
+    {
+        $voucherId=$this->voucher('PRODUCT20','store',20);
+        DB::table('commerce_vouchers')->where('id',$voucherId)->update(['minimum_spend'=>50]);
+        $this->actingAs($this->buyer)->get(route('buyer.product',$this->product->id))->assertOk()->assertSee('PRODUCT20')->assertSee('Min. spend ₱50.00')->assertSee('Claim voucher PRODUCT20');
+        $this->post(route('buyer.commerce.claim',$voucherId))->assertRedirect()->assertSessionHasNoErrors();
+        $this->get(route('buyer.product',$this->product->id))->assertOk()->assertSee('Claimed voucher PRODUCT20')->assertSee('claim-voucher-expiry',false);
+        $this->assertDatabaseHas('commerce_claims',['voucher_id'=>$voucherId,'buyer_id'=>$this->buyer->id]);
+    }
+
+    public function test_guest_product_voucher_claim_opens_sign_in_action(): void
+    {
+        $this->voucher('GUEST20', 'store', 20);
+        $this->get(route('guest.product', $this->product->id))
+            ->assertOk()
+            ->assertSee('GUEST20')
+            ->assertSee('id="authModal"', false)
+            ->assertSee('data-protected aria-label="Sign in to claim voucher GUEST20"', false)
+            ->assertDontSee('class="claim-voucher-button" aria-label="Claim voucher GUEST20"', false);
+    }
+
     public function test_all_commerce_pages_render_for_their_roles(): void
     {
         $this->actingAs($this->buyer)->get(route('buyer.commerce.index'))->assertRedirect(route('buyer.wishlist'));
@@ -348,27 +394,22 @@ class BuyerCommerceTest extends TestCase
         $this->actingAs($admin)->get(route('admin.commerce.index'))->assertRedirect(route('admin.products').'#platform-vouchers');
     }
 
-    public function test_item_reviews_keep_photos_when_updating_the_existing_review(): void
+    public function test_follow_up_reviews_preserve_original_rating_comment_media_and_reply(): void
     {
-        $order = Order::create(['buyer_id' => $this->buyer->id, 'seller_id' => $this->seller->id, 'status' => 'completed', 'order_number' => 'REVIEW1', 'items' => [['product_id' => $this->product->id, 'name' => 'Basket', 'price' => 100, 'qty' => 1]], 'subtotal' => 100, 'total' => 100]);
-        $order->logStatus('completed', $this->buyer->id);
-        $d = ['item_key' => 0, 'rating' => 5, 'comment' => 'Good basket', 'media' => [$this->image('photo.png')]];
-        $this->actingAs($this->buyer)->post(route('buyer.commerce.review', $order), $d)->assertRedirect()->assertSessionHasNoErrors();
-        $review = Review::first();
-        $this->assertCount(1, $review->photos);
-        Storage::disk('public')->assertExists($review->photos[0]);
-        $this->post(route('buyer.commerce.review', $order), ['item_key' => 0, 'rating' => 4])->assertSessionHasNoErrors();
-        $this->assertDatabaseCount('reviews',1);
-        $this->post(route('buyer.commerce.review.edit', [$order, $review]), ['item_key' => 0, 'rating' => 4, 'comment' => 'Updated'])->assertSessionHasNoErrors();
-        $this->post(route('buyer.commerce.review.edit', [$order, $review]), ['item_key' => 0, 'rating' => 3])->assertSessionHasNoErrors();
-        $this->assertEquals(3, $review->fresh()->rating);
-        $this->assertCount(1,$review->fresh()->photos);Storage::disk('public')->assertExists($review->fresh()->photos[0]);
-        $this->get(route('buyer.orders', ['tab' => 'completed']))->assertOk()->assertSee('Rate your order')->assertSee('Update product review');
+        $order=Order::create(['buyer_id'=>$this->buyer->id,'seller_id'=>$this->seller->id,'status'=>'completed','order_number'=>'REVIEW1','items'=>[['product_id'=>$this->product->id,'name'=>'Basket','price'=>100,'qty'=>1]],'subtotal'=>100,'total'=>100]);
+        $order->logStatus('completed',$this->buyer->id);
+        $this->actingAs($this->buyer)->post(route('buyer.commerce.review',$order),['item_key'=>0,'rating'=>5,'comment'=>'Good basket','media'=>[$this->image('original.png')]])->assertSessionHasNoErrors();
+        $review=Review::first();$review->update(['seller_reply'=>'Thank you!']);$originalMedia=$review->media;$originalPhotos=$review->photos;
+        $this->post(route('buyer.commerce.review',$order),['item_key'=>0,'rating'=>2])->assertSessionHasErrors('comment');
+        $this->post(route('buyer.commerce.review.edit',[$order,$review]),['item_key'=>0,'rating'=>2,'comment'=>'Still useful after a week','media'=>[$this->image('followup.png')]])->assertSessionHasNoErrors();
+        $review->refresh();$this->assertSame(5,(int)$review->rating);$this->assertSame('Good basket',$review->comment);$this->assertSame('Thank you!',$review->seller_reply);$this->assertSame($originalMedia,$review->media);$this->assertSame($originalPhotos,$review->photos);$this->assertNull($review->edited_at);
+        $this->assertCount(1,$review->follow_ups);$this->assertSame('Still useful after a week',$review->follow_ups[0]['comment']);Storage::disk('public')->assertExists($review->follow_ups[0]['media'][0]['path']);
+        $this->get(route('buyer.orders',['tab'=>'completed']))->assertOk()->assertSee('Follow up review')->assertSee('Post follow-up review')->assertSee('View my review')->assertSee('Still useful after a week')->assertDontSee('Update product review');
         $this->travel(31)->days();
-        $this->post(route('buyer.commerce.review.edit', [$order, $review]), ['item_key' => 0, 'rating' => 2])->assertSessionHasNoErrors();
-        $this->assertDatabaseCount('reviews',1);$this->assertEquals(2,$review->fresh()->rating);
+        $this->post(route('buyer.commerce.review',$order),['item_key'=>0,'comment'=>'Another follow-up'])->assertSessionHasNoErrors();
+        $this->assertCount(2,$review->fresh()->follow_ups);$this->assertDatabaseCount('reviews',1);
+        $this->actingAs($this->seller)->get(route('seller.feedback'))->assertOk()->assertSee('Still useful after a week')->assertSee('Another follow-up');
     }
-
     public function test_returns_require_evidence_and_restore_stock_only_once(): void
     {
         $order = Order::create(['buyer_id' => $this->buyer->id, 'seller_id' => $this->seller->id, 'status' => 'delivered', 'order_number' => 'RETURN1', 'items' => [['product_id' => $this->product->id, 'name' => 'Basket', 'price' => 100, 'qty' => 1]], 'subtotal' => 100, 'total' => 100]);
@@ -385,6 +426,54 @@ class BuyerCommerceTest extends TestCase
         $this->assertSame(21, $this->product->fresh()->stock);
         $this->post(route('commerce.return.action', $row->id), ['action' => 'received'])->assertForbidden();
         $this->assertSame(21, $this->product->fresh()->stock);
+    }
+
+    public function test_completed_orders_accept_reasoned_returns_for_cod_and_gcash_within_delivery_window(): void
+    {
+        foreach(['cod','gcash'] as $method){
+            $purchaseId=null;
+            if($method==='gcash'){
+                $purchaseId=(string)Str::uuid();
+                DB::table('gcash_purchases')->insert(['id'=>$purchaseId,'buyer_id'=>$this->buyer->id,'seller_id'=>$this->seller->id,'checkout_id'=>(string)Str::uuid(),'request_hash'=>str_repeat('a',64),'payment_method_id'=>2,'snapshot'=>'{}','amount_due'=>100,'payment_state'=>'order_placed','verified_amount'=>100,'verified_at'=>now()]);
+            }
+            $order=Order::create(['buyer_id'=>$this->buyer->id,'seller_id'=>$this->seller->id,'status'=>'completed','order_number'=>'COMPLETED-'.$method,'gcash_purchase_id'=>$purchaseId,'items'=>[['product_id'=>$this->product->id,'name'=>'Basket','price'=>100,'qty'=>1]],'subtotal'=>100,'total'=>100]);
+            $order->logStatus('delivered',$this->buyer->id);
+            $data=['item_keys'=>[0],'description'=>'The basket arrived damaged.','refund_account_name'=>'Test Buyer','refund_gcash_number'=>'9123456789'];
+            $this->actingAs($this->buyer)->post(route('buyer.commerce.return',$order),$data+['photos'=>[$this->image('reason.png')]])->assertSessionHasErrors('reason');
+            if($method==='cod')$this->post(route('buyer.commerce.return',$order),['item_keys'=>[0],'reason'=>'Damaged item','description'=>$data['description'],'photos'=>[$this->image('account.png')]])->assertSessionHasErrors(['refund_account_name','refund_gcash_number']);
+            if($method==='gcash')unset($data['refund_account_name'],$data['refund_gcash_number']);
+            $this->post(route('buyer.commerce.return',$order),$data+['reason'=>'Damaged item','photos'=>[$this->image('damage.png')]])->assertRedirect()->assertSessionHasNoErrors();
+            $request=DB::table('commerce_returns')->where('order_id',$order->id)->first();
+            $this->assertSame('pending',$request->status);
+            $this->assertEquals(100,$request->amount);
+            $this->assertSame($method==='gcash'?'Original GCash payment: '.$purchaseId:'GCash: Test Buyer / 09123456789',$request->refund_destination);
+            $this->assertSame('completed',$order->fresh()->status);
+            $this->post(route('buyer.commerce.return',$order),$data+['reason'=>'Damaged item','photos'=>[$this->image('duplicate.png')]])->assertSessionHasErrors();
+        }
+    }
+
+    public function test_completed_order_return_window_starts_at_delivery_not_completion(): void
+    {
+        $order=Order::create(['buyer_id'=>$this->buyer->id,'seller_id'=>$this->seller->id,'status'=>'completed','order_number'=>'EXPIRED-RETURN','items'=>[['product_id'=>$this->product->id,'name'=>'Basket','price'=>100,'qty'=>1]],'subtotal'=>100,'total'=>100]);
+        $order->logStatus('delivered',$this->buyer->id);
+        DB::table('order_status_history')->where('order_id',$order->id)->update(['created_at'=>now()->subDays(8)]);
+        $this->actingAs($this->buyer)->post(route('buyer.commerce.return',$order),['item_keys'=>[0],'reason'=>'Damaged item','description'=>'The basket arrived broken.','refund_account_name'=>'Test Buyer','refund_gcash_number'=>'09123456789','photos'=>[$this->image('late.png')]])->assertSessionHasErrors();
+        $this->assertDatabaseMissing('commerce_returns',['order_id'=>$order->id]);
+    }
+
+    public function test_refund_window_bypass_is_local_only_and_old_orders_can_be_tested(): void
+    {
+        $order=Order::create(['buyer_id'=>$this->buyer->id,'seller_id'=>$this->seller->id,'status'=>'completed','order_number'=>'LOCAL-REFUND','items'=>[['product_id'=>$this->product->id,'name'=>'Basket','price'=>100,'qty'=>1]],'subtotal'=>100,'total'=>100]);
+        $order->logStatus('delivered',$this->buyer->id);
+        DB::table('order_status_history')->where('order_id',$order->id)->update(['created_at'=>now()->subMonths(2)]);
+        config(['buyer-commerce.refund_test_mode'=>true]);
+        $this->assertFalse(BuyerCommerce::returnWindowOpen($order));
+        $this->app['env']='local';
+        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class);
+        $this->assertTrue(BuyerCommerce::returnWindowOpen($order));
+        $this->actingAs($this->buyer)->get(route('buyer.orders',['tab'=>'completed']))->assertOk()->assertSee('Request Return / Refund')->assertDontSee('Local testing: the refund time limit is temporarily disabled.');
+        $this->post(route('buyer.commerce.return',$order),['item_keys'=>[0],'reason'=>'Damaged item','description'=>'Testing an older delivered order.','refund_account_name'=>'Test Buyer','refund_gcash_number'=>'09123456789','photos'=>[$this->image('local.png')]])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('commerce_returns',['order_id'=>$order->id,'status'=>'pending']);
     }
 
     private function roleAccount(string $role): User
@@ -413,7 +502,8 @@ class BuyerCommerceTest extends TestCase
         }
         $this->actingAs($this->seller)->get(route('seller.account'))->assertOk()->assertSee('id="shipping-rates"', false)->assertSee('Vacation mode')->assertDontSee('Charged once per order');
         $this->get(route('seller.vouchers'))->assertOk()->assertSee('name="starts_at"', false);
-        $this->get(route('seller.inventory'))->assertOk()->assertSee('id="flash-sales"', false);
+        $this->get(route('seller.inventory'))->assertOk()->assertDontSee('id="flash-sales"', false);
+        $this->get(route('seller.promotions.flash'))->assertOk()->assertSee('id="flash-sales"', false);
         $this->get(route('seller.orders', ['status' => 'refunds']))->assertOk()->assertSee('Return / Refund');
         $this->actingAs($this->roleAccount('admin'))->get(route('admin.products'))->assertOk()->assertSee('id="platform-vouchers"', false);
         $this->get(route('admin.complaints'))->assertOk()->assertSee('id="returns-refunds"', false);
@@ -579,15 +669,14 @@ class BuyerCommerceTest extends TestCase
             ->assertSee('Buyer')
             ->assertSee('Contact number')
             ->assertSee('09171234567')
-            ->assertSee('Order date')
-            ->assertSee('Order date &amp; time',false);
+            ->assertSee('Date &amp; time',false);
         $this->actingAs($this->seller)->get(route('seller.orders'))
             ->assertOk()
-            ->assertSee('Customer:')
+            ->assertSee('Customer name')
             ->assertSee('Buyer')
-            ->assertSee('Contact:')
+            ->assertSee('Contact number')
             ->assertSee('09171234567')
-            ->assertSee('Date &amp; time:', false);
+            ->assertSee('Date &amp; time', false);
     }
 
     public function test_flash_sales_render_in_the_existing_deals_gallery_and_wishlist_is_separate(): void

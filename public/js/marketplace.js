@@ -623,13 +623,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ── Protected actions ── (preventDefault too: some of these sit inside a product-card
     // <a>, e.g. the wishlist heart, and must not also navigate the browser to the product)
-    document.querySelectorAll("[data-protected]").forEach(b =>
-        b.addEventListener("click", e => {
-            e.preventDefault();
-            e.stopPropagation();
-            openModal();
-        })
-    );
+    document.addEventListener("click", e => {
+        const protectedAction = e.target.closest?.("[data-protected]");
+        if (!protectedAction) return;
+        e.preventDefault();
+        e.stopPropagation();
+        openModal();
+    });
 
     // ── Category icon map ──
 

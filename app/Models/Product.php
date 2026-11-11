@@ -181,7 +181,12 @@ class Product extends Model
     protected static function boot()
     {
         parent::boot();
-        static::creating(fn ($m) => $m->id = $m->id ?: (string) Str::uuid());
+        static::saving(function (Product $product) {
+            $product->id = $product->id ?: (string) Str::uuid();
+            if (blank($product->sku)) {
+                $product->sku = 'PF-'.strtoupper(str_replace('-', '', $product->id));
+            }
+        });
     }
 
     public function seller()

@@ -7,6 +7,10 @@ use Illuminate\Validation\ValidationException;
 
 class GcashPurchase extends Model
 {
+    public function usesAdminReview(): bool
+    {
+        return $this->review_flow === 'admin';
+    }
     public function productLabel(): string
     {
         $items = $this->snapshot['items'] ?? [];
@@ -21,7 +25,7 @@ class GcashPurchase extends Model
             if ($p->isDirty('payment_reference') && $p->getOriginal('payment_reference') !== null) {
                 throw ValidationException::withMessages(['gcash' => 'The recorded payment reference is immutable.']);
             }
-            if ($p->isDirty(['buyer_id', 'seller_id', 'checkout_id', 'request_hash', 'payment_method_id', 'snapshot', 'amount_due'])) {
+            if ($p->isDirty(['buyer_id', 'seller_id', 'checkout_id', 'request_hash', 'payment_method_id', 'snapshot', 'amount_due', 'review_flow'])) {
                 throw ValidationException::withMessages(['gcash' => 'Purchase snapshots and ownership are immutable.']);
             }
         });

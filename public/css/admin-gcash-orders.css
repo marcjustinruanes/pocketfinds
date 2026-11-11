@@ -1,0 +1,68 @@
+.admin-gcash-orders{--ink:#593346;--border:#eadfe6;--pink-soft:#fcf1f7;--muted:#876b7b;color:#593346;font-family:Inter,system-ui,sans-serif}
+.admin-gcash-orders .order-card-head,.admin-gcash-orders .order-shop{display:flex;align-items:center;justify-content:space-between}
+.admin-gcash-orders .order-shop{justify-content:flex-start;gap:12px}
+.admin-gcash-orders .order-tabs .tab{text-decoration:none}
+.admin-gcash-orders .orders-search-icon{position:absolute;left:13px;top:50%;display:flex;transform:translateY(-50%)}
+.buyer-pages.buyer-orders-page.admin-gcash-orders .orders-toolbar{grid-template-columns:minmax(260px,520px) minmax(145px,180px) minmax(160px,180px);justify-content:space-between;align-items:end}
+.buyer-pages.buyer-orders-page.admin-gcash-orders .orders-search-field{width:100%;max-width:520px}
+.buyer-pages.buyer-orders-page.admin-gcash-orders .admin-gcash-date-field{padding-top:0}
+.buyer-pages.buyer-orders-page.admin-gcash-orders .orders-filter-field>span{background:transparent}
+.admin-gcash-orders .admin-platform-account-button{width:100%;max-width:180px;height:44px!important;min-height:44px!important;max-height:44px;box-sizing:border-box;padding:0 10px;align-self:end;white-space:nowrap;font-size:12px;line-height:1.3;display:inline-flex;align-items:center;justify-content:center}
+.admin-platform-account-modal{position:fixed;inset:0;z-index:20010;display:none;align-items:center;justify-content:center;padding:16px;background:rgb(37 24 34 / 52%);backdrop-filter:blur(3px)}
+.admin-platform-account-modal.open{display:flex}.admin-platform-account-modal .order-details-dialog{width:min(500px,100%);height:auto;max-height:calc(100dvh - 32px);overflow:auto;background:#fff;border:1px solid #eadfe6;border-radius:18px;box-shadow:0 24px 70px rgb(55 30 45 / 22%)}.admin-platform-account-hero{display:flex;align-items:center;gap:13px;padding:22px 24px;border-bottom:1px solid #eadfe6;background:linear-gradient(135deg,#fffafd,#fcf3f8)}.admin-platform-account-icon{display:grid;place-items:center;width:44px;height:44px;border-radius:13px;background:#f9e7f0;color:#bc387f}.admin-platform-account-hero h3{margin:0;color:#593346;font-size:18px}.admin-platform-account-hero p{margin:4px 0 0;color:#987f8d;font-size:11px}.admin-platform-account-hero .order-details-close-icon{margin-left:auto}.admin-platform-account-body{padding:24px}.admin-platform-account-fields{display:grid;gap:18px}.admin-platform-account-body label{display:grid;gap:7px;color:#775565;font-size:12px;font-weight:650}.admin-platform-account-body label>span{color:#6f5160}.admin-platform-account-body input{box-sizing:border-box;width:100%;height:46px;padding:10px 12px;border:1px solid #e5d6df;border-radius:9px;background:#fff;color:#593346;font:13px Inter,system-ui,sans-serif;transition:border-color .15s,box-shadow .15s}.admin-platform-account-body input:focus{outline:0;border-color:#bc387f;box-shadow:0 0 0 3px rgb(188 56 127 / 12%)}.admin-platform-account-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;padding-top:18px;border-top:1px solid #f0e7ec}.admin-platform-account-actions .btn,.admin-platform-account-actions .gcash-button{min-width:112px;min-height:40px;padding:9px 15px;border-radius:9px;font-size:12px;font-weight:650}.admin-platform-account-actions .gcash-button{border:1px solid #b42c72;background:#b42c72;color:#fff;box-shadow:0 4px 12px rgb(180 44 114 / 18%)}.admin-platform-account-actions .gcash-button:hover{background:#98245f}.admin-platform-account-actions .btn{border:1px solid #ead6e1;background:#fff;color:#775565}
+.admin-gcash-orders .order-product-row{display:grid;grid-template-columns:90px minmax(0,1fr) auto;gap:16px;align-items:center;padding:16px 0;border-bottom:1px solid #f0e8ed}
+.admin-gcash-orders .order-product-row:last-child{border-bottom:0}
+.admin-gcash-orders .order-product-image{display:grid;place-items:center;width:90px;height:90px;overflow:hidden;border:1px solid #eee3e9;border-radius:8px;color:#987f8d}
+.admin-gcash-orders .order-product-image img{width:100%;height:100%;object-fit:cover}
+.admin-gcash-orders .order-product-copy{min-width:0}
+.admin-gcash-orders .order-product-copy strong{display:block;color:#593346;font-size:13px;line-height:1.5}
+.admin-gcash-orders .order-product-copy span{display:inline-block;margin-top:7px;padding:3px 8px;border:1px solid #eee3e9;border-radius:5px;background:#faf5f8;color:#876b7b;font-size:10px}
+.admin-gcash-orders .order-line-end{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.admin-gcash-orders .order-line-price{color:#bc387f;font-size:16px}
+.admin-gcash-orders .order-unit-price,.admin-payment-buyer{color:#987f8d;font-size:11px}
+.admin-gcash-orders .order-details-button{font-size:11px;text-decoration:none}
+.admin-payment-status{margin:0;padding:5px 10px;border:1px solid #eadfe6;border-radius:999px;background:#faf5f8;color:#876b7b;text-transform:uppercase;font-size:10px;white-space:nowrap}
+.admin-payment-status.status-order_placed,.admin-payment-status.status-verified{background:#eff8f2;border-color:#b9dcc5;color:#267044}
+.admin-payment-status.status-proof_submitted{background:#edf4ff;border-color:#ccd9ef;color:#385d9d}
+.admin-payment-status.status-awaiting_payment,.admin-payment-status.status-underpaid{background:#fff8e8;border-color:#eddba5;color:#946b1c}
+.admin-payment-status.status-rejected,.admin-payment-status.status-manual_resolution{background:#fff0f1;border-color:#edc5ca;color:#a13b43}
+.admin-payment-status.status-cancelled{background:#fff0f1;border-color:#edc5ca;color:#a13b43}
+.admin-payment-status.status-refunds{background:#f5f0ff;border-color:#d9c9f1;color:#73539f}
+.admin-payment-tools{margin:0 0 18px;border:1px solid #eadfe6;border-radius:10px;background:#fff}
+.admin-payment-tools>summary{padding:13px 16px;cursor:pointer;font-size:12px;font-weight:600}
+.admin-payment-tools>.gcash-page{padding:0 16px 16px}.admin-payment-tools .gcash-nav{display:none}
+.admin-payment-empty,.admin-payment-empty-item{padding:24px;border:1px solid #eadfe6;border-radius:11px;background:#fff}
+.admin-gcash-orders .order-details-modal{position:fixed;inset:0;z-index:20000;display:none;align-items:center;justify-content:center;padding:16px;background:rgb(37 24 34 / 52%);backdrop-filter:blur(3px)}
+.admin-gcash-orders .order-details-modal.open{display:flex}
+.admin-gcash-orders .order-details-head{display:flex;justify-content:space-between;gap:16px;border-bottom:1px solid #eadfe6;background:#fff}
+.admin-gcash-orders .order-details-head h3{margin:0;color:#593346}
+.admin-gcash-orders .order-details-label{padding:3px 9px;border:1px solid #e6c9d9;border-radius:999px;color:#987f8d;font-size:10px;white-space:nowrap}
+.admin-gcash-orders .order-details-dialog{box-sizing:border-box}
+.admin-platform-account-body .gcash-mobile-input{display:flex;align-items:center;width:100%;height:43px;box-sizing:border-box;padding:0 11px;border:1px solid #eadce4;border-radius:8px;background:#fff}.admin-platform-account-body .gcash-mobile-input b{flex:none;color:#775565;font-size:13px}.admin-platform-account-body .gcash-mobile-input input{height:auto;padding:0;border:0;background:transparent}.admin-platform-account-body .gcash-mobile-input:focus-within{border-color:#bc387f}
+.admin-platform-account-modal .order-details-dialog{width:min(520px,100%);border-radius:20px}
+.admin-platform-account-hero{min-height:82px;padding:20px 24px;background:linear-gradient(115deg,#fff 0%,#fcf3f8 100%)}
+.admin-platform-account-icon{width:48px;height:48px;border:1px solid #f1d3e2;border-radius:15px;background:#fff;box-shadow:0 5px 14px rgb(111 60 86 / 8%)}
+.admin-platform-account-hero h3{font-size:19px;letter-spacing:-.02em}
+.admin-platform-account-hero .order-details-close-icon{display:grid;place-items:center;width:38px;height:38px;padding:0;border:0;border-radius:12px;background:transparent;color:#876b7b;cursor:pointer;transition:color .15s}
+.admin-platform-account-hero .order-details-close-icon:hover{background:transparent;color:#b42c72}
+.admin-platform-account-body{padding:25px 26px 22px}
+.admin-platform-account-fields{gap:19px}
+.admin-platform-account-body label{gap:8px;font-size:12px}
+.admin-platform-account-body input,.admin-platform-account-body .gcash-mobile-input{height:48px;border-radius:11px}
+.admin-platform-account-body input{padding:0 14px;font-size:14px}
+.admin-platform-account-body .gcash-mobile-input{padding:0 14px}
+.admin-platform-account-body .gcash-mobile-input b{padding-right:11px;margin-right:11px;border-right:1px solid #eadce4;font-size:14px}
+.admin-platform-account-actions{margin:25px -26px -22px;padding:17px 26px 22px;background:#fcf8fa}
+.admin-platform-account-actions .btn,.admin-platform-account-actions .gcash-button{min-width:116px;min-height:44px;padding:0 18px;border-radius:11px;font-size:13px;font-weight:700;transition:background .15s,border-color .15s,box-shadow .15s,transform .15s}
+.admin-platform-account-actions .btn{border-color:#e8d8e1;background:#fff;color:#765766}
+.admin-platform-account-actions .btn:hover{border-color:#d8afc2;background:#fff9fc;color:#593346}
+.admin-platform-account-actions .gcash-button{min-width:170px;border-color:#b42c72;background:linear-gradient(135deg,#c33f86,#a92368);box-shadow:0 6px 14px rgb(180 44 114 / 22%)}
+.admin-platform-account-actions .gcash-button:hover{background:linear-gradient(135deg,#b42c72,#921c5b);box-shadow:0 8px 18px rgb(180 44 114 / 27%);transform:translateY(-1px)}
+.admin-platform-account-actions :is(.btn,.gcash-button):focus-visible,.admin-platform-account-hero .order-details-close-icon:focus-visible{outline:3px solid rgb(188 56 127 / 24%);outline-offset:2px}
+@media(max-width:520px){.admin-platform-account-body{padding:20px}.admin-platform-account-actions{margin:22px -20px -20px;padding:15px 20px 20px}.admin-platform-account-actions .btn,.admin-platform-account-actions .gcash-button{min-width:0;flex:1}}
+@media(max-width:700px){.buyer-pages.buyer-orders-page.admin-gcash-orders .orders-toolbar{grid-template-columns:minmax(0,1fr) minmax(145px,220px);justify-content:stretch}.buyer-pages.buyer-orders-page.admin-gcash-orders .orders-search-field{grid-column:1/-1;max-width:none}.buyer-pages.buyer-orders-page.admin-gcash-orders .admin-platform-account-button{grid-column:2;grid-row:2;max-width:none}}
+@media(max-width:600px){.admin-gcash-orders .order-product-row{grid-template-columns:64px minmax(0,1fr)}.admin-gcash-orders .order-product-image{width:64px;height:64px}.admin-gcash-orders .order-shop{flex-wrap:wrap}.admin-gcash-orders .order-line-end{grid-column:2;align-items:flex-start}.buyer-pages.buyer-orders-page.admin-gcash-orders .orders-toolbar{grid-template-columns:minmax(0,1fr) minmax(145px,1fr)}.buyer-pages.buyer-orders-page.admin-gcash-orders .admin-platform-account-button{grid-column:2;grid-row:2}}
+.admin-gcash-orders .admin-payment-status.order-progress-capsule{display:inline-flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap;max-width:100%;white-space:normal;text-transform:uppercase;text-align:center}
+.admin-gcash-orders .order-progress-divider{opacity:.45;font-weight:400}
+.admin-gcash-orders .order-progress-detail{font-weight:500;overflow-wrap:anywhere}
+@media(max-width:560px){.admin-gcash-orders .order-card-head{flex-wrap:wrap;gap:10px}.admin-gcash-orders .admin-payment-status.order-progress-capsule{justify-content:flex-start;text-align:left}}

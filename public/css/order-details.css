@@ -34,6 +34,9 @@
 .order-cancel-confirm::backdrop { background: rgb(20 16 24 / 55%); }
 .order-cancel-confirm h3 { margin: 0 0 16px; font-size: 19px; }
 .order-cancel-confirm p { font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.order-cancel-selected-reason{display:grid;gap:6px;margin:18px 0;padding:14px 16px;border:1px solid #edc8db;border-radius:9px;background:#fff7fb}
+.order-cancel-selected-reason span{color:#8c7381;font-size:12px}
+.order-cancel-selected-reason strong{color:#593346;font-size:16px;line-height:1.5;overflow-wrap:anywhere}
 .order-cancel-confirm .btn { min-height: 44px; font-size: 14px; padding: 10px 14px; }
 .order-cancel-confirm .order-modal-actions { flex-wrap: wrap; }
 .order-cancel-confirm button:focus-visible { outline: 3px solid #1b6b91; outline-offset: 2px; }
@@ -179,6 +182,7 @@
 [data-order-summary] .order-detail-info-grid > div { grid-template-columns: 115px minmax(0,1fr); gap: 10px; }
 .order-products-summary { min-width: 0; overflow: hidden; border: 1px solid #eee3e9; border-radius: 12px; background: #fff; color: #593346; }
 .order-products-summary h3 { margin: 0; padding: 15px; border-bottom: 1px solid #f1e9ed; font-size: 14px; text-align: center; }
+[data-order-summary] :is(.order-checkout-summary, .order-products-summary) > h3 { font: 700 14px/1.5 Inter, system-ui, sans-serif; color: #593346; }
 .order-products-summary table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .order-products-summary :is(th,td) { padding: 12px; text-align: left; vertical-align: top; border-bottom: 1px solid #f1e9ed; }
 .order-products-summary th { color: #8c7381; font-size: 10px; font-weight: 500; }
@@ -199,3 +203,37 @@
 .order-summary-product-image img { width: 100%; height: 100%; object-fit: cover; }
 @media(max-width:1050px) and (min-width:761px) { .order-summary-columns { grid-template-columns: minmax(170px,.6fr) minmax(0,1.1fr); } }
 @media(max-width:760px) { .order-summary-columns { grid-template-columns: 1fr; } }
+
+[data-order-summary] .order-details-heading-actions{display:flex;flex-direction:row-reverse;align-items:center;gap:6px;flex-shrink:0;margin-left:auto}
+[data-order-summary] .order-details-close-icon{display:grid;place-items:center;width:30px;height:30px;padding:0;border:0;border-radius:50%;background:transparent;color:#987f8d;cursor:pointer}
+[data-order-summary] .order-details-close-icon:hover{background:#fceff6;color:#af3574}
+[data-order-summary] .order-details-close-icon:focus-visible{outline:2px solid #af3574;outline-offset:2px}
+.seller-orders-page .stamp{text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+.seller-orders-page .order-progress-capsule{display:inline-flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:7px;max-width:100%;white-space:normal;text-align:center}
+.seller-orders-page .order-progress-divider{opacity:.45;font-weight:400}
+.seller-orders-page .order-progress-detail{font-weight:500;overflow-wrap:anywhere}
+@media(max-width:560px){.seller-orders-page .order-card-s-head{flex-wrap:wrap;gap:10px}.seller-orders-page .order-progress-capsule{justify-content:flex-start;text-align:left}}
+.seller-order-summary-modal [data-seller-cancel-panel]{margin-top:16px;padding:16px;border:1px solid #edc8db;border-radius:10px;background:#fff7fb}
+.seller-order-summary-modal [data-seller-cancel-panel][hidden]{display:none}
+.seller-order-summary-modal [data-seller-cancel-panel] .seller-cancel-fields{padding:0}
+.seller-order-summary-modal [data-seller-cancel-panel] .seller-cancel-actions{display:flex;align-items:center;flex-wrap:wrap;padding:14px 0 0;justify-content:flex-end;gap:10px}
+.seller-order-summary-modal [data-seller-cancel-panel] .seller-cancel-actions .btn{cursor:pointer}
+.seller-order-summary-modal [data-seller-cancel-panel] :is(select,textarea):focus-visible{outline:none;box-shadow:none;border-color:var(--pink)}
+.seller-order-summary-modal.seller-cancelling .order-details-footer{display:none}
+[data-order-summary].order-cancelling .order-details-footer{display:none!important}
+[data-order-summary] .order-details-footer[hidden]{display:none!important}
+[data-order-summary] .order-cancel-panel[hidden]{display:none}
+[data-order-summary] .order-cancel-panel .order-modal-actions,.order-cancel-confirm .order-modal-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px;margin-top:14px}
+[data-order-summary] .order-cancel-panel .order-modal-actions .btn,.order-cancel-confirm .order-modal-actions .btn{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;min-height:44px;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer}
+[data-order-summary] .order-cancel-panel .order-modal-actions .btn-outline,.order-cancel-confirm .order-modal-actions .btn-outline{border:1px solid #dfcbd5;background:#fff;color:#593346}
+[data-order-summary] .order-cancel-panel .order-modal-actions .btn-danger,.order-cancel-confirm .order-modal-actions .btn-danger{border:1px solid #db9ba5;background:#fff;color:#a32c3f}
+[data-order-summary]:not(.seller-order-summary-modal) .order-cancel-panel{padding:16px;border:1px solid #edc8db;border-radius:10px;background:#fff7fb}
+[data-order-summary] .order-cancel-panel :is(select,textarea){box-sizing:border-box;width:100%;padding:10px;border:1px solid #dfcbd5;border-radius:7px;background:#fff;color:#593346;font:400 13px/1.5 Inter,system-ui,sans-serif}
+[data-order-summary] .order-cancel-panel select option{font-size:13px;font-weight:400}
+[data-order-summary] .order-cancel-panel :is(select,textarea):focus-visible{outline:none;box-shadow:none;border-color:var(--pink,#bc387f)}
+.seller-order-summary-modal [data-seller-cancel-panel] .form-row{display:grid;gap:6px;margin-bottom:12px}
+.seller-order-summary-modal [data-seller-cancel-panel] :is(select,textarea){width:100%;padding:10px;border:1px solid #dfcbd5;border-radius:7px;background:#fff;color:#593346;font:inherit}
+.seller-order-summary-modal [data-seller-cancel-panel] select{font:400 13px/1.5 Inter,system-ui,sans-serif}
+.seller-order-summary-modal [data-seller-cancel-panel] select option{font-size:13px;font-weight:400}
+.seller-order-summary-modal .order-details-footer form{margin:0}
+.seller-order-summary-modal .order-details-footer:empty{display:none}

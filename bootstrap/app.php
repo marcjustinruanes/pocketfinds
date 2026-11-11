@@ -39,6 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'buyer' => BuyerMiddleware::class,
             'seller' => SellerMiddleware::class,
             'rider' => RiderMiddleware::class,
+            'gcash.seller.block' => \App\Http\Middleware\BlockSellerGcashAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

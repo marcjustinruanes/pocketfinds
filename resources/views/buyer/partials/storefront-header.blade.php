@@ -1,5 +1,6 @@
 @php
   $notifications = $notifications ?? \Illuminate\Support\Facades\DB::table('notifications')->where('user_id', auth()->id())->orderByDesc('created_at')->limit(8)->get();
+  $notificationUnreadCount = \Illuminate\Support\Facades\DB::table('notifications')->where('user_id', auth()->id())->where('is_read',false)->count();
   $cartCount = $cartCount ?? (int) \App\Models\CartItem::where('buyer_id', auth()->id())->sum('qty');
   $unreadMessages = $unreadMessages ?? \App\Models\Message::where('receiver_id', auth()->id())->where('read', false)->count();
   $storefrontAnchor = request()->routeIs('buyer.dashboard') ? '' : route('buyer.dashboard');
@@ -22,43 +23,7 @@
       <a class="nav-link" href="{{ $storefrontAnchor }}#about">About</a>
     </nav>
     <div class="header-actions">
-      <details class="pf-buyer-menu">
-        <summary class="pf-acct-icon" aria-label="Notifications" title="Notifications">
-          @include('buyer.partials.icon', ['name' => 'bell', 'size' => 18])
-          @if($notifications->where('is_read', false)->count())<span class="pf-buyer-dot"></span>@endif
-        </summary>
-        <div class="pf-buyer-dropdown pf-buyer-notifications">
-          <div class="notif-dropdown-head">
-            <div><strong>Notifications</strong><small>Recent account activity</small></div>
-            @if($notifications->where('is_read', false)->count())<span>{{ $notifications->where('is_read', false)->count() }} new</span>@endif
-          </div>
-          @if($notifications->where('is_read', false)->count())
-          <form class="notif-mark-read" method="POST" action="{{ route('account.notifications.read-all') }}">@csrf<button type="submit">Mark all as read</button></form>
-          @endif
-          <div class="notif-list">
-          @forelse($notifications as $notification)
-          @php
-            $notificationStyle = match ($notification->notification_type ?? '') {
-              'order_status', 'order_delivered', 'delivery_assigned', 'pickup_assigned' => ['package', 'is-order'],
-              'delivery_failed', 'doc_rejected', 'product_rejected' => ['x', 'is-danger'],
-              'doc_approved', 'product_approved' => ['check', 'is-success'],
-              'review_reply' => ['chat', 'is-message'],
-              'announcement' => ['bell', 'is-announcement'],
-              default => ['bell', 'is-announcement'],
-            };
-          @endphp
-          <a href="{{ route('buyer.notifications.open', $notification->id) }}" class="notif-item {{ $notification->is_read ? 'read' : '' }}">
-            <span class="notif-entry-icon {{ $notificationStyle[1] }}">@include('buyer.partials.icon', ['name' => $notificationStyle[0], 'size' => 16])</span>
-            <span class="notif-item-copy"><strong>{{ $notification->title ?: 'PocketFinds update' }}</strong><span>{{ $notification->message }}</span><small class="notif-item-time">{{ \Carbon\Carbon::parse($notification->created_at)->diffForHumans() }}</small></span>
-            @if(! $notification->is_read)<span class="dot" aria-label="Unread"></span>@endif
-          </a>
-          @empty
-          <p class="notif-empty">You're all caught up. New account and order updates will appear here.</p>
-          @endforelse
-          </div>
-          <div class="notif-footer"><a href="{{ route('buyer.announcements') }}">View announcements</a></div>
-        </div>
-      </details>
+      @include('account.partials.notification-menu', ['panelNotifications'=>$notifications, 'panelUnreadCount'=>$notificationUnreadCount, 'panelOpenRoute'=>'buyer.notifications.open', 'panelFooterUrl'=>route('buyer.announcements'), 'panelFooterLabel'=>'View announcements'])
       @if(\App\Services\BuyerCommerce::installed())
       <a class="pf-acct-icon" href="{{ route('buyer.wishlist') }}" title="Wishlist" aria-label="Wishlist">
         @include('buyer.partials.icon', ['name' => 'wishlist', 'size' => 18])
@@ -76,9 +41,6 @@
           <div class="pf-buyer-identity"><strong>{{ auth()->user()->given_names }} {{ auth()->user()->last_name }}</strong><small>Buyer account</small></div>
 <a href="{{ route('buyer.orders') }}" @if(request()->routeIs('buyer.orders')) aria-current="page" @endif>@include('buyer.partials.icon', ['name' => 'package', 'size' => 16]) My Orders</a>
 @if(\App\Services\BuyerCommerce::installed())
-@endif
-@if(\App\Services\GcashInventory::installed())
-<a href="{{ route('gcash.index') }}" @if(request()->routeIs('gcash.*')) aria-current="page" @endif>@include('buyer.partials.icon', ['name' => 'wallet', 'size' => 16]) GCash payments</a>
 @endif
 <a href="{{ route('buyer.account') }}" @if(request()->routeIs('buyer.account*')) aria-current="page" @endif>@include('buyer.partials.icon', ['name' => 'user', 'size' => 16]) My Account</a>
           <form method="POST" action="{{ route('buyer.logout') }}">@csrf<button type="submit">@include('buyer.partials.icon', ['name' => 'logout', 'size' => 16]) Sign Out</button></form>

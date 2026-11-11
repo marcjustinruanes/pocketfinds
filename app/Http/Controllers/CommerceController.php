@@ -61,7 +61,7 @@ class CommerceController extends Controller
         $user = $this->emailAccount($r);
         DB::table('notifications')->where('user_id', $user->id)->where('is_read', false)->update(['is_read' => true]);
 
-        return back()->with('success', 'All notifications marked as read.');
+        return $r->expectsJson() ? response()->json(['read' => true]) : back();
     }
 
     public function notificationOpen(Request $r, string $id)
@@ -88,8 +88,18 @@ class CommerceController extends Controller
             return redirect()->route($actor->account_type==='rider'?'rider.remittances':'logistics.cash-desk',['handover'=>$handover->id]);
         }
         DB::table('notifications')->where('id', $id)->where('user_id', $user->id)->update(['is_read' => true]);
+        if($notification->notification_type==='gcash_purchase') {
+            if($user->is_admin) return redirect()->route('gcash.show',$notification->reference_id);
+            if($user->account_type==='seller') return redirect()->route('seller.orders',['payment'=>'gcash']);
+            return redirect()->route('buyer.orders',['payment'=>'gcash','payment_purchase'=>$notification->reference_id]);
+        }
         if ($user->is_admin) {
-            return redirect(route('admin.complaints').'#returns-refunds');
+            return match ($notification->notification_type) {
+                'product_pending', 'product_approved', 'product_rejected' => redirect()->route('admin.products'),
+                'registration', 'new_registration', 'doc_approved', 'doc_rejected' => redirect()->route('admin.registrations'),
+                'announcement' => redirect()->route('admin.announcements'),
+                default => redirect(route('admin.complaints').'#returns-refunds'),
+            };
         }
 
         return match ($user->account_type) {
@@ -182,7 +192,7 @@ class CommerceController extends Controller
         $u = $this->buyer($r);
         DB::table('notifications')->where('user_id', $u->id)->where('is_read', false)->update(['is_read' => true]);
 
-        return back()->with('success', 'All notifications marked as read.');
+        return $r->expectsJson() ? response()->json(['read' => true]) : back();
     }
 
     public function emailCode(Request $r)
@@ -308,7 +318,11 @@ class CommerceController extends Controller
             return $result;
         }, 3);
 
-        return redirect()->route($result['kind'] === 'gcash' ? 'gcash.index' : 'buyer.orders')->with('success', $result['kind'] === 'gcash' ? 'Stock reserved for one hour. Follow the GCash instructions to pay.' : 'Order placed.');
+        $adminFlow=$result['kind']==='gcash' && \App\Models\GcashPurchase::whereIn('id',$result['ids'])->get()->contains(fn($purchase)=>$purchase->usesAdminReview());
+        $destination=$result['kind']==='gcash'
+            ? route('buyer.orders',['payment'=>'gcash','payment_purchase'=>$result['ids'][0]??null])
+            : route('buyer.orders');
+        return redirect($destination)->with('success', $adminFlow ? 'Order placed. Complete GCash payment from My Orders for admin review.' : ($result['kind'] === 'gcash' ? 'Your GCash purchase is ready in My Orders.' : 'Order placed.'));
     }
 
     public function management(Request $r)
@@ -395,7 +409,10 @@ class CommerceController extends Controller
     {
         $u = $this->manager($r);
         abort_if($u->is_admin, 403);
-        $d = $r->validate(['product_id' => 'required|string', 'price' => 'required|numeric|min:1|max:1000000', 'quantity' => 'required|integer|min:1|max:99999', 'starts_at' => 'required|date|after_or_equal:now', 'ends_at' => 'required|date|after:starts_at']);
+        $r->validate(['start_mode'=>'nullable|in:now,scheduled']);
+        $startNow=$r->input('start_mode')==='now';
+        if($startNow)$r->merge(['starts_at'=>now()->toDateTimeString()]);
+        $d = $r->validate(['product_id' => 'required|string', 'price' => 'required|numeric|min:1|max:1000000', 'quantity' => 'required|integer|min:1|max:99999', 'starts_at' => $startNow?'required|date':'required|date|after_or_equal:now', 'ends_at' => 'required|date|after:starts_at']);
         DB::transaction(function () use ($u, $d) {
             $p = Product::where('seller_id', $u->id)->where('status', 'active')->lockForUpdate()->findOrFail($d['product_id']);
             if ($d['quantity'] > $p->total_stock || $d['price'] >= $p->price) {
@@ -405,7 +422,7 @@ class CommerceController extends Controller
             }DB::table('commerce_flash_sales')->insert($d + ['seller_id' => $u->id]);
         });
 
-        return back()->with('success', 'Flash sale scheduled.');
+        return back()->with('success', $startNow?'Flash sale created and live now.':'Flash sale created and scheduled.');
     }
 
     public function endPromotion(Request $r, string $kind, int $id)
@@ -444,8 +461,8 @@ class CommerceController extends Controller
         $d = $r->validate([
             'review_type' => 'nullable|in:product,shop,rider',
             'item_key' => 'required_if:review_type,product|nullable|integer|min:0',
-            'rating' => 'required|integer|between:1,5',
-            'comment' => 'nullable|string|max:500',
+            'rating' => ($requestedType === 'product' && $hasExistingReview ? 'nullable' : 'required').'|integer|between:1,5',
+            'comment' => ($requestedType === 'product' && $hasExistingReview ? 'required_without:media' : 'nullable').'|string|max:500',
             'media' => 'nullable|array|max:5',
             'media.*' => 'file|mimes:jpg,jpeg,png,mp4,mov,qt|max:20480',
         ]);
@@ -487,6 +504,17 @@ class CommerceController extends Controller
             } elseif ($existing) {
                 $review = $existing;
             }
+            if ($existing) {
+                if (!filled($d['comment'] ?? null) && !$r->hasFile('media')) $this->flow()->fail('Add a comment or media for your follow-up review.', 'comment');
+                $attachments=[];
+                foreach ($r->file('media', []) as $file) {
+                    $attachments[]=['path'=>app(MediaLifecycle::class)->store($file,'review-media','public'),'type'=>str_starts_with((string)$file->getMimeType(),'video/')?'video':'image'];
+                }
+                $followUps=$existing->follow_ups ?? [];
+                $followUps[]=['comment'=>$d['comment'] ?? null,'media'=>$attachments,'created_at'=>now()->toIso8601String()];
+                $existing->update(['follow_ups'=>$followUps]);
+                return;
+            }
             $media = $existing?->media ?? [];
             $photos = $existing?->photos ?? [];
             if ($r->hasFile('media')) {
@@ -505,19 +533,23 @@ class CommerceController extends Controller
             }$existing ? $existing->update($values) : Review::create($values);
         });
 
-        return back()->with('success', 'Review saved.');
+        return back()->with('success', $hasExistingReview ? 'Follow-up review posted.' : 'Review saved.');
     }
 
     public function requestReturn(Request $r, Order $order)
     {
         $u = $this->buyer($r);
         abort_unless($order->buyer_id === $u->id, 403);
+        $number=$r->input('refund_gcash_number');
+        if(is_string($number)){
+            $compact=preg_replace('/[\s()\-]/','',$number);
+            if(preg_match('/^(?:\+?63|0)?(9[0-9]{9})$/D',$compact,$match))$r->merge(['refund_gcash_number'=>'0'.$match[1]]);
+        }
         $d = $r->validate(['item_keys' => 'required|array|min:1', 'item_keys.*' => 'required|integer|min:0|distinct', 'reason' => 'required|in:Damaged item,Wrong item,Missing item,Not as described', 'description' => 'required|string|min:10|max:500', 'photos' => 'required|array|min:1|max:5', 'photos.*' => 'required|image|mimes:jpg,jpeg,png|max:5120', 'refund_destination' => 'nullable|string|max:255', 'refund_account_name' => ($order->gcash_purchase_id ? 'nullable' : 'required').'|string|min:2|max:150', 'refund_gcash_number' => [$order->gcash_purchase_id ? 'nullable' : 'required','string','regex:/^09[0-9]{9}$/D']]);
         DB::transaction(function () use ($u, $order, $d, $r) {
             $order = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
-            $delivered = $order->shipment?->delivered_at ?? DB::table('order_status_history')->where('order_id', $order->id)->where('status', 'delivered')->max('created_at') ?? $order->updated_at;
-            if ($order->status !== 'delivered' || Carbon::parse($delivered)->lt(now()->subDays(7))) {
-                $this->flow()->fail('Returns are available within seven days after delivery and before completion.');
+            if (!BuyerCommerce::returnWindowOpen($order)) {
+                $this->flow()->fail('Returns are available within seven days after delivery, including completed orders.');
             }if (DB::table('commerce_returns')->where('order_id', $order->id)->exists()) {
                 $this->flow()->fail('A return request already exists for this order.');
             }
@@ -543,7 +575,7 @@ class CommerceController extends Controller
             Order::notifyUser($order->seller_id, 'Return requested', 'Return/refund requested for '.$order->order_number, 'order_status', $order->id);
         });
 
-        return back()->with('success', 'Return request sent. Automatic completion is paused during review.');
+        return back()->with('success', 'Return/refund request sent for review. Repayment is pending approval and processing.');
     }
 
     public function returnAction(Request $r, string $id)

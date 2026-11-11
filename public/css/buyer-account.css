@@ -183,8 +183,8 @@ body.buyer-account-page{background:#fff;--paper:#faf8fa;--ink:#593346}
 .profile-photo-ready>p{margin:0;color:#8c7381;font-size:12px}
 .profile-photo-manager-footer{padding-top:14px;border-top:1px solid #f0e8ed}
 .profile-photo-crop-modal [hidden]{display:none!important}
-.buyer-profile-photo-enlarge{position:relative;display:grid;place-items:center;width:min(520px,90vw);height:min(520px,85vh);padding:30px;background:#fff;border-radius:14px}
-.buyer-profile-photo-enlarge>button{position:absolute;top:10px;right:12px}.buyer-profile-photo-enlarge img{width:min(100%,440px);height:min(100%,440px);object-fit:contain;border-radius:50%}#buyerProfilePhotoEnlargeAvatar[hidden]{display:none!important}
+.buyer-profile-photo-enlarge{position:relative;display:grid;place-items:center;width:min(900px,100%);max-height:calc(100dvh - 64px);padding:0;background:transparent;border:0;border-radius:0;box-shadow:none}
+.buyer-profile-photo-enlarge>button{position:fixed;top:12px;right:18px;color:#fff;font-size:32px}.buyer-profile-photo-enlarge img{width:auto;height:auto;max-width:100%;max-height:calc(100dvh - 64px);object-fit:contain;border-radius:0}#buyerProfilePhotoEnlargeAvatar[hidden]{display:none!important}
 @media(max-width:560px){.profile-personal-heading-row{align-items:flex-start;gap:10px}.buyer-profile-photo-preview{width:66px;height:66px}.profile-photo-manager-avatar{width:100px;height:100px}.profile-personal-heading-row .profile-form-section-heading h3{font-size:12px}.profile-personal-heading-row .profile-form-section-heading p{font-size:10px}.profile-photo-crop-modal{padding:14px}.profile-photo-aspects{gap:5px}.profile-photo-aspects button{min-width:46px;padding:6px 7px}}
 
 body.buyer-account-page.account-dialog-open{overflow:hidden}
@@ -192,8 +192,13 @@ body.buyer-account-page>.modal-overlay{position:fixed;inset:0;z-index:20000;padd
 body.buyer-account-page>.modal-overlay.open{display:flex;align-items:center;justify-content:center}
 body.buyer-account-page>#buyerProfilePhotoEnlargeModal{z-index:20010}
 body.buyer-account-page>#accountDocumentModal{z-index:20020}
-.buyer-account-page .account-document-modal{display:flex;align-items:center;justify-content:center;width:min(900px,100%);height:min(760px,calc(100dvh - 48px));max-height:calc(100dvh - 48px);margin:0}
-.buyer-account-page .account-document-modal img{display:block;object-fit:contain;object-position:center;max-width:100%;max-height:100%;margin:auto}
+.buyer-account-page .account-document-modal{display:flex;align-items:center;justify-content:center;width:min(900px,100%);height:auto;max-height:calc(100dvh - 64px);margin:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
+.buyer-account-page .account-document-modal>button{position:fixed;top:12px;right:18px;color:#fff;font-size:32px}
+.buyer-account-page .account-document-modal img{display:block;width:auto;height:auto;object-fit:contain;object-position:center;max-width:100%;max-height:calc(100dvh - 64px);margin:auto}
+.buyer-account-page .account-document-modal iframe{width:100%;height:calc(100dvh - 64px);border:0}
+.buyer-account-page .account-pdf-paper{display:flex;flex-direction:column;align-items:center;gap:16px;width:100%;max-height:calc(100dvh - 64px);overflow:auto;background:transparent;color:#fff}
+.buyer-account-page .account-pdf-paper canvas{display:block;width:100%;height:auto;flex:none;background:#fff}
+body.buyer-account-page>:is(#buyerProfilePhotoEnlargeModal,#accountDocumentModal){background:rgb(37 24 34 / 65%)}
 .buyer-account-page .profile-photo-crop-modal{margin:0;box-sizing:border-box;max-height:calc(100dvh - 48px)}
 .buyer-profile-photo-preview>.user-avatar{width:100%!important;height:100%!important;max-width:100%;max-height:100%;min-width:0;min-height:0;position:static!important;transform:none!important;place-items:center;line-height:1;text-align:center;box-sizing:border-box}
 .buyer-profile-photo-preview>span.user-avatar{display:grid!important}

@@ -45,7 +45,8 @@
 </x-navigation-group>
 <a class="nav-item" href="{{ route('admin.products') }}#platform-vouchers">Platform & Shipping Vouchers</a>
 <a class="nav-item" href="{{ route('admin.complaints') }}#returns-refunds">Returns & Refunds</a>
-<x-navigation-group id="admin-finance-reports" label="Finance & Reports" :active="request()->routeIs('admin.commission', 'admin.reports', 'commissions.*')">
+<x-navigation-group id="admin-finance-reports" label="Finance & Reports" :active="request()->routeIs('admin.commission', 'admin.reports', 'commissions.*','gcash.*')">
+<a class="nav-item {{ request()->routeIs('gcash.*')?'active':'' }}" href="{{ route('gcash.index',['state'=>'proof_submitted']) }}" @if(request()->routeIs('gcash.*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="peso" /></span> GCash payments</a>
 @if(app(\App\Services\CommissionLedger::class)->installed())<a class="nav-item {{ request()->routeIs('commissions.*') ? 'active' : '' }}" href="{{ route('commissions.index') }}" @if(request()->routeIs('commissions.*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="peso" /></span> Commission Management</a>@endif
 <a @if(request()->routeIs('admin.commission')) aria-current="page" @endif href="{{ route('admin.commission') }}" class="nav-item {{ request()->routeIs('admin.commission') ? 'active' : '' }}">
       <span class="ic"><x-admin-icon name="peso" /></span> Historical Commissions

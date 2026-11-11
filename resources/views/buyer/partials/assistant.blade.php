@@ -1,9 +1,15 @@
-@php($assistantGuest = $assistantGuest ?? false)
+@php
+ $assistantSeller = $assistantSeller ?? false;
+ $assistantGuest = $assistantGuest ?? false;
+@endphp
 @if($assistantGuest || (auth()->user()?->account_type === 'buyer' && !auth()->user()->is_admin))
 @php($assistantProduct = in_array(request()->route()?->getName(), ['guest.product', 'buyer.product'], true) ? request()->route('id') : null)
 <link rel="stylesheet" href="{{ asset('css/buyer-assistant.css') }}?v={{ filemtime(public_path('css/buyer-assistant.css')) }}">
 <div class="pf-assistant" data-endpoint="{{ route($assistantGuest ? 'guest.assistant.send' : 'buyer.assistant.send') }}" @unless($assistantGuest) data-conversations="{{ route('buyer.assistant.conversations') }}" @endunless data-support="{{ route('support.contact') }}" data-guest="{{ $assistantGuest ? 'true' : 'false' }}">
   <div class="pf-assistant-dock">
+  @if($assistantSeller && !request()->routeIs('seller.messages'))
+  <button type="button" class="pf-messages-launch" data-seller-messages="{{ route('seller.messages') }}" aria-label="Messages" title="Messages">@include('buyer.partials.icon', ['name'=>'mail','size'=>24])</button>
+  @endif
   @unless($assistantGuest)
   <button type="button" class="pf-messages-launch" data-messages-trigger data-messages-url="{{ route('buyer.messages') }}" aria-label="Messages" title="Messages">@include('buyer.partials.icon', ['name' => 'mail', 'size' => 24])</button>
   @endunless
@@ -43,8 +49,8 @@
       @unless($assistantGuest)<button type="button" data-prompt="What are the statuses of my recent orders?" data-orders>My orders</button>@endunless
     </div>
     <nav class="pf-assistant-shortcuts" aria-label="Shopping help links">
-      <a href="{{ $assistantGuest ? url('/') : route('buyer.dashboard') }}#products">Products</a>
-      <a href="{{ $assistantGuest ? route('login') : route('buyer.orders') }}">{{ $assistantGuest ? 'Sign in' : 'Orders' }}</a>
+      <a href="{{ $assistantSeller ? route('seller.inventory') : ($assistantGuest ? url('/').'#products' : route('buyer.dashboard').'#products') }}">Products</a>
+      <a href="{{ $assistantSeller ? route('seller.orders') : ($assistantGuest ? route('login') : route('buyer.orders')) }}">{{ $assistantSeller ? 'Orders' : ($assistantGuest ? 'Sign in' : 'Orders') }}</a>
       @unless($assistantGuest)<a href="{{ route('buyer.faqs') }}">FAQs</a>@endunless
       <button type="button" data-support-open>Contact support</button>
     </nav>

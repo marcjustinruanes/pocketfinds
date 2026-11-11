@@ -32,7 +32,6 @@
         if(error)feedback.classList?.add('is-error');
     }
     function readableMessage(message) {
-        if(message.includes('seller must configure a rate'))return '';
         if(message.includes('seller must add product weights'))return 'Some items cannot be shipped yet. Contact the seller.';
         return message;
     }
@@ -93,8 +92,8 @@
         const current = ++version;
         form.elements.quote_hash.value = '';
         if (!data.items.length || (showErrors && (!data.delivery_address_id || !data.payment_method))) {
-            checkoutFeedback(data.items.length?'Select a delivery address and a payment method to place your order.':'Select items to calculate your total.');
-            if(showErrors)checkoutError(feedback.textContent);
+            checkoutFeedback(data.items.length?'Select a delivery address and a payment method to place your order.':'');
+            if(showErrors&&data.items.length)checkoutError(feedback.textContent);
             if(!data.items.length){document.getElementById('cartDiscountRow').style.display='none';document.getElementById('cartSubtotal').textContent='₱0.00';document.getElementById('cartTotal').textContent='₱0.00';document.getElementById('cartShipping').textContent='—';const dock=document.getElementById('cartDockTotal');if(dock)dock.textContent='₱0.00';}
             return false;
         }
@@ -122,7 +121,8 @@
             });
             document.getElementById('cartSubtotal').textContent = money(rows.reduce((sum,row)=>sum+Number(row.subtotal),0));
             const shippingPending = rows.some(row=>row.shipping_pending);
-            document.getElementById('cartShipping').textContent = shippingPending?'Pending':money(rows.reduce((sum,row)=>sum+Number(row.shipping_amount),0));
+            const carrierPending = rows.some(row=>row.carrier_selection_pending);
+            document.getElementById('cartShipping').textContent = shippingPending?'Add a complete address':money(rows.reduce((sum,row)=>sum+Number(row.shipping_amount),0));
             const totalLabel=document.getElementById('cartTotalLabel');if(totalLabel)totalLabel.textContent=shippingPending?'Estimated total':'Total';
             const dockLabel=document.getElementById('cartDockTotalLabel');if(dockLabel)dockLabel.textContent=shippingPending?'Estimated total':'Total';
             const discount = rows.reduce((sum,row)=>sum+Number(row.discount_amount),0);
@@ -133,7 +133,9 @@
             const dock = document.getElementById('cartDockTotal'); if (dock) dock.textContent = money(result.quote.total);
             form.elements.quote_hash.value = showErrors?(result.hash||''):'';
             shippingVoucherStatus(result.quote);
-            if(result.quote.warnings?.length)checkoutError([...new Set(result.quote.warnings.map(readableMessage).filter(Boolean))].join(' '),false);
+            if(carrierPending)checkoutFeedback('');
+            else if(shippingPending)checkoutFeedback('Complete your delivery address to calculate the order total.');
+            else if(result.quote.warnings?.length)checkoutError([...new Set(result.quote.warnings.map(readableMessage).filter(Boolean))].join(' '),false);
             else checkoutFeedback(rows.map(row=>row.delivery_policy ? `${row.items[0].seller_slug}: ${row.free_shipping_eligible ? 'Free shipping · ' : ''}Delivery ${row.delivery_policy.label}` : `${row.items[0].seller_slug}: ${row.chargeable_kg} kg shipping ${money(row.shipping_amount)}`).join(' · '));
             return true;
         } catch(error) { if (current === version) {shippingVoucherStatus(null,error.message);checkoutError(error.message,showErrors);document.getElementById('cartDiscountRow').style.display='none';document.getElementById('cartTotal').textContent='—';const dock=document.getElementById('cartDockTotal');if(dock)dock.textContent='—';} return false; }

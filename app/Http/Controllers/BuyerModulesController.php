@@ -68,12 +68,7 @@ class BuyerModulesController extends Controller
     public function categories(Request $r)
     {
         $u=$this->actor($r); abort_unless($u->account_type==='seller',403);
-        $categoryQuery=DB::table('shop_categories')->where('seller_id',$u->id);
-        if (Schema::hasColumn('shop_categories','sort_order')) $categoryQuery->orderBy('sort_order');
-        $categories=$categoryQuery->orderBy('name')->get();
-        $products=Product::where('seller_id',$u->id)->orderBy('name')->get();
-        $assignments=DB::table('shop_category_products')->whereIn('shop_category_id',$categories->pluck('id'))->get()->groupBy('product_id');
-        return view('seller.shop-categories',compact('categories','products','assignments'));
+        return redirect()->route('seller.inventory');
     }
 
     public function saveCategory(Request $r)
@@ -87,11 +82,8 @@ class BuyerModulesController extends Controller
             $id=$d['id']??null;
             if($id)abort_unless(DB::table('shop_categories')->where('seller_id',$u->id)->where('id',$id)->exists(),404);
             if(DB::table('shop_categories')->where('seller_id',$u->id)->whereRaw('LOWER(name) = ?',[mb_strtolower($d['name'])])->when($id,fn($q)=>$q->where('id','!=',$id))->exists())throw ValidationException::withMessages(['name'=>'You already have a category with this name.']);
-            if($d['parent_id']??null){
-                abort_unless(DB::table('shop_categories')->where('id',$d['parent_id'])->where('seller_id',$u->id)->whereNull('parent_id')->exists() && (int)$d['parent_id']!==(int)$id,422);
-                if($id && DB::table('shop_categories')->where('parent_id',$id)->exists())throw ValidationException::withMessages(['parent_id'=>'A category with subcategories must remain a top-level category.']);
-            }
-            $values=['name'=>$d['name'],'parent_id'=>$d['parent_id']??null,'updated_at'=>now()];
+            // Shop categories are managed as a flat list in Inventory.
+            $values=['name'=>$d['name'],'parent_id'=>null,'updated_at'=>now()];
             if ($hasPresentationFields) {
                 $values['is_visible']=(bool)($d['is_visible']??true);
                 $values['sort_order']=(int)($d['sort_order']??9999);
@@ -111,7 +103,8 @@ class BuyerModulesController extends Controller
         DB::transaction(function()use($u,$category){
             User::whereKey($u->id)->lockForUpdate()->firstOrFail();
             abort_unless(DB::table('shop_categories')->where('id',$category)->where('seller_id',$u->id)->exists(),404);
-            $ids=DB::table('shop_categories')->where('seller_id',$u->id)->where(fn($q)=>$q->where('id',$category)->orWhere('parent_id',$category))->pluck('id');
+            $ids=collect([$category]);
+            DB::table('shop_categories')->where('seller_id',$u->id)->where('parent_id',$category)->update(['parent_id'=>null]);
             DB::table('shop_category_products')->whereIn('shop_category_id',$ids)->delete(); DB::table('shop_categories')->whereIn('id',$ids)->delete();
         });
         return back()->with('success','Category removed. Products remain available under their other categories or Uncategorized.');
@@ -134,21 +127,39 @@ class BuyerModulesController extends Controller
     public function refunds(Request $r)
     {
         $u=$this->actor($r);
+        if($u->account_type==='seller')return redirect()->route('seller.orders',['status'=>'refunds']);
         $refunds=DB::table('cancellation_refunds as r')->join('orders as o','o.id','=','r.order_id')->where('r.'.($u->account_type==='buyer'?'buyer_id':'seller_id'),$u->id)->select('r.*','o.order_number')->orderByDesc('r.created_at')->get();
         return view('account.cancellation-refunds',compact('refunds','u'));
     }
 
     public function completeRefund(Request $r, int $refund)
     {
-        $u=$this->actor($r); abort_unless($u->account_type==='seller',403);
-        $d=$r->validate(['repayment_reference'=>['required','string','min:6','max:100','regex:/^[A-Za-z0-9-]+$/D'],'confirm_repaid'=>'accepted']);
-        DB::transaction(function()use($u,$refund,$d){
-            $row=DB::table('cancellation_refunds')->where('id',$refund)->where('seller_id',$u->id)->lockForUpdate()->firstOrFail();
-            if($row->status==='completed')return;
-            if(DB::table('cancellation_refunds')->where('repayment_reference',$d['repayment_reference'])->where('id','!=',$refund)->exists())throw ValidationException::withMessages(['repayment_reference'=>'This repayment reference is already recorded.']);
-            DB::table('cancellation_refunds')->where('id',$refund)->update(['status'=>'completed','repayment_reference'=>$d['repayment_reference'],'completed_at'=>now(),'updated_at'=>now()]);
-            Order::notifyUser($row->buyer_id,'Cancellation refund repaid','The seller recorded your ₱'.number_format($row->amount,2).' repayment. Reference: '.$d['repayment_reference'], 'order_status',$row->order_id);
+        $u=$r->user()->fresh();
+        $admin=(bool)$u->is_admin;
+        abort_unless($u->status==='approved' && ($admin||($u->account_type==='seller'&&!$u->is_admin)),403);
+        $d=$r->validate(['repayment_reference'=>['nullable','string','min:6','max:100','regex:/^[A-Za-z0-9-]+$/D'],'confirm_repaid'=>'required|accepted']);
+        $purchase = DB::transaction(function()use($r,$u,$refund,$d){
+            $row=DB::table('cancellation_refunds')->where('id',$refund)->lockForUpdate()->firstOrFail();
+            $order=Order::findOrFail($row->order_id);
+            $platform=$order->gcashPurchase?->usesAdminReview();
+            if(!$platform && $u->account_type==='seller' && (int)$row->seller_id!==(int)$u->id)abort(404);
+            abort_unless($platform?(bool)$u->is_admin:($u->account_type==='seller'&&(int)$row->seller_id===(int)$u->id),403);
+            if($row->status==='completed')return $order->gcashPurchase;
+            abort_unless($order->status==='cancelled',409,'Only cancelled orders can receive a cancellation refund.');
+            $reference = $platform ? null : $r->validate(['repayment_reference'=>['required','string','min:6','max:100','regex:/^[A-Za-z0-9-]+$/D']])['repayment_reference'];
+            if($platform) {
+                $r->validate(['refund_proof'=>'required|file|mimes:jpg,jpeg,png,webp,pdf|max:5120']);
+                $file=$r->file('refund_proof');
+                $path=app(MediaLifecycle::class)->store($file,'gcash-proofs','local');
+                DB::table('gcash_purchase_history')->insert(['purchase_id'=>$order->gcash_purchase_id,'actor_id'=>$u->id,'event'=>'admin_cancellation_refund_proof','before'=>json_encode(['path'=>$path,'mime'=>$file->getMimeType(),'refund_id'=>$row->id]),'after'=>'{}','reason'=>'Admin returned the cancelled order payment to the original GCash payer.','created_at'=>now()]);
+            }
+            if($reference && DB::table('cancellation_refunds')->where('repayment_reference',$reference)->where('id','!=',$refund)->exists())throw ValidationException::withMessages(['repayment_reference'=>'This repayment reference is already recorded.']);
+            DB::table('cancellation_refunds')->where('id',$refund)->update(['status'=>'completed','repayment_reference'=>$reference,'completed_at'=>now(),'updated_at'=>now()]);
+            Order::notifyUser($row->buyer_id,'Cancellation refund repaid',($platform?'The platform admin':'The seller').' recorded your ₱'.number_format($row->amount,2).' repayment.'.($reference?' Reference: '.$reference:' Proof of returned payment is available in your order.'), 'order_status',$row->order_id);
+            if($platform) Order::notifyUser($row->seller_id,'Cancellation refund completed','Admin returned the payment for cancelled order '.$order->order_number.'.','order_status',$row->order_id);
+            return $order->gcashPurchase;
         });
+        if($r->expectsJson()) return response()->json(['purchase'=>$purchase,'message'=>'Payment returned. The buyer has been notified.']);
         return back()->with('success','Completed repayment recorded.');
     }
 }

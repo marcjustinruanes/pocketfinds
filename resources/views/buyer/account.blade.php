@@ -263,7 +263,7 @@
   </section>
 </div><div class="modal-overlay" id="buyerProfilePhotoEnlargeModal" aria-hidden="true"><div class="buyer-profile-photo-enlarge" role="dialog" aria-modal="true" aria-label="Profile photo preview"><button type="button" data-photo-enlarge-close aria-label="Close preview">&times;</button><img id="buyerProfilePhotoEnlargeImage" alt="Enlarged profile photo" hidden><x-user-avatar :user="auth()->user()" size="300" id="buyerProfilePhotoEnlargeAvatar" /></div></div>
 
-<div class="modal-overlay" id="accountDocumentModal" aria-hidden="true"><section class="account-document-modal" role="dialog" aria-modal="true" aria-label="Document preview"><button type="button" data-document-close aria-label="Close document preview">&times;</button><img id="accountDocumentImage" alt="Current identity document" hidden><iframe id="accountDocumentPdf" title="Current identity document PDF" hidden></iframe></section></div>
+<div class="modal-overlay" id="accountDocumentModal" aria-hidden="true"><section class="account-document-modal" role="dialog" aria-modal="true" aria-label="Document preview"><button type="button" data-document-close aria-label="Close document preview">&times;</button><img id="accountDocumentImage" alt="Current identity document" hidden><div id="accountDocumentPdf" class="account-pdf-paper" aria-label="Current identity document PDF" hidden></div></section></div>
 
 <div class="modal-overlay" id="deleteAccountModal" aria-hidden="true">
   <div class="modal pf-confirm account-delete-modal" role="dialog" aria-modal="true" aria-labelledby="deleteAccountTitle">

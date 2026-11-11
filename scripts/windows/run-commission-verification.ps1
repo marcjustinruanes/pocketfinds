@@ -1,6 +1,9 @@
-param([switch]$VerificationOnly,[switch]$CommissionOnly,[ValidateRange(1,3)][int]$Runs=1)
+param([switch]$VerificationOnly,[switch]$CommissionOnly,[ValidateRange(1,3)][int]$Runs=1,[string]$PhpExecutable='')
 $ErrorActionPreference='Stop'
 if($VerificationOnly -eq $CommissionOnly){throw 'Choose exactly one explicit mode: VerificationOnly or CommissionOnly'}
+if(!$PhpExecutable){$phpCommand=Get-Command php -CommandType Application -ErrorAction SilentlyContinue;if($phpCommand){$PhpExecutable=$phpCommand.Source}}
+if(!$PhpExecutable -or !(Test-Path -LiteralPath $PhpExecutable -PathType Leaf)){throw 'Provide -PhpExecutable with the installed PHP executable path'}
+$PhpExecutable=(Resolve-Path -LiteralPath $PhpExecutable).Path
 $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $directory=Join-Path $root 'storage/app/private/commission-scheduler'
 [void][IO.Directory]::CreateDirectory($directory)
@@ -14,7 +17,7 @@ for($index=0;$index -lt $Runs;$index++){
     $stderr=Join-Path $directory ($stamp+'.err')
     $script=Join-Path $root 'scripts/commission-reconcile-verify.php'
     $mode=if($VerificationOnly){'--verify-empty'}else{'--commission-only'}
-    $process=Start-Process -FilePath 'C:\php\php.exe' -ArgumentList @(('"'+$script+'"'),$mode) -WorkingDirectory $root -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
+    $process=Start-Process -FilePath $PhpExecutable -ArgumentList @(('"'+$script+'"'),$mode) -WorkingDirectory $root -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
     # Retain the handle before waiting: Windows PowerShell can otherwise lose
     # ExitCode when a short-lived Start-Process child exits.
     $processHandle=$process.Handle

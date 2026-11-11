@@ -39,6 +39,16 @@
 .gcash-page .gcash-form :is(input:not([type="hidden"]), textarea, select) { display: block; width: 100%; max-width: 100%; min-height: 44px; padding: 11px 12px; border: 1px solid #b5a8b3; border-radius: 7px; background: #fff; color: var(--gcash-ink); font: inherit; font-weight: 400; }
 .gcash-page .gcash-form textarea { min-height: 90px; resize: vertical; }
 .gcash-page .gcash-form input[type="file"] { font-size: 13px; }
+.gcash-page .gcash-upload-fieldset { min-width: 0; margin: 0; padding: 4px 12px 8px; border: 1px solid #dfdce2; border-radius: 14px; background: #fff; }
+.gcash-page .gcash-upload-fieldset legend { margin-left: 7px; padding: 0 6px; color: #827783; font-size: 12px; font-weight: 500; }
+.gcash-page .gcash-form .gcash-file-drop { position: relative; display: flex; min-height: 42px; align-items: center; justify-content: flex-start; gap: 12px; margin: 0; padding: 4px; color: #827783; font-size: 13px; font-weight: 400; cursor: pointer; }
+.gcash-page .gcash-form .gcash-file-drop:hover { color: #302733; }
+.gcash-page .gcash-file-drop:has(input:focus-visible) { outline: 2px solid #e7b7d0; outline-offset: 2px; }
+.gcash-page .gcash-file-drop svg { width: 22px; height: 22px; flex: none; color: #8c8b91; }
+.gcash-page .gcash-file-drop [data-gcash-file-name] { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gcash-page .gcash-upload-fieldset:focus-within { border-color: #c987a9; }
+.gcash-page .gcash-file-drop input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; padding: 0; border: 0; border-radius: 12px; opacity: 0; cursor: pointer; }
+.gcash-mobile-input{display:flex!important;align-items:center;gap:8px;width:100%;box-sizing:border-box;min-height:44px;padding:0 11px!important;border:1px solid #b5a8b3;border-radius:7px;background:#fff}.gcash-mobile-input b{flex:none;color:#775565;font-size:13px}.gcash-mobile-input input{min-height:0!important;height:auto!important;padding:0!important;border:0!important;background:transparent!important;outline:0!important}
 .gcash-page .gcash-form p { margin: 0 0 16px; }
 .gcash-fields, .gcash-totals { margin: 0; }
 .gcash-fields > div { margin: 16px 0; }
@@ -75,6 +85,10 @@
 .gcash-page a:not(.gcash-button) { text-decoration: underline; text-underline-offset: 3px; }
 .gcash-page small { display: block; color: var(--gcash-muted); font-size: 13px; line-height: 1.5; font-weight: 400; margin-top: 6px; }
 .gcash-page .gcash-field-error { display: block; color: #882a3b; font-size: 14px; font-weight: 500; }
+.gcash-page .gcash-admin-proof-note { margin: 8px 0 16px; }
+.gcash-page .gcash-admin-returned-checkbox { display: flex!important; align-items: center; gap: 9px; margin: 8px 0 12px!important; color: #775565!important; font-size: 13px!important; font-weight: 550!important; }
+.gcash-page .gcash-admin-returned-checkbox input[type="checkbox"] { width: 16px!important; height: 16px; min-height: 16px!important; margin: 0; accent-color: #b42c72; }
+.gcash-page [data-return-proof-fields] { margin: 8px 0 12px; }
 .gcash-page [aria-invalid="true"] { border-color: #b5384c !important; }
 .gcash-selected { margin-bottom: 20px; padding: 16px; background: #f8f4f7; border-radius: 8px; }
 .gcash-selected[hidden], .gcash-selected img[hidden] { display: none; }
@@ -83,6 +97,10 @@
 .gcash-dialog::backdrop { background: rgb(30 20 30 / 60%); }
 .gcash-page .gcash-dialog-wide { width: min(1100px, calc(100vw - 32px)); }
 .gcash-dialog .gcash-actions { margin-top: 20px; }
+.gcash-page .gcash-success-dialog{width:min(440px,calc(100vw - 32px));padding:26px}
+.gcash-success-dialog h2{margin:0 0 12px;font-size:20px}
+.gcash-success-dialog p{margin:0;line-height:1.6}
+.gcash-success-dialog .gcash-actions{justify-content:flex-end}
 .gcash-viewer-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(200px, 1fr); gap: 24px; }
 .gcash-receipt-canvas { overflow: auto; max-height: 60dvh; background: #f3edf1; border-radius: 6px; }
 .gcash-receipt-canvas img { display: block; max-width: 100%; max-height: 58dvh; object-fit: contain; margin: auto; }

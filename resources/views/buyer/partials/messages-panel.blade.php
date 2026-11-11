@@ -4,12 +4,6 @@
 @endphp
 
 <link rel="stylesheet" href="{{ asset('css/messaging.css') }}?v={{ filemtime(public_path('css/messaging.css')) }}">
-@if(\App\Services\GcashInventory::installed())
-@include('gcash.assets')
-@if($seller)
-<div class="gcash-banner"><div><strong>GCash payment</strong><p>Use the purchase page for private payment instructions and receipts. Chat messages do not verify payment.</p></div><div class="gcash-actions"><a class="gcash-button gcash-button-secondary" href="{{ route('gcash.index') }}">Your GCash purchases</a>@if($linkedPurchase??null)<a class="gcash-button" href="{{ route('gcash.show',$linkedPurchase->id) }}">Open linked purchase</a>@endif</div></div>
-@endif
-@endif
 <link rel="stylesheet" href="{{ asset('css/buyer-messaging.css') }}?v={{ filemtime(public_path('css/buyer-messaging.css')) }}">
 <div class="chat-shell" data-has-conversation="{{ $seller ? 'true' : 'false' }}">
   {{-- Conversation list --}}
@@ -74,11 +68,7 @@
     <div class="chat-body" id="chatBody" tabindex="0" role="region" aria-label="Conversation messages" style="{{ !$seller ? 'align-items:center;justify-content:center' : '' }}">
       @if(!$seller)
         <div style="text-align:center;color:var(--muted)">
-          <svg class="chat-empty-icon" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="50" cy="50" r="45"/>
-            <path d="M35 33h31c5 0 7 5 5 9L55 69c-3 5-9 4-10-1l-4-16-11-11c-3-4-1-8 5-8Z"/>
-            <path d="m41 52 17-10"/>
-          </svg>
+          @include('account.partials.chat-empty-icon')
           <p style="font-size:13px">No conversation open</p>
         </div>
       @else

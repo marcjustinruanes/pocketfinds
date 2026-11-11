@@ -160,13 +160,27 @@ class LogisticsShipping
         $rate = $this->rate($shipment->logistics_company, $order->shipping_address['region'] ?? '', true);
         if (! $rate) $this->fail('This carrier has no approved rate for the destination region. Select another carrier or request rate review.');
         $kg = $this->kilograms($order->items ?? []);
-        $gross = app(LogisticsCashDesk::class)->amount((string) $order->shipping_amount);
         $approved = (int) $rate->first_kg_cents + ($kg - 1) * (int) $rate->additional_kg_cents;
-        if ($gross !== $approved) $this->fail('The carrier-approved shipping rate does not match the original shipping charge. Handoff is held for rate review; the buyer total has not changed.');
+        // Commerce checkout uses a flat buyer shipping fee; the seller selects
+        // the carrier after checkout and pays its independently approved rate.
+        $sellerSelectsCarrierAfterOrder = is_array($order->commerce_snapshot);
+        $gross = $sellerSelectsCarrierAfterOrder
+            ? $approved
+            : app(LogisticsCashDesk::class)->amount((string) $order->shipping_amount);
+        if (! $sellerSelectsCarrierAfterOrder && $gross !== $approved) $this->fail('The carrier-approved shipping rate does not match the original shipping charge. Handoff is held for rate review; the buyer total has not changed.');
         $gcash = $this->gcash($order);
         $account = $gcash && $gross > 0 ? DB::table('logistics_shipping_accounts')->where('company_name', $shipment->logistics_company)->lockForUpdate()->first() : null;
         if ($gcash && $gross > 0 && ! $account) $this->fail('The carrier must publish its company GCash receiving account before shipping payment can be requested.');
         $funding = $this->voucherFunding($order);
+        if ($sellerSelectsCarrierAfterOrder) {
+            $remaining = $gross;
+            foreach ($funding as &$allocation) {
+                $allocation['amount_cents'] = min($remaining, (int) $allocation['amount_cents']);
+                $remaining -= $allocation['amount_cents'];
+            }
+            unset($allocation);
+            $funding = array_values(array_filter($funding, fn ($allocation) => $allocation['amount_cents'] > 0));
+        }
         $claim = array_sum(array_column(array_filter($funding, fn ($v) => $v['source'] === 'platform'), 'amount_cents'));
         if (array_sum(array_column($funding, 'amount_cents')) > $gross) $this->fail('Shipping voucher allocations exceed the original shipping charge.');
         $id = (string) Str::uuid();

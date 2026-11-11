@@ -14,6 +14,16 @@ use Illuminate\Validation\ValidationException;
 
 class BuyerCommerce
 {
+    private const FIXED_SHIPPING_AMOUNT = 50.00;
+
+    public static function returnWindowOpen(Order $order): bool
+    {
+        if (!in_array($order->status, ['delivered', 'completed'], true)) return false;
+        if (app()->environment('local') && config('buyer-commerce.refund_test_mode')) return true;
+        $delivered=$order->shipment?->delivered_at ?? DB::table('order_status_history')->where('order_id',$order->id)->where('status','delivered')->max('created_at') ?? $order->updated_at;
+        return \Illuminate\Support\Carbon::parse($delivered)->gte(now()->subDays(7));
+    }
+
     public static function installed(): bool
     {
         return Schema::hasTable('commerce_checkouts');
@@ -71,7 +81,6 @@ class BuyerCommerce
         }
         $addressIncomplete = ! empty($warnings);
         $orders = [];
-        $legacyShippingFees = [];
         $flashQuantities = [];
         $requestedStock = [];
         $products = Product::whereIn('id', $cart->pluck('product_id'))->orderBy('id')->lockForUpdate()->get()->keyBy('id');
@@ -82,7 +91,6 @@ class BuyerCommerce
             }
             $seller = User::whereKey($p->seller_id)->lockForUpdate()->firstOrFail();
             $this->available($seller);
-            $legacyShippingFees[$seller->id] = (float) ($seller->shipping_fee ?? 0);
             $stockKey = json_encode([$p->id, $row->variation_group ?: null, $row->variation_value ?: null]);
             $requestedStock[$stockKey] = ($requestedStock[$stockKey] ?? 0) + (int) $row->qty;
             if ($row->qty < 1 || $p->availableStock($row->variation_group ?: null, $row->variation_value ?: null) < $requestedStock[$stockKey]) {
@@ -117,33 +125,21 @@ class BuyerCommerce
         ksort($orders);
         foreach ($orders as $sellerId => &$order) {
             $rate = DB::table('commerce_shipping_rates')->where('seller_id', $sellerId)->where('region', $address['region'] ?? '')->where('is_active', true)->first();
-            $hasRegionalRates = DB::table('commerce_shipping_rates')->where('seller_id', $sellerId)->exists();
-            // Sellers created before regional rates were introduced used one flat
-            // shipping fee (or free shipping when it was unset). Keep those shops
-            // checkout-compatible until they configure their first regional rate.
-            // Once a seller has configured any region, an absent/inactive matching
-            // region remains an intentional service restriction.
-            $usesLegacyFlatRate = ! $rate && ! $hasRegionalRates;
-            $shippingPending = (! $rate && ! $usesLegacyFlatRate) || $addressIncomplete;
-            if (! $rate && ! $usesLegacyFlatRate) {
-                if (! $preview) $this->fail('This shop does not deliver to the selected region. Choose another address.', 'delivery_address_id');
-                $warnings[] = 'Shipping is pending: the seller must configure a rate for your delivery region.';
-            }
+            // Buyers see a fixed shipping charge while the seller selects a carrier
+            // after checkout. Keep carrier selection separate from the buyer fee.
+            $shippingPending = $addressIncomplete;
             foreach ($order['items'] as $item) {
                 if ($item['weight_grams'] <= 0) {
                     if (! $preview) $this->fail('Shipping weight is missing for '.$item['name'].'. Contact the seller.');
-                    $shippingPending = true;
-                    $warnings[] = 'Shipping is pending: the seller must add product weights.';
+                    $warnings[] = 'Shipping weight is missing for '.$item['name'].'. Contact the seller before checkout.';
                 }
             }
             $kg = max(1, (int) ceil(array_sum(array_map(fn ($i) => $i['weight_grams'] * $i['qty'], $order['items'])) / 1000));
-            $shippingAmount = $usesLegacyFlatRate
-                ? ($legacyShippingFees[$sellerId] ?? 0)
-                : ($rate ? $rate->first_kg + max(0, $kg - 1) * $rate->additional_kg : 0);
+            $shippingAmount = self::FIXED_SHIPPING_AMOUNT;
             $order['free_shipping_eligible'] = DeliveryGuarantee::regionalPoliciesInstalled()
-                ? (bool) ($rate->free_shipping ?? ($usesLegacyFlatRate && $shippingAmount == 0))
+                ? (bool) ($rate->free_shipping ?? false)
                 : true;
-            if (DeliveryGuarantee::active() && !$shippingPending) {
+            if (DeliveryGuarantee::active() && !$shippingPending && $rate) {
                 $lateVoucherAmount = DeliveryGuarantee::sellerVouchersInstalled()
                     ? (($rate->late_voucher_enabled ?? false) ? (float) $rate->late_voucher_amount : 0)
                     : DeliveryGuarantee::LATE_VOUCHER_AMOUNT;
@@ -152,7 +148,7 @@ class BuyerCommerce
                     $order['delivery_policy']['late_voucher_seller_id'] = (int) $sellerId;
                 }
             }
-            $order += ['subtotal' => round(array_sum(array_map(fn ($i) => $i['price'] * $i['qty'], $order['items'])), 2), 'shipping_amount' => $shippingPending ? 0 : round($shippingAmount, 2), 'discount_amount' => 0, 'seller_discount' => 0, 'vouchers' => [], 'shipping_rate_id' => $rate?->id, 'chargeable_kg' => $kg, 'shipping_pending' => $shippingPending];
+            $order += ['subtotal' => round(array_sum(array_map(fn ($i) => $i['price'] * $i['qty'], $order['items'])), 2), 'shipping_amount' => $shippingPending ? 0 : round($shippingAmount, 2), 'discount_amount' => 0, 'seller_discount' => 0, 'vouchers' => [], 'shipping_rate_id' => $rate?->id, 'chargeable_kg' => $kg, 'shipping_pending' => $shippingPending, 'carrier_selection_pending' => true];
         }unset($order);
         // One selected value per type replaces its predecessor. Store selections are keyed by seller.
         $selection = [];
@@ -253,10 +249,6 @@ class BuyerCommerce
             $order['total'] = round($order['subtotal'] + $order['shipping_amount'] - $order['discount_amount'], 2);
         }unset($order);
 
-        foreach ($orders as $sellerId => $details) {
-            $warning = app(LogisticsShipping::class)->preflight(User::findOrFail($sellerId), $address, $details, $preview);
-            if ($warning) $warnings[] = $warning;
-        }
         return ['orders' => $orders, 'address' => $address, 'total' => round(array_sum(array_column($orders, 'total')), 2), 'warnings' => array_values(array_unique($warnings)), 'voucher_options' => $this->checkoutVoucherAvailability($buyer, $orders)];
     }
 

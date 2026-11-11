@@ -17,15 +17,19 @@
 {{-- Loaded last so its header/search styles win over marketplace.css's, matching the guest homepage. --}}
 <link rel="stylesheet" href="{{ asset('css/landing.css') }}?v={{ filemtime(public_path('css/landing.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/guest-responsive.css') }}?v={{ filemtime(public_path('css/guest-responsive.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/buyer-storefront.css') }}?v={{ filemtime(public_path('css/buyer-storefront.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/navigation.css') }}?v={{ filemtime(public_path('css/navigation.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/buyer-pages.css') }}?v={{ filemtime(public_path('css/buyer-pages.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/product-detail.css') }}?v={{ filemtime(public_path('css/product-detail.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/product-options.css') }}?v={{ filemtime(public_path('css/product-options.css')) }}">
 </head>
-<body class="marketplace product-detail-page">
+<body class="buyer marketplace buyer-storefront buyer-pages product-detail-page">
 
 
+<div class="shell" id="appShell"><div style="display:flex;flex-direction:column;min-width:0">
 @include('guest.partials.header')
 
-<main class="container pd-storefront-main">
+<main class="content">
 
 @php
   $combinationGroup = \App\Support\ProductVariationSet::combination($product['variations'] ?? []);
@@ -42,6 +46,7 @@
 </main>
 
 @include('components.marketplace-footer', ['landing' => true])
+</div></div>
 
 @include('guest.auth-modal')
 

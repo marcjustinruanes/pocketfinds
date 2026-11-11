@@ -34,12 +34,12 @@ class SellerController extends Controller
     public function dashboard()
     {
         $sellerId = auth()->id();
-        $orders = Order::where('seller_id', $sellerId);
+        $orders = Order::visibleToSeller()->where('seller_id', $sellerId);
         $totalSales = (clone $orders)->where('status', 'completed')->sum('total');
         $newOrders = (clone $orders)->where('status', 'placed')->count();
         $productsListed = Product::where('seller_id', $sellerId)->where('status', 'active')->count();
         $avgRating = round((float) Review::where('seller_id', $sellerId)->avg('rating'), 1);
-        $recentOrders = Order::with('buyer')->where('seller_id', $sellerId)->latest()->limit(5)->get();
+        $recentOrders = Order::visibleToSeller()->with('buyer')->where('seller_id', $sellerId)->latest()->limit(5)->get();
         $pipelineCounts = [
             'new' => (clone $orders)->where('status', 'placed')->count(),
             'prepare' => (clone $orders)->whereIn('status', ['confirmed', 'preparing'])->count(),
@@ -65,17 +65,29 @@ class SellerController extends Controller
         Order::autoCompleteDeliveredThrottled();
 
         $status = $request->query('status', 'all');
+        if ($status === 'gcash') return redirect()->route('seller.orders', array_merge($request->query(), ['status'=>'all','payment'=>'gcash']));
+        if ($status === 'returned') return redirect()->route('seller.orders', array_merge($request->query(), ['status'=>'refunds']));
         $returnRequests=\App\Services\BuyerCommerce::installed()?DB::table('commerce_returns')->where('seller_id',auth()->id())->get()->keyBy('order_id'):collect();
-        $request->validate(['q'=>'nullable|string|max:100','from'=>'nullable|date','to'=>'nullable|date|after_or_equal:from']);
-        $orders = Order::with(['buyer', 'paymentMethod', 'shipment.courier', 'shipment.pickupRider'])
+        $cancellationRefunds=\Illuminate\Support\Facades\Schema::hasTable('cancellation_refunds')?DB::table('cancellation_refunds')->where('seller_id',auth()->id())->get()->keyBy('order_id'):collect();
+        $refundIds=$returnRequests->keys()->merge($cancellationRefunds->keys())->unique();
+        $request->validate(['q'=>'nullable|string|max:100','from'=>'nullable|date','to'=>'nullable|date|after_or_equal:from','period'=>'nullable|in:all,30d,6m,year','payment'=>'nullable|in:all,cod,gcash']);
+        $isGcashOrder = fn ($query) => $query->where('payment_method','GCash')->orWhereHas('paymentMethod',fn ($method) => $method->where('name','like','%GCash%'));
+        $ordersQuery = Order::visibleToSeller()->with(['buyer', 'paymentMethod', 'shipment.courier', 'shipment.pickupRider','gcashPurchase'])
             ->where('seller_id', auth()->id())
             ->when($request->filled('q'), fn($q)=>$q->where(function($lookup)use($request){$lookup->where('order_number','like','%'.$request->q.'%')->orWhereHas('buyer',fn($buyer)=>$buyer->where('given_names','like','%'.$request->q.'%')->orWhere('last_name','like','%'.$request->q.'%'));}))
             ->when($request->filled('from'),fn($q)=>$q->whereDate('created_at','>=',$request->from))
             ->when($request->filled('to'),fn($q)=>$q->whereDate('created_at','<=',$request->to))
+            ->when($request->query('period')==='30d',fn($q)=>$q->where('created_at','>=',now()->subDays(30)))
+            ->when($request->query('period')==='6m',fn($q)=>$q->where('created_at','>=',now()->subMonths(6)))
+            ->when($request->query('period')==='year',fn($q)=>$q->where('created_at','>=',now()->startOfYear()))
+            ->when($request->query('payment')==='gcash',fn($q)=>$q->where($isGcashOrder))
+            ->when($request->query('payment')==='cod',fn($q)=>$q->where(fn($payment)=>$payment->whereIn('payment_method',['COD','Cash on Delivery'])->orWhereHas('paymentMethod',fn($method)=>$method->where('type','cod')->orWhereIn('name',['COD','Cash on Delivery']))));
+        $orders = (clone $ordersQuery)
             ->when($status === 'in_transit', fn ($query) => $query->whereIn('status', Order::IN_TRANSIT_STATUSES))
-            ->when($status==='refunds',fn($query)=>$query->whereIn('id',$returnRequests->keys()))
-            ->when(!in_array($status,['all','in_transit','refunds']), fn ($query) => $query->where('status', $status))
-            ->latest()
+            ->when($status==='refunds',fn($query)=>$query->where(fn($q)=>$q->where('status','returned')->orWhereIn('id',$refundIds)))
+            ->when($status==='gcash',fn($query)=>$query->where($isGcashOrder))
+            ->when(!in_array($status,['all','in_transit','refunds','gcash']), fn ($query) => $query->where('status', $status))
+            ->latestActivity()
             ->get();
 
         $sellerId = auth()->id();
@@ -84,11 +96,14 @@ class SellerController extends Controller
         // off and is waiting on the buyer to confirm (delivered).
         $pendingConfirmation = Order::where('seller_id', $sellerId)->whereIn('status', ['out_for_delivery', 'delivered'])->count();
         $deliveredToday = Order::where('seller_id', $sellerId)->where('status', 'completed')->whereDate('updated_at', today())->count();
-        $statusCounts = Order::where('seller_id', $sellerId)->selectRaw('status, count(*) as c')->groupBy('status')->pluck('c', 'status');
+        $statusCounts = (clone $ordersQuery)->selectRaw('status, count(*) as c')->groupBy('status')->pluck('c', 'status');
+        $gcashOrderCount = Order::visibleToSeller()->where('seller_id',$sellerId)->where($isGcashOrder)->count();
+        $refundOrderCount=(clone $ordersQuery)->where(fn($q)=>$q->where('status','returned')->orWhereIn('id',$refundIds))->count();
+        $orderHistory=DB::table('order_status_history')->whereIn('order_id',$orders->pluck('id'))->orderBy('created_at')->get()->groupBy('order_id');
 
         $shippingObligations = app(\App\Services\LogisticsShipping::class)->installed()
             ? DB::table('logistics_shipping_obligations')->where('seller_id', $sellerId)->whereIn('order_id', $orders->pluck('id'))->get()->keyBy('order_id') : collect();
-        return view('seller.orders', compact('orders', 'status', 'pendingConfirmation', 'deliveredToday', 'statusCounts','returnRequests', 'shippingObligations'));
+        return view('seller.orders', compact('orders', 'status', 'pendingConfirmation', 'deliveredToday', 'statusCounts','returnRequests', 'cancellationRefunds', 'refundOrderCount', 'gcashOrderCount', 'orderHistory', 'shippingObligations'));
     }
 
     /** Order stage transitions a seller drives on their own, before any shipment exists. */
@@ -283,7 +298,7 @@ class SellerController extends Controller
         abort_unless($order->seller_id === auth()->id(), 403);
 
         $data = $request->validate([
-            'cancellation_reason' => ['required', 'string', 'in:Out of stock,Unable to fulfil this order,Cannot deliver to the buyer location,Buyer requested cancellation,Other'],
+            'cancellation_reason' => ['required', 'string', 'in:Out of stock,Unable to fulfil this order'],
             'cancellation_note' => ['nullable', 'string', 'max:500'],
         ]);
 
@@ -292,7 +307,9 @@ class SellerController extends Controller
             app(GcashWorkflow::class)->assertOrderOperation($locked);
             $ok = $locked->cancelAndRestock('Cancelled by seller: '.$data['cancellation_reason'], $data['cancellation_note'] ?? null, auth()->id());
             if ($ok) {
-                Order::notifyUser($locked->buyer_id, 'Order Cancelled', 'Your order #'.$locked->order_number.' was cancelled by the seller: '.$data['cancellation_reason'].'.', 'order_status', $locked->id);
+                $refundNotice = $locked->gcashPurchase?->usesAdminReview() && $locked->gcashPurchase?->verified_at
+                    ? ' Admin has been notified to return your GCash payment. Your refund is pending admin repayment.' : '';
+                Order::notifyUser($locked->buyer_id, 'Order Cancelled', 'Your order #'.$locked->order_number.' was cancelled by the seller: '.$data['cancellation_reason'].'.'.$refundNotice, 'order_status', $locked->id);
             }
 
             return $ok;
@@ -302,7 +319,8 @@ class SellerController extends Controller
             return back()->with('error', 'This order can no longer be cancelled — it has already been handed to a courier.');
         }
 
-        return back()->with('order_success', 'Order cancelled.');
+        return back()->with('order_success', $order->gcashPurchase?->usesAdminReview() && $order->gcashPurchase?->verified_at
+            ? 'Order cancelled. Admin has been notified to return the buyer’s GCash payment.' : 'Order cancelled.');
     }
 
     /** Printable waybill/shipping label for a prepared order. */
@@ -310,7 +328,8 @@ class SellerController extends Controller
     {
         abort_if($order->seller_id !== auth()->id(), 403);
         $order->load(['buyer', 'shipment']);
-        abort_unless($order->shipment, 404, 'This order has not been handed off for pickup yet.');
+        abort_unless($order->shipment || $order->status === 'preparing', 404, 'This order is not ready for a waybill.');
+        abort_if($order->awaitingAdminPayment(), 422, 'Awaiting admin payment approval.');
 
         return view('seller.waybill', ['order' => $order, 'seller' => auth()->user()]);
     }
@@ -345,7 +364,17 @@ class SellerController extends Controller
         ]);
         $needsResponse = $reviews->whereNull('seller_reply')->count();
 
-        return view('seller.feedback', compact('reviews', 'total', 'avgRating', 'breakdown', 'needsResponse'));
+        $chartStart=now()->startOfMonth()->subMonths(5);
+        $chartReviews=Review::where('seller_id',$sellerId)->whereBetween('created_at',[$chartStart,now()])->get(['rating','created_at'])->groupBy(fn($review)=>$review->created_at->format('Y-m'));
+        $reviewMonths=[];
+        for($monthIndex=0;$monthIndex<6;$monthIndex++){
+            $month=$chartStart->copy()->addMonths($monthIndex);
+            $monthReviews=$chartReviews->get($month->format('Y-m'),collect());
+            $counts=[];foreach(range(1,5) as $rating)$counts[$rating]=$monthReviews->where('rating',$rating)->count();
+            $reviewMonths[]=['key'=>$month->format('Y-m'),'label'=>$month->format('M'),'full_label'=>$month->format('F Y'),'counts'=>$counts];
+        }
+
+        return view('seller.feedback', compact('reviews', 'total', 'avgRating', 'breakdown', 'needsResponse', 'reviewMonths'));
     }
 
     public function replyReview(Request $request, Review $review)
@@ -632,11 +661,15 @@ class SellerController extends Controller
         $categories = DB::table('categories')->orderBy('name')->get();
         $seller = auth()->user();
 
-        return view('seller.inventory', compact('products', 'categories', 'seller'));
+        $shopCategories = DB::table('shop_categories')->where('seller_id', $seller->id)->orderBy('name')->get();
+        $shopAssignments = DB::table('shop_category_products')->whereIn('shop_category_id', $shopCategories->pluck('id'))->get()->groupBy('product_id');
+        return view('seller.inventory', compact('products', 'categories', 'seller', 'shopCategories', 'shopAssignments'));
     }
 
     public function storeProduct(Request $request)
     {
+        $variationPackage = json_decode((string) $request->input('variations', '[]'), true);
+        if (is_array($variationPackage)) $request->merge(\App\Support\ProductVariationSet::packageFields($variationPackage));
         $draft = $request->boolean('save_as_draft');
         $request->validate([
             'name' => $draft ? 'required|string|max:120' : 'required|string|min:5|max:120',
@@ -646,7 +679,6 @@ class SellerController extends Controller
             'price' => $draft ? 'nullable|numeric|min:1|max:1000000|decimal:0,2' : 'required|numeric|min:1|max:1000000|decimal:0,2',
             'discount_price' => 'nullable|numeric|min:1|max:1000000|decimal:0,2|lt:price',
             'description' => $draft ? 'nullable|string|max:3000' : 'required|string|min:20|max:3000',
-            'sku' => 'nullable|string|max:100',
             'stock' => 'nullable|integer|min:0|max:99999',
             'restock_date' => 'nullable|date|after_or_equal:today',
             'variations' => 'nullable|json',
@@ -693,11 +725,10 @@ class SellerController extends Controller
             'price' => $request->price ?? 1,
             'discount_price' => $request->discount_price ?: null,
             'description' => $request->description,
-            'sku' => $request->sku,
             'stock' => $variations ? collect($variations)->sum(fn ($v) => collect($v['options'] ?? [])->sum('stock')) : (int) $request->input('stock', 0),
             'restock_date' => $request->restock_date ?: null,
             'variations' => $variations,
-            'details' => $details,
+            'details' => \App\Support\ProductSpecifications::build($request->all(), $details),
             'status' => $draft ? 'draft' : 'pending',
             'weight_grams' => (int) ($request->weight_grams ?? 1),
             'weight_grams_max' => $request->weight_grams_max ?: null,
@@ -716,6 +747,9 @@ class SellerController extends Controller
     {
         abort_if($product->seller_id !== auth()->id(), 403);
 
+        $variationPackage = json_decode((string) $request->input('variations', '[]'), true);
+        if (is_array($variationPackage)) $request->merge(\App\Support\ProductVariationSet::packageFields($variationPackage));
+
         $request->validate([
             'name' => 'required|string|max:255',
             'images' => 'nullable|array|max:9',
@@ -727,9 +761,8 @@ class SellerController extends Controller
             'price' => 'required|numeric|min:0',
             'discount_price' => 'nullable|numeric|min:0|lt:price',
             'description' => 'nullable|string',
-            'sku' => 'nullable|string|max:100',
             'stock' => 'nullable|integer|min:0',
-            'restock_date' => 'nullable|date|after_or_equal:today',
+            'restock_date' => ['nullable', 'date', ...($request->input('restock_date') === $product->restock_date?->format('Y-m-d') ? [] : ['after_or_equal:today'])],
             'variations' => 'nullable|json',
             'details' => 'nullable|string',
             'variation_images' => 'nullable|array',
@@ -776,11 +809,10 @@ class SellerController extends Controller
             'price' => $request->price,
             'discount_price' => $request->discount_price ?: null,
             'description' => $request->description,
-            'sku' => $request->sku,
             'stock' => $variations ? collect($variations)->sum(fn ($v) => collect($v['options'] ?? [])->sum('stock')) : (int) $request->input('stock', 0),
             'restock_date' => $request->restock_date ?: null,
             'variations' => $variations,
-            'details' => $details,
+            'details' => \App\Support\ProductSpecifications::build($request->all(), $details),
             'status' => 'pending',
             'rejection_note' => null,
             'weight_grams' => (int) $request->weight_grams,
@@ -832,6 +864,12 @@ class SellerController extends Controller
             }
         };
         foreach ($variations as &$variation) {
+            if (isset($variation['editor_groups']) && is_array($variation['editor_groups'])) {
+                foreach ($variation['editor_groups'] as &$editorGroup) {
+                    $resolve($editorGroup);
+                }
+                unset($editorGroup);
+            }
             if (($variation['type'] ?? null) === 'combinations') {
                 foreach ($variation['axes'] as &$axis) {
                     foreach ($axis['options'] as &$axisOption) {
@@ -981,8 +1019,7 @@ class SellerController extends Controller
 
     public function notifications()
     {
-        $notifications = DB::table('notifications')
-            ->where('user_id', auth()->id())
+        $notifications = Order::sellerNotificationsQuery((int) auth()->id())
             ->orderByDesc('created_at')
             ->get();
 
@@ -995,13 +1032,13 @@ class SellerController extends Controller
             ->where('user_id', auth()->id())
             ->update(['is_read' => true]);
 
-        return back();
+        return $request->expectsJson() ? response()->json(['read' => true]) : back();
     }
 
     /** Mark one notification read and send the seller to whatever it's about. */
     public function openNotification(string $id)
     {
-        $notification = DB::table('notifications')->where('id', $id)->where('user_id', auth()->id())->first();
+        $notification = Order::sellerNotificationsQuery((int) auth()->id())->where('id', $id)->first();
         abort_unless($notification, 404);
         if($notification->notification_type==='commission'){
             app(\App\Services\CommissionPayments::class)->actor(auth()->user());
@@ -1017,8 +1054,17 @@ class SellerController extends Controller
 
         DB::table('notifications')->where('id', $id)->update(['is_read' => true]);
 
+        if ($notification->notification_type === 'gcash_purchase') {
+            $order = Order::visibleToSeller()->where('gcash_purchase_id', $notification->reference_id)->where('seller_id', auth()->id())->first();
+            return redirect()->route('seller.orders', array_filter(['payment'=>'gcash', 'q'=>$order?->order_number]));
+        }
+        if ($notification->notification_type === 'order_status') {
+            $notificationOrder = Order::where('seller_id', auth()->id())->find($notification->reference_id);
+            abort_unless($notificationOrder, 404);
+            return redirect()->route('seller.orders', ['q' => $notificationOrder->order_number]);
+        }
+
         return match ($notification->notification_type) {
-            'gcash_purchase' => redirect()->route('gcash.show', $notification->reference_id),
             'product_pending', 'product_approved', 'product_rejected' => redirect()->route('seller.inventory'),
             'doc_approved', 'doc_rejected' => redirect()->route('seller.account'),
             'order_delivered', 'new_order' => redirect()->route('seller.orders'),

@@ -27,8 +27,9 @@ body.marketplace.product-detail-page { --page: #fff; background: #fff; font-fami
 .product-detail-page .pd-right-col { display: grid; grid-template-columns: minmax(0, 1fr) 240px; align-items: start; column-gap: 20px; }
 .product-detail-page .pd-info-card { grid-column: 1; grid-row: 1; display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 12px; row-gap: 4px; align-content: start; background: transparent; border: 0; border-radius: 0; padding: 0; }
 .product-detail-page .pd-right-col > .pd-product-information { grid-column: 1 / -1; grid-row: 2; }
-.product-detail-page .pd-right-col > .pd-restock-note { grid-column: 1 / -1; grid-row: 3; }
-.product-detail-page .pd-crumb-row { grid-column: 1 / -1; grid-row: 1; margin-bottom: 2px; gap: 8px; }
+.product-detail-page .pd-right-col > .claim-vouchers { grid-column: 1 / -1; grid-row: 3; margin: 0; }
+.product-detail-page .pd-right-col > .pd-restock-note { grid-column: 1 / -1; grid-row: 4; }
+.product-detail-page .pd-crumb-row { grid-column: 1 / -1; grid-row: 1; margin-bottom: 2px; gap: 8px; display: flex; align-items: center; flex-wrap: wrap; }
 .product-detail-page .pd-crumb { font-family: var(--font); font-size: 10px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
 .product-detail-page .pd-pill { padding: 4px 8px; border: 0; border-radius: 4px; background: var(--pink-soft); color: var(--pink-dark); font-family: var(--font); font-size: 11px; }
 .product-detail-page .pd-title-price-row { display: contents; }
@@ -152,7 +153,8 @@ body.marketplace.product-detail-page { --page: #fff; background: #fff; font-fami
   .product-detail-page .pd-right-col { grid-template-columns: minmax(0, 1fr); }
   .product-detail-page .pd-purchase { grid-column: 1; grid-row: 2; }
   .product-detail-page .pd-right-col > .pd-product-information { grid-row: 3; }
-  .product-detail-page .pd-right-col > .pd-restock-note { grid-row: 4; }
+  .product-detail-page .pd-right-col > .claim-vouchers { grid-row: 4; }
+  .product-detail-page .pd-right-col > .pd-restock-note { grid-row: 5; }
 }
 @media (max-width: 900px) {
   .product-detail-page .pd-storefront-main { padding-block: 16px 32px; }

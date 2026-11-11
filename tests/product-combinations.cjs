@@ -9,6 +9,36 @@ function loadScript(name) {
 }
 const matrix = loadScript('variant-matrix.js');
 const { resolveCombination } = loadScript('product-combinations.js');
+const nested = loadScript('nested-product-variants.js');
+
+test('buyer choices follow the selected color and skip optional size fields', () => {
+  const [config] = nested.build('Color', [
+    {value:'White',children:[{attributes:{Size:'S'},stock:2},{attributes:{Size:'M'},stock:3}]},
+    {value:'Black',stock:4},
+  ], ['Size','Weight','Dimensions']);
+  const rows = {};
+  const buttons = config.axes.flatMap(axis => axis.options.map(option => ({
+    dataset:{group:axis.name,value:option.value},disabled:false,classList:{toggle(){}},setAttribute(){},
+    closest(){return rows[axis.name]},
+  })));
+  config.axes.forEach(axis => rows[axis.name]={querySelectorAll:()=>buttons.filter(b=>b.dataset.group===axis.name)});
+  const tab={querySelectorAll:()=>buttons};
+  const document={getElementById:id=>id==='pdCombinationData'?{textContent:JSON.stringify(config)}:id==='tab-options'?tab:{dataset:{basePrice:'100'}}};
+  const window={updatePriceDisplay(){},changeQty(){},showProductImage(){},syncThumbForImage(){}};
+  vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname,'../public/js/product-combinations.js'),'utf8'),{window,document});
+  const find=(group,value)=>buttons.find(b=>b.dataset.group===group&&b.dataset.value===value);
+  assert.equal(rows.Size.hidden,true);
+  window.productCombinations.select(find('Color','White'));
+  assert.equal(rows.Size.hidden,false);assert.equal(find('Size',nested.NONE).hidden,true);
+  window.productCombinations.select(find('Size','M'));
+  assert.equal(window.productCombinations.selected().dataset.stock,'3');
+  window.productCombinations.select(find('Color','Black'));
+  assert.equal(rows.Size.hidden,true);
+  assert.equal(window.productCombinations.selected().dataset.stock,'4');
+  window.productCombinations.select(find('Color','White'));
+  assert.equal(window.productCombinations.selected(),null);
+  assert.equal(rows.Size.hidden,false);
+});
 
 const axes = [
   { name: 'Color', options: [{ value: 'Pink' }, { value: 'Blue' }] },

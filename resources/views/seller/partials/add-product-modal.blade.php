@@ -41,10 +41,16 @@
           @error('video')<span style="font-size:11px;color:var(--danger);margin-top:3px;display:block">{{ $message }}</span>@enderror
         </div>
 
-        {{-- Name --}}
-        <div class="form-row">
-          <label>Product Name <span style="color:var(--danger)">*</span></label>
-          <input type="text" name="name" placeholder="e.g. Cotton T-Shirt" required value="{{ old('name') }}">
+        {{-- Name + restock date --}}
+        <div class="product-name-restock-row">
+          <div class="form-row">
+            <label>Product Name <span style="color:var(--danger)">*</span></label>
+            <input type="text" name="name" placeholder="e.g. Cotton T-Shirt" required value="{{ old('name') }}">
+          </div>
+          <div class="form-row">
+            <label>Restock date <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+            <input type="date" name="restock_date" min="{{ now()->toDateString() }}">
+          </div>
         </div>
 
         {{-- Price + SKU --}}
@@ -54,8 +60,14 @@
             <input type="number" name="price" placeholder="0.00" min="0" step="0.01" required value="{{ old('price') }}">
           </div>
           <div class="form-row">
-            <label>SKU <span style="color:var(--muted);font-weight:400">(optional)</span></label>
-            <input type="text" name="sku" placeholder="e.g. SKU-001" value="{{ old('sku') }}">
+            <label>SKU</label>
+            <input type="text" placeholder="Generated automatically when saved" readonly aria-label="Automatically generated SKU">
+          </div>
+        </div>
+        <div data-role="no-variation-stock">
+          <div class="form-row">
+            <label>Stock <span style="color:var(--danger)">*</span></label>
+            <input type="number" name="stock" data-role="stock-input" placeholder="0" min="0" value="0" style="max-width:140px">
           </div>
         </div>
         <div class="form-row">
@@ -72,66 +84,22 @@
         {{-- Divider --}}
         <div style="border-top:1px solid var(--border);margin:2px 0"></div>
 
-        {{-- Shipping --}}
-        <div>
-          <div style="font-size:13px;font-weight:650;margin-bottom:2px">Shipping</div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Used to calculate courier fees for buyers.</div>
-          <div class="form-grid-2">
-            <div class="form-row">
-              <label>Weight (grams) <span style="color:var(--danger)">*</span> <span style="color:var(--muted);font-weight:400">(max optional, for a range)</span></label>
-              <div style="display:flex;align-items:center;gap:6px">
-                <input type="number" name="weight_grams" placeholder="e.g. 250" min="1" step="1" required value="{{ old('weight_grams') }}">
-                <span style="color:var(--muted)">–</span>
-                <input type="number" name="weight_grams_max" placeholder="optional max" min="1" step="1" value="{{ old('weight_grams_max') }}">
-              </div>
-            </div>
-            <div class="form-row">
-              <label>Condition <span style="color:var(--danger)">*</span></label>
-              <select name="condition" required>
-                <option value="new" {{ old('condition') === 'new' || !old('condition') ? 'selected' : '' }}>New</option>
-                <option value="used" {{ old('condition') === 'used' ? 'selected' : '' }}>Used</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-row">
-            <label>Package Dimensions (cm) <span style="color:var(--muted);font-weight:400">(optional)</span></label>
-            <div style="display:flex;gap:8px">
-              <input type="number" name="length_cm" placeholder="Length" min="0" step="0.1" value="{{ old('length_cm') }}">
-              <input type="number" name="width_cm" placeholder="Width" min="0" step="0.1" value="{{ old('width_cm') }}">
-              <input type="number" name="height_cm" placeholder="Height" min="0" step="0.1" value="{{ old('height_cm') }}">
-            </div>
-          </div>
-        </div>
-
-        {{-- Divider --}}
-        <div style="border-top:1px solid var(--border);margin:2px 0"></div>
+        @include('seller.partials.product-package-fields', ['packageProduct'=>null])
 
         {{-- Variations --}}
-        <div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div class="product-editor-section product-editor-variations">
+          <div class="product-options-heading">
             <div>
-              <div style="font-size:13px;font-weight:650">Variations</div>
-              <div style="font-size:11px;color:var(--muted)">e.g. Size, Color. Leave empty if product has no variation. Each option can have its own price — leave its price blank to use the base price above.</div>
+              <div style="font-size:13px;font-weight:650">Product options</div>
+              <div class="product-options-intro">Add the colors, sizes or measurements you sell.</div>
             </div>
             <button type="button" data-role="add-variation-btn" class="btn btn-sm btn-outline" style="display:inline-flex;align-items:center;gap:5px">
               @include('seller.partials.icon',['name'=>'plus','size'=>12]) Add Variation
             </button>
           </div>
 
-          {{-- No variation: single stock --}}
-          <div data-role="no-variation-stock">
-            <div class="form-row">
-              <label>Stock <span style="color:var(--danger)">*</span></label>
-              <input type="number" name="stock" data-role="stock-input" placeholder="0" min="0" value="0" style="max-width:140px">
-            </div>
-          </div>
-
           {{-- Variation rows --}}
           <div data-role="variations-list" style="display:flex;flex-direction:column;gap:10px"></div>
-          <div class="form-row" style="margin-top:12px">
-            <label>Restock date <span style="color:var(--muted);font-weight:400">(optional)</span></label>
-            <input type="date" name="restock_date" min="{{ now()->toDateString() }}" style="max-width:190px">
-          </div>
         </div>
 
         {{-- Divider --}}
@@ -142,7 +110,7 @@
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
             <div>
               <div style="font-size:13px;font-weight:650">Product Details</div>
-              <div style="font-size:11px;color:var(--muted)">Add specs like Material, Weight, Dimensions, etc.</div>
+              <div style="font-size:11px;color:var(--muted)">Add extra details like texture, material or care instructions.</div>
             </div>
             <button type="button" data-role="add-detail-btn" class="btn btn-sm btn-outline" style="display:inline-flex;align-items:center;gap:5px">
               @include('seller.partials.icon',['name'=>'plus','size'=>12]) Add Detail

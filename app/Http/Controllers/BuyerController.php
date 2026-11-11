@@ -32,6 +32,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -521,35 +522,53 @@ class BuyerController extends Controller
         $tab = in_array($request->query('tab'), $allowedTabs, true) ? $request->query('tab') : 'all';
         $allowedPeriods = ['all', '30d', '6m', 'year'];
         $period = in_array($request->query('period'), $allowedPeriods, true) ? $request->query('period') : 'all';
-        $categoryId = $request->filled('category') && ctype_digit((string) $request->query('category'))
-            ? (int) $request->query('category')
-            : null;
+        $payment = in_array($request->query('payment'), ['cod', 'gcash'], true) ? $request->query('payment') : 'all';
         $baseQuery = Order::where('buyer_id', auth()->id());
         $orderCounts = (clone $baseQuery)->selectRaw('status, count(*) as aggregate')->groupBy('status')->pluck('aggregate', 'status');
         $returnRequests=\App\Services\BuyerCommerce::installed()?DB::table('commerce_returns')->where('buyer_id',auth()->id())->get()->keyBy('order_id'):collect();
-        $orders = $baseQuery->with(['seller', 'paymentMethod', 'shipment.courier', 'shipment.pickupRider', 'review'])
+        $cancellationRefunds = Schema::hasTable('cancellation_refunds') ? DB::table('cancellation_refunds')->where('buyer_id',auth()->id())->get()->keyBy('order_id') : collect();
+        $cancellationRefundIds = $cancellationRefunds->keys();
+        $returnedOrderIds = (clone $baseQuery)->where('status', 'returned')->pluck('id');
+        $refundOrderIds = $returnRequests->keys()->merge($cancellationRefundIds)->merge($returnedOrderIds)->unique();
+        $orderRelations = ['seller', 'paymentMethod', 'shipment.courier', 'shipment.pickupRider', 'review'];
+        if (Schema::hasTable('gcash_purchases')) $orderRelations[] = 'gcashPurchase';
+        $orders = $baseQuery->with($orderRelations)
             ->when($tab === 'to_ship', fn ($query) => $query->whereIn('status', Order::BUYER_TO_SHIP_STATUSES))
             ->when($tab === 'in_transit', fn ($query) => $query->whereIn('status', Order::BUYER_IN_TRANSIT_STATUSES))
-            ->when($tab==='refunds',fn($query)=>$query->whereIn('id',$returnRequests->keys()))
+            ->when($tab==='refunds',fn($query)=>$query->whereIn('id',$refundOrderIds))
             ->when(! in_array($tab, ['all', 'to_ship', 'in_transit', 'refunds'], true), fn ($query) => $query->where('status', $tab))
             ->when($period === '30d', fn ($query) => $query->where('created_at', '>=', now()->subDays(30)))
             ->when($period === '6m', fn ($query) => $query->where('created_at', '>=', now()->subMonths(6)))
             ->when($period === 'year', fn ($query) => $query->where('created_at', '>=', now()->startOfYear()))
-            ->latest()
+            ->latestActivity()
             ->get();
 
-        $productIds = $orders->flatMap(fn ($order) => collect($order->items ?? [])->pluck('product_id'))->filter()->unique()->values();
-        $productCategories = Product::whereIn('id', $productIds)->pluck('category_id', 'id');
-        $orderCategories = Category::whereIn('id', $productCategories->filter()->unique())->orderBy('name')->get(['id', 'name']);
-        if ($categoryId) {
-            $orders = $orders->filter(fn ($order) => collect($order->items ?? [])->contains(
-                fn ($item) => (int) ($productCategories[$item['product_id'] ?? null] ?? 0) === $categoryId
-            ))->values();
+        $paymentPurchaseIds = Schema::hasColumn('orders', 'gcash_purchase_id')
+            ? $orders->pluck('gcash_purchase_id')->filter()->unique()->values()
+            : collect();
+        $paymentHistories = collect();
+        $paymentProofs = collect();
+        if ($paymentPurchaseIds->isNotEmpty() && Schema::hasTable('gcash_purchase_history')) {
+            $paymentHistories = DB::table('gcash_purchase_history')->whereIn('purchase_id', $paymentPurchaseIds)->orderBy('id')->get()->groupBy('purchase_id');
+        }
+        if ($paymentPurchaseIds->isNotEmpty() && Schema::hasTable('gcash_proofs')) {
+            $paymentProofs = DB::table('gcash_proofs')->whereIn('purchase_id', $paymentPurchaseIds)->orderBy('created_at')->get(['id', 'purchase_id', 'mime', 'size', 'created_at'])->groupBy('purchase_id');
+        }
+
+        if ($payment !== 'all') {
+            $orders = $orders->filter(function ($order) use ($payment) {
+                $method = strtolower((string) ($order->paymentMethod?->name ?: $order->payment_method ?: ''));
+                $isGcash = (Schema::hasColumn('orders', 'gcash_purchase_id') && (bool) $order->gcash_purchase_id) || str_contains($method, 'gcash');
+                return $payment === 'gcash' ? $isGcash : (! $isGcash && (str_contains($method, 'cash') || str_contains($method, 'cod')));
+            })->values();
         }
 
         $orderHistory = DB::table('order_status_history')->whereIn('order_id', $orders->modelKeys())->orderBy('created_at')->get(['order_id', 'status', 'created_at'])->groupBy('order_id');
 
-        return view('buyer.orders', compact('orders', 'tab', 'period', 'categoryId', 'orderCategories', 'orderCounts', 'orderHistory','returnRequests'));
+        $paymentPurchase = $request->query('payment_purchase');
+        $paymentOrderId = $paymentPurchase ? $orders->first(fn ($order) => (string) ($order->gcash_purchase_id ?? '') === (string) $paymentPurchase)?->id : null;
+        $openOrderDetails = $request->query('order_details') ?: $paymentOrderId;
+        return view('buyer.orders', compact('orders', 'tab', 'period', 'payment', 'paymentPurchase', 'paymentHistories', 'paymentProofs', 'openOrderDetails', 'orderCounts', 'orderHistory','returnRequests','refundOrderIds','cancellationRefunds'));
     }
 
     /** Delivery proof is visible only to the buyer who owns the completed order. */
@@ -616,7 +635,9 @@ class BuyerController extends Controller
             $locked = Order::lockFresh($order->id);
             $ok = $locked->cancelAndRestock($data['cancellation_reason'], $data['cancellation_note'] ?? null, auth()->id());
             if ($ok) {
-                Order::notifyUser($locked->seller_id, 'Order Cancelled', 'Order #'.$locked->order_number.' was cancelled by the buyer: '.$data['cancellation_reason'].'.', 'order_status', $locked->id);
+                $refundNotice = $locked->gcashPurchase?->usesAdminReview() && $locked->gcashPurchase?->verified_at
+                    ? ' Admin has been notified to refund the GCash payment.' : '';
+                Order::notifyUser($locked->seller_id, 'Order Cancelled', 'Order #'.$locked->order_number.' was cancelled by the buyer: '.$data['cancellation_reason'].'. Stop preparing this order; reserved stock has been released.'.$refundNotice, 'order_status', $locked->id);
             }
 
             return $ok;
@@ -774,15 +795,13 @@ class BuyerController extends Controller
             $request->validate(['checkout_id' => 'required|uuid']);
             $purchases = app(GcashWorkflow::class)->create($buyer, $data['items'], $paymentMethod->id, $request->checkout_id, $data['voucher_code'] ?? null, $data['delivery_address_id'] ?? null, $data['buyer_note'] ?? null);
             if (collect($purchases)->contains(fn ($p) => $p->fresh()->reservation_state === 'initializing')) {
-                return redirect()->route('gcash.index')->with('error', 'Your purchase was committed and stock allocated, but activation is pending. Retry the same checkout or open its purchase page; do not start another payment.');
+                return redirect()->route('buyer.orders', ['payment' => 'gcash'])->with('error', 'Your order is placed and payment setup is still processing. Check My Orders shortly; do not start another checkout.');
             }
             if (count($purchases) === 1) {
-                $seller = User::findOrFail($purchases[0]->seller_id);
-
-                return redirect()->route('buyer.messages', ['seller' => $seller->username, 'purchase' => $purchases[0]->id])->with('success', 'Stock reserved for one hour. Ask the seller for GCash instructions.');
+                return redirect()->route('buyer.orders',['payment'=>'gcash','payment_purchase'=>$purchases[0]->id])->with('success', $purchases[0]->usesAdminReview() ? 'Order placed. Complete GCash payment from My Orders for admin review.' : 'Your GCash purchase is ready in My Orders.');
             }
 
-            return redirect()->route('gcash.index')->with('success', 'A separate payment purchase was reserved for each seller.');
+            return redirect()->route('buyer.orders', ['payment' => 'gcash', 'payment_purchase' => $purchases[0]->id])->with('success', 'Your orders are placed. Complete each GCash payment from My Orders.');
         }
         $cart = CartItem::where('buyer_id', auth()->id())->get()->keyBy('id')->map->toArray()->all();
         $selected = collect($data['items'])->filter(fn ($key) => array_key_exists($key, $cart));
@@ -951,10 +970,6 @@ class BuyerController extends Controller
         if ($missing($address['barangay'] ?? null) || $missing($address['municipality'] ?? null) || $missing($address['province'] ?? null)) {
             return 'Your delivery address is missing its barangay, city/municipality or province — please complete it before checking out.';
         }
-        if ($missing($address['street'] ?? null) && $missing($address['house_no'] ?? null)) {
-            return 'Please add your house number or street to your delivery address so the rider can find you.';
-        }
-
         return null;
     }
 
@@ -1345,7 +1360,7 @@ class BuyerController extends Controller
 
         return match ($notification->notification_type) {
             'flash_sale' => redirect()->route('buyer.product',$notification->reference_id),
-            'gcash_purchase' => redirect()->route('gcash.show', $notification->reference_id),
+            'gcash_purchase' => redirect()->route('buyer.orders', ['payment' => 'gcash', 'payment_purchase' => $notification->reference_id]),
             'order_status', 'order_delivered', 'delivery_assigned', 'pickup_assigned', 'delivery_failed' => redirect()->route('buyer.orders'),
             'review_reply' => redirect()->route('buyer.orders'),
             'announcement' => redirect()->route('buyer.announcements', ['open' => $notification->reference_id]),

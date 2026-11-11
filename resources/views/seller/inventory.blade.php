@@ -1,173 +1,33 @@
 @extends('seller.layout')
 @section('title', 'Inventory')
 @section('page-title', 'Inventory')
-@php use Illuminate\Support\Facades\Storage; @endphp
+@section('body-class', 'seller-products-page')
+@push('head')
+<link rel="stylesheet" href="{{ asset('css/seller-products.css') }}?v={{ filemtime(public_path('css/seller-products.css')) }}">
+@endpush
+@push('scripts')
+<script src="{{ asset('js/product-color-picker.js') }}?v={{ filemtime(public_path('js/product-color-picker.js')) }}" defer></script>
+<script src="{{ asset('js/seller-products.js') }}?v={{ filemtime(public_path('js/seller-products.js')) }}" defer></script>
+@endpush
 
 @section('content')
-<div class="inventory-page-intro"><a class="orders-secondary-action" href="{{ route('seller.shop-categories.index') }}">@include('seller.partials.icon',['name'=>'tag','size'=>14]) Manage shop categories</a></div>
-@if($errors->has('product'))<div role="alert" style="padding:12px;border:1px solid #d77;margin-bottom:12px">{{ $errors->first('product') }}</div>@endif
+@if($errors->has('product'))<div role="alert" class="product-inventory-notice is-danger">@include('buyer.partials.icon',['name'=>'x','size'=>17])<span>{{ $errors->first('product') }}</span></div>@endif
 
 @if(!$seller->category_id)
-  <div style="background:var(--warning-soft);border:1px solid var(--warning-line);color:var(--warning);padding:12px 16px;border-radius:9px;font-size:13px;margin-bottom:18px;display:flex;align-items:center;gap:10px">
+  <div class="product-inventory-notice is-warning">
     @include('seller.partials.icon',['name'=>'bell','size'=>15])
-    <span>You haven't set a shop category yet. <a href="{{ route('seller.account') }}" style="font-weight:700;color:var(--warning);text-decoration:underline">Set it in Account → Shop Information</a> before adding products.</span>
+    <span>Choose your shop category before adding products. <a href="{{ route('seller.account') }}">Open shop settings</a></span>
   </div>
 @endif
 
 @include('seller.partials.product-result-modal')
 
-<div class="filter-bar inventory-toolbar">
-  <div class="search-mini">
-    <span class="ic">@include('seller.partials.icon',['name'=>'search','size'=>13])</span>
-    <input type="text" placeholder="Search products…" id="productSearch">
-  </div>
-  <select class="select" id="statusFilter">
-    <option value="">All Status</option>
-    <option value="pending">Pending</option>
-    <option value="active">Active</option>
-    <option value="rejected">Rejected</option>
-    <option value="archived">Archived</option>
-  </select>
-  <button class="btn btn-primary" data-modal="addProductModal" @disabled(!$seller->category_id) title="{{ !$seller->category_id ? 'Set your shop category first' : '' }}">
-    @include('seller.partials.icon',['name'=>'plus','size'=>14]) Add Product
-  </button>
-</div>
-
-<div class="card inventory-table-card">
-  <div class="card-pad" style="padding:0">
-    <div class="table-wrap">
-    <table class="tbl" id="productTable" style="table-layout:fixed">
-      <thead>
-        <tr style="text-align:center">
-          <th style="text-align:center;width:34%">Product</th>
-          <th style="text-align:center;width:13%">Category</th>
-          <th style="text-align:center;width:17%">Price</th>
-          <th style="text-align:center;width:9%">Stock</th>
-          <th style="text-align:center;width:15%">Status</th>
-          <th style="text-align:center;width:12%">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        @forelse($products as $product)
-        @php
-          $allOptions   = collect($product->variations ?? [])->flatMap(fn ($v) => $v['options'] ?? []);
-          $optionPrices = $allOptions->pluck('price')->filter()->values();
-          $minPrice     = $optionPrices->push($product->price)->min();
-          $maxPrice     = $optionPrices->max();
-        @endphp
-        <tr data-status="{{ $product->status }}" style="white-space:nowrap">
-          <td style="overflow:hidden">
-            <div style="display:flex;align-items:center;gap:10px;min-width:0">
-              <div class="inv-img" style="flex:none">
-                @if($product->image)
-                  <img src="{{ Storage::url($product->image) }}" style="width:40px;height:40px;object-fit:cover;border-radius:7px">
-                @else
-                  @include('seller.partials.icon',['name'=>'bag','size'=>20])
-                @endif
-              </div>
-              <div style="font-weight:650;font-size:13px;overflow:hidden;text-overflow:ellipsis">{{ $product->name }}</div>
-            </div>
-          </td>
-          <td style="font-size:12px;color:var(--muted);text-align:center;overflow:hidden;text-overflow:ellipsis">{{ $product->category->name ?? '—' }}</td>
-          <td class="mono" style="text-align:center;overflow:hidden;text-overflow:ellipsis">
-            @if($product->discount_price && $product->discount_price < $product->price)
-              <span style="color:var(--pink-dark);font-weight:700">₱{{ number_format($product->discount_price, 2) }}</span>
-              <span style="text-decoration:line-through;color:var(--muted);font-size:11px;display:block">₱{{ number_format($product->price, 2) }}</span>
-            @elseif($maxPrice > $minPrice)
-              ₱{{ number_format($minPrice, 2) }}–₱{{ number_format($maxPrice, 2) }}
-            @else
-              ₱{{ number_format($product->price, 2) }}
-            @endif
-          </td>
-          <td style="text-align:center">
-            @php $stock = $product->total_stock; @endphp
-            <span style="font-size:13px;font-weight:600;{{ $stock <= 0 ? 'color:var(--danger)' : '' }}">{{ (\App\Support\ProductVariationSet::combination($product->variations)['requires_stock_setup'] ?? false) ? 'Set combination stock' : $stock }}</span>
-          </td>
-          <td style="text-align:center">
-            @if($product->status === 'pending')
-              <span class="stamp stamp-pending" style="display:inline-flex;align-items:center;gap:5px">
-                @include('seller.partials.icon',['name'=>'clock','size'=>11]) Pending
-              </span>
-            @elseif($product->status === 'active')
-              <span class="stamp stamp-active" style="display:inline-flex;align-items:center;gap:5px">
-                @include('seller.partials.icon',['name'=>'check-circle','size'=>11]) Active
-              </span>
-            @elseif($product->status === 'rejected')
-              <span class="stamp stamp-rejected" style="display:inline-flex;align-items:center;gap:5px">
-                @include('seller.partials.icon',['name'=>'x','size'=>11]) Rejected
-              </span>
-              @if($product->rejection_note)
-                <button type="button" class="rejection-note-btn" data-note="{{ $product->rejection_note }}"
-                  style="border:0;background:none;cursor:pointer;color:var(--danger);padding:0 0 0 4px;vertical-align:middle" title="See reason">
-                  @include('seller.partials.icon',['name'=>'file','size'=>12])
-                </button>
-              @endif
-            @elseif($product->status === 'archived')
-              <span class="stamp" style="display:inline-flex;align-items:center;gap:5px;background:var(--neutral-soft);color:var(--neutral);border-color:var(--neutral-line)">
-                @include('seller.partials.icon',['name'=>'inventory','size'=>11]) Archived
-              </span>
-            @else
-              <span class="stamp stamp-pending">{{ ucfirst($product->status) }}</span>
-            @endif
-          </td>
-          <td style="text-align:center">
-            <div class="tbl-actions" style="justify-content:center">
-              <button type="button" class="btn btn-sm btn-outline icon-only" data-modal="viewProductModal-{{ $product->id }}" title="View" aria-label="View">
-                @include('seller.partials.icon',['name'=>'eye','size'=>13])
-              </button>
-              <form method="POST" action="{{ route('seller.inventory.duplicate',$product) }}">@csrf<button class="btn btn-sm btn-outline icon-only" title="Duplicate as draft" aria-label="Duplicate">⧉</button></form>
-              @if(in_array($product->status, ['active', 'archived']))
-                <button type="button" class="btn btn-sm btn-outline icon-only" data-modal="addStockModal-{{ $product->id }}" title="Add Stock" aria-label="Add Stock">
-                  @include('seller.partials.icon',['name'=>'plus','size'=>13])
-                </button>
-              @endif
-              @if($product->status === 'active')
-                <form method="POST" action="{{ route('seller.inventory.archive', $product->id) }}" id="archiveForm-{{ $product->id }}">
-                  @csrf @method('PATCH')
-                  <input type="hidden" name="archived" value="1">
-                </form>
-                <button type="submit" form="archiveForm-{{ $product->id }}" class="btn btn-sm btn-outline icon-only" title="Archive" aria-label="Archive">
-                  @include('seller.partials.icon',['name'=>'inventory','size'=>13])
-                </button>
-              @elseif($product->status === 'archived')
-                <form method="POST" action="{{ route('seller.inventory.archive', $product->id) }}" id="unarchiveForm-{{ $product->id }}">
-                  @csrf @method('PATCH')
-                  <input type="hidden" name="archived" value="0">
-                </form>
-                <button type="submit" form="unarchiveForm-{{ $product->id }}" class="btn btn-sm btn-outline icon-only" title="Unarchive" aria-label="Unarchive">
-                  @include('seller.partials.icon',['name'=>'check-circle','size'=>13])
-                </button>
-              @endif
-              @if(in_array($product->status, ['pending','rejected','archived']))
-                <form method="POST" action="{{ route('seller.inventory.destroy', $product->id) }}" id="removeForm-{{ $product->id }}">
-                  @csrf @method('DELETE')
-                </form>
-                <button type="button" class="btn btn-sm btn-danger icon-only" title="Remove" aria-label="Remove"
-                  onclick="confirmRemoveProduct('removeForm-{{ $product->id }}', '{{ addslashes($product->name) }}')">
-                  @include('seller.partials.icon',['name'=>'x','size'=>13])
-                </button>
-              @endif
-            </div>
-          </td>
-        </tr>
-        @empty
-        <tr>
-          <td colspan="6">
-            <div class="empty" style="padding:40px 20px">
-              @include('seller.partials.icon',['name'=>'bag','size'=>28,'class'=>'ic'])
-              <h3>No products yet</h3>
-              <p>Add your first product to get started.</p>
-            </div>
-          </td>
-        </tr>
-        @endforelse
-      </tbody>
-    </table>
-    </div>
-  </div>
-</div>
+@include('commerce.messages')
+@include('seller.partials.product-list')
+@include('seller.partials.inventory-categories')
 
 @include('seller.partials.add-product-modal')
+@include('seller.partials.discard-product-modal')
 
 {{-- View & Edit product modals --}}
 @foreach($products as $product)
@@ -223,22 +83,6 @@
 
 
 <script>
-// Search filter
-document.getElementById('productSearch').addEventListener('input', function () {
-  const q = this.value.toLowerCase();
-  document.querySelectorAll('#productTable tbody tr[data-status]').forEach(row => {
-    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
-  });
-});
-
-// Status filter
-document.getElementById('statusFilter').addEventListener('change', function () {
-  const val = this.value;
-  document.querySelectorAll('#productTable tbody tr[data-status]').forEach(row => {
-    row.style.display = (!val || row.dataset.status === val) ? '' : 'none';
-  });
-});
-
 // Remove confirmation modal (replaces the native browser confirm())
 const removeConfirmModal = document.getElementById('removeConfirmModal');
 const removeConfirmName  = document.getElementById('removeConfirmName');
@@ -268,10 +112,4 @@ document.querySelectorAll('.rejection-note-btn').forEach(btn => {
 
 
 </script>
-@if(\App\Services\BuyerCommerce::installed())
-@include('commerce.messages')
-@include('account.partials.commerce-flash')
-@endif
 @endsection
-
-@push('scripts')<script src="{{ asset('js/commerce.js') }}?v={{ filemtime(public_path('js/commerce.js')) }}"></script>@endpush

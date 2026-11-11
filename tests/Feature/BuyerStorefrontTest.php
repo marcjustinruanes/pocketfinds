@@ -24,7 +24,9 @@ class BuyerStorefrontTest extends TestCase
         $this->view('buyer.product', $data + ['notifications'=>collect(), 'cartCount'=>0, 'unreadMessages'=>0, 'errors'=>new \Illuminate\Support\ViewErrorBag()])
             ->assertSee('id="pdWishlistForm"', false)->assertSee('product-detail-page')
             ->assertSee('const revCounts =', false)->assertDontSee('data-protected', false);
-        $this->view('guest.product', $data)->assertSee('const revCounts =', false);
+        $this->view('guest.product', $data)->assertSee('const revCounts =', false)
+            ->assertSee('css/buyer-storefront.css')->assertSee('css/buyer-pages.css')
+            ->assertSee('buyer-storefront buyer-pages product-detail-page',false)->assertSee('<main class="content">',false);
         $this->view('partials.product-detail', $data + ['buyerMode'=>false])
             ->assertSee('data-protected', false)
             ->assertSee(route('guest.product', 'sample-product'))

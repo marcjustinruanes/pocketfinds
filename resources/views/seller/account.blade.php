@@ -4,7 +4,6 @@
 
 @section('content')
 @include('account.partials.buyer-module-security')
-<nav class="seller-account-shortcuts" aria-label="Seller account links"><a href="{{ route('seller.shop-categories.index') }}">Shop categories</a><a href="{{ route('account.cancellation-refunds') }}">Cancellation refunds</a></nav>
 @include('commerce.messages')
 @php $u = $seller; @endphp
 
@@ -281,24 +280,6 @@
           ['Status',         filled($u->status) ? ucfirst($u->status) : 'Not provided'],
           ['Auth Method',    filled($u->auth_method) ? ucfirst($u->auth_method) : 'Not provided'],
           ['Member Since',   $u->created_at?->format('M d, Y') ?? 'Not provided'],
-          ['Given Names',    $u->given_names ?: 'Not provided'],
-          ['Last Name',      $u->last_name ?: 'Not provided'],
-          ['Middle Name',    $u->middle_name ?: 'Not provided'],
-          ['Sex',            $u->sex ? ucfirst($u->sex) : 'Not provided'],
-          ['Birthday',       $u->birthday?->format('M d, Y') ?? 'Not provided'],
-          ['Age',            $u->age ?: 'Not provided'],
-          ['Email',          $u->email ?: 'Not provided'],
-          ['Contact No.',    $u->contact_no ?: 'Not provided'],
-          ['Province',       '<span id="ov-province" data-code="'.e($u->province).'">'.e($u->province ?: 'Not provided').'</span>'],
-          ['Municipality',   '<span id="ov-municipality" data-code="'.e($u->municipality).'">'.e($u->municipality ?: 'Not provided').'</span>'],
-          ['Barangay',       '<span id="ov-barangay" data-code="'.e($u->barangay).'">'.e($u->barangay ?: 'Not provided').'</span>'],
-          ['House No.',      $u->house_no ?: 'Not provided'],
-          ['Street',         $u->street ?: 'Not provided'],
-          ['Business Name',  $u->business_name ?: 'Not provided'],
-          ['Username',       $u->username ?: 'Not provided'],
-          ['Shop Category',  $u->category_id ? ($categories->firstWhere('id', $u->category_id)->name ?? 'Not provided') : 'Not provided'],
-          ['ID Type',        $u->id_type_id ? ($idTypes->firstWhere('id', $u->id_type_id)->name ?? 'Not provided') : 'Not provided'],
-          ['ID File',        $u->id_file ? '<button type="button" class="doc-preview-btn" data-src="'.app(\App\Services\SensitiveDocuments::class)->url($u->id_file).'" data-type="'.(in_array(strtolower(pathinfo($u->id_file,PATHINFO_EXTENSION)),['jpg','jpeg','png'])?'image':'pdf').'" style="background:none;border:none;padding:0;color:var(--pink);font-weight:600;cursor:pointer;font-size:13px">View File</button>' : 'Not provided'],
         ] as [$label, $val])
         <div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border)">
           <span style="color:var(--muted)">{{ $label }}</span>
@@ -308,13 +289,6 @@
       </div>
     </div>
 
-    {{-- Danger zone --}}
-    <div class="card" style="border-color:var(--danger-line)">
-      <div class="card-head" style="border-color:var(--danger-line)"><div><h2 style="color:var(--danger)">Danger Zone</h2><p>Irreversible actions</p></div></div>
-      <div class="card-pad">
-        <button class="btn btn-danger btn-block" data-logout>@include('seller.partials.icon', ['name' => 'logout', 'size' => 14]) Sign Out</button>
-      </div>
-    </div>
 
   </div>
 </div>
@@ -361,12 +335,7 @@ document.querySelectorAll('.doc-preview-btn').forEach(btn => {
 @if(\App\Services\BuyerCommerce::installed())
 @include('account.partials.commerce-vacation')
 @include('account.partials.commerce-shipping')
-@if(\Illuminate\Support\Facades\Schema::hasTable('commerce_sales'))
-@include('account.partials.commerce-flash')
-@endif
-@if(\Illuminate\Support\Facades\Schema::hasColumn('commerce_vouchers','display_mode'))
-@include('account.partials.commerce-vouchers')
-@endif
+<div class="seller-account-promotions" id="flash-sales"><a href="{{ route('seller.promotions.flash') }}">Manage flash sales</a><a href="{{ route('seller.vouchers') }}">Manage vouchers</a></div>
 @endif
 @include('account.partials.email-change')
 @endsection

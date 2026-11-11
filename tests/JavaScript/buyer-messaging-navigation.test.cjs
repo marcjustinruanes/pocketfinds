@@ -6,15 +6,18 @@ const source = readFileSync('public/js/buyer.js', 'utf8');
 
 function fixture(pathname) {
     const handlers = [], requests = [], navigations = [], classes = new Set();
-    const widget = { classList: { add: x => classes.add(x) }, dataset: {} };
-    const panel = { innerHTML: '', querySelectorAll: () => [] };
+    const widget = { classList: { add: x => classes.add(x) }, dataset: {}, setAttribute() {} };
+    const panel = { innerHTML: '', querySelectorAll: () => [], replaceChildren: (...frames) => frames.forEach(frame => requests.push(frame.src)) };
     const context = {
         document: {
             addEventListener: (type, handler) => { if (type === 'click') handlers.push(handler); },
             querySelectorAll: () => [],
+            querySelector: () => null,
+            createElement: () => ({}),
             getElementById: id => id === 'messagesModal' ? widget : id === 'messagesModalBody' ? panel : null,
         },
-        window: { location: { pathname, assign: url => navigations.push(url) } },
+        window: { location: { pathname, origin:'https://example.test', assign: url => navigations.push(url) } },
+        URL,
         fetch: url => { requests.push(url); return Promise.resolve({ text: async () => '' }); },
     };
     runInNewContext(source, context);
@@ -48,7 +51,7 @@ test('conversation switches inside the widget retain in-place loading', () => {
     const f = fixture('/buyer/orders');
     assert.equal(f.click(true), true);
     assert.equal(f.classes.has('open'), true);
-    assert.deepEqual(f.requests, ['/buyer/messages?seller=fictional']);
+    assert.deepEqual(f.requests, ['https://example.test/buyer/messages?seller=fictional&embedded=1']);
 });
 
 test('modified widget clicks preserve new-tab browser behavior', () => {
@@ -61,5 +64,5 @@ test('other pages can still open the floating conversation widget', () => {
     const f = fixture('/buyer/orders');
     f.context.openMessagesModal('/buyer/messages?seller=fictional');
     assert.equal(f.classes.has('open'), true);
-    assert.deepEqual(f.requests, ['/buyer/messages?seller=fictional']);
+    assert.deepEqual(f.requests, ['https://example.test/buyer/messages?seller=fictional&embedded=1']);
 });

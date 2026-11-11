@@ -12,8 +12,11 @@
     <div class="pf-deal-fold-details" id="deal-details-{{ $loop->index }}" @if(!$loop->first) hidden @endif>
       <h3 class="pf-deal-product-name">{{ $p['name'] }}</h3>
       @if($p['badge'] ?? null)<span class="pf-deal-fold-badge">{{ $p['badge'] }}</span>@endif
-      @if($p['flash_sale']??null)<p class="pf-deal-fold-badge">Flash sale · Ends in <span data-countdown="{{ $p['flash_sale']['ends_at'] }}"></span></p>
-      @elseif($p['scheduled_flash']??null)<p class="pf-deal-fold-badge">Flash sale ₱{{ number_format($p['scheduled_flash']['price'],2) }} · Starts in <span data-countdown="{{ $p['scheduled_flash']['starts_at'] }}"></span></p>@endif
+      @if($p['flash_sale']??null)
+       <div class="pf-deal-timing"><span class="pf-deal-timing-label">Flash sale</span><strong>Ends in <span data-countdown="{{ $p['flash_sale']['ends_at'] }}" data-countdown-finished="Sale ended"></span></strong><small>Until {{ \Illuminate\Support\Carbon::parse($p['flash_sale']['ends_at'])->format('M j, g:i A') }}</small></div>
+      @elseif($p['scheduled_flash']??null)
+       <div class="pf-deal-timing"><span class="pf-deal-timing-label">Flash sale · ₱{{ number_format($p['scheduled_flash']['price'],2) }}</span><strong>Starts in <span data-countdown="{{ $p['scheduled_flash']['starts_at'] }}" data-countdown-finished="Starting now"></span></strong><small>{{ \Illuminate\Support\Carbon::parse($p['scheduled_flash']['starts_at'])->format('M j, g:i A') }}</small></div>
+      @endif
       @if(($buyerMode??false)&&(($p['flash_sale']??null)||($p['scheduled_flash']??null)))
       <form method="POST" action="{{ route('buyer.commerce.reminder',($p['flash_sale']??$p['scheduled_flash'])['id']) }}">@csrf<button class="pf-deal-fold-link" type="submit">Remind me</button></form>
       @endif
@@ -29,3 +32,4 @@
 <p class="pf-deal-empty" data-deal-filter-empty @if(count($deals)) hidden @endif role="status">No deals match these filters right now.</p>
 </div>
 @once<script src="{{ asset('js/commerce.js') }}?v={{ filemtime(public_path('js/commerce.js')) }}"></script>@endonce
+@once<style>.pf-deal-timing{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 9px;margin:5px 0;color:#fff}.pf-deal-timing-label{font:600 10px/1.4 Inter,system-ui,sans-serif;color:#ffd1e7}.pf-deal-timing>strong{font:650 11px/1.4 Inter,system-ui,sans-serif;font-variant-numeric:tabular-nums;color:inherit}.pf-deal-timing>small{font:400 10px/1.4 Inter,system-ui,sans-serif;opacity:.8}</style>@endonce

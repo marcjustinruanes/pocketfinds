@@ -801,11 +801,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!await window.prepareBuyerCheckout(data)) return;
     }
     const gcash = isGcashSelection();
-    document.getElementById('orderConfirmTitle').textContent = gcash ? 'Continue with GCash?' : 'Place this order?';
+    const platformGcash = @json(\Illuminate\Support\Facades\Schema::hasColumn('gcash_purchases','review_flow'));
+    document.getElementById('orderConfirmTitle').textContent = gcash ? 'Place order with GCash?' : 'Place this order?';
     document.getElementById('orderConfirmMessage').textContent = gcash
-      ? `Reserve your selected items for one hour for ${document.getElementById('cartTotal').textContent} and open the seller conversation for payment details. After the seller verifies payment, return to the purchase to select Place Order.`
+      ? (platformGcash ? `Place this order for ${document.getElementById('cartTotal').textContent}, then pay the PocketFinds GCash account and upload your receipt. PocketFinds reviews your payment before the seller prepares the order.` : `Reserve your selected items for one hour for ${document.getElementById('cartTotal').textContent} and open the seller conversation for payment details. After the seller verifies payment, return to the purchase to select Place Order.`)
       : `Place this order for ${selected.length} item${selected.length === 1 ? '' : 's'} with a total of ${document.getElementById('cartTotal').textContent}?`;
-    orderConfirmButton.textContent = gcash ? 'Reserve & message seller' : 'Place Order';
+    orderConfirmButton.textContent = gcash && !platformGcash ? 'Reserve & message seller' : 'Place Order';
     checkoutReturnFocus = document.activeElement;
     orderConfirmModal.classList.add('open');
     orderConfirmModal.setAttribute('aria-hidden', 'false');
@@ -911,7 +912,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!statusEl) return;
     if (!type || type === 'cod' || type === 'other') { statusEl.innerHTML = ''; return; }
     const name = paymentNameSelect.options[paymentNameSelect.selectedIndex]?.text || '';
-    if(isGcashSelection()){ statusEl.textContent='Next: message the seller for payment details. Upload proof on your linked purchase; Place Order is available only after seller verification.'; return; }
+    if(isGcashSelection()){ statusEl.textContent=''; return; }
     statusEl.textContent = '';
   }
   if (paymentTypeSelect && paymentNameSelect) {

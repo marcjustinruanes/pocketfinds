@@ -1,0 +1,150 @@
+.gcash-purchase-modal{z-index:20000}
+.gcash-purchase-modal .order-details-dialog{height:min(780px,calc(100dvh - 32px));width:min(1100px,100%)}
+.gcash-purchase-modal iframe{display:block;width:100%;flex:1;min-height:0;border:0;background:#fff;border-radius:0 0 18px 18px}
+.gcash-purchase-modal .order-details-head{flex:none}
+body.gcash-embedded{margin:0;background:#fff;color:#593346;font-family:Inter,system-ui,sans-serif;font-size:12px;min-height:0}
+.gcash-embedded{scrollbar-width:none}.gcash-embedded::-webkit-scrollbar{display:none}
+.gcash-embedded .gcash-page{max-width:none;padding:0 24px 24px;margin:0}
+.gcash-embedded .gcash-nav{display:none}
+.gcash-embedded .gcash-hero{padding:14px 0;border:0;border-bottom:1px solid #f0e7ec;border-radius:0;box-shadow:none;margin:0 0 18px}
+.gcash-embedded .gcash-hero-head .gcash-eyebrow,.gcash-embedded .gcash-hero-head h2,.gcash-embedded .gcash-hero-head>div:last-child{display:none}
+.gcash-embedded .gcash-hero>p{font-size:12px;line-height:1.6;margin:10px 0;color:#987f8d}
+.gcash-embedded .gcash-badge{text-transform:uppercase;font-size:10px;padding:4px 9px}
+.gcash-embedded .gcash-progress{margin-top:14px;padding-top:14px;font-size:11px;gap:10px}
+.gcash-embedded .gcash-step-number{width:26px;height:26px;min-width:26px;font-size:12px}
+.gcash-embedded .gcash-grid{grid-template-columns:minmax(0,1fr);gap:16px;margin-top:18px}
+.gcash-embedded .gcash-grid>aside{display:none}
+.gcash-embedded .gcash-stack{gap:16px}
+.gcash-embedded .gcash-card:not(.gcash-hero){padding:16px;border:1px solid #eadfe6;border-radius:11px;box-shadow:none;background:#fff}
+.gcash-embedded .gcash-card h3{font-size:14px;margin:0 0 12px;color:#593346}
+.gcash-embedded .gcash-button{min-height:34px;padding:7px 11px;font-size:11px;border-radius:7px}
+.gcash-embedded :is(input,select,textarea){font:inherit}
+.gcash-embedded .gcash-fields{font-size:12px}
+.gcash-embedded .gcash-notice,.gcash-embedded .gcash-muted{font-size:11px;line-height:1.6}
+.gcash-embedded [data-order-summary] .order-summary-columns{margin-top:16px}
+.gcash-embedded .gcash-modal-reference{font-size:11px;color:#987f8d;overflow-wrap:anywhere;margin:12px 0}
+.gcash-embedded .gcash-modal-reference strong,.gcash-embedded .gcash-modal-reference a{color:#593346}
+.gcash-embedded .gcash-fields>div{display:grid;grid-template-columns:145px minmax(0,1fr);align-items:center;gap:12px;margin:0;padding:10px 0}
+.gcash-embedded .gcash-fields dd{overflow-wrap:anywhere;min-width:0}
+.gcash-embedded .gcash-payment-references{padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid #f0e7ec}
+.gcash-embedded .gcash-payment-references a{font-weight:600;text-decoration:none;border-bottom:1px solid #e6c9d9;padding-bottom:2px}
+.gcash-embedded #payment-instructions>h3{margin-bottom:10px}
+.gcash-embedded #payment-instructions>.gcash-muted{margin:10px 0 0;max-width:650px}
+@media(max-width:440px){.gcash-embedded .gcash-fields>div{grid-template-columns:1fr;gap:5px}}
+.gcash-embedded .gcash-fields dt{font-size:12px;font-weight:500;color:#8c7381}
+.gcash-embedded .gcash-fields dd{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0;font-size:12px;font-weight:600;color:#593346}
+.gcash-embedded .gcash-fields [data-copy]{min-height:28px;padding:4px 8px;font-size:10px}
+.gcash-embedded .gcash-payment-receipts{margin-top:14px;padding-top:14px;border-top:1px solid #f0e7ec}
+.gcash-embedded .gcash-payment-receipts h3{font-size:13px;font-weight:600}
+.gcash-embedded .gcash-receipts li{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:10px 0;font-size:12px}
+.gcash-embedded .gcash-receipts li:last-child{border-bottom:0;padding-bottom:0}
+.gcash-embedded .gcash-receipts time{margin:0;font-size:10px;color:#8c7381}
+.gcash-embedded .gcash-admin-account-table{border:1px solid #f0e7ec;border-radius:10px;overflow:hidden}
+.gcash-embedded .gcash-admin-account-table>div{padding:12px 16px}
+.gcash-embedded .gcash-admin-account-table>div+div{border-top:1px solid #f0e7ec}
+.gcash-embedded .gcash-admin-account-table [data-copy]{border:0;background:transparent;color:#b42c72;text-decoration:underline;min-height:auto;padding:0;font-size:11px}
+.gcash-embedded .gcash-admin-account-table .gcash-copy-icon{display:grid;place-items:center;width:20px;height:20px;min-height:20px;padding:0;border:0;background:transparent;color:#8b6578;text-decoration:none}
+.gcash-embedded .gcash-admin-account-table .gcash-copy-icon svg{width:15px;height:15px}
+.gcash-embedded .gcash-admin-payment-columns{display:grid;grid-template-columns:minmax(250px,1fr) minmax(250px,1fr);gap:18px;align-items:start}
+.gcash-embedded .gcash-admin-payment-columns .gcash-payment-receipts{margin:0}
+.gcash-embedded .gcash-admin-receipts{margin-top:18px;padding-top:0;border-top:0}
+.gcash-embedded .gcash-related-proof-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start;margin-top:6px;padding-top:20px;border-top:1px solid #eee3e9}
+.gcash-embedded .gcash-related-proof-column{display:grid;gap:18px;min-width:0}
+.gcash-embedded .gcash-evidence-with-note{min-width:0}
+.gcash-embedded .order-cancellation-payment-refund{padding:16px;margin:18px 0;border:1px solid #eadfe6;border-radius:12px;background:#fff}
+.gcash-embedded .gcash-cancellation-refund-form{display:grid;gap:16px}
+.gcash-embedded .gcash-evidence-note{margin:12px 0 0;padding:10px;border-radius:8px;background:#fff4f3;color:#a13b43;font-size:11px;line-height:1.5}
+.gcash-embedded .gcash-proof-pair-note{grid-column:1/-1;margin:0}
+.gcash-embedded .gcash-related-proof-row.is-single-proof{grid-template-columns:minmax(0,1fr)}
+.gcash-embedded .gcash-related-proof-row fieldset{min-width:0;margin:0}
+@media(max-width:620px){.gcash-embedded .gcash-related-proof-row{grid-template-columns:1fr}.gcash-embedded .gcash-related-proof-column:empty{display:none}}
+.gcash-embedded .gcash-admin-receipts .gcash-admin-submitted-receipt+.gcash-admin-submitted-receipt{margin-top:22px}
+.gcash-embedded .gcash-admin-verify-form{display:grid;grid-template-columns:minmax(0,1fr) 74px;align-items:stretch;gap:12px}
+.gcash-embedded .gcash-admin-verify-form .gcash-admin-proof-upload{height:74px;min-height:74px}
+.gcash-embedded .gcash-admin-verify-form .gcash-admin-verify-submit{display:grid;place-items:center;width:74px;height:74px;min-height:74px;padding:0}
+.gcash-embedded .gcash-admin-verify-submit svg{width:25px;height:25px}
+.gcash-embedded .gcash-admin-evidence-receipt{margin-top:12px}
+.gcash-embedded #payment-instructions.gcash-card,.gcash-embedded #seller-review.gcash-card{padding:0;border:0;border-radius:0;background:transparent}
+.gcash-embedded #payment-instructions.gcash-card{margin:0}
+.gcash-embedded .gcash-admin-account-table{border:1px solid #eadde5;border-radius:9px;padding:0 12px;overflow:hidden}
+.gcash-embedded .gcash-admin-account-table>div{padding:10px 0}
+.gcash-embedded .gcash-admin-account-table>div+div{border-top:1px solid #f0e7ec}
+.gcash-embedded .gcash-admin-rejection>summary{display:none}
+.gcash-embedded .gcash-admin-rejection{margin-top:16px!important}
+.gcash-embedded .gcash-admin-returned-checkbox{display:flex!important;align-items:center;gap:9px;margin:8px 0 12px!important;color:#775565!important;font-size:12px!important;font-weight:550!important}
+.gcash-embedded .gcash-admin-returned-checkbox input[type="checkbox"]{width:16px!important;height:16px;min-height:16px!important;margin:0;accent-color:#b42c72}
+.gcash-embedded [data-return-proof-fields]{margin:8px 0 12px}
+.gcash-embedded #seller-review [data-rejection-choice]:focus,.gcash-embedded #seller-review [data-rejection-choice]:focus-visible,.gcash-embedded #seller-review textarea[name="reason"]:focus,.gcash-embedded #seller-review textarea[name="reason"]:focus-visible{border-color:#c987a9!important;outline:1px solid #c987a9!important;outline-offset:0;box-shadow:0 0 0 2px rgb(188 56 127 / 10%)}
+.gcash-embedded .gcash-viewer-receipt-only{grid-template-columns:minmax(0,1fr)}
+.gcash-embedded .gcash-history{margin-top:16px}
+.gcash-embedded .gcash-history li{font-size:12px;line-height:1.5;padding-bottom:16px}
+.gcash-embedded .gcash-history li>strong{display:block;font-size:12px;font-weight:600;color:#593346}
+.gcash-embedded .gcash-history time{margin-top:4px;font-size:10px;color:#8c7381}
+.gcash-embedded .gcash-history li>.gcash-muted{display:block;margin-top:3px;font-size:11px}
+.gcash-embedded .gcash-card>details>summary{font-size:14px;font-weight:600;color:#593346}
+.gcash-embedded .gcash-progress li{font-size:12px;line-height:1.4}
+@media(max-width:620px){.gcash-embedded .gcash-admin-payment-columns{grid-template-columns:1fr}}
+@media(max-width:650px){.gcash-embedded .gcash-page{padding:0 14px 18px}.gcash-embedded .gcash-grid{grid-template-columns:1fr}.gcash-embedded .gcash-progress{flex-wrap:wrap}.gcash-purchase-modal .order-details-head{padding:16px}}
+@media(max-width:440px){.gcash-embedded .gcash-admin-verify-form{grid-template-columns:minmax(0,1fr) 64px;gap:8px}.gcash-embedded .gcash-admin-verify-form .gcash-admin-verify-submit{width:64px;height:74px;min-height:74px}}
+.gcash-embedded .gcash-admin-account-table{padding:0 14px;border:1px solid #e4d2dc;border-radius:12px;background:#fff;box-shadow:0 2px 8px rgb(68 39 54 / 3%)}
+.gcash-embedded .gcash-admin-account-table>div{box-sizing:border-box;min-height:36px;margin:0;padding:8px 0}
+.gcash-embedded .gcash-admin-account-table>div+div{border-top:1px solid #f0e7ec}
+.gcash-embedded .gcash-admin-account-table dd #gcash-number{white-space:nowrap}
+.gcash-embedded .gcash-admin-account-table .gcash-copy-icon{flex:none}
+.gcash-embedded .gcash-admin-proof-upload{position:relative;box-sizing:border-box;min-width:0;height:74px;margin:0;padding:0;border:1px solid #dfdce2;border-radius:12px;background:#fff}
+.gcash-embedded .gcash-admin-proof-upload legend{position:absolute;top:0;left:19px;transform:translateY(-50%);margin:0;padding:0 6px;background:#fff;color:#827783;font-size:12px;line-height:1.4;font-weight:500}
+.gcash-embedded .gcash-admin-proof-upload .order-payment-file-drop{position:absolute;inset:0;display:flex;min-height:0;height:auto;box-sizing:border-box;align-items:center;justify-content:flex-start;gap:8px;margin:0;padding:0 92px 0 14px;color:#827783;font-size:13px;font-weight:400;cursor:pointer}
+.gcash-embedded .gcash-admin-proof-upload .order-payment-file-drop:hover{color:#593346}
+.gcash-embedded .gcash-admin-proof-upload .order-payment-file-drop:has(input:focus-visible){outline:2px solid #e7b7d0;outline-offset:2px}
+.gcash-embedded .gcash-admin-proof-upload .order-payment-file-drop>svg{width:22px;height:22px;flex:none;color:#8c8b91}
+.gcash-embedded .gcash-admin-proof-upload .order-payment-file-preview{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:42px;height:38px;object-fit:cover;border-radius:5px}
+.gcash-embedded .gcash-admin-proof-upload .order-payment-file-pdf-icon{position:absolute;top:50%;left:14px;width:24px;height:28px;transform:translateY(-50%);color:#8c7381;pointer-events:none}
+.gcash-embedded .gcash-admin-proof-upload .order-payment-file-pdf{position:absolute;inset:0;display:flex;align-items:center;min-width:0;overflow:hidden;padding:0 92px 0 54px;color:#827783;font-size:12px;line-height:1.4;white-space:nowrap;mask-image:linear-gradient(to right,#000 calc(100% - 98px),transparent calc(100% - 92px))}
+.gcash-embedded .gcash-admin-proof-upload .order-payment-file-pdf.is-image-name{padding-left:66px}
+.gcash-embedded .gcash-admin-proof-upload .order-payment-file-pdf[hidden],.gcash-embedded .gcash-admin-proof-upload .order-payment-file-drop [hidden]{display:none!important}
+.gcash-embedded .gcash-admin-proof-upload .order-payment-file-drop.has-file{padding-right:0}
+.gcash-embedded .gcash-admin-proof-upload .order-payment-file-drop:has(.order-payment-file-pdf:not([hidden])){padding-left:54px}
+.gcash-embedded .gcash-admin-proof-upload .order-payment-file-drop:has(.order-payment-file-pdf.is-image-name:not([hidden])){padding-left:66px}
+.gcash-embedded .gcash-admin-proof-upload .order-payment-file-drop [data-payment-file-name]{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gcash-embedded .gcash-admin-proof-upload .order-payment-file-drop input[type=file]{position:absolute;z-index:3;inset:0;width:100%;height:100%;max-width:none;min-height:0;padding:0;border:0;border-radius:12px;background:transparent;opacity:0;cursor:pointer}
+.gcash-embedded .gcash-admin-proof-upload:focus-within{border-color:#c987a9}
+.gcash-embedded .gcash-admin-proof-upload .order-payment-file-action{position:absolute;z-index:4;top:50%;display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:34px;height:32px;padding:6px 8px;border:0;border-radius:7px;background:#0008;color:#fff;cursor:pointer;transform:translateY(-50%)}
+.gcash-embedded .gcash-admin-proof-upload .order-payment-file-action[hidden]{display:none!important}
+.gcash-embedded .gcash-admin-proof-upload .order-payment-file-action svg{width:17px;height:17px}
+.gcash-embedded .gcash-admin-proof-upload .order-payment-file-action:hover,.gcash-embedded .gcash-admin-proof-upload .order-payment-file-action:focus-visible{background:#593346;outline:0;box-shadow:none}
+.gcash-embedded .gcash-admin-proof-upload .order-payment-file-preview-button{right:48px}
+.gcash-embedded .gcash-admin-proof-upload .order-payment-file-retake{right:10px}
+.gcash-embedded .gcash-admin-proof-upload .order-payment-file-action,.gcash-embedded .gcash-admin-proof-upload .order-payment-file-action:hover,.gcash-embedded .gcash-admin-proof-upload .order-payment-file-action:focus-visible,.gcash-embedded .gcash-admin-proof-upload .order-payment-file-action:active,.gcash-embedded .gcash-admin-submitted-receipt .order-payment-file-action,.gcash-embedded .gcash-admin-submitted-receipt .order-payment-file-action:hover,.gcash-embedded .gcash-admin-submitted-receipt .order-payment-file-action:focus-visible,.gcash-embedded .gcash-admin-submitted-receipt .order-payment-file-action:active{transition:none!important;animation:none!important;transform:translateY(-50%)!important}
+.gcash-embedded .gcash-admin-proof-upload.is-dragging{border-color:#bc387f;background:#fff8fb}
+.gcash-embedded .gcash-admin-submitted-receipt{position:relative;box-sizing:border-box;min-height:74px;margin:0;padding:0;border:1px solid #dfdce2;border-radius:12px;background:#fff;color:#827783}
+.gcash-embedded .gcash-admin-submitted-receipt legend{position:absolute;top:0;left:19px;transform:translateY(-50%);margin:0;padding:0 6px;background:#fff;color:#827783;font-size:12px;line-height:1.4;font-weight:500}
+.gcash-embedded .gcash-admin-submitted-receipt .order-submitted-receipt-content{display:flex;align-items:center;gap:12px;min-height:72px;padding:8px 54px 8px 12px;box-sizing:border-box;color:#827783;font-size:12px}
+.gcash-embedded .gcash-admin-submitted-receipt .order-submitted-receipt-content>img{width:42px;height:38px;object-fit:cover;border-radius:5px}
+.gcash-embedded .gcash-admin-submitted-receipt .order-submitted-receipt-content>svg{width:28px;height:28px;flex:none;color:#8c7381}
+.gcash-embedded .gcash-admin-submitted-receipt .order-submitted-receipt-content>div{min-width:0;overflow-wrap:anywhere}
+.gcash-embedded .gcash-admin-submitted-receipt .order-submitted-receipt-content time{display:block;margin-top:4px;color:#987f8d;font-size:10px}
+.gcash-embedded .gcash-admin-submitted-receipt .order-payment-file-action{position:absolute;z-index:4;top:50%;display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:34px;height:32px;padding:6px 8px;right:10px;border:0;border-radius:7px;background:#0008;color:#fff;cursor:pointer;transform:translateY(-50%)}
+.gcash-embedded .gcash-admin-submitted-receipt .order-payment-file-action:hover,.gcash-embedded .gcash-admin-submitted-receipt .order-payment-file-action:focus-visible{background:#593346;outline:0;box-shadow:none}
+.gcash-embedded .gcash-admin-submitted-receipt .order-payment-file-action svg{width:17px;height:17px}
+.gcash-embedded .order-payment-preview-dialog{box-sizing:border-box;width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;padding:32px;border:0;border-radius:0;background:transparent;color:#fff;overflow:auto}
+.gcash-embedded .order-payment-preview-dialog[open]{display:grid;place-items:center}
+.gcash-embedded .order-payment-preview-dialog::backdrop{background:rgb(37 24 34 / 65%)}
+.gcash-embedded .order-payment-preview-close{position:fixed;top:12px;right:18px;z-index:2;width:36px;height:36px;padding:0;border:0;background:transparent;color:#fff;font-size:32px;cursor:pointer}
+.gcash-embedded .order-payment-preview-content{display:grid;place-items:center;max-width:100%;background:transparent}
+.gcash-embedded .order-payment-preview-content img{display:block;max-width:calc(100vw - 64px);max-height:calc(100dvh - 64px);object-fit:contain}
+.gcash-embedded .order-payment-preview-content:has(canvas){display:flex;flex-direction:column;align-items:center;gap:16px;width:min(900px,calc(100vw - 64px));max-height:calc(100dvh - 64px);overflow:auto}
+.gcash-embedded .order-payment-preview-content canvas{display:block;width:100%;height:auto;flex:none;background:#fff}
+
+.gcash-combined-timeline>h3{font-size:14px;color:#593346;margin:0 0 16px}
+.gcash-embedded .gcash-combined-timeline.order-tracking-horizontal .tracking-steps{gap:0;overflow:visible}
+.gcash-embedded .tracking-step{position:relative}
+.gcash-embedded .tracking-step:not(:last-child)::before{content:"";position:absolute}
+.gcash-embedded .tracking-dot{display:grid;place-items:center;z-index:1;flex:none;border:1px solid #dfcbd5;border-radius:50%;background:#fff;color:#8c7381}
+.gcash-embedded .tracking-step.is-current .tracking-dot{background:#bc387f;border-color:#bc387f;color:#fff}
+.gcash-embedded .tracking-step.is-current .tracking-dot svg{color:#fff}
+.gcash-embedded .tracking-step.is-completed .tracking-dot{background:#e8f5ec;border-color:#a4cdb2;color:#20623a}
+.gcash-embedded .tracking-step.is-completed .tracking-dot svg{color:#20623a}
+.gcash-embedded .tracking-step.is-current strong{color:#bc387f}
+.gcash-embedded .tracking-step.is-future .tracking-dot{border-style:dashed}
+.gcash-embedded .tracking-step .gcash-timeline-time{margin-top:0;font-size:10px;line-height:1.5;white-space:nowrap;color:#8c7381}
+.gcash-embedded .tracking-step .gcash-timeline-reason{margin:0;padding:0 8px;font-size:11px;line-height:1.5;color:#8c7381;overflow-wrap:anywhere}

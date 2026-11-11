@@ -1,0 +1,19 @@
+.order-cancellation-payment-refund .cancellation-refund-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+.order-cancellation-payment-refund .cancellation-refund-heading h3{margin:0;font-size:15px}
+.cancellation-refund-title{display:flex;align-items:baseline;flex-wrap:wrap;gap:8px 12px}
+.cancellation-refund-reason{color:#8c7381;font-size:13px}
+.cancellation-refund-status{padding:5px 10px;border:1px solid #f1d49b;border-radius:20px;background:#fff8e8;color:#946012;font-size:11px;font-weight:600}
+.cancellation-refund-status.is-completed{border-color:#b9dfc9;background:#edf8f1;color:#246b43}
+.cancellation-refund-details{margin-bottom:16px;padding:12px 14px;border-radius:8px;background:#fcf8fa}
+.cancellation-refund-details span{display:block;margin-bottom:5px;color:#8c7381;font-size:12px}
+.cancellation-refund-details strong{font-size:13px;font-weight:600;overflow-wrap:anywhere}
+.cancellation-refund-details p{margin:0;font-size:12px;color:#8c7381;line-height:1.6;overflow-wrap:anywhere}
+.cancellation-refund-details p strong{font-size:inherit;color:#593346}
+.order-cancellation-payment-refund .gcash-cancellation-refund-form{display:grid;gap:14px;margin:0}
+.order-cancellation-payment-refund .gcash-admin-returned-checkbox{display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.6}
+.order-cancellation-payment-refund .gcash-admin-returned-checkbox input{flex:none;width:16px;height:16px;margin:2px 0 0;accent-color:#bc387f}
+.order-cancellation-payment-refund .cancellation-refund-upload-row{display:grid;grid-template-columns:minmax(0,1fr) 48px;align-items:stretch;gap:10px}
+.order-cancellation-payment-refund [data-cancellation-refund-proof][hidden]{display:none!important}
+.order-cancellation-payment-refund .cancellation-refund-upload-row .order-payment-upload-fieldset{position:relative;box-sizing:border-box;min-width:0;margin:0;height:84px}
+.order-cancellation-payment-refund .cancellation-refund-upload-row .order-payment-upload-fieldset legend{position:absolute;top:0;left:18px;transform:translateY(-50%);width:auto;margin:0;padding:0 6px;background:#fff;line-height:1.4}
+.order-cancellation-payment-refund .cancellation-refund-submit{display:grid;place-items:center;align-self:stretch;box-sizing:border-box;width:48px;height:84px;min-height:0;margin:0;padding:0;border-radius:12px}

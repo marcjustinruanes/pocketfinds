@@ -148,3 +148,7 @@ body.buyer-pages:has(.pd-page-grid), .buyer-pages .content:has(.pd-page-grid) { 
   line-height: 1.5;
   color: var(--muted);
 }
+
+#tab-options .pd-opt-row[hidden],#tab-options .pd-opt-btn[hidden]{display:none!important}
+
+#tab-options .pd-opt-group[hidden]{display:none!important}

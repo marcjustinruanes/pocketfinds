@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="{{ asset('css/buyer-pages.css') }}?v={{ filemtime(public_path('css/buyer-pages.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/notifications.css') }}?v={{ filemtime(public_path('css/notifications.css')) }}">
 @include('buyer.partials.confirmation-styles')
+@include('account.partials.notification-assets')
 </head>
 <body class="buyer marketplace buyer-storefront buyer-pages @yield('body-class')">
 <div class="shell" id="appShell">

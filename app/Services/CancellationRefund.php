@@ -26,7 +26,7 @@ class CancellationRefund
             Order::notifyUser($userId, 'Cancellation refund pending', 'Order '.$order->order_number.' was cancelled. A refund of ₱'.number_format($order->total,2).' is pending repayment to the original GCash payment account.', 'order_status', $order->id);
         }
         foreach (User::where('is_admin', true)->where('status','approved')->pluck('id') as $adminId) {
-            Order::notifyUser($adminId, 'Cancellation refund pending', 'A prepaid order was cancelled. The seller must repay ₱'.number_format($order->total,2).' for '.$order->order_number.'.', 'order_status', $order->id);
+            Order::notifyUser($adminId, 'Cancellation refund pending', 'A prepaid order was cancelled. '.($payment->usesAdminReview()?'The platform admin':'The seller').' must repay ₱'.number_format($order->total,2).' for '.$order->order_number.'. Reason: '.$order->cancellation_reason.'.'.($order->cancellation_note ? ' Seller note: '.$order->cancellation_note : ''), $payment->usesAdminReview()?'gcash_purchase':'order_status', $payment->usesAdminReview()?$payment->id:$order->id);
         }
     }
 }

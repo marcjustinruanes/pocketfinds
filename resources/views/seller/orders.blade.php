@@ -1,100 +1,41 @@
 @extends('seller.layout')
 @section('title', 'Order Management')
 @section('page-title', 'Order Management')
+@section('body-class', 'seller-orders-page')
+@push('head')<link rel="stylesheet" href="{{ asset('css/seller-order-categories.css') }}?v={{ filemtime(public_path('css/seller-order-categories.css')) }}">@endpush
+@push('head')
+<link rel="stylesheet" href="{{ asset('css/order-details.css') }}?v={{ filemtime(public_path('css/order-details.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/seller-order-cards.css') }}?v={{ filemtime(public_path('css/seller-order-cards.css')) }}">
+@endpush
+@push('scripts')<script src="{{ asset('js/seller-order-details.js') }}?v={{ filemtime(public_path('js/seller-order-details.js')) }}"></script>@endpush
 
 @section('content')
 <div class="orders-management">
-<div class="orders-page-actions">
-  <div class="orders-page-context">
-    <span class="orders-eyebrow">Seller workspace</span>
-    <p>Review order progress and take action on the next shipment.</p>
-  </div>
-  <div class="orders-quick-links">
-    <a class="orders-secondary-action" href="{{ route('account.cancellation-refunds') }}">
-      @include('seller.partials.icon', ['name' => 'archive', 'size' => 15]) Cancellation refunds
-    </a>
-    @if(app(\App\Services\AssignmentReassignment::class)->installed())
-    <a class="btn btn-primary orders-primary-action" href="{{ route('seller.assignments.review') }}">
-      @include('seller.partials.icon', ['name' => 'truck', 'size' => 15]) Pickup possession reviews
-    </a>
-    @endif
-  </div>
-</div>
 @include('commerce.messages')
 @if(session('order_success'))<div class="auth-success" style="margin-bottom:16px">{{ session('order_success') }}</div>@endif
 @if(session('error'))<div style="background:var(--danger-soft,#fef2f2);border:1px solid var(--danger-line,#fecaca);color:var(--danger,#dc2626);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('error') }}</div>@endif
 
-<div class="kpi-grid orders-kpis">
-  <div class="kpi">
-    <div class="orders-kpi-top"><div class="label">Needs action</div><span class="orders-kpi-icon">@include('seller.partials.icon', ['name' => 'orders', 'size' => 16])</span></div>
-    <div class="value">{{ $orders->whereIn('status', ['placed', 'confirmed', 'preparing'])->count() }}</div>
-    <div class="delta">New, confirmed, or preparing</div>
-  </div>
-  <div class="kpi">
-    <div class="orders-kpi-top"><div class="label">Pending confirmation</div><span class="orders-kpi-icon is-info">@include('seller.partials.icon', ['name' => 'truck', 'size' => 16])</span></div>
-    <div class="value">{{ $pendingConfirmation }}</div>
-    <div class="delta">Out for delivery</div>
-  </div>
-  <div class="kpi">
-    <div class="orders-kpi-top"><div class="label">Delivered today</div><span class="orders-kpi-icon is-success">@include('seller.partials.icon', ['name' => 'check-circle', 'size' => 16])</span></div>
-    <div class="value">{{ $deliveredToday }}</div>
-    <div class="delta up">Confirmed</div>
-  </div>
-</div>
-
-<div class="filter-bar orders-filter-bar">
+<div class="seller-order-layout">
+@include('seller.partials.order-categories')
+<div class="seller-order-content">
+<form class="filter-bar orders-filter-bar" method="GET" action="{{ route('seller.orders') }}" aria-label="Filter orders">
+  <input type="hidden" name="status" value="{{ $status }}">
   <div class="search-mini">
     <span class="ic">@include('seller.partials.icon', ['name' => 'search', 'size' => 13])</span>
-    <input type="text" placeholder="Search by order ID or customer…" id="orderSearch" aria-label="Search orders">
+    <input type="search" name="q" value="{{ request('q') }}" placeholder="Search by order ID or customer…" id="orderSearch" aria-label="Search orders">
   </div>
-</div>
+  <label class="seller-order-filter"><span>Date</span><select name="period" onchange="this.form.requestSubmit()">@foreach(['all'=>'All time','30d'=>'Last 30 days','6m'=>'Last 6 months','year'=>'This year'] as $key=>$label)<option value="{{ $key }}" @selected(request('period','all')===$key)>{{ $label }}</option>@endforeach</select></label>
+  <label class="seller-order-filter"><span>Payment</span><select name="payment" onchange="this.form.requestSubmit()">@foreach(['all'=>'All payments','cod'=>'Cash on Delivery','gcash'=>'GCash'] as $key=>$label)<option value="{{ $key }}" @selected(request('payment','all')===$key)>{{ $label }}</option>@endforeach</select></label>
+</form>
 
 <div class="card orders-list-panel">
-  @php
-  $statusTabs = [
-    ['all',               'All Orders'],
-    ['placed',            'New'],
-    ['confirmed',         'Confirmed'],
-    ['preparing',         'Preparing'],
-    ['ready_for_pickup',  'Ready for Pickup'],
-    ['in_transit',        'In Transit'],
-    ['out_for_delivery',  'Out for Delivery'],
-    ['delivered',         'Delivered'],
-    ['completed',         'Completed'],
-    ['delivery_failed',   'Failed'],
-    ['returned',          'Returned'],
-    ['cancelled',         'Cancelled'],
-    ...(\App\Services\BuyerCommerce::installed()?[['refunds','Return / Refund']]:[]),
-  ];
-  $tabCount = fn ($key) => match ($key) {
-    'all'         => $statusCounts->sum(),
-    'refunds'     => $returnRequests->count(),
-    'in_transit'  => collect(\App\Models\Order::IN_TRANSIT_STATUSES)->sum(fn ($s) => (int) ($statusCounts[$s] ?? 0)),
-    default       => (int) ($statusCounts[$key] ?? 0),
-  };
-  @endphp
-  <div class="orders-list-heading">
-    <div><h2>Orders</h2><p>Choose a category to filter your order list.</p></div>
-    <span>{{ $orders->count() }} {{ \Illuminate\Support\Str::plural('order', $orders->count()) }}</span>
-  </div>
-  <nav class="tabs orders-status-tabs" aria-label="Filter orders by status">
-    @foreach($statusTabs as [$key, $label])
-    <a href="{{ route('seller.orders', $key === 'all' ? [] : ['status' => $key]) }}" class="tab {{ $status === $key ? 'active' : '' }}" @if($status === $key) aria-current="page" @endif>
-      {{ $label }}
-      @if($tabCount($key) > 0)
-        <span class="tab-count {{ $status === $key ? 'active' : '' }}">{{ $tabCount($key) }}</span>
-      @endif
-    </a>
-    @endforeach
-  </nav>
-
   <div class="card-pad">
     <div class="order-cards" id="orderCards">
       @forelse($orders as $order)
       @php
         $shipment = $order->shipment;
         $items = collect($order->itemsWithImages());
-        $visibleItems = $items->take(3);
+        $visibleItems = $items;
         $extraCount = max(0, $items->count() - $visibleItems->count());
         $address = collect([
           $order->shipping_address['house_no'] ?? null, $order->shipping_address['street'] ?? null,
@@ -111,56 +52,25 @@
         $eligibleCompanies = ($order->status === 'preparing' && !$shipment)
           ? \App\Models\LogisticsHub::companiesServicing(auth()->user()->municipality, $order->shipping_address['municipality'] ?? null, auth()->user()->province, $order->shipping_address['province'] ?? null)
           : collect();
-        $detailPayload = [
-          'number' => $order->order_number,
-          'date' => $orderedAt,
-          'status' => $order->status,
-          'status_label' => str_replace('_', ' ', ucfirst($order->status)),
-          'buyer_name' => $customerName,
-          'buyer_contact' => $customerContact,
-          'address' => $address,
-          'payment' => $order->paymentMethod?->name ?: $order->payment_method ?: 'Payment not provided',
-          'items' => $items->values(),
-          'subtotal' => (float) $order->subtotal,
-          'shipping' => (float) $order->shipping_amount,
-          'discount' => (float) $order->discount_amount,
-          'voucher_code' => $order->voucher_code,
-          'total' => (float) $order->total,
-          'note' => $order->buyer_note,
-          'cancellation_reason' => $order->cancellation_reason,
-          'cancellation_note' => $order->cancellation_note,
-          'shipment' => $shipment ? [
-            'tracking_number' => $shipment->tracking_number,
-            'courier' => $shipment->courier ? $shipment->courier->given_names . ' ' . $shipment->courier->last_name : null,
-            'scheduled_pickup_at' => $shipment->scheduled_pickup_at?->format('M d, Y g:i A'),
-            'picked_up_at' => $shipment->picked_up_at?->format('M d, Y g:i A'),
-            'in_transit_at' => $shipment->in_transit_at?->format('M d, Y g:i A'),
-            'out_for_delivery_at' => $shipment->out_for_delivery_at?->format('M d, Y g:i A'),
-            'delivered_at' => $shipment->delivered_at?->format('M d, Y g:i A'),
-          ] : null,
-          'waybill_url' => $shipment ? route('seller.orders.waybill', $order) : null,
-          'message_url' => route('seller.messages', ['buyer' => $order->buyer_id, 'order' => $order->id]),
-        ];
+        $messageUrl = route('seller.messages', ['buyer'=>$order->buyer_id,'order'=>$order->id]);
+        $sellerCardRefund = $order->status === 'cancelled' ? $cancellationRefunds->get($order->id) : null;
+        $sellerCardProgress = str_replace('_', ' ', ucfirst($order->status));
+        $sellerCardCategory = match (true) {
+          (bool) $sellerCardRefund, $order->status === 'returned' => 'Return / Refund',
+          in_array($order->status, \App\Models\Order::IN_TRANSIT_STATUSES, true) => 'In Transit',
+          $order->status === 'placed' => 'New',
+          $order->status === 'delivery_failed' => 'Failed',
+          default => $sellerCardProgress,
+        };
+        if ($sellerCardRefund) $sellerCardProgress = $sellerCardRefund->status === 'completed' ? 'Refunded' : 'Refund pending';
+        if ($order->status === 'cancelled' && !$sellerCardRefund) $sellerCardProgress = preg_replace('/^Cancelled by (?:seller|buyer):\s*/i', '', $order->cancellation_reason ?? '');
+        $sellerCardStamp = $sellerCardRefund ? 'returned' : ($order->status === 'placed' ? 'new' : $order->status);
       @endphp
-      <div class="order-card-s" data-row data-search="{{ $order->order_number }} {{ $detailPayload['buyer_name'] }}">
+      <div class="order-card-s" data-row data-search="{{ $order->order_number }} {{ $customerName }}">
         <div class="order-card-s-head">
-          <div class="order-card-s-id">
-            <span class="mono">{{ $order->order_number }}</span>
-            <button type="button" class="copy-btn" data-copy="{{ $order->order_number }}" title="Copy order ID">@include('seller.partials.icon', ['name' => 'copy', 'size' => 13])</button>
-            <span class="order-card-s-date">Ordered: {{ $orderedAt }}</span>
-          </div>
-          <span class="stamp stamp-{{ $order->status === 'placed' ? 'new' : $order->status }}">{{ str_replace('_', ' ', ucfirst($order->status)) }}</span>
+          <div class="seller-order-customer"><strong>{{ $customerName }}</strong><a href="{{ $messageUrl }}" data-seller-messages="{{ $messageUrl }}" aria-label="Message customer about this order" title="Message customer">@include('buyer.partials.icon',['name'=>'chat','size'=>16])</a></div>
+          <span class="stamp order-progress-capsule stamp-{{ $sellerCardStamp }}"><span>{{ $sellerCardCategory }}</span>@if(filled($sellerCardProgress) && strcasecmp($sellerCardCategory, $sellerCardProgress) !== 0)<span class="order-progress-divider" aria-hidden="true">|</span><span class="order-progress-detail">{{ $sellerCardProgress }}</span>@endif</span>
         </div>
-
-        <div class="order-card-s-buyer">
-          <div style="display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center">
-            <span>@include('seller.partials.icon', ['name' => 'user', 'size' => 13]) <strong>Customer:</strong> {{ $customerName }}</span>
-            <span><strong>Contact:</strong> {{ $customerContact ?: 'Not provided' }}</span>
-            <span><strong>Date &amp; time:</strong> {{ $orderedAt }}</span>
-          </div>
-          <a href="{{ $detailPayload['message_url'] }}">@include('seller.partials.icon', ['name' => 'mail', 'size' => 12]) Message</a>
-        </div>
-
         <div class="order-card-s-items">
           @foreach($visibleItems as $item)
           <div class="order-card-s-item">
@@ -174,10 +84,10 @@
             <div class="order-card-s-item-info">
               <strong>{{ $item['name'] ?: 'Product not provided' }}</strong>
               @if(($item['variation_value'] ?? $item['color'] ?? '') || ($item['size'] ?? ''))
-                <span>{{ collect([$item['variation_value'] ?? $item['color'] ?? null, $item['size'] ?? null])->filter()->join(' · ') }}</span>
+                <span>{{ collect([$item['variation_group'] ?? null, $item['variation_value'] ?? $item['color'] ?? null, $item['size'] ?? null])->filter()->unique()->join(': ') }}</span>
               @endif
             </div>
-            <div class="order-card-s-item-qty">{{ $item['qty'] }} × ₱{{ number_format($item['price'] ?? 0, 2) }}</div>
+            <div class="order-card-s-item-qty">@if($loop->last)<strong aria-label="Order total">₱{{ number_format($order->total,2) }}</strong>@endif<small>{{ $item['qty'] }} × ₱{{ number_format($item['price']??0,2) }}</small>@if($loop->last)<button type="button" class="btn btn-outline" data-modal="sellerOrderDetails{{ $order->id }}">View Order Details</button>@endif</div>
           </div>
           @endforeach
           @if($extraCount > 0)
@@ -186,71 +96,10 @@
         </div>
 
         @if($returnRequests->has($order->id))@include('account.partials.return-case',['return'=>$returnRequests->get($order->id)])@endif
+        @if($cancellationRefunds->has($order->id))@include('seller.partials.cancellation-refund',['cancellationRefund'=>$cancellationRefunds->get($order->id)])@endif
         @include('logistics.partials.rts-custody')
-        <div class="order-card-s-foot">
-          <div class="order-card-s-shipment">
-            @if($shipment)
-              Tracking: <strong>{{ $shipment->tracking_number }}</strong><br>
-              @if($shipment->pickup_rider_id)
-                Pickup: {{ $shipment->pickupRider->given_names ?? '' }} {{ $shipment->pickupRider->last_name ?? '' }}
-              @else
-                Awaiting pickup rider
-              @endif
-              @if($shipment->courier) · Delivery: {{ $shipment->courier->given_names }} {{ $shipment->courier->last_name }} @endif
-              @if($shipment->scheduled_pickup_at) · Pickup {{ $shipment->scheduled_pickup_at->format('M d, g:i A') }} @endif
-            @else
-              Not yet handed to courier
-            @endif
-          </div>
-          <div class="order-card-s-total">₱{{ number_format($order->total, 2) }}</div>
-          <div class="order-card-s-actions">
-            @if($order->status === 'placed')
-              <form method="POST" action="{{ route('seller.orders.confirm', $order) }}">
-                @csrf @method('PATCH')
-                <button type="submit" class="btn btn-sm btn-primary">@include('seller.partials.icon', ['name' => 'check', 'size' => 13]) Confirm Order</button>
-              </form>
-            @endif
-            @if(in_array($order->status, \App\Models\Order::CANCELLABLE_STATUSES, true))
-              <button type="button" class="btn btn-sm btn-outline" style="color:var(--danger)"
-                onclick="openCancelOrderModal('{{ route('seller.orders.cancel', $order) }}', '{{ $order->order_number }}', {{ $order->status === 'placed' ? 'false' : 'true' }})">
-                @include('seller.partials.icon', ['name' => 'x', 'size' => 13]) Cancel Order
-              </button>
-            @endif
-            @if($order->status === 'confirmed')
-              <form method="POST" action="{{ route('seller.orders.preparing', $order) }}">
-                @csrf @method('PATCH')
-                <button type="submit" class="btn btn-sm btn-primary">@include('seller.partials.icon', ['name' => 'edit', 'size' => 13]) Start Preparing</button>
-              </form>
-            @endif
-            @if($order->status === 'preparing' && !$shipment)
-              <button type="button" class="btn btn-sm btn-primary"
-                onclick="openLogisticsPickerModal('{{ route('seller.orders.ready', $order) }}', {{ Illuminate\Support\Js::from($eligibleCompanies->values()) }})">
-                @include('seller.partials.icon', ['name' => 'truck', 'size' => 13]) Ready for Pickup
-              </button>
-            @endif
-            @if($shipment && $shipment->shipping_status === 'ready_for_pickup' && is_null($shipment->pickup_approved_at))
-              @if(isset($shippingObligations[$order->id]))<a class="btn btn-sm btn-primary" href="{{ route('seller.shipping.show', $shippingObligations[$order->id]->id) }}">Shipping payment · {{ str_replace('_', ' ', $shippingObligations[$order->id]->status) }}</a>@endif
-              <span style="color:var(--muted);font-size:11.5px">Waiting for {{ $shipment->logistics_company }}'s admin to confirm handoff</span>
-            @endif
-            @if($shipment && $shipment->shipping_status === 'ready_for_pickup' && $shipment->pickup_rider_id && $shipment->rider_confirmed_pickup_at)
-              {{-- Only unlocked once the rider has confirmed receiving the parcel first. --}}
-              <button type="button" class="btn btn-sm btn-primary"
-                onclick="openConfirmPickupModal('{{ route('seller.orders.confirm-pickup', $order) }}', '{{ $order->order_number }}', {{ Illuminate\Support\Js::from(trim(($shipment->pickupRider->given_names ?? '').' '.($shipment->pickupRider->last_name ?? ''))) }})">
-                @include('seller.partials.icon', ['name' => 'truck', 'size' => 13]) Confirm Pickup
-              </button>
-            @elseif($shipment && $shipment->shipping_status === 'ready_for_pickup' && $shipment->pickup_rider_id)
-              <span style="color:var(--muted);font-size:11.5px">Waiting for the rider to confirm they picked it up</span>
-            @endif
-            @if($shipment)
-              <button type="button" class="btn btn-sm btn-outline" data-waybill-url="{{ route('seller.orders.waybill', ['order' => $order, 'embedded' => 1]) }}" title="Preview Waybill">@include('seller.partials.icon', ['name' => 'file', 'size' => 13]) Waybill</button>
-              @if(!$shipment->picked_up_at)
-              <button type="button" class="btn btn-sm btn-outline" title="Schedule Pickup" onclick="openScheduleModal('{{ $order->id }}', '{{ $order->order_number }}')">@include('seller.partials.icon', ['name' => 'truck', 'size' => 13]) Schedule</button>
-              @endif
-            @endif
-            <button type="button" class="btn btn-sm btn-outline" data-view-order='@json($detailPayload)' title="View Details">@include('seller.partials.icon', ['name' => 'eye', 'size' => 13]) View</button>
-          </div>
-        </div>
       </div>
+      @include('seller.partials.order-details')
       @empty
       <div class="empty orders-empty">
         <div class="ic">@include('seller.partials.icon', ['name' => 'orders', 'size' => 28])</div>
@@ -263,6 +112,7 @@
 </div>
 </div>
 
+</div></div>
 <div class="modal-overlay" id="logisticsPickerModal">
   <div class="modal" style="max-width:420px">
     <div class="modal-head">
@@ -312,41 +162,6 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="cancelOrderModal">
-  <div class="modal" style="max-width:420px">
-    <div class="modal-head">
-      <div><h3>Cancel Order</h3><p id="cancelOrderLabel"></p></div>
-      <button class="modal-close" type="button" data-modal-close>✕</button>
-    </div>
-    <form method="POST" id="cancelOrderForm">
-      @csrf @method('PATCH')
-      <div class="modal-body">
-        <div class="form-row">
-          <label for="cancelOrderReason">Reason</label>
-          <select name="cancellation_reason" id="cancelOrderReason" required>
-            <option value="Out of stock">Out of stock</option>
-            <option value="Unable to fulfil this order">Unable to fulfil this order</option>
-            <option value="Cannot deliver to the buyer location">Cannot deliver to the buyer's location</option>
-            <option value="Buyer requested cancellation">Buyer requested cancellation</option>
-            <option value="Other">Other</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label for="cancelOrderNote">Note to the buyer (optional)</label>
-          <textarea name="cancellation_note" id="cancelOrderNote" rows="2" maxlength="500"></textarea>
-        </div>
-        <p style="margin:0;font-size:12px;color:var(--muted)">
-          The buyer is notified right away. <span id="cancelOrderRestockNote">Items already reserved for this order go back into your stock.</span> This can't be undone.
-        </p>
-      </div>
-      <div class="modal-foot">
-        <button type="button" class="btn btn-outline" data-modal-close>Keep Order</button>
-        <button type="submit" class="btn btn-danger">Cancel Order</button>
-      </div>
-    </form>
-  </div>
-</div>
-
 <div class="modal-overlay" id="confirmPickupModal">
   <div class="modal" style="max-width:400px">
     <div class="modal-head">
@@ -368,62 +183,6 @@
         <button type="submit" class="btn btn-primary">@include('seller.partials.icon', ['name' => 'truck', 'size' => 13]) Confirm Pickup</button>
       </div>
     </form>
-  </div>
-</div>
-
-<div class="modal-overlay" id="orderDetailModal">
-  <div class="modal" style="max-width:680px">
-    <div class="modal-head">
-      <div>
-        <h3 id="odNumber">Order details</h3>
-        <p id="odDate"></p>
-      </div>
-      <button class="modal-close" type="button" data-modal-close>✕</button>
-    </div>
-    <div class="modal-body" style="display:flex;flex-direction:column;gap:18px">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <span id="odStatus" class="stamp"></span>
-        <a id="odMessageLink" href="#" class="btn btn-sm btn-outline">@include('seller.partials.icon', ['name' => 'mail', 'size' => 13]) Message Buyer</a>
-      </div>
-
-      <div class="detail-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;font-size:12.5px">
-        <div><div class="field-label" style="font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Buyer</div><strong id="odBuyerName"></strong><div id="odBuyerContact" style="color:var(--muted);margin-top:2px"></div></div>
-        <div><div class="field-label" style="font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Payment Method</div><strong id="odPayment"></strong></div>
-        <div style="grid-column:span 2"><div class="field-label" style="font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Deliver To</div><strong id="odAddress"></strong></div>
-      </div>
-
-      <div id="odNoteWrap" hidden>
-        <div class="field-label" style="font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Buyer's Note</div>
-        <p id="odNote" style="margin:0;font-size:13px;background:var(--paper);border-radius:8px;padding:10px 12px"></p>
-      </div>
-
-      <div id="odCancelWrap" hidden style="background:var(--danger-soft);border:1px solid var(--danger-line);border-radius:9px;padding:12px 14px;font-size:12.5px;color:var(--danger)">
-        <strong>Cancelled</strong> — <span id="odCancelReason"></span>
-        <div id="odCancelNote" style="margin-top:4px;color:var(--text)"></div>
-      </div>
-
-      <div>
-        <div class="field-label" style="font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Items</div>
-        <div id="odItems" style="display:flex;flex-direction:column;gap:0"></div>
-      </div>
-
-      <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;flex-direction:column;gap:6px;font-size:13px">
-        <div style="display:flex;justify-content:space-between"><span>Subtotal</span><span class="mono" id="odSubtotal"></span></div>
-        <div style="display:flex;justify-content:space-between"><span>Shipping</span><span class="mono" id="odShipping"></span></div>
-        <div style="display:flex;justify-content:space-between;color:var(--success)" id="odDiscountRow" hidden><span id="odDiscountLabel">Discount</span><span class="mono" id="odDiscount"></span></div>
-        <div style="display:flex;justify-content:space-between;font-weight:800;font-size:15px;color:var(--pink-dark);padding-top:6px;border-top:1px dashed var(--border)"><span>Total</span><span class="mono" id="odTotal"></span></div>
-      </div>
-
-      <div id="odShipmentWrap" hidden>
-        <div class="field-label" style="font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Shipment Tracking</div>
-        <div id="odTrackingNums" style="font-size:12.5px;color:var(--muted);margin-bottom:12px"></div>
-        <div class="tracking-line" id="odTrackingLine"></div>
-      </div>
-    </div>
-    <div class="modal-foot">
-      <button id="odWaybillLink" type="button" class="btn btn-outline" hidden>@include('seller.partials.icon', ['name' => 'file', 'size' => 13]) View Waybill</button>
-      <button type="button" class="btn btn-primary" data-modal-close>Close</button>
-    </div>
   </div>
 </div>
 
@@ -475,7 +234,7 @@ function openLogisticsPickerModal(formAction, companies) {
 document.addEventListener('DOMContentLoaded', () => {
   const waybillModal = document.getElementById('waybillModal');
   const waybillFrame = document.getElementById('waybillFrame');
-  const openWaybill = url => {
+  const openWaybill = window.openWaybill = url => {
     if (!url) return;
     waybillFrame.src = url;
     waybillModal.classList.add('open');
@@ -497,113 +256,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  document.querySelectorAll('.copy-btn[data-copy]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      navigator.clipboard?.writeText(btn.dataset.copy).then(() => {
-        const original = btn.innerHTML;
-        btn.innerHTML = `@include('seller.partials.icon', ['name' => 'check', 'size' => 13])`;
-        setTimeout(() => { btn.innerHTML = original; }, 1200);
-      }).catch(() => {});
-    });
-  });
-
-  const money = v => '₱' + Number(v || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-  document.querySelectorAll('[data-view-order]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const o = JSON.parse(btn.dataset.viewOrder);
-      document.getElementById('odNumber').textContent = o.number;
-      document.getElementById('odDate').textContent = 'Placed ' + o.date;
-      const statusEl = document.getElementById('odStatus');
-      statusEl.className = 'stamp stamp-' + (o.status === 'placed' ? 'new' : o.status);
-      statusEl.textContent = o.status_label;
-      document.getElementById('odMessageLink').href = o.message_url;
-      document.getElementById('odBuyerName').textContent = o.buyer_name;
-      document.getElementById('odBuyerContact').textContent = o.buyer_contact || '';
-      document.getElementById('odPayment').textContent = o.payment;
-      document.getElementById('odAddress').textContent = o.address;
-
-      const noteWrap = document.getElementById('odNoteWrap');
-      if (o.note) { noteWrap.hidden = false; document.getElementById('odNote').textContent = o.note; }
-      else { noteWrap.hidden = true; }
-
-      const cancelWrap = document.getElementById('odCancelWrap');
-      if (o.status === 'cancelled') {
-        cancelWrap.hidden = false;
-        document.getElementById('odCancelReason').textContent = o.cancellation_reason || 'No reason provided';
-        document.getElementById('odCancelNote').textContent = o.cancellation_note || '';
-      } else { cancelWrap.hidden = true; }
-
-      const itemsEl = document.getElementById('odItems');
-      itemsEl.innerHTML = '';
-      (o.items || []).forEach(item => {
-        const row = document.createElement('div');
-        row.style.cssText = 'display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px dashed var(--border);font-size:13px';
-        const variant = [item.variation_value || item.color, item.size].filter(Boolean).join(' · ');
-        row.innerHTML = `<span>${item.name || 'Product not provided'}${variant ? ' <small style="color:var(--muted)">(' + variant + ')</small>' : ''}</span><span class="mono">${item.qty} × ${money(item.price)}</span>`;
-        itemsEl.appendChild(row);
-      });
-
-      document.getElementById('odSubtotal').textContent = money(o.subtotal);
-      document.getElementById('odShipping').textContent = money(o.shipping);
-      const discountRow = document.getElementById('odDiscountRow');
-      if (o.discount > 0) {
-        discountRow.style.display = 'flex';
-        document.getElementById('odDiscountLabel').textContent = o.voucher_code ? 'Discount (' + o.voucher_code + ')' : 'Discount';
-        document.getElementById('odDiscount').textContent = '- ' + money(o.discount);
-      } else { discountRow.style.display = 'none'; }
-      document.getElementById('odTotal').textContent = money(o.total);
-
-      const shipmentWrap = document.getElementById('odShipmentWrap');
-      const waybillLink = document.getElementById('odWaybillLink');
-      if (o.shipment) {
-        shipmentWrap.hidden = false;
-        document.getElementById('odTrackingNums').innerHTML = `Tracking: <strong style="color:var(--text)">${o.shipment.tracking_number}</strong>` + (o.shipment.courier ? ' · Courier: ' + o.shipment.courier : ' · Awaiting courier assignment');
-        const steps = [
-          ['Ready for Pickup', o.shipment.scheduled_pickup_at ? 'Scheduled ' + o.shipment.scheduled_pickup_at : 'Awaiting schedule'],
-          ['Picked Up', o.shipment.picked_up_at],
-          ['In Transit', o.shipment.in_transit_at],
-          ['Out for Delivery', o.shipment.out_for_delivery_at],
-          ['Delivered', o.shipment.delivered_at],
-        ];
-        const line = document.getElementById('odTrackingLine');
-        line.innerHTML = '';
-        steps.forEach(([label, when], i) => {
-          const done = !!when || i === 0;
-          const div = document.createElement('div');
-          div.className = 'tracking-line-step' + (done ? ' done' : '');
-          div.innerHTML = `<span class="tracking-line-dot">${done ? '✓' : i + 1}</span><div class="tracking-line-copy"><strong>${label}</strong><span>${when || 'Pending'}</span></div>`;
-          line.appendChild(div);
-        });
-      } else {
-        shipmentWrap.hidden = true;
-      }
-      if (o.waybill_url) {
-        waybillLink.style.display = '';
-        waybillLink.onclick = () => {
-          document.getElementById('orderDetailModal').classList.remove('open');
-          openWaybill(o.waybill_url + (o.waybill_url.includes('?') ? '&' : '?') + 'embedded=1');
-        };
-      }
-      else { waybillLink.style.display = 'none'; }
-
-      document.getElementById('orderDetailModal').classList.add('open');
-    });
-  });
 });
 
 function openScheduleModal(orderId, orderNumber) {
+  document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
   document.getElementById('scheduleOrderLabel').textContent = 'Order ' + orderNumber;
   document.getElementById('scheduleForm').action = '{{ url('/seller/orders') }}/' + orderId + '/schedule-pickup';
   document.getElementById('scheduleModal').classList.add('open');
-}
-
-function openCancelOrderModal(formAction, orderNumber, stockWasReserved) {
-  document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
-  document.getElementById('cancelOrderLabel').textContent = 'Order ' + orderNumber;
-  document.getElementById('cancelOrderForm').action = formAction;
-  document.getElementById('cancelOrderRestockNote').style.display = stockWasReserved ? '' : 'none';
-  document.getElementById('cancelOrderModal').classList.add('open');
 }
 
 function openConfirmPickupModal(formAction, orderNumber, riderName) {

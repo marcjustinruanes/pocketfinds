@@ -12,6 +12,52 @@ use Illuminate\Validation\ValidationException;
 
 class Order extends Model
 {
+    /** Sort cards by their latest order, payment, or refund activity. */
+    public function scopeLatestActivity(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        $schema = \Illuminate\Support\Facades\Schema::class;
+        $fallback = 'COALESCE(orders.updated_at, orders.created_at)';
+        $timestamps = [$fallback];
+        if ($schema::hasTable('order_status_history')) {
+            $timestamps[] = "COALESCE((SELECT MAX(activity.created_at) FROM order_status_history AS activity WHERE activity.order_id = orders.id), $fallback)";
+        }
+        if ($schema::hasColumn('orders', 'gcash_purchase_id') && $schema::hasTable('gcash_purchase_history')) {
+            $timestamps[] = "COALESCE((SELECT MAX(activity.created_at) FROM gcash_purchase_history AS activity WHERE activity.purchase_id = orders.gcash_purchase_id), $fallback)";
+        }
+        foreach (['cancellation_refunds', 'commerce_returns'] as $table) {
+            if ($schema::hasColumn($table, 'updated_at')) {
+                $timestamps[] = "COALESCE((SELECT MAX(activity.updated_at) FROM $table AS activity WHERE activity.order_id = orders.id), $fallback)";
+            }
+        }
+        $latest = count($timestamps) === 1 ? $fallback : (DB::connection()->getDriverName() === 'sqlite' ? 'MAX' : 'GREATEST').'('.implode(', ', $timestamps).')';
+        return $query->reorder()->orderByRaw($latest.' DESC')->orderByDesc('orders.created_at')->orderByDesc('orders.id');
+    }
+
+    public function scopeVisibleToSeller(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('gcash_purchases', 'review_flow')) return $query;
+        return $query->whereDoesntHave('gcashPurchase', fn($payment) => $payment->where('review_flow','admin')->whereNull('verified_at'));
+    }
+
+    public static function sellerNotificationsQuery(int $sellerId): \Illuminate\Database\Query\Builder
+    {
+        $query = DB::table('notifications')->where('user_id',$sellerId);
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('gcash_purchases','review_flow')) return $query;
+        return $query->whereNotExists(fn($payment) => $payment->selectRaw('1')->from('gcash_purchases as p')
+            ->whereColumn('p.id','notifications.reference_id')->where('notifications.notification_type','gcash_purchase')
+            ->where('p.review_flow','admin')->whereNull('p.verified_at'));
+    }
+
+    public function gcashPurchase()
+    {
+        return $this->belongsTo(GcashPurchase::class);
+    }
+
+    public function awaitingAdminPayment(): bool
+    {
+        return $this->gcash_purchase_id && $this->gcashPurchase?->usesAdminReview()
+            && (!$this->gcashPurchase->verified_at || $this->gcashPurchase->payment_state !== 'order_placed');
+    }
     // `orders.id` is a UUID string. Without these, Eloquent assumes an
     // auto-incrementing int PK: with $incrementing left true it mangles the
     // in-memory id after create() (casts the generated uuid down to (int) 0);
@@ -102,7 +148,7 @@ class Order extends Model
     /** Buyer-facing groupings — buyers don't need the seller/logistics-level granularity. */
     const BUYER_TO_SHIP_STATUSES = ['placed', 'confirmed', 'preparing', 'ready_for_pickup'];
 
-    const BUYER_IN_TRANSIT_STATUSES = ['picked_up', 'at_sorting_center', 'hub_transfer', 'sorted', 'assigned_to_rider'];
+    const BUYER_IN_TRANSIT_STATUSES = ['picked_up', 'at_sorting_center', 'hub_transfer', 'sorted', 'assigned_to_rider', 'delivery_failed'];
 
     protected $fillable = [
         'order_number', 'buyer_id', 'seller_id', 'status', 'items', 'subtotal',

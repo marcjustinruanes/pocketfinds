@@ -19,10 +19,26 @@ The regression also exposed an inherited legacy voucher test that expected a gro
 Reinstallation from an elevated Windows PowerShell prompt:
 
 ```powershell
-.\scripts\windows\register-commission-verification.ps1 -Register -UpdateExisting -Mode CommissionOnly
+.\scripts\windows\register-commission-verification.ps1 -Register -UpdateExisting -Mode CommissionOnly -PhpExecutable 'C:\php85\php-8.5.10-Win32-vs17-x64\php.exe'
 ```
 
 Use this only for the existing local destination; the PHP runner refuses an unexpected database. This command does not enable commission enrollment. Original task XML backups and execution logs are retained in `storage/app/private/commission-scheduler`.
+
+## Current workspace setup after the Drive database merge
+
+The current machine uses the PHP executable supplied with `-PhpExecutable`; the old hardcoded `C:\php\php.exe` does not exist. Registration persists the selected executable in the task action. Without the parameter, scripts resolve PHP from PATH and fail clearly if unavailable.
+
+The five commission migrations were installed, then the Drive database was merged with the current schema and newer local settings. A read-only verification run succeeded on 8 November 2026 with zero obligations and disabled enrollment.
+
+Windows initially returned Access denied because this session had a filtered administrator token. Explicit Windows UAC elevation resolved that limitation. `install-commission-reconciliation.ps1` registered `PocketFinds-Commission-Reconcile`, started it, and verified a completed background run. The task is Ready, uses unattended S4U, and repeats every five minutes. Its first verified run on this machine completed at 11:20 Philippine time on 8 November 2026 with exit code 0 in Windows Session 0. The ledger was empty, the run was read-only, and enrollment remained disabled. Current installation status is recorded in `storage/app/private/commission-scheduler/installation-status.json`.
+
+To install and verify on this machine from an elevated PowerShell window:
+
+```powershell
+.\scripts\windows\install-commission-reconciliation.ps1 -PhpExecutable 'C:\php85\php-8.5.10-Win32-vs17-x64\php.exe'
+```
+
+The installer verifies the first task result and records failure details if registration or execution fails. It does not enable enrollment or start the unrelated Laravel scheduler. Windows and local MySQL must be running for scheduled reconciliation to execute.
 
 Final validation: **485 tests / 5,780 assertions passed**, including inherited/repeated workflows; **11 isolated MySQL groups passed**. Five focused boundary tests separately passed 66 assertions. PHP syntax, PowerShell parsing and changed tracked-file whitespace checks passed. The final 130-table preservation comparison matched every table except live session activity; `.env` matched its original hash, enrollment remained false, activation remained null and the configured ledger remained empty. All eight complete SQL backups matched their existing verified checksums.
 

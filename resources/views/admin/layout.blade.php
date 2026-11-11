@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="{{ asset('css/notifications.css') }}?v={{ filemtime(public_path('css/notifications.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/navigation.css') }}?v={{ filemtime(public_path('css/navigation.css')) }}">
 @stack('head')
+@include('account.partials.notification-assets')
 </head>
 <body class="admin">
 <div class="shell" id="appShell" data-navigation-shell data-collapse-key="sidebar_collapsed">

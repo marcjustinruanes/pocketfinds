@@ -35,8 +35,8 @@
       <span>Shipping Label</span>
     </div>
     <div class="tracking">
-      <div class="label-title" style="color:#79737f;font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px">Tracking Number</div>
-      <div class="code">{{ $order->shipment->tracking_number }}</div>
+      <div class="label-title" style="color:#79737f;font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px">{{ $order->shipment?->tracking_number ? 'Tracking number' : 'Order reference' }}</div>
+      <div class="code">{{ $order->shipment?->tracking_number ?: $order->order_number }}</div>
       <div class="qrcode" id="waybillQr"></div>
     </div>
     <div class="section">
@@ -75,7 +75,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
     new QRCode(document.getElementById('waybillQr'), {
-      text: @json($order->shipment->tracking_number),
+      text: @json($order->shipment?->tracking_number ?: $order->order_number),
       width: 110,
       height: 110,
       correctLevel: QRCode.CorrectLevel.M,

@@ -15,36 +15,12 @@ $storedUnread=\Illuminate\Support\Facades\DB::table('notifications')->where('use
       <input type="hidden" name="is_available" value="{{ auth()->user()->is_available ? 0 : 1 }}">
       <button class="btn btn-sm {{ auth()->user()->is_available ? 'btn-primary' : 'btn-outline' }}" type="submit">{{ auth()->user()->is_available ? '● Online' : '○ Offline' }}</button>
     </form>
-    <div class="dropdown">
-      <button class="icon-btn" data-dropdown-toggle="riderNotifPanel" aria-label="Notifications">
-        <x-admin-icon name="bell" />
-        @if(($availableRequests ?? 0) > 0 || $storedUnread)<span class="dot-badge"></span>@endif
-      </button>
-      <div class="dropdown-panel" id="riderNotifPanel">
-        <div class="dropdown-head"><h3>Notifications</h3></div>
-        <div class="notif-list">
-@include('account.partials.notifications')
-          @if(($availableRequests ?? 0) > 0)
-          <a href="{{ route('rider.requests') }}" class="notif-item" style="text-decoration:none;color:inherit;display:flex">
-            <div class="dot"></div>
-            <div><p>{{ $availableRequests }} pickup request{{ $availableRequests > 1 ? 's' : '' }} available.</p></div>
-          </a>
-          @endif
-          @if(($activeDeliveries ?? 0) > 0)
-          <a href="{{ route('rider.deliveries') }}" class="notif-item" style="text-decoration:none;color:inherit;display:flex">
-            <div class="dot"></div>
-            <div><p>{{ $activeDeliveries }} delivery{{ $activeDeliveries > 1 ? 'ies' : 'y' }} in progress.</p></div>
-          </a>
-          @endif
-          @if(($availableRequests ?? 0) === 0 && ($activeDeliveries ?? 0) === 0 && !$storedUnread)
-          <div class="notif-item read" style="display:flex">
-            <div class="dot"></div>
-            <div><p>No new notifications.</p></div>
-          </div>
-          @endif
-        </div>
-      </div>
-    </div>
+        @php
+          $notificationTasks=[];
+          if(($availableRequests??0)>0) $notificationTasks[]=['title'=>'Pickup requests','message'=>$availableRequests.' pickup requests available.','url'=>route('rider.requests'),'notification_type'=>'pickup_request'];
+          if(($activeDeliveries??0)>0) $notificationTasks[]=['title'=>'Active deliveries','message'=>$activeDeliveries.' deliveries in progress.','url'=>route('rider.deliveries'),'notification_type'=>'delivery_assigned'];
+        @endphp
+        @include('account.partials.notification-menu', ['panelUnreadCount'=>$storedUnread, 'panelSummaries'=>$notificationTasks])
 
     <a href="{{ route('rider.account') }}" class="topbar-avatar" aria-label="My Account">
       @if(auth()->user()->profile_picture)

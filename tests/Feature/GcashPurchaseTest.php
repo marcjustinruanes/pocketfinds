@@ -66,6 +66,47 @@ class GcashPurchaseTest extends TestCase
         return $this->flow->create($this->buyer, [$this->cart->id], 1, (string) Str::uuid(), $voucher)[0]->fresh();
     }
 
+    public function test_seller_purchase_cards_match_orders_and_search_remains_scoped(): void
+    {
+        $purchase=$this->draft();
+        $this->actingAs($this->seller)->get(route('gcash.index'))
+            ->assertOk()->assertSee('order-card-s-item',false)->assertSee('Search GCash purchases')
+            ->assertSee('Open payment review')->assertDontSee('Message customer')
+            ->assertDontSee('Each purchase has its own amount')->assertDontSee('gcash-nav-primary',false);
+        $this->get(route('gcash.index',['q'=>$purchase->id]))->assertOk()->assertSee('order-card-s-item-thumb',false);
+        $this->get(route('gcash.index',['q'=>'unmatched-product-search']))->assertOk()->assertSee('No GCash purchases found');
+        $this->actingAs($this->person('seller'))->get(route('gcash.index',['q'=>$purchase->id]))->assertOk()->assertSee('No GCash purchases found');
+    }
+
+    public function test_seller_payment_modal_keeps_instructions_review_and_participant_permissions(): void
+    {
+        $this->seller->update(['given_names'=>'Nicole','last_name'=>'Seller']);
+        $this->buyer->update(['given_names'=>'Alex','last_name'=>'Buyer']);
+        $purchase=$this->draft();
+        $this->actingAs($this->seller)->get(route('gcash.index'))->assertOk()
+            ->assertSee('id="gcashPurchaseModal"',false)->assertSee('gcash-order-modal.js');
+        $this->get(route('gcash.show',[$purchase->id,'embedded'=>1]))->assertOk()
+            ->assertSee('gcash-embedded')->assertSee('gcash-modal-summary')->assertSee('Send payment instructions')
+            ->assertDontSee('id="sidebar"',false)->assertDontSee('sellerMessagesWidget');
+        $purchase=$this->proof($purchase);
+        $response=$this->get(route('gcash.show',[$purchase->id,'embedded'=>1]))->assertOk()
+            ->assertSee('View private receipt')->assertSee('Verify Payment')->assertSee('Reject proof')
+            ->assertSee('Payment timeline')->assertDontSee('<summary>Payment history</summary>',false)->assertSee('name="revision"',false)
+            ->assertSee('Alex Buyer')->assertDontSee('Account '.$this->seller->id)
+            ->assertDontSee('Account '.$this->buyer->id);
+        $document=new \DOMDocument();
+        @$document->loadHTML($response->getContent());
+        $xpath=new \DOMXPath($document);
+        $this->assertSame(1,$xpath->query('//*[@id="payment-instructions"]//*[@id="receipts-heading"]')->length);
+        $timeline=$xpath->query('//*[@aria-label="Payment progress and history"]')->item(0);
+        $this->assertStringNotContainsString('Nicole Seller',$timeline->textContent);
+        $this->assertStringNotContainsString('Alex Buyer',$timeline->textContent);
+        $this->assertStringContainsString('Reservation started',$timeline->textContent);
+        $this->assertStringContainsString('Payment details sent',$timeline->textContent);
+        $this->assertSame(4,$xpath->query('//*[@aria-label="Payment progress and history"]/ol/li/time')->length);
+        $this->actingAs($this->person('seller'))->get(route('gcash.show',[$purchase->id,'embedded'=>1]))->assertForbidden();
+    }
+
     private function proof(GcashPurchase $p): GcashPurchase
     {
         $p = $this->flow->instructions($this->seller, $p->id, $p->revision, 'Seller', '09123456789');
@@ -420,9 +461,10 @@ class GcashPurchaseTest extends TestCase
         $this->get(route('buyer.messages', ['seller' => $this->seller->username, 'purchase' => $p->id]))->assertOk()->assertSee('Open linked purchase')
             ->assertSee('css/messaging.css')->assertSee('aria-label="Message"', false)->assertSee('Shift+Enter')->assertSee('Back to conversations');
         $this->actingAs($this->seller)->get(route('gcash.show', $p->id))->assertOk()->assertSee('Send payment instructions');
-        $this->get(route('gcash.index'))->assertOk()->assertSee('Item')->assertSee('Buyer GCash Payments');
+        $this->get(route('gcash.index'))->assertOk()->assertSee('Item')->assertSee('Search GCash purchases');
         $this->get(route('seller.messages', ['buyer' => $this->buyer->id, 'purchase' => $p->id]))->assertOk()
-            ->assertSee('data-has-conversation="true"', false)->assertSee('Back to conversations')->assertSee('Shift+Enter')->assertSee('id="chatFeedback"', false);
+            ->assertSee('data-has-conversation="true"', false)->assertSee('Back to conversations')->assertSee('Shift+Enter')->assertSee('id="chatFeedback"', false)
+            ->assertDontSee('GCash purchases and payment review')->assertDontSee('Chat alone does not verify payment');
     }
     public function test_linked_purchase_in_buyer_messages_is_scoped_to_buyer_and_shop(): void
     {
@@ -482,7 +524,7 @@ class GcashPurchaseTest extends TestCase
             ->assertSee('id="orderDetailsTitle'.$order->id.'">Item</h3>', false)
             ->assertSee('Order reference:')->assertSee($order->order_number)
             ->assertSee('class="order-tracking order-tracking-horizontal"', false)
-            ->assertSee('Scrollable order information')->assertSee('>Done</button>', false);
+            ->assertSee('Scrollable order information')->assertSee('aria-label="Close order details"', false);
         $this->assertSame('placed', $order->fresh()->status);
     }
 

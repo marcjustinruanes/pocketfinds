@@ -15,11 +15,37 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class GcashWorkflow
 {
+    public function adminReviewer(User $actor): void
+    {
+        $fresh=User::whereKey($actor->id)->firstOrFail();
+        abort_unless((bool) $fresh->is_admin && $fresh->status === 'approved',403,'Only an approved platform administrator can review this payment.');
+    }
+
+    private function paymentReviewer(User $actor, GcashPurchase $purchase): void
+    {
+        if($purchase->usesAdminReview()) $this->adminReviewer($actor);
+        else $this->owner($actor,$purchase,'seller');
+    }
+
+    private function notifyAdmins(GcashPurchase $purchase, string $title, string $message): void
+    {
+        foreach(User::where('account_type','admin')->where('is_admin',true)->where('status','approved')->pluck('id') as $id)
+            Order::notifyUser($id,$title,$message,'gcash_purchase',$purchase->id);
+    }
+
+    public function platformInstructions(): array
+    {
+        $settings=\App\Models\Setting::current();
+        if(!filled($settings->platform_gcash_name)||!preg_match('/^09[0-9]{9}$/D',(string)$settings->platform_gcash_number))
+            $this->fail('Platform GCash payment details are not configured yet. Please choose another payment method or contact support.');
+        return ['name'=>$settings->platform_gcash_name,'number'=>$settings->platform_gcash_number];
+    }
     private function transaction(\Closure $operation, int $attempts = 1): mixed
     {
         try {
@@ -107,6 +133,7 @@ class GcashWorkflow
 
     private function notify(GcashPurchase $p, string $title, string $message, bool $buyer = true, bool $seller = true): void
     {
+        if ($p->usesAdminReview() && !$p->verified_at) $seller = false;
         foreach (array_filter([$buyer ? $p->buyer_id : null, $seller ? $p->seller_id : null]) as $id) {
             Order::notifyUser($id, $title, $message, 'gcash_purchase', $p->id);
         }
@@ -223,7 +250,6 @@ class GcashWorkflow
                 }
             }
             $grouped = [];
-            if ($missing($address['street'] ?? null) && $missing($address['house_no'] ?? null)) $this->fail('A street or house number is required.');
             foreach ($cart as $row) {
                 $product = $products->get($row->product_id);
                 if (! $product || $product->status !== 'active') {
@@ -268,13 +294,22 @@ class GcashWorkflow
                     $details=$commerceQuote['orders'][$sellerId];$subtotal=$this->cents($details['subtotal']);$shipping=$this->cents($details['shipping_amount']);$discount=$this->cents($details['discount_amount']);
                     $snapshot=['items'=>$details['items'],'shipping_address'=>$commerceQuote['address'],'buyer_note'=>$note,'subtotal'=>$this->money($subtotal),'shipping_amount'=>$this->money($shipping),'discount_amount'=>$this->money($discount),'voucher_id'=>null,'voucher_code'=>null,'commerce'=>$details];
                 }
-                $p = GcashPurchase::create(['id' => (string) Str::uuid(), 'buyer_id' => $buyer->id, 'seller_id' => $sellerId, 'checkout_id' => $checkoutId, 'request_hash' => $hash, 'payment_method_id' => $pm->id, 'snapshot' => $snapshot, 'amount_due' => $this->money(max(0, $subtotal + $shipping - $discount)), 'payment_state' => 'awaiting_payment', 'reservation_state' => 'initializing']);
+                $adminFlow=Schema::hasColumn('gcash_purchases','review_flow');
+                $paymentDetails=$adminFlow?$this->platformInstructions():null;
+                $attributes=['id' => (string) Str::uuid(), 'buyer_id' => $buyer->id, 'seller_id' => $sellerId, 'checkout_id' => $checkoutId, 'request_hash' => $hash, 'payment_method_id' => $pm->id, 'snapshot' => $snapshot, 'amount_due' => $this->money(max(0, $subtotal + $shipping - $discount)), 'payment_state' => 'awaiting_payment', 'reservation_state' => $adminFlow?'held':'initializing'];
+                if($adminFlow)$attributes+=['review_flow'=>'admin','instructions'=>$paymentDetails+['amount'=>$attributes['amount_due']],'activated_at'=>now()];
+                $p = GcashPurchase::create($attributes);
                 $this->allocate($p, $products, $voucher);
                 if($commerceQuote) app(BuyerCommerce::class)->allocate($p->id,$buyer,$commerceQuote['orders'][$sellerId],true,$checkoutId);
                 $this->event($p, 'created', $buyer);
+                if($adminFlow){
+                    $this->event($p,'platform_instructions',null);
+                    $this->place($buyer,$p->id,$p->revision);
+                    $p->refresh();
+                }
                 $created[] = $p;
                 // The deadline begins only after the outermost transaction commits, never before upload/other middleware completion.
-                DB::afterCommit(fn () => $this->activate($p->id, now()));
+                if(!$adminFlow) DB::afterCommit(fn () => $this->activate($p->id, now()));
             }
             if ($code && ! $voucherApplied) {
                 $this->fail('That voucher does not apply to these sellers.');
@@ -419,6 +454,7 @@ class GcashWorkflow
         return $this->transaction(function () use ($seller, $id, $revision, $name, $number) {
             [$p,$products] = $this->locked($id);
             $this->owner($seller, $p, 'seller');
+            abort_if($p->usesAdminReview(),403,'Platform payment details are managed by the administrator.');
             $this->expireLocked($p, $products);
             if ($p->revision !== $revision || $p->reservation_state !== 'held' || ! in_array($p->payment_state, ['awaiting_payment', 'rejected'])) {
                 $this->fail('Refresh this purchase before sending instructions.');
@@ -462,6 +498,10 @@ class GcashWorkflow
             if (! Str::isUuid($submission) || ! in_array($mime, ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']) || $size < 1 || $size > 5 * 1024 * 1024 || ! preg_match('#^gcash-proofs/[A-Za-z0-9-]+\.(jpg|jpeg|png|webp|pdf)$#D', $path)) {
                 $this->fail('Invalid private receipt metadata.');
             }
+            if ($p->usesAdminReview()) {
+                $order=Order::where('gcash_purchase_id',$id)->lockForUpdate()->first();
+                if(!$order || $order->status==='cancelled' || $p->reservation_state!=='transferred') $this->fail('This order cannot accept payment proof. Request manual resolution if money was sent.');
+            }
             if (in_array($p->payment_state, ['verified', 'order_placed']) || $p->reservation_state === 'initializing') {
                 $this->fail('This purchase cannot accept new proof.');
             }
@@ -470,9 +510,12 @@ class GcashWorkflow
             }
             DB::table('gcash_proofs')->insert(['id' => (string) Str::uuid(), 'purchase_id' => $id, 'submission_id' => $submission, 'submitted_by' => $buyer->id, 'content_hash' => $contentHash, 'path' => $path, 'mime' => $mime, 'size' => $size, 'created_at' => now()]);
             $before = $this->state($p);
-            $p->update(['payment_state' => $p->reservation_state !== 'held' ? 'manual_resolution' : 'proof_submitted', 'revision' => $p->revision + 1]);
+            $p->update(['payment_state' => $p->usesAdminReview() || $p->reservation_state === 'held' ? 'proof_submitted' : 'manual_resolution', 'revision' => $p->revision + 1]);
             $this->event($p, 'proof_submitted', $buyer, $before);
-            $this->notify($p, 'GCash proof submitted', 'Receipt recorded; actual receipt of money still requires seller verification.');
+            if($p->usesAdminReview()){
+                $this->notifyAdmins($p,'GCash payment awaiting review','The buyer submitted a receipt for '.$p->productLabel().'. Check the platform GCash account before approving payment.');
+                $this->notify($p,'GCash proof submitted','Receipt received. Waiting for platform admin payment approval.',true,false);
+            }else $this->notify($p, 'GCash proof submitted', 'Receipt recorded; actual receipt of money still requires seller verification.');
 
             return $p;
         }, 3);
@@ -501,6 +544,7 @@ class GcashWorkflow
 
     public function decide(User $seller, string $id, int $revision, bool $accept, ?string $amount = null, ?string $reason = null, ?string $reference = null): GcashPurchase
     {
+        if(GcashPurchase::findOrFail($id)->usesAdminReview())return $this->adminDecision($seller,$id,$revision,$accept,$amount,$reason,$reference);
         $reference = $reference === null ? null : strtoupper(trim($reference));
         // Expiration must commit even if the following attempted decision is rejected.
         $this->owner($seller, GcashPurchase::findOrFail($id), 'seller');
@@ -534,13 +578,96 @@ class GcashWorkflow
         }, 3);
     }
 
+    private function adminDecision(User $admin,string $id,int $revision,bool $accept,?string $amount,?string $reason,?string $reference): GcashPurchase
+    {
+        $this->adminReviewer($admin);
+        return $this->transaction(function()use($admin,$id,$revision,$accept,$amount,$reason,$reference){
+            [$p,$products]=$this->locked($id);
+            $this->adminReviewer($admin);
+            $order=Order::where('gcash_purchase_id',$id)->lockForUpdate()->firstOrFail();
+            if(!$p->usesAdminReview() || $p->revision!==$revision || $p->payment_state!=='proof_submitted' || $p->reservation_state!=='transferred' || $order->status!=='placed')
+                $this->fail('This payment has changed or the order is no longer awaiting approval. Refresh before reviewing it.');
+            $received = $accept ? $this->cents($amount ?? $p->amount_due) : 0;
+            $amountDue = $this->cents($p->amount_due);
+            if ($accept && $received <= 0) throw ValidationException::withMessages(['amount'=>'Enter the positive amount actually received.']);
+            if(!$accept && !filled($reason))$this->fail('A rejection reason is required.');
+            if($accept){
+                $reference=filled($reference) ? strtoupper(trim((string)$reference)) : null;
+                if ($reference) $this->reference($p,$reference);
+                if ($received < $amountDue) {
+                    $remaining = $amountDue - $received;
+                    $shortNote = $received === 0
+                        ? 'Payment was marked underpaid. Review the platform GCash proof to see the received amount, then submit a top-up receipt.'
+                        : 'Payment short. Confirmed PHP '.$this->money($received).' of PHP '.$this->money($amountDue).'; PHP '.$this->money($remaining).' remains. Receipt reference: '.$reference.'. Ask the buyer to pay and submit proof for the remaining amount.';
+                    $before=$this->state($p);
+                    $p->update(['payment_state'=>'underpaid','verified_amount'=>$this->money($received),'verified_by'=>null,'verified_at'=>null,'revision'=>$p->revision+1]);
+                    $this->event($p,'admin_short_payment',$admin,$before,$shortNote);
+                    $this->notify($p,'GCash payment short — top-up needed',$shortNote,true,false);
+                    return $p;
+                }
+                $this->freshPrices($p,$products);
+            }
+            $before=$this->state($p);
+            $p->update(['payment_state'=>$accept?'order_placed':'rejected','payment_reference'=>$accept?$reference:null,'verified_amount'=>$accept?$p->amount_due:null,'verified_by'=>$accept?$admin->id:null,'verified_at'=>$accept?now():null,'revision'=>$p->revision+1]);
+            $this->event($p,$accept?'admin_verified':'admin_rejected',$admin,$before,$reason);
+            if ($accept && $received > $amountDue) {
+                $excess = $this->money($received - $amountDue);
+                $note = 'Payment approved. PHP '.$excess.' was overpaid and is pending refund. Open your payment details and submit the GCash name and number that sent the payment so admin can return the excess.';
+                $this->event($p, 'overpayment_pending', $admin, ['received_amount'=>$this->money($received), 'refund_amount'=>$excess], $note);
+                $this->notify($p, 'GCash excess payment refund pending', $note, true, false);
+                $this->notifyAdmins($p, 'GCash overpayment refund required', $note);
+            }
+            $this->notify($p,$accept?'Admin confirmed GCash payment':'GCash payment proof rejected',
+                $accept?'The platform admin confirmed payment for '.$order->order_number.'. The seller can now confirm and prepare this order.':'The platform admin rejected the payment proof: '.$reason);
+            return $p;
+        },3);
+    }
+
+    /** Mark a submitted receipt as short and ask the buyer to top up without
+     * recording an amount that cannot be established from the uploaded proof. */
+    public function notifyBuyerOfShortPayment(User $admin, string $id, int $revision, string $reason): GcashPurchase
+    {
+        $this->adminReviewer($admin);
+        return $this->transaction(function () use ($admin, $id, $revision, $reason) {
+            [$p] = $this->locked($id);
+            $this->adminReviewer($admin);
+            $order = Order::where('gcash_purchase_id', $id)->lockForUpdate()->firstOrFail();
+            if (!$p->usesAdminReview() || $p->revision !== $revision || $p->payment_state !== 'proof_submitted' || $p->reservation_state !== 'transferred' || $order->status !== 'placed') {
+                $this->fail('This payment has changed or the order is no longer awaiting approval. Refresh before notifying the buyer.');
+            }
+            $reason = trim($reason);
+            if ($reason === '') $reason = 'The payment received is less than the order total. Review the uploaded GCash proof and submit a top-up receipt.';
+            $before = $this->state($p);
+            $p->update(['payment_state' => 'underpaid', 'verified_amount' => null, 'verified_by' => null, 'verified_at' => null, 'revision' => $p->revision + 1]);
+            $this->event($p, 'admin_short_payment', $admin, $before, $reason);
+            $this->notify($p, 'GCash payment short — top-up needed', $reason, true, false);
+            return $p;
+        }, 3);
+    }
+
+    public function refundOverpayment(User $admin, string $id, string $reference): void
+    {
+        $this->adminReviewer($admin);
+        $this->transaction(function () use ($admin, $id, $reference) {
+            [$p] = $this->locked($id);
+            if (!$p->usesAdminReview()) $this->fail('This is not a platform payment.');
+            $pending = DB::table('gcash_purchase_history')->where('purchase_id', $id)->where('event', 'overpayment_pending')->first();
+            if (!$pending || DB::table('gcash_purchase_history')->where('purchase_id', $id)->where('event', 'overpayment_refunded')->exists()) $this->fail('No pending excess payment refund remains.');
+            $amount = json_decode($pending->before, true)['refund_amount'];
+            if (!DB::table('gcash_purchase_history')->where('purchase_id',$id)->where('event','refund_details_submitted')->exists()) $this->fail('Wait for the buyer to provide their refund GCash account details.');
+            $note = 'Excess payment of PHP '.$amount.' refunded to the original payer. Repayment reference: '.$reference;
+            $this->event($p, 'overpayment_refunded', $admin, ['refund_amount'=>$amount, 'repayment_reference'=>$reference], $note);
+            $this->notify($p, 'GCash excess payment refunded', $note, true, false);
+        }, 3);
+    }
+
     public function resolve(User $seller, string $id, int $revision, string $amount, string $reason, bool $reacquire, string $reference): GcashPurchase
     {
         $reference = strtoupper(trim($reference));
 
         return $this->transaction(function () use ($seller, $id, $revision, $amount, $reason, $reacquire, $reference) {
             [$p,$products] = $this->locked($id);
-            $this->owner($seller, $p, 'seller');
+            $this->paymentReviewer($seller, $p);
             if ($p->revision !== $revision || $p->payment_state !== 'manual_resolution' || ! in_array($p->reservation_state, ['expired', 'released']) || ! filled($reason)) {
                 $this->fail('Refresh the unresolved expired purchase and provide a resolution reason.');
             }
@@ -575,6 +702,10 @@ class GcashWorkflow
             $p->revision++;
             $p->save();
             $this->event($p, $reacquire ? 'stock_reacquired' : 'repayment_required', $seller, $before, $reason);
+            if($p->usesAdminReview() && !$reacquire){
+                $cancelled=Order::where('gcash_purchase_id',$p->id)->where('status','cancelled')->first();
+                if($cancelled)app(CancellationRefund::class)->initiate($cancelled);
+            }
             $this->notify($p, 'GCash manual resolution', $reacquire ? 'Seller confirmed receipt and explicitly reacquired stock at the original amount.' : 'Seller confirmed receipt but fulfillment is unresolved. Manual repayment is required; no refund is recorded.');
 
             return $p;
@@ -583,11 +714,13 @@ class GcashWorkflow
 
     private function assertPlacement(GcashPurchase $p, $products, int $revision): void
     {
-        if ($p->revision !== $revision || $p->payment_state !== 'verified' || $p->reservation_state !== 'paid' || ! $p->verified_at || (int) $p->verified_by !== (int) $p->seller_id || ! $p->payment_reference || $this->cents($p->verified_amount) !== $this->cents($p->amount_due)) {
+        if($p->usesAdminReview()){
+            if($p->revision!==$revision || $p->payment_state!=='awaiting_payment' || $p->reservation_state!=='held')$this->fail('Refresh this purchase before placing the order.');
+        } elseif ($p->revision !== $revision || $p->payment_state !== 'verified' || $p->reservation_state !== 'paid' || ! $p->verified_at || (int) $p->verified_by !== (int) $p->seller_id || ! $p->payment_reference || $this->cents($p->verified_amount) !== $this->cents($p->amount_due)) {
             $this->fail('Only this verified, allocated purchase can be placed.');
         }
         $this->freshPrices($p, $products);
-        $allocations = DB::table('gcash_stock_allocations')->where('purchase_id', $p->id)->where('generation', $p->generation)->where('state', 'paid')->lockForUpdate()->get();
+        $allocations = DB::table('gcash_stock_allocations')->where('purchase_id', $p->id)->where('generation', $p->generation)->where('state', $p->usesAdminReview()?'held':'paid')->lockForUpdate()->get();
         $expected = [];
         foreach ($p->snapshot['items'] as $item) {
             $key = $item['product_id'].':'.hash('sha256', json_encode([$item['variation_group'], $item['variation_value']]));
@@ -644,13 +777,14 @@ class GcashWorkflow
                 }$voucher->increment('used_count');
                 DB::table('gcash_voucher_allocations')->where('id', $allocation->id)->update(['state' => 'used', 'updated_at' => now()]);
             }
-            DB::table('gcash_stock_allocations')->where('purchase_id', $id)->where('state', 'paid')->update(['state' => 'transferred', 'updated_at' => now()]);
+            DB::table('gcash_stock_allocations')->where('purchase_id', $id)->where('state', $p->usesAdminReview()?'held':'paid')->update(['state' => 'transferred', 'updated_at' => now()]);
             $before = $this->state($p);
-            $p->update(['payment_state' => 'order_placed', 'reservation_state' => 'transferred', 'revision' => $p->revision + 1]);
-            $order->logStatus('placed', $buyer->id, 'GCash prepayment verified by seller.');
+            $p->update(['payment_state' => $p->usesAdminReview()?'awaiting_payment':'order_placed', 'reservation_state' => 'transferred', 'revision' => $p->revision + 1]);
+            $order->logStatus('placed', $buyer->id, $p->usesAdminReview()?'Order placed; awaiting platform admin payment approval.':'GCash prepayment verified by seller.');
             if(BuyerCommerce::installed()) DB::table('commerce_allocations')->where('subject_id', $p->id)->where('state','held')->update(['state'=>'used']);
             $this->event($p, 'order_placed', $buyer, $before);
-            $this->notify($p, 'GCash order placed', 'Order '.$order->order_number.' created from this purchase.');
+            $this->notify($p, 'GCash order placed', 'Order '.$order->order_number.($p->usesAdminReview()?' is awaiting admin payment approval. Fulfillment remains blocked.':' created from this purchase.'));
+            if($p->usesAdminReview())$this->notifyAdmins($p,'New GCash order','Order '.$order->order_number.' was placed. Payment has not yet been verified.');
             // Remove only unchanged cart rows; later cart edits never alter the paid snapshot.
             foreach ($snapshot['items'] as $item) {
                 $cart = CartItem::where('buyer_id', $buyer->id)->where('id', $item['cart_id'])->where('product_id', $item['product_id'])->where('qty', $item['cart_qty']??$item['qty'])->where('price', $item['cart_price']??$item['price']);
@@ -735,6 +869,8 @@ class GcashWorkflow
         if ($handoff && ($purchase->payment_state !== 'order_placed' || $purchase->reservation_state !== 'transferred')) {
             $this->fail('This prepaid purchase is unresolved. New pickup and handoff are blocked; use the existing cancellation or manual-resolution workflow.');
         }
+        if($handoff && $purchase->usesAdminReview() && (!$purchase->verified_at || $this->cents($purchase->verified_amount)!==$this->cents($purchase->amount_due) || !User::whereKey($purchase->verified_by)->where('is_admin',true)->where('status','approved')->exists()))
+            $this->fail('Awaiting platform admin payment approval. This order cannot be confirmed or prepared yet.');
     }
 
     public function releaseOrder(Order $order): void

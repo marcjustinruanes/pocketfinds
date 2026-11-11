@@ -8,7 +8,7 @@ document.addEventListener('click', (e) => {
     const closer = e.target.closest('[data-modal-close]');
     if (closer) {
         const closed=closer.closest('.modal-overlay') || closer.closest('.chat-widget');closed?.classList.remove('open');
-        if(closed?.id==='messagesModal')document.getElementById('messagesModalBody')?.replaceChildren();
+        if(closed?.id==='messagesModal'){closed.setAttribute('aria-hidden','true');document.getElementById('messagesModalBody')?.replaceChildren();}
     }
     if (e.target.classList.contains('modal-overlay')) {
         e.target.classList.remove('open');
@@ -16,7 +16,7 @@ document.addEventListener('click', (e) => {
 });
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        document.querySelectorAll('.modal-overlay.open, .chat-widget.open').forEach(m => m.classList.remove('open'));
+        document.querySelectorAll('.modal-overlay.open, .chat-widget.open').forEach(m => {m.classList.remove('open');if(m.id==='messagesModal')m.setAttribute('aria-hidden','true');});
         document.getElementById('messagesModalBody')?.replaceChildren();
     }
 });
@@ -54,7 +54,9 @@ function openMessagesModal(url) {
         window.location.assign(url || MESSAGES_BASE_URL);
         return;
     }
-    document.getElementById('messagesModal')?.classList.add('open');
+    const messagesWidget = document.getElementById('messagesModal');
+    messagesWidget?.classList.add('open');
+    messagesWidget?.setAttribute('aria-hidden', 'false');
     const assistant=document.getElementById('pfAssistantPanel');if(assistant)assistant.hidden=true;
     document.querySelector('.pf-assistant-launch')?.setAttribute('aria-expanded','false');
     loadMessagesPanel(url || MESSAGES_BASE_URL);
@@ -69,6 +71,7 @@ document.querySelectorAll('[data-messages-trigger]').forEach(btn => {
         // to a different conversation) just closes the widget.
         if (widget?.classList.contains('open') && widget.dataset.currentUrl === url) {
             widget.classList.remove('open');
+            widget.setAttribute('aria-hidden','true');
             document.getElementById('messagesModalBody')?.replaceChildren();
             return;
         }

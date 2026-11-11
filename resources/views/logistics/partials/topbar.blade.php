@@ -20,40 +20,12 @@ $storedUnread=\Illuminate\Support\Facades\DB::table('notifications')->where('use
     $showUnassignedAlert = ($unassigned ?? 0) > 0 && auth()->user()->notify_unassigned_shipments;
   @endphp
   <div class="topbar-actions">
-    <div class="dropdown">
-      <button class="icon-btn" data-dropdown-toggle="logisticsNotifPanel" aria-label="Notifications">
-        <x-admin-icon name="bell" />
-        @if($showRequestAlert || $showUnassignedAlert || $storedUnread)
-        <span class="dot-badge"></span>
-        @endif
-      </button>
-      <div class="dropdown-panel" id="logisticsNotifPanel">
-        <div class="dropdown-head">
-          <h3>Notifications</h3>
-        </div>
-        <div class="notif-list">
-@include('account.partials.notifications')
-          @if($showRequestAlert)
-          <a href="{{ route('logistics.requests') }}" class="notif-item" style="text-decoration:none;color:inherit;display:flex">
-            <div class="dot"></div>
-            <div><p>{{ $pendingDeliveries }} delivery request{{ $pendingDeliveries > 1 ? 's' : '' }} pending approval.</p></div>
-          </a>
-          @endif
-          @if($showUnassignedAlert)
-          <a href="{{ route('logistics.assignments') }}" class="notif-item" style="text-decoration:none;color:inherit;display:flex">
-            <div class="dot"></div>
-            <div><p>{{ $unassigned }} shipment{{ $unassigned > 1 ? 's' : '' }} unassigned.</p></div>
-          </a>
-          @endif
-          @if(!$showRequestAlert && !$showUnassignedAlert && !$storedUnread)
-          <div class="notif-item read" style="display:flex">
-            <div class="dot"></div>
-            <div><p>No new notifications.</p></div>
-          </div>
-          @endif
-        </div>
-      </div>
-    </div>
+        @php
+          $notificationTasks=[];
+          if($showRequestAlert) $notificationTasks[]=['title'=>'Delivery requests','message'=>$pendingDeliveries.' delivery requests pending approval.','url'=>route('logistics.requests'),'notification_type'=>'pickup_request'];
+          if($showUnassignedAlert) $notificationTasks[]=['title'=>'Unassigned shipments','message'=>$unassigned.' shipments awaiting assignment.','url'=>route('logistics.assignments'),'notification_type'=>'shipment_unassigned'];
+        @endphp
+        @include('account.partials.notification-menu', ['panelUnreadCount'=>$storedUnread, 'panelSummaries'=>$notificationTasks])
 
     <a href="{{ route('logistics.account') }}" aria-label="My Account">
       <x-user-avatar :user="auth()->user()" size="38" class="topbar-avatar" />

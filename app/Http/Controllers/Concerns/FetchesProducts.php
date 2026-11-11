@@ -126,8 +126,8 @@ trait FetchesProducts
         return [
             'id'          => $p->id,
             'on_vacation' => (bool)$p->seller->is_on_vacation,
-            'flash_sale' => $flash ? ['id'=>$flash->id,'ends_at'=>\Illuminate\Support\Carbon::parse($flash->ends_at)->toIso8601String(),'remaining'=>$flash->remaining] : null,
-            'scheduled_flash' => $scheduledFlash?['id'=>$scheduledFlash->id,'starts_at'=>\Illuminate\Support\Carbon::parse($scheduledFlash->starts_at)->toIso8601String(),'price'=>(float)$scheduledFlash->price]:null,
+            'flash_sale' => $flash ? ['id'=>$flash->id,'starts_at'=>\Illuminate\Support\Carbon::parse($flash->starts_at)->toIso8601String(),'ends_at'=>\Illuminate\Support\Carbon::parse($flash->ends_at)->toIso8601String(),'remaining'=>$flash->remaining] : null,
+            'scheduled_flash' => $scheduledFlash?['id'=>$scheduledFlash->id,'starts_at'=>\Illuminate\Support\Carbon::parse($scheduledFlash->starts_at)->toIso8601String(),'ends_at'=>\Illuminate\Support\Carbon::parse($scheduledFlash->ends_at)->toIso8601String(),'price'=>(float)$scheduledFlash->price]:null,
             'name'        => $p->name,
             'seller'      => $sellerName,
             'seller_slug' => $sellerSlug,
