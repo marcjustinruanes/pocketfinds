@@ -23,7 +23,7 @@
       </thead>
       <tbody>
         @forelse($shipments as $s)
-        <tr class="rail-row rail-{{ $s->shipping_status }}">
+        <tr id="parcel-{{ $s->id }}" class="rail-row rail-{{ $s->shipping_status }}">
           <td class="mono">{{ $s->tracking_number ?? substr($s->id, 0, 8) }}</td>
           <td>
             <div class="cell-user">
@@ -43,11 +43,15 @@
           <td>
             @if($s->shipping_status === 'delivery_failed')
             <div class="row-actions">
+              @if($s->delivery_failed_reason !== 'refused' && $s->delivery_attempts < 3 && !app(App\Services\LogisticsRecovery::class)->hasConditionHold($s->id) && !app(App\Services\LogisticsRecovery::class)->hasRecoveryHold($s->id) && !app(App\Services\LogisticsRts::class)->active($s->id))
               <form method="POST" action="{{ route('logistics.status.update', $s->id) }}">
                 @csrf @method('PATCH')
-                <input type="hidden" name="status" value="assigned_to_rider"><label>Retry reason<input name="reason" required minlength="3" maxlength="500" style="min-height:44px;max-width:180px"></label>
+                <input type="hidden" name="status" value="assigned_to_rider"><label>Retry reason<input name="reason" required minlength="10" maxlength="300" style="min-height:44px;max-width:180px"></label>
                 <button class="btn btn-sm btn-outline">Retry Delivery</button>
               </form>
+              @else
+              <span>Return custody review required; retry is unavailable and Seller receipt remains unconfirmed.</span>
+              @endif
               @include('logistics.partials.rts-custody',['shipment'=>$s])
             </div>
             @else

@@ -9,10 +9,6 @@ $storedUnread=\Illuminate\Support\Facades\DB::table('notifications')->where('use
     <h1>@yield('page-title', 'Logistics')</h1>
     <p>@yield('page-sub', '')</p>
   </div>
-  <div class="topbar-search">
-    <span class="ic"><x-admin-icon name="search" /></span>
-    <input type="text" placeholder="Search...">
-  </div>
   @php
     // Respect Settings → Notifications: a toggled-off alert never surfaces here,
     // no matter how many requests/unassigned shipments are actually waiting.
@@ -34,9 +30,9 @@ $storedUnread=\Illuminate\Support\Facades\DB::table('notifications')->where('use
         <div class="notif-list">
 @include('account.partials.notifications')
           @if($showRequestAlert)
-          <a href="{{ route('logistics.requests') }}" class="notif-item" style="text-decoration:none;color:inherit;display:flex">
+          <a href="{{ route(auth()->user()->isHubStaff() ? 'logistics.dashboard' : 'logistics.requests') }}" class="notif-item" style="text-decoration:none;color:inherit;display:flex">
             <div class="dot"></div>
-            <div><p>{{ $pendingDeliveries }} delivery request{{ $pendingDeliveries > 1 ? 's' : '' }} pending approval.</p></div>
+            <div><p>{{ $pendingDeliveries }} delivery request{{ $pendingDeliveries > 1 ? 's' : '' }} {{ auth()->user()->isHubStaff() ? 'awaiting Logistics Admin approval.' : 'pending approval.' }}</p></div>
           </a>
           @endif
           @if($showUnassignedAlert)

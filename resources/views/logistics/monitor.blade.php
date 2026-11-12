@@ -49,10 +49,15 @@
           <td><span class="stamp stamp-{{ $s->shipping_status }}">{{ ucfirst(str_replace('_',' ',$s->shipping_status)) }}</span></td>
           <td class="mono" style="font-size:11.5px">{{ $s->updated_at?->format('M d, Y g:i A') ?? '—' }}</td>
           <td>
-            @php($allowedNext = array_values(array_diff($transitions[$s->shipping_status] ?? [], ['returned','out_for_delivery'])))
+            @php
+              $mayUpdate = auth()->user()->isLogisticsAdmin() || app(\App\Services\LogisticsAccess::class)->matches(auth()->user()->logisticsHub, $s->destination_hub, $s->destination_province);
+              $allowedNext = $mayUpdate ? array_values(array_diff($transitions[$s->shipping_status] ?? [], ['returned','out_for_delivery'])) : [];
+              if ($s->shipping_status === 'delivery_failed' && app(\App\Services\RiderDeliveryOffers::class)->retryExhausted($s)) $allowedNext = [];
+            @endphp
             @if(count($allowedNext))
             <form method="POST" action="{{ route('logistics.status.update', $s->id) }}" style="display:flex;gap:8px">
               @csrf @method('PATCH')
+              <input type="hidden" name="attempt_token" value="{{ $s->failedDeliveryToken() }}">
               <select name="status" class="select">
                 @foreach($allowedNext as $st)
                 <option value="{{ $st }}">{{ ucfirst(str_replace('_',' ',$st)) }}</option>
@@ -60,7 +65,7 @@
               </select>
               <label>Reason<input name="reason" minlength="10" maxlength="300" required style="min-height:44px;max-width:180px"></label><button class="btn btn-sm btn-primary">Update</button>
             </form>
-            @elseif($s->shipping_status === 'sorted')
+            @elseif($s->shipping_status === 'sorted' && $mayUpdate)
             <a href="{{ route('logistics.assignments') }}" style="color:var(--pink-dark);font-size:12px;font-weight:600">Assign a courier →</a>
             @elseif($s->shipping_status === 'ready_for_pickup')
             @if(auth()->user()->isLogisticsAdmin())

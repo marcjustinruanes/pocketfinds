@@ -52,21 +52,24 @@ class LogisticsFinanceFoundationTest extends TestCase
     public function test_defaults_are_company_scoped_and_money_is_exact(): void
     {
         $settings = $this->finance->settings('Alpha');
-        $this->assertEquals([2500, 15000, 4000, 168], [$settings->pickup_cents, $settings->transfer_cents, $settings->delivery_cents, $settings->confirmation_hours]);
+        $this->assertEquals([3000, 15000, 5000, 168], [$settings->pickup_cents, $settings->transfer_cents, $settings->delivery_cents, $settings->confirmation_hours]);
         $this->assertSame(101, $this->finance->cents('1.01'));
         $this->assertSame(10, $this->finance->cents('0.1'));
         $this->finance->configure($this->admin, ['pickup' => '30.25', 'transfer' => '160', 'delivery' => '42', 'revision' => 1]);
         $this->assertEquals(3025, $this->finance->settings('Alpha')->pickup_cents);
-        $this->assertEquals(2500, $this->finance->settings('Beta')->pickup_cents);
+        $this->assertEquals(3000, $this->finance->settings('Beta')->pickup_cents);
         $this->assertDatabaseHas('logistics_financial_events', ['company_name' => 'Alpha', 'actor_id' => $this->admin->id, 'event' => 'rates_updated']);
     }
 
     public function test_rate_edits_preserve_existing_assignment_snapshots(): void
     {
         $assignment = $this->assignment();
+        $original = DB::table('logistics_compensations')->where('source_id', $assignment->id)->firstOrFail();
+        $this->assertSame(5000, (int) $original->amount_cents);
+        $this->assertSame(1, (int) $original->settings_revision);
         $this->finance->configure($this->admin, ['pickup' => '25', 'transfer' => '150', 'delivery' => '75', 'revision' => 1]);
         $this->finance->snapshotAssignment($assignment);
-        $this->assertDatabaseHas('logistics_compensations', ['source_id' => $assignment->id, 'amount_cents' => 4000, 'settings_revision' => 1]);
+        $this->assertDatabaseHas('logistics_compensations', ['source_id' => $assignment->id, 'amount_cents' => $original->amount_cents, 'settings_revision' => $original->settings_revision]);
         $next = $this->assignment();
         $this->assertDatabaseHas('logistics_compensations', ['source_id' => $next->id, 'amount_cents' => 7500, 'settings_revision' => 2]);
         $this->assertDatabaseCount('logistics_compensations', 2);
@@ -120,9 +123,9 @@ class LogisticsFinanceFoundationTest extends TestCase
         $data = ['pickup' => '1', 'transfer' => '1', 'delivery' => '1', 'revision' => 1, 'company_name' => 'Beta'];
         $this->actingAs($this->person('staff'))->postJson('/logistics/finance/settings', $data)->assertForbidden();
         $this->actingAs($this->rider)->postJson('/logistics/finance/settings', $data)->assertRedirect();
-        $this->actingAs($this->admin)->post('/logistics/finance/settings', $data)->assertRedirect(route('logistics.finance'));
+        $this->actingAs($this->admin)->post('/logistics/finance/settings', $data)->assertRedirect(route('logistics.finance'))->assertSessionHasNoErrors();
         $this->assertEquals(100, $this->finance->settings('Alpha')->pickup_cents);
-        $this->assertEquals(2500, $this->finance->settings('Beta')->pickup_cents);
+        $this->assertEquals(3000, $this->finance->settings('Beta')->pickup_cents);
         $this->postJson('/logistics/finance/settings', $data)->assertStatus(409);
     }
 

@@ -63,11 +63,28 @@ class LogisticsRecovery
         },3);
     }
 
+    public function assertOperational(string $shipment): void
+    {
+        $this->assertNotRecovered($shipment);
+        abort_if($this->hasConditionHold($shipment), 422,
+            'A lost or damaged parcel record requires physical disposition review before dispatch or release; resolving the investigation alone is not clearance.');
+    }
+
+    public function hasConditionHold(string $shipment): bool
+    {
+        return Schema::hasTable('logistics_issues') && DB::table('logistics_issues')->where('shipment_id', $shipment)
+            ->whereIn('kind', ['lost', 'damaged'])->when(DB::transactionLevel() > 0, fn ($q) => $q->lockForUpdate())->exists();
+    }
+
+    public function hasRecoveryHold(string $shipment): bool
+    {
+        return Schema::hasColumn('logistics_issues', 'recovery') && DB::table('logistics_issues')->whereJsonContains('recovery->shipment_ids', $shipment)
+            ->when(DB::transactionLevel() > 0, fn ($q) => $q->lockForUpdate())->exists();
+    }
+
     public function assertNotRecovered(string $shipment): void
     {
-        if (! Schema::hasColumn('logistics_issues', 'recovery')) return;
-        abort_if(DB::table('logistics_issues')->whereJsonContains('recovery->shipment_ids', $shipment)
-            ->when(DB::transactionLevel() > 0, fn ($q) => $q->lockForUpdate())->exists(), 422,
+        abort_if($this->hasRecoveryHold($shipment), 422,
             'Physical recovery is recorded. Redispatch requires a separately approved workflow.');
     }
 }

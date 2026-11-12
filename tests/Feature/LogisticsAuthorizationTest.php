@@ -235,11 +235,14 @@ class LogisticsAuthorizationTest extends TestCase
         $inactive = $this->user($a, 'rider', 'suspended');
         $rider = $this->user($a, 'rider');
         $this->actingAs($admin)->patchJson('/logistics/assignments/parcel/assign', ['courier_id' => $wrongHub->id])->assertUnprocessable();
-        $this->patchJson('/logistics/assignments/parcel/assign', ['courier_id' => $inactive->id])->assertNotFound();
+        $this->patchJson('/logistics/assignments/parcel/assign', ['courier_id' => $inactive->id])->assertUnprocessable();
         $this->patch('/logistics/assignments/parcel/assign', ['courier_id' => $rider->id])->assertRedirect();
+        $this->assertDatabaseHas('shipments', ['id' => 'parcel', 'courier_id' => null, 'shipping_status' => 'sorted']);
+        $this->assertDatabaseHas('delivery_assignments', ['shipment_id' => 'parcel', 'courier_id' => $rider->id, 'status' => 'offered', 'accepted_at' => null]);
+        $this->actingAs($rider)->patch('/rider/requests/parcel/accept')->assertRedirect()->assertSessionHasNoErrors();
         $this->assertDatabaseHas('shipments', ['id' => 'parcel', 'courier_id' => $rider->id, 'shipping_status' => 'assigned_to_rider']);
         $this->assertDatabaseHas('logistics_activity_logs', ['actor_id' => $admin->id, 'action' => 'logistics.assignments.assign', 'record_id' => 'parcel']);
-        $this->patchJson('/logistics/assignments/parcel/assign', ['courier_id' => $rider->id])->assertUnprocessable();
+        $this->actingAs($admin)->patchJson('/logistics/assignments/parcel/assign', ['courier_id' => $rider->id])->assertUnprocessable();
         $this->assertDatabaseCount('delivery_assignments', 1);
     }
 
@@ -783,7 +786,7 @@ class LogisticsAuthorizationTest extends TestCase
             $t->timestamp('created_at');
         });
         Schema::table('shipments', function (Blueprint $t) {
-            foreach (['hub_transfer_started_at', 'hub_transfer_completed_at', 'sorted_at'] as $column) {
+            foreach (['hub_transfer_started_at', 'hub_transfer_completed_at', 'sorted_at', 'at_sorting_center_at', 'seller_confirmed_pickup_at', 'rider_confirmed_pickup_at'] as $column) {
                 $t->timestamp($column)->nullable();
             } $t->string('sorted_area')->nullable();
         });
@@ -798,6 +801,12 @@ class LogisticsAuthorizationTest extends TestCase
         $parcel = $this->parcel($from, $to, 'transfer', 'at_sorting_center');
         $parcel->update(['order_id' => 'transfer-order']);
         $leg = ShipmentHubLeg::create(['shipment_id' => $parcel->id, 'sequence' => 1, 'leg_type' => 'direct', 'from_hub' => $from->municipality, 'to_hub' => $to->municipality, 'status' => 'pending', 'requested_at' => now(), 'approved_at' => now()]);
+        $staff = $this->user($from);
+        $at = now()->subMinutes(5);
+        $parcel->update(['at_sorting_center_at' => $at, 'picked_up_at' => $at->copy()->subMinute(), 'seller_confirmed_pickup_at' => $at->copy()->subMinutes(2), 'rider_confirmed_pickup_at' => $at->copy()->subMinutes(2)]);
+        DB::table('order_status_history')->insert(['id' => 'origin-receipt', 'order_id' => $parcel->order_id, 'status' => 'at_sorting_center', 'changed_by' => $staff->id, 'created_at' => $at]);
+        DB::table('logistics_activity_logs')->insert(['company_name' => $from->company_name, 'actor_id' => $staff->id, 'hub_id' => $from->id, 'action' => 'logistics.scan.receive', 'record_id' => $parcel->id, 'created_at' => $at]);
+        $rider->forceFill(['is_available' => true])->save();
         $batch = app(HubTransferWorkflow::class)->legacyBatch($admin, $leg->id);
         app(HubTransferWorkflow::class)->decide($admin, $batch->id, 'approved');
         $this->actingAs($admin)->patchJson('/logistics/assignments/transfer/assign-hub-transfer', ['courier_id' => $wrong->id])->assertUnprocessable();

@@ -355,6 +355,16 @@ class ScannerDashboard extends StatelessWidget {
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(fontWeight: FontWeight.w700),
                         ),
+                        if (parcel!['parcel']['order_number'] != null &&
+                            parcel!['parcel']['order_number']
+                                .toString()
+                                .trim()
+                                .isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          SelectableText(
+                            'Order: ${parcel!['parcel']['order_number']}',
+                          ),
+                        ],
                         const SizedBox(height: 8),
                         Align(
                           alignment: Alignment.centerLeft,
@@ -376,6 +386,29 @@ class ScannerDashboard extends StatelessWidget {
                               'Not specified',
                           Icons.location_on_outlined,
                         ),
+                        if (parcel!['parcel']['hub_leg_progress'] != null &&
+                            parcel!['parcel']['hub_leg_progress']
+                                .toString()
+                                .trim()
+                                .isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            'Transfer: ${parcel!['parcel']['hub_leg_progress']}',
+                          ),
+                        ],
+                        if (parcel!['custody'] is Map) ...[
+                          const SizedBox(height: 16),
+                          Text(
+                            'Parcel handling: ${parcel!['custody']['label'] ?? 'Needs review'}',
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          if (parcel!['custody']['responsible'] != null)
+                            Text(
+                              'Hub or rider: ${parcel!['custody']['responsible']}',
+                            ),
+                          if (parcel!['custody']['next'] != null)
+                            Text('Next step: ${parcel!['custody']['next']}'),
+                        ],
                         const SizedBox(height: 18),
                         if ((parcel!['actions'] as List).isEmpty)
                           const Text(

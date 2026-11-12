@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\{CompanyVehicle, DeliveryAssignment, LogisticsHub, Order, Shipment, User};
+use App\Models\{DeliveryAssignment, LogisticsHub, Order, Shipment, User};
 use Illuminate\Support\Facades\{DB, Schema, Validator};
 use Illuminate\Support\Str;
 
@@ -10,10 +10,11 @@ class AssignmentReassignment
 {
     public function installed(): bool { return Schema::hasColumn('delivery_assignments', 'reassignment'); }
 
-    public function assertNoPending(string $shipment, ?string $leg = null): void
+    public function assertNoPending(string $shipment, ?string $leg = null, bool $custodyReceipt = false, bool $completingReturn = false): void
     {
-        app(LogisticsRecovery::class)->assertNotRecovered($shipment);
-        if(\Illuminate\Support\Facades\Schema::hasColumn('logistics_issues','rts')) abort_if(\App\Models\LogisticsIssue::where('rts_shipment_id',$shipment)->where('rts->state','!=','seller_received')->lockForUpdate()->exists(),409,'Return custody is active. Use the RTS workflow.');
+        if ($custodyReceipt) app(LogisticsRecovery::class)->assertNotRecovered($shipment);
+        else app(LogisticsRecovery::class)->assertOperational($shipment);
+        abort_if(app(LogisticsRts::class)->active($shipment,$completingReturn),409,'Return custody is active or needs evidence review. Use the RTS workflow.');
         if (! $this->installed()) return;
         abort_if(DeliveryAssignment::where('shipment_id',$shipment)->when($leg,fn($q)=>$q->where('leg',$leg))
             ->whereNotNull('reassignment')->lockForUpdate()->exists(),409,'A possession review is pending. Confirm or cancel it first.');
@@ -40,7 +41,7 @@ class AssignmentReassignment
         abort_unless($this->installed(), 503, 'Install the operational recovery migration.');
         $peek = DeliveryAssignment::findOrFail($id);
         $seller = Shipment::findOrFail($peek->shipment_id)->order?->seller_id;
-        GcashLocks::operation([$peek->shipment_id], [], array_filter(array_merge([$user->id, $seller], $extraUsers)));
+        app(RiderDeliveryOffers::class)->lockForReassignment($peek->shipment_id, array_filter(array_merge([$user->id, $seller], $extraUsers)));
         $a = DeliveryAssignment::whereKey($id)->lockForUpdate()->firstOrFail();
         $s = Shipment::whereKey($a->shipment_id)->lockForUpdate()->firstOrFail();
         return [$a, $s];
@@ -76,13 +77,10 @@ class AssignmentReassignment
 
     private function replacement(int $id, Shipment $s, string $leg): User
     {
-        $r = User::whereKey($id)->lockForUpdate()->firstOrFail();
-        abort_unless($r->account_type === 'rider' && ! $r->is_admin && ! $r->is_logistics && $r->status === 'approved' && $r->business_name === $s->logistics_company
-            && $r->vehicle_type === 'two_wheels' && in_array($r->vehicle_ownership, ['own', 'company'], true), 422, 'Choose an approved eligible company rider.');
-        $hub = app(LogisticsAccess::class)->hub($r);
-        abort_unless(app(LogisticsAccess::class)->matches($hub, $leg === 'pickup' ? $s->origin_hub : $s->destination_hub, $leg === 'pickup' ? $s->origin_province : $s->destination_province), 422, 'Replacement must belong to the parcel hub.');
-        abort_if($r->vehicle_ownership === 'company' && ! CompanyVehicle::typeAvailableAtHub($hub->id, 'two_wheels'), 422, 'No approved matching company vehicle is available.');
-        return $r;
+        abort_unless(app(RiderDeliveryOffers::class)->canAssign($s, $leg, $id), 422,
+            'Choose an approved online rider covering the parcel barangay at its hub, with an available two-wheel vehicle and fewer than three active pickup/delivery jobs.');
+
+        return User::whereKey($id)->lockForUpdate()->firstOrFail();
     }
 
     public function request(User $user, string $id, array $input): void

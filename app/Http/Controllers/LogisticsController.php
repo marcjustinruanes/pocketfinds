@@ -209,15 +209,15 @@ class LogisticsController extends Controller
     public function requests(Request $request)
     {
         $queue=$request->validate(['queue'=>'nullable|in:review,assignment'])['queue']??'review';
-        $pickupRiders=$queue==='assignment'?$this->eligibleRiders('two_wheels')->load('logisticsHub'):collect();
         $counts = $this->sidebarCounts();
-        $shipments = $this->companyScope()->with(['order.buyer'])
+        $shipments = $this->companyScope()->with(['order.buyer', 'order.seller', 'pickupAssignment.courier'])
             ->where('shipping_status', 'ready_for_pickup')->when($queue==='assignment',fn($q)=>$q->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id'),fn($q)=>$q->whereNull('pickup_approved_at'))
             ->latest('created_at')->orderByDesc('id')->paginate(20)->withQueryString();
 
+        $pickupRidersByShipment = $shipments->getCollection()->mapWithKeys(fn ($parcel) => [$parcel->id => app(\App\Services\RiderDeliveryOffers::class)->eligible($parcel, 'pickup')->with('logisticsHub')->get()]);
         $shippingObligations = app(\App\Services\LogisticsShipping::class)->installed()
             ? DB::table('logistics_shipping_obligations')->whereIn('shipment_id', $shipments->pluck('id'))->get()->keyBy('shipment_id') : collect();
-        return view('logistics.requests', array_merge($counts, compact('shipments', 'shippingObligations','queue','pickupRiders')));
+        return view('logistics.requests', array_merge($counts, compact('shipments', 'shippingObligations','queue','pickupRidersByShipment')));
     }
 
     /** Approving a request doesn't change its status — it stays ready_for_pickup, now visible to pickup riders. */
@@ -283,6 +283,11 @@ class LogisticsController extends Controller
      */
     private function eligibleRiders(string $vehicleType)
     {
+        if ($vehicleType === 'two_wheels') {
+            return app(\App\Services\RiderDeliveryOffers::class)->candidates(auth()->user()->business_name)
+                ->when(auth()->user()->isHubStaff(), fn ($q) => $q->where('users.logistics_hub_id', auth()->user()->logistics_hub_id))
+                ->get();
+        }
         $riders = User::where('account_type', 'rider')->where('status', 'approved')
             ->where('business_name', auth()->user()->business_name)->where('vehicle_type', $vehicleType)
             ->whereHas('logisticsHub', fn ($q) => $q->where('company_name', auth()->user()->business_name)->where('is_operational', true))
@@ -338,65 +343,16 @@ class LogisticsController extends Controller
             ->latest('created_at')->orderByDesc('id')->paginate(20)->withQueryString();
         $assignmentCounts = $this->companyScope()->selectRaw('shipping_status, COUNT(*) as total')->groupBy('shipping_status')->pluck('total', 'shipping_status');
         // Only this company's own riders, and only ones whose vehicle actually fits a delivery leg (two-wheeler).
-        $couriers = $this->eligibleRiders('two_wheels');
 
-        return view('logistics.assign', array_merge($counts, compact('shipments', 'couriers', 'assignmentCounts')));
+        $couriersByShipment = $shipments->getCollection()->where('shipping_status', 'sorted')->mapWithKeys(fn ($parcel) => [$parcel->id => app(\App\Services\RiderDeliveryOffers::class)->eligible($parcel, 'delivery')->get()]);
+        return view('logistics.assign', array_merge($counts, compact('shipments', 'assignmentCounts', 'couriersByShipment')));
     }
 
     public function assignCourier(Request $request, $id)
     {
-        $company = auth()->user()->business_name;
         $data = $request->validate(['courier_id' => 'required|integer|exists:users,id']);
-        GcashLocks::operation([(string) $id], [], [auth()->id(), $data['courier_id']]);
-        $shipment = $this->companyScope()->with('order')->lockForUpdate()->findOrFail($id);
-        app(\App\Services\AssignmentReassignment::class)->assertNoPending($shipment->id);
-        app(LogisticsAccess::class)->requireLocation(auth()->user(), $shipment->destination_hub, $shipment->destination_province);
-        $courier = User::where('id', $data['courier_id'])->where('account_type', 'rider')->where('status', 'approved')->where('business_name', $company)->lockForUpdate()->firstOrFail();
-
-        $requiredMunicipality = $shipment->shipping_status === 'ready_for_pickup' ? $shipment->origin_hub : $shipment->destination_hub;
-        $requiredProvince = $shipment->shipping_status === 'ready_for_pickup' ? $shipment->origin_province : $shipment->destination_province;
-        abort_unless($courier->logisticsHub && app(LogisticsAccess::class)->matches($courier->logisticsHub, $requiredMunicipality, $requiredProvince), 422, 'Choose a rider assigned to the parcel hub.');
-        if ($error = $this->vehicleEligibilityError($courier, 'two_wheels')) {
-            if ($request->expectsJson() || $request->ajax()) {
-                abort(422, $error);
-            }
-
-            return back()->withErrors(['courier_id' => $error])->withInput();
-        }
-
-        // Only a sorted parcel can be given its delivery rider. Claimed with a conditional
-        // update (same pattern as assignPickupRider()) so a parcel still in transit between
-        // hubs, already with another rider, delivered or cancelled — or a double-submit — is
-        // never overwritten, and a cancelled order can't be revived.
-        if ($shipment->order) {
-            app(GcashWorkflow::class)->assertOrderOperation($shipment->order, $shipment->shipping_status === 'ready_for_pickup');
-        }
-        $claimed = $this->companyScope()->where('id', $shipment->id)->where('shipping_status', 'sorted')
-            ->update(['courier_id' => $courier->id, 'shipping_status' => 'assigned_to_rider', 'assigned_at' => now()]);
-        if ($claimed === 0) {
-            $message = 'This parcel is no longer waiting for a delivery rider.';
-            if ($request->expectsJson() || $request->ajax()) {
-                abort(422, $message);
-            }
-
-            return back()->withErrors(['courier_id' => $message]);
-        }
-
-        $shipment->order?->update(['status' => 'assigned_to_rider']);
-        $shipment->order?->logStatus('assigned_to_rider', auth()->id());
-        DeliveryAssignment::updateOrCreate(
-            ['shipment_id' => $shipment->id, 'leg' => 'delivery'],
-            ['courier_id' => $courier->id, 'status' => 'assigned_to_rider', 'accepted_at' => now()]
-        );
-
-        DB::table('notifications')->insert([
-            'id' => (string) Str::uuid(), 'user_id' => $courier->id,
-            'title' => 'New Delivery Assignment', 'message' => 'You were assigned to deliver order #'.($shipment->order?->order_number ?? $shipment->id).'.',
-            'notification_type' => 'delivery_assigned', 'reference_id' => $shipment->order_id,
-            'is_read' => false, 'created_at' => now(),
-        ]);
-
-        return back()->with('success', 'Rider assigned.');
+        app(\App\Services\RiderDeliveryOffers::class)->propose(auth()->user(), (string) $id, (int) $data['courier_id'], 'delivery');
+        return back()->with('success', 'Delivery offer sent. Awaiting rider confirmation.');
     }
 
     /**
@@ -466,11 +422,11 @@ class LogisticsController extends Controller
         // scoped to parcels actually originating at THIS hub (a seller's nearest hub,
         // see LogisticsController::approveRequest()). Assignable right here, or a rider
         // can still self-accept from their own Pickup Requests page — whichever happens first.
-        $pickupRequests = $this->companyScope()->with(['order.buyer', 'order.seller'])
+        $pickupRequests = $this->companyScope()->with(['order.buyer', 'order.seller', 'pickupAssignment.courier'])
             ->whereRaw('LOWER(origin_hub) = ?', [mb_strtolower(trim($hub->municipality))])->whereRaw('LOWER(origin_province) = ?', [mb_strtolower(trim($hub->province))])
             ->where('shipping_status', 'ready_for_pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')
             ->latest('created_at')->orderByDesc('id')->paginate(20, ['*'], 'pickup_page')->withQueryString();
-        $pickupRiders = $this->eligibleRiders('two_wheels');
+        $pickupRidersByShipment = $pickupRequests->getCollection()->mapWithKeys(fn ($parcel) => [$parcel->id => app(\App\Services\RiderDeliveryOffers::class)->eligible($parcel, 'pickup')->get()]);
 
         // Both sides have already confirmed the handoff (Shipment::maybeAdvancePastPickupConfirmation())
         // and the rider is physically carrying it here — nothing to assign, just visibility
@@ -497,7 +453,7 @@ class LogisticsController extends Controller
             ->with(['shipment.order', 'rider'])->orderBy('id')->paginate(20, ['*'], 'incoming_page')->withQueryString();
 
         return view('logistics.hub-dashboard', array_merge($counts, compact(
-            'hub', 'pickupRequests', 'pickupRiders', 'incomingPickups', 'requestable', 'requestablePages', 'requestableCount', 'pendingApproval', 'pendingApprovalPages', 'pendingApprovalCount', 'readyToAssign', 'incoming'
+            'hub', 'pickupRequests', 'pickupRidersByShipment', 'incomingPickups', 'requestable', 'requestablePages', 'requestableCount', 'pendingApproval', 'pendingApprovalPages', 'pendingApprovalCount', 'readyToAssign', 'incoming'
         )));
     }
 
@@ -511,58 +467,9 @@ class LogisticsController extends Controller
      */
     public function assignPickupRider(Request $request, $id)
     {
-        $user = auth()->user();
         $data = $request->validate(['courier_id' => 'required|integer|exists:users,id']);
-        GcashLocks::operation([(string) $id], [], [auth()->id(), $data['courier_id']]);
-        $shipment = $this->companyScope()->with('order')->where('shipping_status', 'ready_for_pickup')
-            ->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')->lockForUpdate()->findOrFail($id);
-
-        app(\App\Services\AssignmentReassignment::class)->assertNoPending($shipment->id);
-        app(LogisticsAccess::class)->requireLocation($user, $shipment->origin_hub, $shipment->origin_province);
-        $courier = User::where('id', $data['courier_id'])->where('account_type', 'rider')->where('status', 'approved')->where('business_name', $user->business_name)->lockForUpdate()->firstOrFail();
-        $requiredMunicipality = $shipment->shipping_status === 'ready_for_pickup' ? $shipment->origin_hub : $shipment->destination_hub;
-        $requiredProvince = $shipment->shipping_status === 'ready_for_pickup' ? $shipment->origin_province : $shipment->destination_province;
-        abort_unless($courier->logisticsHub && app(LogisticsAccess::class)->matches($courier->logisticsHub, $requiredMunicipality, $requiredProvince), 422, 'Choose a rider assigned to the parcel hub.');
-        if ($error = $this->vehicleEligibilityError($courier, 'two_wheels')) {
-            if ($request->expectsJson() || $request->ajax()) {
-                abort(422, $error);
-            }
-
-            return back()->withErrors(['courier_id' => $error])->withInput();
-        }
-
-        // Same FCFS-safe conditional update the rider self-accept path uses — whichever
-        // request (this one, or a rider claiming it themselves) hits the still-unclaimed
-        // row first wins; the other finds 0 rows affected.
-        if ($shipment->order) {
-            app(GcashWorkflow::class)->assertOrderOperation($shipment->order, $shipment->shipping_status === 'ready_for_pickup');
-        }
-        $claimed = $this->companyScope()->where('id', $shipment->id)
-            ->where('shipping_status', 'ready_for_pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')
-            ->update(['pickup_rider_id' => $courier->id]);
-        abort_if($claimed === 0, 422, 'This pickup request was already accepted by a rider.');
-
-        DeliveryAssignment::updateOrCreate(
-            ['shipment_id' => $shipment->id, 'leg' => 'pickup'],
-            ['courier_id' => $courier->id, 'status' => 'accepted', 'accepted_at' => now()]
-        );
-
-        DB::table('notifications')->insert([
-            'id' => (string) Str::uuid(), 'user_id' => $courier->id,
-            'title' => 'New Pickup Assignment', 'message' => 'You were assigned to pick up order #'.($shipment->order?->order_number ?? $shipment->id).'.',
-            'notification_type' => 'pickup_assigned', 'reference_id' => $shipment->order_id,
-            'is_read' => false, 'created_at' => now(),
-        ]);
-        if ($shipment->order?->seller_id) {
-            DB::table('notifications')->insert([
-                'id' => (string) Str::uuid(), 'user_id' => $shipment->order->seller_id,
-                'title' => 'Pickup Rider Assigned', 'message' => 'A rider was assigned to pick up order #'.$shipment->order->order_number.'. They\'re on their way.',
-                'notification_type' => 'order_status', 'reference_id' => $shipment->order_id,
-                'is_read' => false, 'created_at' => now(),
-            ]);
-        }
-
-        return back()->with('success', 'Pickup rider assigned.');
+        app(\App\Services\RiderDeliveryOffers::class)->propose(auth()->user(), (string) $id, (int) $data['courier_id'], 'pickup');
+        return back()->with('success', 'Pickup offer sent. Awaiting rider confirmation.');
     }
 
     /**
@@ -744,6 +651,7 @@ class LogisticsController extends Controller
         $allowedNext = self::STATUS_TRANSITIONS[$shipment->shipping_status] ?? [];
         $forwardNext = collect($allowedNext)->first(fn ($s) => ! in_array($s, ['delivery_failed', 'returned'], true));
         $canFail = in_array('delivery_failed', $allowedNext, true);
+        if ($shipment->shipping_status === 'delivery_failed' && app(\App\Services\RiderDeliveryOffers::class)->retryExhausted($shipment)) $forwardNext = null;
 
         // Sorting-center stage this parcel is at: receive+sort it in (one scan, since sorting
         // is just an automatic address lookup), assign it to an area rider, or (once assigned)
@@ -809,7 +717,7 @@ class LogisticsController extends Controller
                 $areaNote = $unserviceable->note;
             } else {
                 // Only this company's own riders whose vehicle actually fits a delivery leg (two-wheeler).
-                $riders = $this->eligibleRiders('two_wheels')->filter(fn ($r) => $r->logisticsHub && app(LogisticsAccess::class)->matches($r->logisticsHub, $shipment->destination_hub, $shipment->destination_province));
+                $riders = app(\App\Services\RiderDeliveryOffers::class)->eligible($shipment, 'delivery')->get();
                 if ($area) {
                     $matched = $riders->filter(fn ($r) => mb_strtolower(trim((string) $r->municipality)) === mb_strtolower(trim($area)))->values();
                     if ($matched->isNotEmpty()) {
@@ -855,6 +763,18 @@ class LogisticsController extends Controller
 
         if (auth()->user()->isLogisticsAdmin() && $stage === 'receive') $stage = 'none';
 
+        if (in_array($stage, ['assign', 'assign_hub_transfer'], true)
+            && (app(\App\Services\LogisticsRecovery::class)->hasConditionHold($shipment->id)
+                || app(\App\Services\LogisticsRecovery::class)->hasRecoveryHold($shipment->id)
+                || app(\App\Services\LogisticsRts::class)->active($shipment->id))) {
+            $stage = 'none';
+            $areaRiders = [];
+            $hubTransferRiders = [];
+            $forwardNext = null;
+            $canFail = false;
+            $areaNote = 'Parcel custody review is required before rider assignment.';
+        }
+
         return response()->json([
             'ok' => true,
             'shipment' => [
@@ -896,6 +816,7 @@ class LogisticsController extends Controller
                 ] : null,
                 'hub_leg_progress' => $hubLegProgress,
                 'status' => $shipment->shipping_status,
+                'attempt_token' => $shipment->failedDeliveryToken(),
                 'status_label' => ucfirst(str_replace('_', ' ', $shipment->shipping_status)),
                 'updated_at' => optional($shipment->updated_at)->format('M d, Y H:i'),
             ],
@@ -933,7 +854,7 @@ class LogisticsController extends Controller
 
         if ($shipment->needsHubTransfer()) {
             $shipment->buildHubLegs();
-            $shipment->update(['shipping_status' => 'at_sorting_center', 'at_sorting_center_at' => $now]);
+            $shipment->recordHubReceipt(['shipping_status' => 'at_sorting_center', 'at_sorting_center_at' => $now]);
             $shipment->order?->update(['status' => 'at_sorting_center']);
 
             DB::table('order_status_history')->insert([
@@ -949,7 +870,7 @@ class LogisticsController extends Controller
             return response()->json(['ok' => true, 'message' => "Received at {$shipment->origin_hub}. This hub's staff can now request a transfer to ".($firstLeg->to_hub ?? $shipment->destination_hub).' from their dashboard.']);
         }
 
-        $shipment->update([
+        $shipment->recordHubReceipt([
             'shipping_status' => 'sorted',
             'at_sorting_center_at' => $now,
             'sorted_at' => $now,
@@ -968,7 +889,9 @@ class LogisticsController extends Controller
 
         app(\App\Services\AssignmentWork::class)->closeReceivedPickup($shipment);
         app(\App\Services\RiderCompensation::class)->shipmentCompleted($shipment->id);
-        app(\App\Services\RiderDeliveryOffers::class)->offer($shipment, 'delivery');
+        if (! app(\App\Services\LogisticsRecovery::class)->hasConditionHold($shipment->id)) {
+            app(\App\Services\RiderDeliveryOffers::class)->offer($shipment, 'delivery');
+        }
 
         return response()->json(['ok' => true, 'message' => 'Parcel received and sorted'.($area ? " to {$area}" : '').'.']);
     }
@@ -1011,6 +934,7 @@ class LogisticsController extends Controller
         $data = $request->validate([
             'status' => 'required|in:'.implode(',', self::STATUSES),
             'reason' => 'required|string|min:10|max:300',
+            'attempt_token' => 'required_if:status,delivery_failed|string|size:64',
         ]);
         $status = $data['status'];
         abort_if($status === 'returned', 422, 'Return progress is not Seller receipt. Inventory stays reserved until an authenticated physical receipt workflow is completed.');
@@ -1021,13 +945,32 @@ class LogisticsController extends Controller
         // not something hub staff mark on the rider's behalf from the Scan page.
         abort_if($status === 'out_for_delivery', 422, 'The assigned rider marks this themselves from their own account when they head out.');
 
+        if ($status === 'delivery_failed') {
+            $returnRequired = DB::transaction(function () use ($id, $data) {
+                GcashLocks::shipment((string) $id);
+                $shipment = $this->companyScope()->whereKey($id)->lockForUpdate()->firstOrFail();
+
+                return app(\App\Services\RiderDeliveryOffers::class)->recordFailure($shipment, auth()->user(), $data['reason'], $data['attempt_token']);
+            }, 3);
+
+            return back(303)->with('success', $returnRequired
+                ? 'Failed delivery recorded. Return custody review is required; Seller receipt is not yet confirmed.'
+                : 'Delivery attempt recorded. Review rider eligibility before retrying.');
+        }
+
         // The whole move happens on the locked shipment/order rows: the transition is
         // re-validated against the CURRENT status (not a stale copy), and a parcel that
         // is not treated as physically returned without Seller receipt.
         $result = DB::transaction(function () use ($id, $status, $data) {
-            GcashLocks::shipment((string) $id);
+            if ($status === 'assigned_to_rider') {
+                app(\App\Services\RiderDeliveryOffers::class)->lockForRetry((string) $id, auth()->id());
+            } else {
+                GcashLocks::shipment((string) $id);
+            }
             $shipment = $this->companyScope()->where('id', $id)->lockForUpdate()->firstOrFail();
-            app(LogisticsAccess::class)->requireLocation(auth()->user(), $shipment->destination_hub, $shipment->destination_province);
+            $actor = app(\App\Services\AssignmentReassignment::class)->actor(auth()->user());
+            abort_unless($actor->business_name === $shipment->logistics_company, 403);
+            app(LogisticsAccess::class)->requireLocation($actor, $shipment->destination_hub, $shipment->destination_province);
             $order = $shipment->order_id ? Order::lockFresh($shipment->order_id) : null;
 
             // Guard the transition server-side too — the UI only ever offers valid next
@@ -1041,8 +984,8 @@ class LogisticsController extends Controller
             }
 
             if ($status === 'assigned_to_rider') {
+                app(\App\Services\RiderDeliveryOffers::class)->assertRetryEligible($shipment);
                 $rider = $shipment->courier;
-                abort_unless($rider && ! $this->vehicleEligibilityError($rider, 'two_wheels') && app(LogisticsAccess::class)->matches($rider->logisticsHub, $shipment->destination_hub, $shipment->destination_province), 422, 'Assign an approved rider with an available vehicle before retrying delivery.');
                 DeliveryAssignment::updateOrCreate(['shipment_id' => $shipment->id, 'leg' => 'delivery'], ['courier_id' => $rider->id, 'status' => 'assigned_to_rider', 'accepted_at' => now()]);
             }
             if (in_array($status, ['delivered', 'completed'], true) && !($shipment->shipping_status === 'delivered' && $status === 'completed')) {
@@ -1052,9 +995,7 @@ class LogisticsController extends Controller
             if (isset(self::STAGE_TIMESTAMPS[$status])) {
                 $updates[self::STAGE_TIMESTAMPS[$status]] = now();
             }
-            if ($status === 'delivery_failed') {
-                $updates['delivery_failed_reason'] = $data['reason'] ?? 'No reason given.';
-            }
+
             $shipment->update($updates);
             $shipment->setRelation('order', $order);
             if ($status === 'delivered' && app(\App\Services\RiderCompensation::class)->installed()) {
@@ -1070,8 +1011,9 @@ class LogisticsController extends Controller
 
             }
 
+            $event = (string) Str::uuid();
             DB::table('order_status_history')->insert([
-                'id' => (string) Str::uuid(), 'order_id' => $shipment->order_id, 'status' => $status,
+                'id' => $event, 'order_id' => $shipment->order_id, 'status' => $status,
                 'changed_by' => auth()->id(), 'notes' => $data['reason'] ?? null, 'created_at' => now(),
             ]);
 
@@ -1083,7 +1025,7 @@ class LogisticsController extends Controller
         }
         $shipment = $result;
 
-        if ($shipment->order) {
+        if ($shipment->order && $status !== 'delivery_failed') {
             DB::table('notifications')->insert([
                 'id' => (string) Str::uuid(),
                 'user_id' => $shipment->order->buyer_id,
@@ -1110,21 +1052,10 @@ class LogisticsController extends Controller
                 ]);
             }
 
-            if ($status === 'delivery_failed') {
-                DB::table('notifications')->insert([
-                    'id' => (string) Str::uuid(),
-                    'user_id' => $shipment->order->seller_id,
-                    'title' => 'Delivery Attempt Failed',
-                    'message' => 'Order #'.$shipment->order->order_number.' delivery failed: '.($data['reason'] ?? 'No reason given.'),
-                    'notification_type' => 'delivery_failed',
-                    'reference_id' => $shipment->order_id,
-                    'is_read' => false,
-                    'created_at' => now(),
-                ]);
-            }
+
         }
 
-        return back();
+        return back(303);
     }
 
     public function issues()
@@ -1241,14 +1172,15 @@ class LogisticsController extends Controller
         $status = in_array($request->query('status'), ['pending', 'approved', 'rejected', 'suspended'], true)
             ? $request->query('status') : 'all';
         // A company's own roster only — riders who joined this exact company at registration.
-        $riders = User::where('account_type', 'rider')->where('business_name', $company)
+        $coverageInstalled = app(\App\Services\RiderBarangayCoverage::class)->installed();
+        $riders = User::when($coverageInstalled, fn ($q) => $q->with('barangayRoutes'))->where('account_type', 'rider')->where('business_name', $company)
             ->when($status !== 'all', fn ($q) => $q->where('status', $status))
             ->when($search, fn ($q) => $q->where(fn ($q) => $q->where('given_names', 'like', '%'.$search.'%')->orWhere('last_name', 'like', '%'.$search.'%')->orWhere('username', 'like', '%'.$search.'%')->orWhere('email', 'like', '%'.$search.'%')))
             ->latest()->orderByDesc('id')->paginate(20)->withQueryString();
         $statusCounts = User::where('account_type', 'rider')->where('business_name', $company)
             ->selectRaw('status, count(*) as c')->groupBy('status')->pluck('c', 'status');
 
-        return view('logistics.riders', array_merge($counts, compact('riders', 'status', 'statusCounts', 'hubs')));
+        return view('logistics.riders', array_merge($counts, compact('riders', 'status', 'statusCounts', 'hubs', 'coverageInstalled')));
     }
 
     private function rider(int $id): User
@@ -1677,22 +1609,30 @@ class LogisticsController extends Controller
         $hub = auth()->user()->logisticsHub;
         abort_unless($hub, 422, 'Your account has no hub linked.');
 
-        $vehicles = CompanyVehicle::where('logistics_hub_id', $hub->id)->latest()->orderByDesc('id')->paginate(20)->withQueryString();
+        $vehicles = CompanyVehicle::where('company_name', auth()->user()->business_name)->where('logistics_hub_id', $hub->id)->latest()->orderByDesc('id')->paginate(20)->withQueryString();
 
         return view('logistics.hub-vehicles', array_merge($counts, compact('hub', 'vehicles')));
     }
 
     /** Hub staff toggles an already platform-approved vehicle in/out of maintenance. */
-    public function toggleVehicleAvailability($id)
+    public function toggleVehicleAvailability(Request $request, $id)
     {
-        abort_unless(auth()->user()->isHubStaff(), 403);
-        $hub = auth()->user()->logisticsHub;
-        $vehicle = CompanyVehicle::where('logistics_hub_id', $hub?->id)
-            ->where('platform_status', 'approved')->findOrFail($id);
-        $vehicle->update(['is_available' => ! $vehicle->is_available]);
+        abort_unless($request->user()->isHubStaff(), 403);
+        $data = $request->validate(['is_available' => 'required|boolean']);
+        $vehicle = DB::transaction(function () use ($request, $id, $data) {
+            GcashLocks::operation([], [], [$request->user()->id], [], [(int) $id]);
+            $actor = app(\App\Services\AssignmentReassignment::class)->actor($request->user());
+            abort_unless($actor->isHubStaff(), 403);
+            $vehicle = CompanyVehicle::where('company_name', $actor->business_name)->where('logistics_hub_id', $actor->logistics_hub_id)
+                ->where('platform_status', 'approved')->lockForUpdate()->findOrFail($id);
+            $available = (bool) $data['is_available'];
+            if ($vehicle->is_available !== $available) $vehicle->update(['is_available' => $available]);
+
+            return $vehicle;
+        }, 3);
         $msg = $vehicle->is_available
             ? "{$vehicle->brand} {$vehicle->model} marked available again."
-            : "{$vehicle->brand} {$vehicle->model} marked as in maintenance — it won't be offered to new riders until it's back.";
+            : "{$vehicle->brand} {$vehicle->model} marked as in maintenance ? it won't be offered to new riders until it's back.";
 
         return back()->with('success', $msg);
     }

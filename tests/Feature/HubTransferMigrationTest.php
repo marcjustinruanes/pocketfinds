@@ -73,4 +73,31 @@ class HubTransferMigrationTest extends TestCase
         $this->assertFalse(Schema::hasColumn('shipment_hub_legs', 'transfer_batch_id'));
         $this->assertSame(2, ShipmentHubLeg::count());
     }
+
+    public function test_discrepancy_key_migration_preserves_old_events_and_enforces_per_batch_uniqueness(): void
+    {
+        $leg = $this->leg();
+        $leg->update(['requested_at' => now()]);
+        (require database_path('migrations/2026_10_14_000001_add_hub_transfer_batches.php'))->up();
+        $batch = HubTransferBatch::firstOrFail();
+        $event = ['batch_id' => $batch->id, 'action' => 'discrepancy', 'to_status' => 'in_transit', 'reason' => 'Legacy observation', 'created_at' => now()->toDateTimeString()];
+        DB::table('hub_transfer_events')->insert($event);
+        $before = DB::table('hub_transfer_events')->first();
+        $migration = require database_path('migrations/2026_11_11_000002_add_transfer_discrepancy_request_keys.php');
+        $migration->up();
+        $this->assertEquals($before, DB::table('hub_transfer_events')->select(array_keys((array) $before))->first());
+        $this->assertNull(DB::table('hub_transfer_events')->value('request_key'));
+        DB::table('hub_transfer_events')->insert($event); // Separate old observations remain valid.
+        $keyed = $event + ['request_key' => (string) \Illuminate\Support\Str::uuid(), 'request_hash' => str_repeat('a', 64)];
+        DB::table('hub_transfer_events')->insert($keyed);
+        try {
+            DB::table('hub_transfer_events')->insert($keyed);
+            $this->fail('Duplicate request key was accepted.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            $this->assertStringContainsString('UNIQUE', $e->getMessage());
+        }
+        $migration->down();
+        $this->assertFalse(Schema::hasColumn('hub_transfer_events', 'request_key'));
+        $this->assertSame(3, DB::table('hub_transfer_events')->count());
+    }
 }

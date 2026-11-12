@@ -7,6 +7,40 @@ use Illuminate\Support\Facades\{DB,Schema,Validator};
 /** Return custody in existing Issues; never creates a paid assignment or rewrites forward legs. */
 class LogisticsRts
 {
+    public function active(string $shipment, bool $completingReturn = false): bool
+    {
+        if(!Schema::hasColumn('logistics_issues','rts'))return false;
+        $issue=LogisticsIssue::where('rts_shipment_id',$shipment)->when(DB::transactionLevel()>0,fn($q)=>$q->lockForUpdate())->first();
+        if(!$issue)return false;
+        $parcel=$issue->shipment;
+        if(($issue->rts['state']??null)!=='seller_received' || !$parcel || !$this->witness($parcel,$issue))return true;
+        // Only the authenticated, witnessed Seller transition may temporarily precede
+        // the parcel/order writes within the same transaction. Reads never clear inconsistencies.
+        return !$completingReturn && ($issue->status!=='resolved' || $parcel->shipping_status!=='returned'
+            || !$parcel->returned_at || $parcel->order?->status!=='returned');
+    }
+
+    /** A state value is not custody evidence. Read existing authenticated event records only. */
+    public function witness(Shipment $shipment, LogisticsIssue $issue): ?object
+    {
+        $rts=$issue->rts;
+        if(!is_array($rts) || $issue->shipment_id!==$shipment->id || $issue->rts_shipment_id!==$shipment->id || $issue->company_name!==$shipment->logistics_company)return null;
+        $state=$rts['state']??null;
+        $actions=['requested'=>'request','to_hub'=>'to_hub','at_hub'=>'hub_received','released_to_rider'=>'hub_released','to_seller'=>'to_seller','seller_received'=>'seller_received'];
+        if(!is_string($state) || !isset($actions[$state]) || (int)($rts['revision']??0)<1 || (int)($rts['actor_id']??0)<1)return null;
+        $event=DB::table('logistics_issue_events')->where('issue_id',$issue->id)->latest('id')->when(DB::transactionLevel()>0,fn($q)=>$q->lockForUpdate())->first();
+        $record=$event?json_decode($event->note??'',true):null;
+        if(!is_array($record) || ($record['action']??null)!==$actions[$state] || ($record['new_state']??null)!==$state
+            || (int)($record['revision']??0)!==(int)$rts['revision'] || (int)$event->actor_id!==(int)$rts['actor_id'] || !$event->created_at)return null;
+        if(in_array($state,['to_hub','to_seller'],true) && ((int)($rts['rider_id']??0)!==(int)$event->actor_id || (int)$shipment->courier_id!==(int)$event->actor_id))return null;
+        if($state==='seller_received' && (int)$shipment->order?->seller_id!==(int)$event->actor_id)return null;
+        if(in_array($state,['at_hub','released_to_rider'],true)){
+            $hub=\App\Models\LogisticsHub::whereKey($issue->hub_id)->where('company_name',$shipment->logistics_company)->first();
+            if(!$hub || !app(LogisticsAccess::class)->matches($hub,$shipment->destination_hub,$shipment->destination_province))return null;
+        }
+        return $event;
+    }
+
     public function act(User $user,string $shipmentId,array $input): LogisticsIssue
     {
         abort_unless(Schema::hasColumn('logistics_issues','rts'),503,'Install RTS custody migration.');
@@ -24,6 +58,7 @@ class LogisticsRts
             $operator=$actor->account_type==='logistics' && !$actor->is_admin && $actor->is_logistics && ($actor->isLogisticsAdmin() || $actor->isHubStaff()) && $actor->business_name===$s->logistics_company;
             abort_unless($seller || $rider || $operator,403);
             if($operator && $actor->isHubStaff())app(LogisticsAccess::class)->receivingStaff($actor,$s->destination_hub,$s->destination_province);
+            if($issue)abort_unless($this->witness($s,$issue),422,'Return custody needs evidence review. No historical witness will be inferred.');
             $hash=hash('sha256',json_encode([$d,$actor->id]));
             if($issue && ($issue->rts['key']??null)===$d['key']){abort_unless(($issue->rts['hash']??null)===$hash,409,'Retry key changed.');return $issue;}
             app(LogisticsRecovery::class)->assertNotRecovered($s->id);
@@ -35,6 +70,7 @@ class LogisticsRts
             abort_unless($revision===(int)$d['revision'],409,'Return custody changed. Refresh.');
             $local=mb_strtolower(trim($s->origin_hub))===mb_strtolower(trim($s->destination_hub)) && mb_strtolower(trim($s->origin_province))===mb_strtolower(trim($s->destination_province));
             $action=$d['action'];
+            if(in_array($action,['hub_released','to_seller','seller_received'],true))app(LogisticsRecovery::class)->assertOperational($s->id);
             if($action==='request'){
                 abort_unless($operator && !$issue,403,'Only scoped logistics personnel may open a return request.');
                 $hub=\App\Models\LogisticsHub::where('company_name',$s->logistics_company)->whereRaw('LOWER(municipality) = ?',[mb_strtolower(trim($s->destination_hub))])->whereRaw('LOWER(province) = ?',[mb_strtolower(trim($s->destination_province))])->where('is_operational',true)->lockForUpdate()->firstOrFail();
@@ -48,13 +84,14 @@ class LogisticsRts
             $issue->status=$next==='seller_received'?'resolved':'in_progress';
             if($next==='seller_received'){$issue->resolution='Seller confirmed full parcel received in sellable condition.';$issue->resolved_at=now();}
             $issue->save();
+            DB::table('logistics_issue_events')->insert(['issue_id'=>$issue->id,'actor_id'=>$actor->id,'status'=>$issue->status,'assigned_to'=>null,'note'=>json_encode(['action'=>$action,'old_state'=>$state,'new_state'=>$next,'reason'=>$d['reason'],'revision'=>$revision+1]),'created_at'=>now()]);
             if($next==='seller_received'){
                 $s->update(['shipping_status'=>'returned','returned_at'=>now()]);$order->update(['status'=>'returned']);$order->restoreStock();
                 $order->logStatus('returned',$actor->id,'Authenticated Seller confirmed full sellable physical receipt.');
-                Order::notifyUser($order->buyer_id,'Return received','The Seller confirmed receipt of the returned parcel. Any payment review remains separate.','order_status',$order->id);
+
             }
-            DB::table('logistics_issue_events')->insert(['issue_id'=>$issue->id,'actor_id'=>$actor->id,'status'=>$issue->status,'assigned_to'=>null,'note'=>json_encode(['action'=>$action,'old_state'=>$state,'new_state'=>$next,'reason'=>$d['reason'],'revision'=>$revision+1]),'created_at'=>now()]);
             app(LogisticsFinance::class)->event($s->logistics_company,'rts_custody_recorded','issue',(string)$issue->id,['action'=>$action,'old_state'=>$state,'new_state'=>$next,'shipment_status'=>['old'=>'delivery_failed','new'=>$s->shipping_status],'reason'=>$d['reason'],'revision'=>$revision+1],$actor->id);
+            app(LogisticsParcelNotifications::class)->rts($s,$issue);
             return $issue;
         },3);
     }

@@ -78,7 +78,7 @@ class MobileScannerTest extends TestCase
 
     public function test_scoped_lookup_privacy_and_no_automatic_changes(): void
     {
-        $this->api('parcels/lookup', ['code' => 'MOBILE-TRACK'])->assertOk()->assertJsonPath('actions.0.id', 'receive')->assertJsonMissingPath('parcel.buyer_contact')->assertJsonMissingPath('parcel.address');
+        $this->api('parcels/lookup', ['code' => 'MOBILE-TRACK'])->assertOk()->assertJsonPath('actions.0.id', 'receive')->assertJsonPath('parcel.order_number', 'ORDER-MOBILE')->assertJsonPath('custody.label', 'Custody needs review')->assertJsonMissingPath('parcel.buyer_contact')->assertJsonMissingPath('parcel.address');
         $this->assertSame('picked_up', $this->parcel->fresh()->shipping_status);
         $this->assertDatabaseCount('logistics_activity_logs', 0);
         $this->parcel->update(['logistics_company' => 'Foreign']);

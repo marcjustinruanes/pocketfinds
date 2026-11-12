@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{DeliveryAssignment, Shipment, User};
-use App\Services\{AssignmentReassignment, AssignmentWork, LogisticsAccess};
+use App\Models\{DeliveryAssignment, Shipment};
+use App\Services\{AssignmentReassignment, AssignmentWork, LogisticsAccess, RiderDeliveryOffers};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -19,8 +19,13 @@ class LogisticsOperationsController extends LogisticsController
         $assignments=DeliveryAssignment::with('shipment.order')->whereIn('shipment_id',$source->select('shipments.id'))
             ->when($seller,fn($q)=>$q->where('leg','pickup')->whereNotNull('reassignment'))->orderByDesc('accepted_at')->orderBy('id')->paginate(15);
         foreach($assignments as $a)$a->work_class=$work->classify($a);
-        $riders=$seller?collect():User::with('logisticsHub')->where('business_name',$actor->business_name)->where('account_type','rider')->where('status','approved')->where('is_admin',false)->where('is_logistics',false)
-            ->where('vehicle_type','two_wheels')->when($actor->isHubStaff(),fn($q)=>$q->where('logistics_hub_id',$actor->logistics_hub_id))->get();
+        $riders=[];
+        if (! $seller) foreach ($assignments as $a) {
+            if ($a->shipment && in_array($a->leg,['pickup','delivery'],true) && ! $a->reassignment && $a->work_class==='active') {
+                $riders[$a->id]=app(RiderDeliveryOffers::class)->eligible($a->shipment,$a->leg,[(int)$a->courier_id])
+                    ->when($actor->isHubStaff(),fn($q)=>$q->where('users.logistics_hub_id',$actor->logistics_hub_id))->get();
+            }
+        }
         $events=DB::table('logistics_financial_events')->where('subject_type','assignment')->whereIn('subject_id',$assignments->pluck('id'))->orderByDesc('id')->get()->groupBy('subject_id');
         return response()->view('logistics.assignment-review',array_merge($seller?[]:$this->sidebarCounts(),compact('actor','seller','assignments','riders','events')))->header('Cache-Control','private, no-store');
     }

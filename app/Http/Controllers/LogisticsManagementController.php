@@ -298,9 +298,13 @@ class LogisticsManagementController extends LogisticsController
 
     public function issues()
     {
+        $request = request();
+        $data = $request->validate(['shipment' => 'nullable|uuid']);
+        $target = $data['shipment'] ?? null;
+        if ($target) $this->companyScope()->whereKey($target)->firstOrFail();
         return view('logistics.issues', array_merge($this->sidebarCounts(), [
-            'shipments' => $this->companyScope()->with(['order.buyer', 'courier'])->whereIn('shipping_status', ['delivery_failed', 'returned', 'cancelled'])->latest()->paginate(15),
-            'issues' => $this->issueScope()->with(['shipment', 'assignee'])->latest()->paginate(15, ['*'], 'issue_page')->withQueryString(),
+            'shipments' => $this->companyScope()->when($target, fn ($q) => $q->whereKey($target))->with(['order.buyer', 'courier'])->whereIn('shipping_status', ['delivery_failed', 'returned', 'cancelled'])->latest()->paginate(15),
+            'issues' => $this->issueScope()->when($target, fn ($q) => $q->where('shipment_id', $target))->with(['shipment', 'assignee'])->latest()->paginate(15, ['*'], 'issue_page')->withQueryString(),
             'assignees' => $this->issueAssignees()->get(),
             'issueEvidence' => \Illuminate\Support\Facades\Schema::hasTable('logistics_finance_evidence')?DB::table('logistics_finance_evidence')->where('company_name',auth()->user()->business_name)->where('source_type','parcel_issue')->whereIn('source_id',$this->issueScope()->select('id'))->get()->groupBy('source_id'):collect(),
             'recoveryRiders' => \App\Models\User::where('business_name',auth()->user()->business_name)->where('account_type','rider')->where('status','suspended')->whereIn('id',$this->companyScope()->get()->flatMap(fn($s)=>[$s->pickup_rider_id,$s->courier_id,$s->hub_transfer_rider_id])->filter()->unique())->get(),
@@ -319,7 +323,12 @@ class LogisticsManagementController extends LogisticsController
         return DB::transaction(function()use($request){
         $data = $request->validate(['tracking_number' => 'required|string|max:100', 'kind' => 'required|in:delivery_failed,lost,damaged,transfer_problem,other', 'description' => 'required|string|min:10|max:2000', 'proof' => 'required_if:kind,damaged|file|mimes:jpg,jpeg,png|max:5120', 'hub_id' => [auth()->user()->isHubStaff() ? 'nullable' : 'required', 'integer', Rule::exists('logistics_hubs', 'id')->where('company_name', auth()->user()->business_name)->where('is_operational', true)]]);
         $shipment = $this->companyScope()->where('tracking_number', trim($data['tracking_number']))->firstOrFail();
+        \App\Services\GcashLocks::operation([$shipment->id], [], [auth()->id()]);
+        $shipment = $this->companyScope()->whereKey($shipment->id)->lockForUpdate()->firstOrFail();
+        $actor = app(\App\Services\AssignmentReassignment::class)->actor($request->user());
+        abort_unless($actor->business_name === $shipment->logistics_company, 403);
         $hub = $this->companyHubs()->findOrFail(auth()->user()->isHubStaff() ? auth()->user()->logistics_hub_id : $data['hub_id']);
+        if ($actor->isHubStaff()) abort_unless((int) $actor->logistics_hub_id === (int) $hub->id, 403);
         $access = app(LogisticsAccess::class);
         $touchesHub = $access->matches($hub, $shipment->origin_hub, $shipment->origin_province) || $access->matches($hub, $shipment->destination_hub, $shipment->destination_province)
             || $shipment->hubLegs()->where(fn ($q) => $q->where(fn ($q) => $access->pair($q, 'from_hub', 'from_province', $hub))->orWhere(fn ($q) => $access->pair($q, 'to_hub', 'to_province', $hub)))->exists();
@@ -343,9 +352,13 @@ class LogisticsManagementController extends LogisticsController
     public function updateIssue(Request $request, $id)
     {
         return DB::transaction(function()use($request,$id){
+        $peek = $this->issueScope()->findOrFail($id);
+        \App\Services\GcashLocks::operation([$peek->shipment_id], [], [auth()->id()]);
         $issue = $this->issueScope()->lockForUpdate()->findOrFail($id);
-        abort_if($issue->rts,409,'Use authenticated RTS custody actions for this issue.');
-        $data = $request->validate(['status'=>'required|in:open,in_progress,resolved','assigned_to'=>'nullable|integer','resolution'=>'nullable|string|max:2000','revision'=>'required|integer|min:0','outcome'=>'nullable|in:located,damage_documented,escalated,documented_only','custody_note'=>'nullable|string|max:1000','notify_participants'=>'nullable|boolean','public_update_confirmed'=>'sometimes|accepted']);
+        $actor = app(\App\Services\AssignmentReassignment::class)->actor($request->user());
+        abort_unless($actor->business_name === $issue->company_name && (!$actor->isHubStaff() || (int) $actor->logistics_hub_id === (int) $issue->hub_id), 403);
+        abort_if($issue->rts_shipment_id || $issue->rts,409,'Use authenticated RTS custody actions for this issue.');
+        $data = $request->validate(['status'=>'required|in:open,in_progress,resolved','assigned_to'=>'nullable|integer','resolution'=>'nullable|string|max:2000','revision'=>'required|integer|min:0','outcome'=>'nullable|in:located,damage_documented,escalated,documented_only','custody_note'=>'nullable|string|max:1000','notify_participants'=>'nullable|boolean','public_update_confirmed'=>'sometimes|accepted','proof'=>'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:5120']);
         abort_unless((int)($issue->investigation['revision']??0)===(int)$data['revision'],409,'Investigation changed. Refresh before saving.');
         $before=['status'=>$issue->status,'assigned_to'=>$issue->assigned_to,'outcome'=>$issue->investigation['outcome']??null];
         if($data['status']==='resolved')$request->validate(['outcome'=>'required|in:located,damage_documented,escalated,documented_only']);

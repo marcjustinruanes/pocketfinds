@@ -33,6 +33,22 @@ use Illuminate\Support\Str;
  */
 class Shipment extends Model
 {
+    // Internal receipt context, never mass assignable. Holds still prevent subsequent dispatch.
+    private bool $physicalHubReceipt = false;
+
+    public function recordHubReceipt(array $attributes): bool
+    {
+        $this->physicalHubReceipt = true;
+        try { return $this->update($attributes); }
+        finally { $this->physicalHubReceipt = false; }
+    }
+
+    public function failedDeliveryToken(): string
+    {
+        return hash_hmac('sha256', implode('|', [$this->id, $this->courier_id, (int) $this->delivery_attempts,
+            $this->out_for_delivery_at?->format('Y-m-d H:i:s.u')]), (string) config('app.key'));
+    }
+
     protected $keyType = 'string';
 
     public $incrementing = false;
@@ -102,7 +118,12 @@ class Shipment extends Model
                 request()->attributes->set('operational_changes',$context);
             }
             if ($shipment->isDirty(['shipping_status','pickup_rider_id','courier_id','hub_transfer_rider_id','rider_confirmed_pickup_at','seller_confirmed_pickup_at','pickup_approved_at'])) {
-                app(\App\Services\AssignmentReassignment::class)->assertNoPending($shipment->id);
+                $receipt = $shipment->physicalHubReceipt
+                    || $shipment->shipping_status === 'delivery_failed'
+                    || ($shipment->shipping_status === 'completed' && $shipment->getOriginal('shipping_status') === 'delivered');
+                $completingReturn = $shipment->isDirty('shipping_status') && $shipment->shipping_status === 'returned'
+                    && $shipment->getOriginal('shipping_status') === 'delivery_failed' && $shipment->returned_at;
+                app(\App\Services\AssignmentReassignment::class)->assertNoPending($shipment->id, null, $receipt, (bool) $completingReturn);
             }
             if ($shipment->isDirty(['logistics_company', 'order_id', 'shipping_finance_version', 'origin_hub', 'origin_province', 'destination_hub', 'destination_province']) && (int) $shipment->getOriginal('shipping_finance_version') === 1) {
                 throw \Illuminate\Validation\ValidationException::withMessages(['shipping' => 'A financial shipment cannot change carrier, order or policy version.']);

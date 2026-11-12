@@ -44,7 +44,7 @@
     <div class="table-wrap">
       <table class="dtable">
         <thead>
-          <tr><th>Applicant</th><th>Vehicle</th><th>Plate No.</th><th>Submitted</th><th>Status</th><th></th></tr>
+          <tr><th>Applicant</th><th>Vehicle</th><th>Plate No.</th><th>Barangay routes</th><th>Submitted</th><th>Status</th><th></th></tr>
         </thead>
         <tbody>
           @forelse($riders as $rider)
@@ -58,6 +58,7 @@
             </td>
             <td>{{ $rider->vehicle_type ? \Illuminate\Support\Str::title(str_replace('_', ' ', $rider->vehicle_type)) : '—' }}</td>
             <td class="mono">{{ $rider->vehicle_ownership === 'company' ? 'Company Vehicle' : ($rider->plate_number ?: '—') }}</td>
+            <td>@if($coverageInstalled){{ $rider->barangayRoutes->where('hub_id', $rider->logistics_hub_id)->pluck('barangay_name')->implode(', ') ?: 'No barangay coverage assigned' }}<br><a href="{{ route('logistics.riders.coverage.edit', $rider->id) }}">Manage barangay routes</a>@else Coverage migration pending @endif</td>
             <td class="mono">{{ $rider->created_at?->format('M d, Y') ?? '—' }}</td>
             <td><span class="stamp stamp-{{ $rider->status }}">{{ $activationPending && $rider->status === 'pending' ? 'Pending activation' : ucfirst($rider->status) }}</span></td>
             <td>
@@ -155,7 +156,7 @@
             </div>
           </div>
           @empty
-          <tr><td colspan="6"><div class="empty"><div class="ic"><x-admin-icon name="truck" /></div><h3>No {{ $status }} courier applications</h3></div></td></tr>
+          <tr><td colspan="7"><div class="empty"><div class="ic"><x-admin-icon name="truck" /></div><h3>No {{ $status }} courier applications</h3></div></td></tr>
           @endforelse
         </tbody>
       </table>

@@ -1,7 +1,7 @@
 @extends('rider.layout')
 @section('title', 'Delivery Offers')
 @section('page-title', 'Delivery Offers')
-@section('page-sub', 'Personal delivery offers expire after 60 seconds')
+@section('page-sub', 'Confirm a personal delivery offer within 60 seconds. Maximum three active pickup and delivery jobs combined.')
 
 @section('content')
 <div class="card">

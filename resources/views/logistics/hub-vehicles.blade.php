@@ -53,6 +53,7 @@
               @if($vehicle->platform_status === 'approved')
               <form method="POST" action="{{ route('logistics.hub.vehicles.toggle', $vehicle->id) }}">
                 @csrf @method('PATCH')
+                <input type="hidden" name="is_available" value="{{ $vehicle->is_available ? 0 : 1 }}">
                 <button type="submit" class="btn btn-sm btn-outline">
                   {{ $vehicle->is_available ? 'Mark In Maintenance' : 'Mark Available' }}
                 </button>

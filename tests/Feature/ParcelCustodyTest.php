@@ -16,6 +16,7 @@ class ParcelCustodyTest extends HubTransferWorkflowTest
         $rider=User::where('account_type','rider')->firstOrFail();
         // Synthetic original handover/receipt evidence; no configured records are touched.
         DB::table('shipments')->update(['picked_up_at'=>now()->subMinutes(10),'seller_confirmed_pickup_at'=>now()->subMinutes(11),'rider_confirmed_pickup_at'=>now()->subMinutes(11),'at_sorting_center_at'=>now()->subMinutes(5)]);
+        foreach (Shipment::all() as $parcel) $this->transferOriginReceipt($parcel, $sender);
         $view=app(ParcelCustody::class);$flow=app(HubTransferWorkflow::class);
         $this->assertSame('At Hub',$view->describe($s->fresh(),$sender)['label']);
         $before=DB::table('shipments')->where('id',$s->id)->first();$view->describe($s->fresh(),$sender);$this->assertEquals($before,DB::table('shipments')->where('id',$s->id)->first());
@@ -33,6 +34,7 @@ class ParcelCustodyTest extends HubTransferWorkflowTest
     public function test_missing_receipt_evidence_does_not_claim_at_hub_and_scanner_exposes_read_only_description(): void
     {
         $s=Shipment::firstOrFail();$staff=User::where('logistics_role','hub_staff')->firstOrFail();
+        $s->update(['at_sorting_center_at' => null]);
         $this->assertSame('Custody needs review',app(ParcelCustody::class)->describe($s,$staff)['label']);
         $this->actingAs($staff)->postJson('/logistics/scan/lookup',['code'=>$s->tracking_number])->assertOk()->assertJsonPath('custody.label','Custody needs review');
     }

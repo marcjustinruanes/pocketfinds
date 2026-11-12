@@ -1003,6 +1003,12 @@ class SellerController extends Controller
     {
         $notification = DB::table('notifications')->where('id', $id)->where('user_id', auth()->id())->first();
         abort_unless($notification, 404);
+        if (in_array($notification->notification_type, ['delivery_failed', 'rts_custody'], true)) {
+            $url = app(\App\Services\LogisticsParcelNotifications::class)->target(auth()->user(), $notification);
+            DB::table('notifications')->where('id', $id)->where('user_id', auth()->id())->update(['is_read' => true]);
+            return redirect($url);
+        }
+
         if($notification->notification_type==='commission'){
             app(\App\Services\CommissionPayments::class)->actor(auth()->user());
             DB::table('notifications')->where('id',$id)->where('user_id',auth()->id())->update(['is_read'=>true]);

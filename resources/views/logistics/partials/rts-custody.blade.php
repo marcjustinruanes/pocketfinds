@@ -8,18 +8,34 @@
 @if($shipment && $shipment->shipping_status === 'delivery_failed' && Illuminate\Support\Facades\Schema::hasColumn('logistics_issues','rts'))
 @php
  $returnIssue=App\Models\LogisticsIssue::where('rts_shipment_id',$shipment->id)->first();
- $returnState=$returnIssue?->rts['state']??null;
+ $returnState=is_string($returnIssue?->rts['state']??null)?$returnIssue->rts['state']:null;
+ $returnEvidenceReady=!$returnIssue || app(App\Services\LogisticsRts::class)->witness($shipment,$returnIssue);
  $returnActions=[];$returnActor=auth()->user();
- if($returnActor->is_logistics && !$returnIssue) $returnActions=['request'=>'Request return custody review'];
- elseif($returnActor->isHubStaff() && $returnState==='to_hub') $returnActions=['hub_received'=>'Confirm actual hub receipt'];
- elseif($returnActor->isHubStaff() && $returnState==='at_hub' && ($returnIssue->rts['local']??false)) $returnActions=['hub_released'=>'Confirm release to assigned Rider'];
- elseif($returnActor->account_type==='rider' && $returnState==='requested') $returnActions=['to_hub'=>'Confirm return transport to hub','to_seller'=>'Confirm local return transport to Seller'];
- elseif($returnActor->account_type==='rider' && $returnState==='released_to_rider') $returnActions=['to_seller'=>'Confirm local return transport to Seller'];
- elseif($returnActor->account_type==='seller' && $returnState==='to_seller') $returnActions=['seller_received'=>'Confirm full sellable parcel received'];
+ $returnAccess=app(App\Services\LogisticsAccess::class);
+ $returnOperator=$returnActor->status==='approved' && $returnActor->account_type==='logistics' && !$returnActor->is_admin && $returnActor->is_logistics && ($returnActor->isHubStaff() || $returnActor->isLogisticsAdmin()) && $returnActor->business_name===$shipment->logistics_company;
+ $returnStaff=$returnOperator && $returnActor->isHubStaff() && $returnActor->logisticsHub?->is_operational && $returnAccess->matches($returnActor->logisticsHub,$shipment->destination_hub,$shipment->destination_province);
+ $returnRider=$returnActor->status==='approved' && $returnActor->account_type==='rider' && !$returnActor->is_admin && !$returnActor->is_logistics && $returnActor->business_name===$shipment->logistics_company && (int)$shipment->courier_id===(int)$returnActor->id;
+ $returnSeller=$returnActor->status==='approved' && $returnActor->account_type==='seller' && !$returnActor->is_admin && !$returnActor->is_logistics && (int)$shipment->order?->seller_id===(int)$returnActor->id;
+ $returnLocal=$returnIssue?->rts['local']??false;
+ $returnReleaseHeld=app(App\Services\LogisticsRecovery::class)->hasConditionHold($shipment->id);
+ $returnRecovered=app(App\Services\LogisticsRecovery::class)->hasRecoveryHold($shipment->id);
+ if(!$returnRecovered && $returnEvidenceReady){
+     if(($returnStaff || ($returnOperator && $returnActor->isLogisticsAdmin())) && !$returnIssue) $returnActions=['request'=>'Request return custody review'];
+     elseif($returnStaff && $returnState==='to_hub') $returnActions=['hub_received'=>'Confirm actual hub receipt'];
+     elseif($returnStaff && $returnState==='at_hub' && $returnLocal && !$returnReleaseHeld) $returnActions=['hub_released'=>'Confirm release to assigned Rider'];
+     elseif($returnRider && $returnState==='requested') {
+         $returnActions=['to_hub'=>'Confirm return transport to hub'];
+         if($returnLocal && !$returnReleaseHeld) $returnActions['to_seller']='Confirm local return transport to Seller';
+     }
+     elseif($returnRider && $returnState==='released_to_rider' && $returnLocal && !$returnReleaseHeld) $returnActions=['to_seller'=>'Confirm local return transport to Seller'];
+     elseif($returnSeller && $returnState==='to_seller' && $returnLocal && !$returnReleaseHeld) $returnActions=['seller_received'=>'Confirm full sellable parcel received'];
+ }
  $returnRoute=$returnActor->account_type==='seller'?'seller.orders.rts':($returnActor->account_type==='rider'?'rider.rts':'logistics.rts');
 @endphp
 <details class="rts-custody"><summary>Return custody @if($returnState) — {{ ucfirst(str_replace('_',' ',$returnState)) }} @endif</summary>
 <p>Failed delivery is not Seller receipt. Stock stays reserved until the Seller confirms the entire parcel is physically received in sellable condition. Partial/damaged and cross-hub returns require review. No automatic refund or return fee.</p>
+@if($returnReleaseHeld || $returnRecovered)<p>Parcel hold: physical disposition review is required. Investigation resolution alone does not authorize release or sellable Seller receipt.</p>@endif
+@if(!$returnEvidenceReady)<p>Return custody needs evidence review. Historical possession cannot be inferred.</p>@endif
 @foreach($returnActions as $returnAction=>$returnLabel)
 <form method="POST" action="{{ route($returnRoute,$shipment->id) }}">@csrf
 <input type="hidden" name="action" value="{{ $returnAction }}"><input type="hidden" name="key" value="{{ Illuminate\Support\Str::uuid() }}"><input type="hidden" name="revision" value="{{ $returnIssue?->rts['revision']??0 }}">

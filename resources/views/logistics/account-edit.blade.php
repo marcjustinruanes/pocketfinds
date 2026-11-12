@@ -3,6 +3,7 @@
 @section('page-title','Manage Account')
 @section('page-sub','Profile, hub assignment, account status, and delivery history')
 @section('content')
+@if($account->account_type === 'rider' && app(\App\Services\RiderBarangayCoverage::class)->installed())<a class="btn btn-outline" href="{{ route('logistics.riders.coverage.edit', $account->id) }}">Manage barangay routes</a>@endif
 @if(app(\App\Services\AssignmentReassignment::class)->installed())<div class="card card-pad"><a class="btn btn-primary" href="{{ route('logistics.assignments.review') }}">Assignment evidence & reassignment</a></div>@endif
 <a class="btn btn-outline" href="{{ route($account->account_type === 'rider' ? 'logistics.riders' : 'logistics.staff') }}">Back to personnel</a>
 @if($account->account_type === 'rider' && ($account->status !== 'rejected' || $account->can_resubmit) && app(\App\Services\RiderActivation::class)->pending($account))

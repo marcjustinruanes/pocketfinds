@@ -45,7 +45,7 @@ class RiderWorkbookTest extends TestCase
         // Adapted baseline: supply extra system fields and a single-word name so each
         // independent negative test reaches the field being examined.
         $image=fn()=>\Illuminate\Http\UploadedFile::fake()->createWithContent('document.png',base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aL1kAAAAASUVORK5CYII='));
-        return array_replace(['region'=>'CALABARZON','vehicle_brand'=>'Test','vehicle_model'=>'Test','license_file'=>$image(),'selfie_file'=>$image(),'or_file'=>$image(),'cr_file'=>$image(),'role' => 'rider', 'username' => 'workbook_rider', 'email' => 'pedrojose.garcia@gmail.com', 'given_names' => 'Pedro', 'last_name' => 'Garcia', 'sex' => 'male', 'birthday' => '1995-03-22', 'contact_no' => '09451239876', 'barangay' => 'Test', 'password' => 'Workbook!2026', 'password_confirmation' => 'Workbook!2026', 'logistics_hub_id' => $this->hub->id, 'vehicle_type' => 'two_wheels', 'vehicle_ownership' => 'own', 'license_number' => 'N01-23-456789', 'license_expiry' => '2030-03-22', 'plate_number' => '123ABC'], $overrides);
+        return array_replace(['region'=>'CALABARZON','vehicle_brand'=>'Test','vehicle_model'=>'Test','license_file'=>$image(),'nbi_clearance_file'=>$image(),'selfie_file'=>$image(),'or_file'=>$image(),'cr_file'=>$image(),'role' => 'rider', 'username' => 'workbook_rider', 'email' => 'pedrojose.garcia@gmail.com', 'given_names' => 'Pedro', 'last_name' => 'Garcia', 'sex' => 'male', 'birthday' => '1995-03-22', 'contact_no' => '09451239876', 'barangay' => 'Test', 'password' => 'Workbook!2026', 'password_confirmation' => 'Workbook!2026', 'logistics_hub_id' => $this->hub->id, 'vehicle_type' => 'two_wheels', 'vehicle_ownership' => 'own', 'license_number' => 'N01-23-456789', 'license_expiry' => '2030-03-22', 'plate_number' => '123ABC'], $overrides);
     }
 
     private function submit(array $overrides = [])
@@ -66,7 +66,11 @@ class RiderWorkbookTest extends TestCase
                 if($field!=='license_number')$changes['license_number']='A'.str_pad((string)$attempt,2,'0',STR_PAD_LEFT).'-'.str_pad((string)$attempt,2,'0',STR_PAD_LEFT).'-'.str_pad((string)$attempt,6,'0',STR_PAD_LEFT);
                 if($field!=='plate_number')$changes['plate_number']='TESTPLATE'.$attempt;
                 $response = $this->submit($changes);
-                if ($accepted) $response->assertRedirect();
+                if ($accepted) {
+                    $response->assertRedirect()->assertSessionHasNoErrors();
+                    $this->assertDatabaseHas('users', ['username'=>$changes['username'], 'status'=>'pending']);
+                    if ($field === 'license_number') $this->assertDatabaseHas('users', ['username'=>$changes['username'], 'license_number'=>strtoupper($value)]);
+                }
                 else {
                     $this->assertSame(422, $response->status(), "Expected rejection for {$field}=".(string)$value.'; HTTP '.$response->status());
                     $response->assertJsonValidationErrors($field);
@@ -91,7 +95,7 @@ class RiderWorkbookTest extends TestCase
                 $this->assertDatabaseCount('users', 1);
                 break;
             case 3:
-                foreach (['given_names','last_name','birthday','email','contact_no','license_number','license_expiry','vehicle_type','plate_number','license_file','or_file','cr_file'] as $field) {
+                foreach (['given_names','last_name','birthday','email','contact_no','license_number','license_expiry','vehicle_type','plate_number','license_file','nbi_clearance_file','or_file','cr_file'] as $field) {
                     $data = $this->data();
                     unset($data[$field]);
                     $response = $this->postJson('/logistics/riders/accounts', $data);
@@ -131,8 +135,8 @@ class RiderWorkbookTest extends TestCase
             case 12:
                 // LTO format: one uppercase letter + 2 digits + hyphen + 2 digits + hyphen + 6 digits
                 $this->boundary('license_number',
-                    ['N01-23-45678', 'N01-23-4567890', '101-23-456789', 'N0123456789X', 'n01-23-456789', 'N01-23-45678X'],
-                    ['N01-23-456789', 'A00-00-000000', 'Z99-99-999999']
+                    ['N01-23-45678', 'N01-23-4567890', '101-23-456789', 'N0123456789X', 'N01/23-456789', 'N01-23-45678X'],
+                    ['N01-23-456789', 'A00-00-000000', 'Z99-99-999999', 'b01-23-456789']
                 );
                 break;
             case 13:
@@ -140,7 +144,8 @@ class RiderWorkbookTest extends TestCase
                 $this->submit()->assertUnprocessable()->assertJsonValidationErrors('license_number');
                 break;
             case 14:
-                $this->boundary('license_expiry', [today()->subDay()->toDateString()], [today()->toDateString(), today()->addDay()->toDateString()]);
+                $minimum = today()->addMonthNoOverflow();
+                $this->boundary('license_expiry', [today()->subDay()->toDateString(), today()->toDateString(), $minimum->copy()->subDay()->toDateString()], [$minimum->toDateString(), $minimum->copy()->addDay()->toDateString()]);
                 break;
             case 15:
                 $this->admin->update(['plate_number'=>'123ABC']);

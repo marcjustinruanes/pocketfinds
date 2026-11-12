@@ -62,14 +62,15 @@ class CodCollectionTest extends TestCase
         return [$order, $shipment];
     }
 
-    private function data(): array
+    private function data(?Shipment $shipment = null, ?string $key = null): array
     {
-        return ['from' => 'out_for_delivery', 'cod_amount' => '1125.50', 'cod_confirmed' => '1', 'collection_key' => (string) Str::uuid()];
+        return ['from' => 'out_for_delivery', 'cod_amount' => '1125.50', 'cod_confirmed' => '1', 'collection_key' => $key ?? (string) Str::uuid()]
+            + $this->deliveryEvidence(($shipment ?? $this->shipment)->id);
     }
 
     public function test_delivery_and_exact_collection_commit_together_without_verifying_remittance(): void
     {
-        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$this->shipment->id.'/advance', $this->data())->assertRedirect();
+        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$this->shipment->id.'/advance', $this->data())->assertRedirect()->assertSessionHasNoErrors()->assertSessionHas('success');
         $this->assertSame('delivered', $this->shipment->fresh()->shipping_status);
         $this->assertSame('delivered', $this->order->fresh()->status);
         $this->assertDatabaseHas('logistics_financial_transactions', ['collection_shipment_id' => $this->shipment->id,
@@ -82,8 +83,8 @@ class CodCollectionTest extends TestCase
     public function test_missing_partial_excess_or_unconfirmed_collection_cannot_deliver(): void
     {
         foreach ([[], ['cod_amount' => '1000.00'], ['cod_amount' => '1126'], ['cod_amount' => '1e3'], ['cod_confirmed' => '0']] as $bad) {
-            $data = $bad === [] ? ['from' => 'out_for_delivery'] : array_merge($this->data(), $bad);
-            $this->actingAs($this->rider)->patchJson('/rider/deliveries/'.$this->shipment->id.'/advance', $data)->assertUnprocessable();
+            $data = $bad === [] ? ['from' => 'out_for_delivery'] + $this->deliveryEvidence($this->shipment->id) : array_merge($this->data(), $bad);
+            $this->actingAs($this->rider)->patchJson('/rider/deliveries/'.$this->shipment->id.'/advance', $data)->assertUnprocessable()->assertJsonValidationErrors($bad === [] ? ['cod_amount', 'cod_confirmed', 'collection_key'] : (array_key_exists('cod_confirmed', $bad) ? ['cod_confirmed'] : ['cod_amount']));
             $this->assertSame('out_for_delivery', $this->shipment->fresh()->shipping_status);
             $this->assertSame('out_for_delivery', $this->order->fresh()->status);
             $this->assertDatabaseCount('logistics_financial_transactions', 0);
@@ -93,8 +94,11 @@ class CodCollectionTest extends TestCase
     public function test_retries_cannot_duplicate_collection_or_its_audit_event(): void
     {
         $data = $this->data();
-        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$this->shipment->id.'/advance', $data)->assertRedirect();
-        $this->patch('/rider/deliveries/'.$this->shipment->id.'/advance', $data)->assertRedirect();
+        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$this->shipment->id.'/advance', $data)->assertRedirect()->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->assertSame('delivered', $this->shipment->fresh()->shipping_status);
+        $this->assertDatabaseCount('logistics_financial_transactions', 1);
+        $this->patch('/rider/deliveries/'.$this->shipment->id.'/advance', $data)->assertRedirect()->assertSessionHasErrors('status');
+        $this->assertSame('delivered', $this->shipment->fresh()->shipping_status);
         app(CodCollection::class)->record($this->rider, $this->shipment, $data);
         $this->assertDatabaseCount('logistics_financial_transactions', 1);
         $this->assertSame(1, DB::table('logistics_financial_events')->where('event', 'cod_collected')->count());
@@ -103,9 +107,10 @@ class CodCollectionTest extends TestCase
     public function test_confirmation_key_cannot_be_reused_on_another_order(): void
     {
         $data = $this->data();
-        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$this->shipment->id.'/advance', $data)->assertRedirect();
+        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$this->shipment->id.'/advance', $data)->assertRedirect()->assertSessionHasNoErrors()->assertSessionHas('success');
         [$order, $shipment] = $this->parcel();
-        $this->patchJson('/rider/deliveries/'.$shipment->id.'/advance', $data)->assertStatus(409);
+        $this->assertDatabaseCount('logistics_financial_transactions', 1);
+        $this->patchJson('/rider/deliveries/'.$shipment->id.'/advance', $this->data($shipment, $data['collection_key']))->assertStatus(409);
         $this->assertSame('out_for_delivery', $shipment->fresh()->shipping_status);
         $this->assertSame('out_for_delivery', $order->fresh()->status);
         $this->assertDatabaseCount('logistics_financial_transactions', 1);
@@ -115,7 +120,7 @@ class CodCollectionTest extends TestCase
     {
         $this->actingAs($this->user('rider'))->patchJson('/rider/deliveries/'.$this->shipment->id.'/advance', $this->data())->assertNotFound();
         foreach (['staff', 'admin'] as $role) {
-            $this->actingAs($this->user($role))->patchJson('/logistics/status/'.$this->shipment->id, ['status' => 'delivered'])->assertForbidden();
+            $this->actingAs($this->user($role))->patchJson('/logistics/status/'.$this->shipment->id, ['status' => 'delivered', 'reason' => 'Attempted administrative delivery override'])->assertForbidden();
         }
         $this->assertDatabaseCount('logistics_financial_transactions', 0);
     }
@@ -130,40 +135,42 @@ class CodCollectionTest extends TestCase
     {
         $this->actingAs($this->rider)->get('/rider/deliveries/'.$this->shipment->id)->assertOk()
             ->assertSee('Amount collected (PHP)')->assertSee('name="cod_confirmed"', false);
-        $this->patch('/rider/deliveries/'.$this->shipment->id.'/advance', $this->data())->assertRedirect();
+        $this->patch('/rider/deliveries/'.$this->shipment->id.'/advance', $this->data())->assertRedirect()->assertSessionHasNoErrors()->assertSessionHas('success');
         $this->get('/rider/deliveries/'.$this->shipment->id)->assertOk()->assertSee('COD collection recorded:')->assertSee('Hub cash verification: Pending.');
     }
 
     public function test_remittance_hub_comes_from_the_assignment_snapshot(): void
     {
         $other = LogisticsHub::create(['company_name' => 'Alpha', 'municipality' => 'Pila', 'province' => 'Laguna', 'is_operational' => true]);
+        $this->assertDatabaseHas('logistics_compensations', ['rider_id' => $this->rider->id, 'hub_id' => $this->hub->id]);
         $this->rider->update(['logistics_hub_id' => $other->id]);
-        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$this->shipment->id.'/advance', $this->data())->assertRedirect();
+        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$this->shipment->id.'/advance', $this->data())->assertRedirect()->assertSessionHasNoErrors()->assertSessionHas('success');
         $this->assertDatabaseHas('logistics_financial_transactions', ['collection_shipment_id' => $this->shipment->id, 'hub_id' => $this->hub->id]);
     }
 
     public function test_client_cannot_forge_hub_verification_or_collection_ownership(): void
     {
         $data = $this->data() + ['verification_state' => 'verified', 'actor_id' => $this->buyer->id, 'hub_id' => 999999, 'company_name' => 'Beta', 'amount_cents' => 1];
-        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$this->shipment->id.'/advance', $data)->assertRedirect();
+        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$this->shipment->id.'/advance', $data)->assertRedirect()->assertSessionHasNoErrors()->assertSessionHas('success');
         $this->assertDatabaseHas('logistics_financial_transactions', ['actor_id' => $this->rider->id, 'hub_id' => $this->hub->id,
             'company_name' => 'Alpha', 'verification_state' => 'pending', 'amount_cents' => 112550]);
     }
 
     public function test_finance_collection_list_is_scoped_to_the_admin_company(): void
     {
-        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$this->shipment->id.'/advance', $this->data())->assertRedirect();
+        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$this->shipment->id.'/advance', $this->data())->assertRedirect()->assertSessionHasNoErrors()->assertSessionHas('success');
         $this->actingAs($this->user('admin'))->get('/logistics/finance')->assertOk()->assertViewHas('collections', fn ($rows) => $rows->total() === 1);
         $this->actingAs($this->user('admin', 'Beta'))->get('/logistics/finance')->assertOk()->assertViewHas('collections', fn ($rows) => $rows->total() === 0);
     }
 
     public function test_second_shipment_cannot_collect_the_same_order_again(): void
     {
-        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$this->shipment->id.'/advance', $this->data())->assertRedirect();
+        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$this->shipment->id.'/advance', $this->data())->assertRedirect()->assertSessionHasNoErrors()->assertSessionHas('success');
         $other = Shipment::create(['order_id' => $this->order->id, 'logistics_company' => 'Alpha', 'courier_id' => $this->rider->id,
             'destination_hub' => 'Santa Cruz', 'destination_province' => 'Laguna', 'shipping_status' => 'out_for_delivery']);
         DeliveryAssignment::create(['shipment_id' => $other->id, 'courier_id' => $this->rider->id, 'leg' => 'delivery', 'status' => 'out_for_delivery']);
-        $this->patchJson('/rider/deliveries/'.$other->id.'/advance', $this->data())->assertStatus(409);
+        $this->assertDatabaseCount('logistics_financial_transactions', 1);
+        $this->patchJson('/rider/deliveries/'.$other->id.'/advance', $this->data($other))->assertStatus(409);
         $this->assertDatabaseCount('logistics_financial_transactions', 1);
         $this->assertSame('out_for_delivery', $other->fresh()->shipping_status);
     }
@@ -181,7 +188,7 @@ class CodCollectionTest extends TestCase
     public function test_prepaid_delivery_does_not_create_cod_cash_or_change_its_flow(): void
     {
         [$order, $shipment] = $this->parcel('GCash');
-        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$shipment->id.'/advance', ['from' => 'out_for_delivery'])->assertRedirect();
+        $this->actingAs($this->rider)->patch('/rider/deliveries/'.$shipment->id.'/advance', ['from' => 'out_for_delivery'] + $this->deliveryEvidence($shipment->id))->assertRedirect()->assertSessionHasNoErrors()->assertSessionHas('success');
         $this->assertSame('delivered', $order->fresh()->status);
         $this->assertDatabaseCount('logistics_financial_transactions', 0);
     }

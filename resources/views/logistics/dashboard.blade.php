@@ -20,11 +20,27 @@
       <a href="{{ route('logistics.transfers') }}" class="btn btn-outline"><x-admin-icon name="truck" /> Hub transfers</a>
     </div>
   </section>
-  <form method="GET" class="card card-pad" style="display:flex;flex-wrap:wrap;align-items:end;gap:10px;margin-bottom:18px">
-    <label>From<input class="input" type="date" name="from" value="{{ $range['from'] ?? '' }}"></label>
-    <label>To<input class="input" type="date" name="to" value="{{ $range['to'] ?? '' }}"></label>
-    <button class="btn btn-outline">Filter dashboard</button>
-    @if(($range['from'] ?? null) || ($range['to'] ?? null))<a class="btn btn-outline" href="{{ route('logistics.dashboard') }}">Clear</a>@endif
+  <form method="GET" class="card dashboard-date-filter" aria-labelledby="dashboard-date-title">
+    <div class="dashboard-date-intro">
+      <h2 id="dashboard-date-title">Date range</h2>
+      <p>Choose a period to filter your dashboard.</p>
+    </div>
+    <div class="dashboard-date-controls">
+      <div class="dashboard-date-field">
+        <label for="dashboard-from">From date</label>
+        <input id="dashboard-from" type="date" name="from" value="{{ $range['from'] ?? '' }}">
+      </div>
+      <div class="dashboard-date-field">
+        <label for="dashboard-to">To date</label>
+        <input id="dashboard-to" type="date" name="to" value="{{ $range['to'] ?? '' }}">
+      </div>
+      <div class="dashboard-date-actions">
+        <button type="submit" class="btn btn-primary">Filter dashboard</button>
+        @if(($range['from'] ?? null) || ($range['to'] ?? null))
+          <a class="btn btn-outline" href="{{ route('logistics.dashboard') }}">Clear</a>
+        @endif
+      </div>
+    </div>
   </form>
 
   <section aria-label="Company shipment totals" class="dashboard-summary">

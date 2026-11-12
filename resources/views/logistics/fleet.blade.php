@@ -21,8 +21,8 @@
       @csrf
       <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;align-items:end">
         <div class="form-row">
-          <label>Hub <span style="color:var(--danger)">*</span></label>
-          <select name="logistics_hub_id" required style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+          <label for="fleet-hub">Hub <span style="color:var(--danger)">*</span></label>
+          <select id="fleet-hub" name="logistics_hub_id" required style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
             <option value="" disabled selected>Select hub</option>
             @foreach($hubs as $hub)
             <option value="{{ $hub->id }}">{{ $hub->municipality }}, {{ $hub->province }}</option>
@@ -30,8 +30,8 @@
           </select>
         </div>
         <div class="form-row">
-          <label>Vehicle Type <span style="color:var(--danger)">*</span></label>
-          <select name="vehicle_type" required style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+          <label for="fleet-vehicle-type">Vehicle Type <span style="color:var(--danger)">*</span></label>
+          <select id="fleet-vehicle-type" name="vehicle_type" required style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px">
             @foreach($vehicleTypes as $vt)
             <option value="{{ $vt->slug }}">{{ $vt->name }}</option>
             @endforeach

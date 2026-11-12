@@ -53,9 +53,10 @@ class FulfillmentWorkflowTest extends TestCase
 
     private function registration(string $role, LogisticsHub $hub): array
     {
-        $data = ['account_type' => $role, 'logistics_mode' => 'join', 'auth_method' => 'manual', 'username' => 'fixture_'.$role, 'email' => $role.'@gmail.com', 'given_names' => 'New', 'last_name' => ucfirst($role), 'sex' => 'male', 'birthday' => '2000-01-01', 'password' => 'FixturePassword123!', 'password_confirmation' => 'FixturePassword123!', 'contact_no' => ($role === 'rider' ? '09123456789' : '09123456788'), 'region' => 'CALABARZON', 'province' => 'Laguna', 'municipality' => 'Santa Cruz', 'barangay' => 'Central', 'business_name' => 'Alpha', 'logistics_hub_id' => $hub->id, 'selfie_file' => $this->image('selfie.png'), 'resume_file' => $this->image('resume.png')];
+        $data = ['account_type' => $role, 'logistics_mode' => 'join', 'auth_method' => 'manual', 'username' => 'fixture_'.$role, 'email' => $role.'@gmail.com', 'given_names' => 'New', 'middle_name' => 'Fixture', 'last_name' => ucfirst($role), 'sex' => 'male', 'birthday' => '2000-01-01', 'password' => 'FixturePassword123!', 'password_confirmation' => 'FixturePassword123!', 'contact_no' => ($role === 'rider' ? '09123456789' : '09123456788'), 'region' => 'CALABARZON', 'province' => 'Laguna', 'municipality' => 'Santa Cruz', 'barangay' => 'Central', 'business_name' => 'Alpha', 'logistics_hub_id' => $hub->id, 'selfie_file' => $this->image('selfie.png'), 'resume_file' => UploadedFile::fake()->createWithContent('resume.pdf', "%PDF-1.4\nFixture resume")];
+        $this->withSession(['registration_verified_email'=>['email'=>$data['email'], 'expires_at'=>now()->addHour()->timestamp]]);
         if ($role === 'rider') {
-            return $data + ['vehicle_type' => 'two_wheels', 'vehicle_ownership' => 'own', 'vehicle_brand' => 'Fixture', 'vehicle_model' => 'Test', 'plate_number' => 'TEST001', 'license_number' => 'F01-00-000001', 'license_expiry' => '2030-01-01', 'license_file' => $this->image('license.png'), 'or_file' => $this->image('or.png'), 'cr_file' => $this->image('cr.png')];
+            return $data + ['nbi_clearance_file' => $this->image('nbi.png'), 'vehicle_type' => 'two_wheels', 'vehicle_ownership' => 'own', 'vehicle_brand' => 'Fixture', 'vehicle_model' => 'Test', 'plate_number' => 'TEST001', 'license_number' => 'F01-00-000001', 'license_expiry' => '2030-01-01', 'license_file' => $this->image('license.png'), 'or_file' => $this->image('or.png'), 'cr_file' => $this->image('cr.png')];
         }
 
         return $data + ['id_type_id' => 1, 'id_file' => $this->image('id.png')];
@@ -75,10 +76,10 @@ class FulfillmentWorkflowTest extends TestCase
             Storage::disk('sensitive_documents')->assertExists([$registered->id_file, $registered->selfie_file, $registered->resume_file]);
             if ($role === 'rider') {
                 $this->assertSame($registered->license_file, $registered->id_file);
-                Storage::disk('sensitive_documents')->assertExists([$registered->license_file, $registered->or_file, $registered->cr_file]);
+                Storage::disk('sensitive_documents')->assertExists([$registered->license_file, $registered->nbi_clearance_file, $registered->or_file, $registered->cr_file]);
             }
         }
-        $this->assertCount(8, Storage::disk('sensitive_documents')->allFiles());
+        $this->assertCount(9, Storage::disk('sensitive_documents')->allFiles());
         Mail::assertNothingSent();
     }
 

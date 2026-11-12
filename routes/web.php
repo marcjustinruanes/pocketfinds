@@ -448,6 +448,8 @@ Route::prefix('logistics')->name('logistics.')->middleware(['logistics', 'logist
         Route::post('/riders/accounts', [LogisticsManagementController::class, 'storeRiderAccount'])->name('riders.accounts.store');
         Route::post('/staff/accounts', [LogisticsManagementController::class, 'storeStaffAccount'])->name('staff.accounts.store');
         Route::get('/accounts/{id}/edit', [LogisticsManagementController::class, 'editAccount'])->name('accounts.edit');
+        Route::get('/riders/{id}/coverage', [\App\Http\Controllers\RiderCoverageController::class, 'edit'])->name('riders.coverage.edit');
+        Route::put('/riders/{id}/coverage', [\App\Http\Controllers\RiderCoverageController::class, 'update'])->middleware('throttle:20,1')->name('riders.coverage.update');
         Route::patch('/accounts/{id}', [LogisticsManagementController::class, 'updateAccount'])->name('accounts.update');
         Route::get('/activity', [LogisticsManagementController::class, 'activity'])->name('activity');
         Route::get('/finance', [\App\Http\Controllers\LogisticsFinanceController::class, 'index'])->name('finance');

@@ -63,7 +63,9 @@ class HubTransferWorkflowTest extends TestCase
     {
         $name = $role.'_'.bin2hex(random_bytes(4));
 
-        return User::create(['account_type' => in_array($role, ['logistics_admin', 'hub_staff']) ? 'logistics' : $role, 'username' => $name, 'given_names' => 'Fixture', 'last_name' => 'User', 'email' => $name.'@example.test', 'password' => 'TestPassword123', 'status' => 'approved', 'is_admin' => $role === 'admin', 'is_logistics' => in_array($role, ['logistics_admin', 'hub_staff']), 'logistics_role' => $role === 'logistics_admin' ? 'admin' : ($role === 'hub_staff' ? 'hub_staff' : null), 'business_name' => $hub->company_name, 'logistics_hub_id' => $hub->id, 'vehicle_type' => 'four_wheels', 'vehicle_ownership' => 'own']);
+        $user = User::create(['account_type' => in_array($role, ['logistics_admin', 'hub_staff']) ? 'logistics' : $role, 'username' => $name, 'given_names' => 'Fixture', 'last_name' => 'User', 'email' => $name.'@example.test', 'password' => 'TestPassword123', 'status' => 'approved', 'is_admin' => $role === 'admin', 'is_logistics' => in_array($role, ['logistics_admin', 'hub_staff']), 'logistics_role' => $role === 'logistics_admin' ? 'admin' : ($role === 'hub_staff' ? 'hub_staff' : null), 'business_name' => $hub->company_name, 'logistics_hub_id' => $hub->id, 'vehicle_type' => 'four_wheels', 'vehicle_ownership' => 'own', 'is_available' => true]);
+        $user->forceFill(['is_available' => true])->save();
+        return $user;
     }
 
     private function parcel(LogisticsHub $from, LogisticsHub $to): array
@@ -72,6 +74,8 @@ class HubTransferWorkflowTest extends TestCase
         $shipment = Shipment::create(['order_id' => $order->id, 'logistics_company' => $from->company_name, 'origin_hub' => $from->municipality, 'origin_province' => $from->province, 'destination_hub' => $to->municipality, 'destination_province' => $to->province, 'tracking_number' => 'TRACK-'.bin2hex(random_bytes(4)), 'shipping_status' => 'at_sorting_center']);
         $leg = ShipmentHubLeg::create(['shipment_id' => $shipment->id, 'sequence' => 1, 'leg_type' => 'direct', 'from_hub' => $from->municipality, 'from_province' => $from->province, 'to_hub' => $to->municipality, 'to_province' => $to->province, 'status' => 'pending']);
 
+        $staff = User::where('logistics_role', 'hub_staff')->where('logistics_hub_id', $from->id)->first();
+        if ($staff) $this->transferOriginReceipt($shipment, $staff);
         return [$shipment, $leg];
     }
 
@@ -118,7 +122,7 @@ class HubTransferWorkflowTest extends TestCase
         foreach ($this->legs as $leg) {
             $this->actingAs($this->rider)->patch('/rider/hub-transfers/'.$leg->id.'/confirm')->assertRedirect();
         }
-        $this->actingAs($this->receiver)->postJson('/logistics/transfers/'.$batch->id.'/discrepancy', ['reason' => 'Damaged outer carton', 'shipment_id' => $this->parcels[0]->id])->assertOk();
+        $this->actingAs($this->receiver)->postJson('/logistics/transfers/'.$batch->id.'/discrepancy', ['request_key' => (string) \Illuminate\Support\Str::uuid(), 'reason' => 'Damaged outer carton', 'shipment_id' => $this->parcels[0]->id])->assertOk();
         $this->patchJson('/logistics/transfers/'.$batch->id.'/receive', ['tracking_number' => $this->parcels[0]->tracking_number])->assertOk();
         $this->assertSame('in_transit', $batch->fresh()->status);
         $this->assertSame(1, $batch->members()->whereNotNull('received_at')->count());
@@ -223,7 +227,7 @@ class HubTransferWorkflowTest extends TestCase
     {
         $batch = $this->dispatched();
         $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/receive', ['confirm_all' => 1])->assertForbidden();
-        $this->postJson('/logistics/transfers/'.$batch->id.'/discrepancy', ['reason' => 'Wrong hub'])->assertForbidden();
+        $this->postJson('/logistics/transfers/'.$batch->id.'/discrepancy', ['request_key' => (string) \Illuminate\Support\Str::uuid(), 'reason' => 'Wrong hub'])->assertForbidden();
         $this->actingAs($this->receiver)->patchJson('/logistics/transfers/'.$batch->id.'/receive', ['tracking_number' => 'FOREIGN-TRACK'])->assertUnprocessable();
         $this->postJson('/logistics/transfers/'.$batch->id.'/discrepancy', ['reason' => 'Forged ID', 'shipment_id' => 'other-parcel'])->assertUnprocessable();
         $this->assertSame('in_transit', $batch->fresh()->status);
@@ -401,5 +405,155 @@ class HubTransferWorkflowTest extends TestCase
         $this->assertSame(0,$batch->members()->whereNotNull('received_at')->count());
         $this->assertSame('in_transit',$batch->fresh()->status);
         $this->actingAs($this->receiver)->patchJson('/logistics/transfers/'.$batch->id.'/receive',['confirm_all'=>1])->assertOk();
+    }
+
+    public function test_same_named_municipalities_in_different_provinces_generate_a_real_route(): void
+    {
+        $route = LogisticsHub::buildRoute('Alpha', 'Santa Cruz', 'Laguna', 'Santa Cruz', 'Marinduque');
+        $this->assertCount(1, $route);
+        $this->assertSame('relay', $route[0]['leg_type']);
+        $this->assertSame([], LogisticsHub::buildRoute('Alpha', ' Santa Cruz ', 'LAGUNA', 'Santa Cruz', 'Laguna'));
+        $this->parcels[0]->hubLegs()->delete();
+        $this->parcels[0]->buildHubLegs();
+        $leg = $this->parcels[0]->hubLegs()->firstOrFail();
+        $this->assertSame('Laguna', $leg->from_province);
+        $this->assertSame('Marinduque', $leg->to_province);
+    }
+
+    public function test_dropdown_and_dispatch_share_online_ownership_and_exclusive_work_rules(): void
+    {
+        $batch = $this->approved();
+        foreach ([['is_available' => false], ['vehicle_ownership' => null], ['is_logistics' => true], ['vehicle_type' => 'two_wheels'], ['logistics_hub_id' => $this->destination->id]] as $change) {
+            DB::table('users')->where('id', $this->rider->id)->update($change);
+            $this->get('/logistics/transfers/'.$batch->id)->assertOk()->assertViewHas('riders', fn ($rows) => ! $rows->contains('id', $this->rider->id));
+            $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
+            DB::table('users')->where('id', $this->rider->id)->update(['is_available' => true, 'vehicle_ownership' => 'own', 'is_logistics' => false, 'vehicle_type' => 'four_wheels', 'logistics_hub_id' => $this->origin->id]);
+        }
+        $this->get('/logistics/transfers/'.$batch->id)->assertViewHas('riders', fn ($rows) => $rows->contains('id', $this->rider->id));
+        $assignment = \App\Models\DeliveryAssignment::create(['shipment_id' => $this->parcels[0]->id, 'courier_id' => $this->rider->id, 'status' => 'requested', 'leg' => 'delivery']);
+        $this->get('/logistics/transfers/'.$batch->id)->assertViewHas('riders', fn ($rows) => $rows->isEmpty());
+        $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
+        $assignment->delete();
+        // A transfer batch may contain more than three parcels; local job capacity does not apply.
+        for ($i = 0; $i < 2; $i++) {
+            [$shipment, $leg] = $this->parcel($this->origin, $this->destination);
+            $leg->update(['transfer_batch_id' => $batch->id, 'requested_at' => now(), 'approved_at' => now(), 'approved_by' => $this->admin->id]);
+            $batch->members()->create(['shipment_id' => $shipment->id, 'leg_id' => $leg->id, 'tracking_number' => $shipment->tracking_number]);
+        }
+        $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertOk();
+        $this->assertSame(4, $batch->members()->count());
+    }
+
+    public function test_partial_receipt_logs_only_the_received_parcels(): void
+    {
+        $batch = $this->dispatched();
+        $this->actingAs($this->receiver)->patchJson('/logistics/transfers/'.$batch->id.'/receive', ['tracking_number' => $this->parcels[0]->tracking_number])->assertOk();
+        $logs = DB::table('logistics_activity_logs')->where('action', 'logistics.transfers.receive')->pluck('record_id')->all();
+        $this->assertSame([$this->legs[0]->id], $logs);
+        $this->patchJson('/logistics/transfers/'.$batch->id.'/receive', ['confirm_all' => true])->assertOk();
+        $this->assertEqualsCanonicalizing(array_map(fn ($leg) => $leg->id, $this->legs), DB::table('logistics_activity_logs')->where('action', 'logistics.transfers.receive')->pluck('record_id')->all());
+    }
+
+    public function test_rejected_and_cancelled_history_does_not_borrow_later_pickup_evidence(): void
+    {
+        $first = $this->requestBatch();
+        app(HubTransferWorkflow::class)->decide($this->admin, $first->id, 'rejected', 'Wrong departure time');
+        $second = $this->requestBatch();
+        app(HubTransferWorkflow::class)->decide($this->admin, $second->id, 'cancelled', 'Replan batch');
+        $active = $this->dispatched();
+        foreach ([$first, $second] as $historical) {
+            $this->actingAs($this->admin)->get('/logistics/transfers/'.$historical->id)->assertOk()->assertDontSee('Rider Pickup Confirmed');
+            $html = $this->get('/logistics/transfers/'.$historical->id)->getContent();
+            $table = explode('Transfer history', explode('Rider pickup', $html, 2)[1], 2)[0];
+            $this->assertStringNotContainsString($this->legs[0]->fresh()->rider_confirmed_pickup_at->format('Y-m-d g:i A'), $table);
+        }
+        $this->get('/logistics/transfers/'.$active->id)->assertSee('Rider Pickup Confirmed');
+    }
+
+    public function test_missing_origin_custody_blocks_approval_and_changed_evidence_blocks_dispatch_without_backfill(): void
+    {
+        $batch = $this->requestBatch();
+        DB::table('logistics_activity_logs')->where('record_id', $this->parcels[0]->id)->delete();
+        $before = (array) DB::table('shipments')->where('id', $this->parcels[0]->id)->first();
+        $this->actingAs($this->admin)->get('/logistics/transfers/'.$batch->id)->assertSee('Custody needs review');
+        $this->patchJson('/logistics/transfers/'.$batch->id.'/approve')->assertUnprocessable()->assertSee('Custody needs review');
+        $this->assertSame($before, (array) DB::table('shipments')->where('id', $this->parcels[0]->id)->first());
+        $this->transferOriginReceipt($this->parcels[0], $this->sender);
+        $this->patchJson('/logistics/transfers/'.$batch->id.'/approve')->assertOk();
+        DB::table('order_status_history')->where('order_id', $this->parcels[0]->order_id)->where('status', 'at_sorting_center')->update(['changed_by' => null]);
+        $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable()->assertSee('Custody needs review');
+        $this->assertSame('approved', $batch->fresh()->status);
+    }
+
+    public function test_receipt_notifications_are_scoped_duplicate_safe_and_link_to_authorized_batch(): void
+    {
+        $unrelated = $this->user('hub_staff', $this->hub('Alpha', 'Pila', 'Laguna'));
+        $foreign = $this->user('logistics_admin', $this->hub('Beta', 'Pila', 'Laguna'));
+        $batch = $this->dispatched();
+        $this->actingAs($this->receiver)->patchJson('/logistics/transfers/'.$batch->id.'/receive', ['tracking_number' => $this->parcels[0]->tracking_number])->assertOk();
+        $query = DB::table('notifications')->where('notification_type', 'hub_transfer_parcel_received')->where('reference_id', $batch->id);
+        $this->assertEqualsCanonicalizing([$this->admin->id, $this->sender->id, $this->receiver->id], $query->pluck('user_id')->all());
+        app(\App\Services\HubTransferNotifications::class)->receipt($batch, $this->parcels[0]->id);
+        $this->assertSame(3, $query->count());
+        $alert = (clone $query)->where('user_id', $this->receiver->id)->first();
+        $this->get('/account/notifications/'.$alert->id)->assertRedirect(route('logistics.transfers.show', $batch->id));
+        $this->actingAs($unrelated)->get('/account/notifications/'.$alert->id)->assertNotFound();
+        $this->actingAs($foreign)->get('/account/notifications/'.$alert->id)->assertNotFound();
+        $this->actingAs($this->receiver)->patchJson('/logistics/transfers/'.$batch->id.'/receive', ['confirm_all' => true])->assertOk();
+        $this->patchJson('/logistics/transfers/'.$batch->id.'/receive', ['confirm_all' => true])->assertUnprocessable();
+        $this->assertSame(6, $query->count());
+        $this->assertSame(3, DB::table('notifications')->where('notification_type', 'hub_transfer_completed')->where('reference_id', $batch->id)->count());
+        $pickup = DB::table('notifications')->where('notification_type', 'hub_transfer_pickup_confirmed')->where('user_id', $this->receiver->id)->first();
+        DB::table('notifications')->where('id', $pickup->id)->update(['reference_id' => $this->parcels[0]->id]);
+        $this->get('/account/notifications/'.$pickup->id)->assertRedirect(route('logistics.transfers.show', $batch->id));
+        DB::table('users')->where('id', $this->receiver->id)->update(['logistics_hub_id' => $unrelated->logistics_hub_id]);
+        $this->get('/account/notifications/'.$alert->id)->assertNotFound();
+    }
+
+    public function test_discrepancy_request_keys_deduplicate_retries_but_allow_separate_observations(): void
+    {
+        $batch = $this->dispatched();
+        $data = ['reason' => 'Outer carton damaged', 'request_key' => (string) \Illuminate\Support\Str::uuid()];
+        $url = '/logistics/transfers/'.$batch->id.'/discrepancy';
+        $this->actingAs($this->receiver)->postJson($url, $data)->assertOk();
+        $this->postJson($url, $data)->assertOk();
+        $this->assertSame(1, $batch->events()->where('action', 'discrepancy')->count());
+        $this->assertSame(2, DB::table('logistics_activity_logs')->where('action', 'logistics.transfers.discrepancy')->count());
+        $this->postJson($url, ['reason' => 'Different payload'] + $data)->assertConflict();
+        $data['request_key'] = (string) \Illuminate\Support\Str::uuid();
+        $this->postJson($url, $data)->assertOk();
+        $this->assertSame(2, $batch->events()->where('action', 'discrepancy')->count());
+        $this->postJson($url, ['reason' => 'No request identity'])->assertUnprocessable();
+    }
+
+    public function test_partial_intermediate_receipt_can_advance_but_requires_previous_receiver_and_pickup_evidence(): void
+    {
+        $middle = $this->hub('Alpha', 'Calamba', 'Laguna');
+        $staff = $this->user('hub_staff', $middle);
+        $rider = $this->user('rider', $middle);
+        foreach ($this->legs as $leg) {
+            $leg->update(['to_hub' => $middle->municipality, 'to_province' => $middle->province, 'leg_type' => 'dispatch']);
+            ShipmentHubLeg::create(['shipment_id' => $leg->shipment_id, 'sequence' => 2, 'leg_type' => 'relay',
+                'from_hub' => $middle->municipality, 'from_province' => $middle->province,
+                'to_hub' => $this->destination->municipality, 'to_province' => $this->destination->province, 'status' => 'pending']);
+        }
+        $flow = app(HubTransferWorkflow::class);
+        $first = $flow->request($this->sender, $this->origin->id, $middle->id, array_map(fn ($s) => $s->id, $this->parcels));
+        $flow->decide($this->admin, $first->id, 'approved');
+        $flow->dispatch($this->admin, $first->id, $this->rider->id);
+        $flow->confirmPickup($this->rider, $this->legs[0]->id);
+        $flow->receive($staff, $first->id, [$this->parcels[0]->id]);
+        $this->assertSame('in_transit', $first->fresh()->status);
+        $next = $flow->request($staff, $middle->id, $this->destination->id, [$this->parcels[0]->id]);
+        $member = $first->members()->where('shipment_id', $this->parcels[0]->id)->firstOrFail();
+        $member->update(['received_by' => null]);
+        $this->actingAs($this->admin)->patchJson('/logistics/transfers/'.$next->id.'/approve')->assertUnprocessable()->assertSee('Custody needs review');
+        $member->update(['received_by' => $staff->id]);
+        $this->patchJson('/logistics/transfers/'.$next->id.'/approve')->assertOk();
+        $pickup = $this->legs[0]->fresh()->rider_confirmed_pickup_at;
+        $this->legs[0]->update(['rider_confirmed_pickup_at' => null]);
+        $this->patchJson('/logistics/transfers/'.$next->id.'/dispatch', ['courier_id' => $rider->id])->assertUnprocessable()->assertSee('Custody needs review');
+        $this->legs[0]->update(['rider_confirmed_pickup_at' => $pickup]);
+        $this->patchJson('/logistics/transfers/'.$next->id.'/dispatch', ['courier_id' => $rider->id])->assertOk();
     }
 }

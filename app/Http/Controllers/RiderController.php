@@ -46,7 +46,7 @@ class RiderController extends Controller
         $riderId = auth()->id();
 
         return [
-            'pickupRequests' => app(LogisticsAccess::class)->openParcelsForRider(auth()->user(), 'pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')->count(),
+            'pickupRequests' => DeliveryAssignment::where('courier_id', $riderId)->where('leg', 'pickup')->where('status', 'offered')->where('expires_at', '>', now())->count(),
             'myPickups' => Shipment::where('pickup_rider_id', $riderId)->whereIn('shipping_status', ['ready_for_pickup', 'picked_up'])->count(),
             'myHubTransfers' => ShipmentHubLeg::where('rider_id', $riderId)->where('status', 'in_transit')->count(),
             'deliveryRequests' => DeliveryAssignment::where('courier_id', $riderId)->where('leg', 'delivery')->where('status', 'offered')->where('expires_at', '>', now())->count(),
@@ -70,8 +70,9 @@ class RiderController extends Controller
         $offers = app(RiderDeliveryOffers::class);
         $offers->expireOutstanding();
         Shipment::where('logistics_company', auth()->user()->business_name)->where('shipping_status', 'sorted')->whereNull('courier_id')->cursor()->each(fn ($shipment) => $offers->offer($shipment));
+        Shipment::where('logistics_company', auth()->user()->business_name)->where('shipping_status', 'ready_for_pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')->cursor()->each(fn ($shipment) => $offers->offer($shipment, 'pickup'));
         $counts = $this->sidebarCounts();
-        $pickupsOpen = app(LogisticsAccess::class)->openParcelsForRider(auth()->user(), 'pickup')->with(['order.buyer', 'order.seller'])
+        $pickupsOpen = Shipment::with(['order.buyer', 'order.seller'])->whereHas('pickupAssignment', fn ($q) => $q->where('courier_id', auth()->id())->where('status', 'offered')->where('expires_at', '>', now()))
             ->where('shipping_status', 'ready_for_pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')
             ->latest('created_at')->take(5)->get();
         // Named distinctly from sidebarCounts()'s 'myPickups' (an int badge count) — array_merge
@@ -79,7 +80,7 @@ class RiderController extends Controller
         $myPickupsList = Shipment::with(['order.buyer', 'order.seller'])
             ->where('pickup_rider_id', auth()->id())->where('shipping_status', 'ready_for_pickup')
             ->latest('updated_at')->get();
-        $deliveriesOpen = app(LogisticsAccess::class)->openParcelsForRider(auth()->user(), 'delivery')->with(['order.buyer', 'order.seller'])
+        $deliveriesOpen = Shipment::with(['order.buyer', 'order.seller'])->whereHas('deliveryAssignment', fn ($q) => $q->where('courier_id', auth()->id())->where('status', 'offered')->where('expires_at', '>', now()))
             ->where('shipping_status', 'sorted')->whereNull('courier_id')
             ->latest('created_at')->take(5)->get();
         $active = $this->myActiveShipments();
@@ -110,49 +111,11 @@ class RiderController extends Controller
         return view('rider.pickup-requests', array_merge($counts, compact('shipments')));
     }
 
-    /**
-     * Claim a pickup request, FCFS. Atomic conditional UPDATE — only the first request to hit
-     * this while the shipment is still unclaimed wins; a later request finds 0 rows affected.
-     * This does NOT change shipping_status (stays ready_for_pickup) — the actual "picked_up"
-     * transition only happens once the SELLER confirms the handoff (SellerController::confirmPickup()),
-     * mirroring how the buyer (not the rider) attests actual delivery at the other end.
-     */
+    /** Accept this rider's live pickup offer; physical handover remains a separate step. */
     public function acceptPickupRequest(Request $request, $id)
     {
-        $riderId = auth()->id();
-        abort_unless(auth()->user()->is_available, 422, 'Go online before accepting pickup jobs.');
-        abort_if(app(RiderDeliveryOffers::class)->activeJobs($riderId) >= RiderDeliveryOffers::LIMIT, 422, 'You already have the maximum of three active jobs.');
-        $shipment = app(LogisticsAccess::class)->openParcelsForRider(auth()->user(), 'pickup')->whereKey($id)->firstOrFail();
-        GcashLocks::shipment((string) $id);
-        $freshRider=app(\App\Services\AssignmentReassignment::class)->approvedRider(auth()->user(),$shipment);
-        app(\App\Services\AssignmentReassignment::class)->assertNoPending($shipment->id);
-        if ($shipment->order) {
-            GcashLocks::order($shipment->order_id);
-            app(GcashWorkflow::class)->assertOrderOperation($shipment->order, true);
-        }
-        $offer = DeliveryAssignment::where('shipment_id', $id)->where('leg', 'pickup')->where('courier_id', $riderId)->where('status', 'offered')->where('expires_at', '>', now())->lockForUpdate()->first();
-        abort_unless($offer, 422, 'This pickup offer is no longer available.');
-        $claimed = app(LogisticsAccess::class)->openParcelsForRider($freshRider, 'pickup')->where('id', $id)
-            ->where('shipping_status', 'ready_for_pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')
-            ->update(['pickup_rider_id' => $riderId]);
-
-        if (! $claimed) {
-            return back()->withErrors(['status' => 'This pickup request was already accepted by another rider.']);
-        }
-
-        $offer->update(['status' => 'accepted', 'accepted_at' => now(), 'expires_at' => null]);
-
-        $shipment = Shipment::with('order')->find($id);
-        if ($shipment->order) {
-            DB::table('notifications')->insert([
-                'id' => (string) Str::uuid(), 'user_id' => $shipment->order->seller_id,
-                'title' => 'Pickup Rider Assigned', 'message' => 'A rider accepted the pickup for order #'.$shipment->order->order_number.'. They\'re on their way.',
-                'notification_type' => 'order_status', 'reference_id' => $shipment->order_id,
-                'is_read' => false, 'created_at' => now(),
-            ]);
-        }
-
-        return redirect()->route('rider.my-pickups')->with('success', 'Pickup accepted. Proceed to the seller\'s location.');
+        app(RiderDeliveryOffers::class)->accept(auth()->user(), (string) $id, 'pickup');
+        return redirect()->route('rider.my-pickups')->with('success', 'Pickup accepted. Proceed to the seller location.');
     }
 
     /**
@@ -236,57 +199,23 @@ class RiderController extends Controller
         return view('rider.requests', array_merge($counts, compact('shipments')));
     }
 
-    /**
-     * Accept a delivery request. Guarded with an atomic conditional UPDATE — only the first
-     * request to hit this while the shipment is still "sorted" and unassigned wins; every
-     * later request (even milliseconds later) finds 0 rows affected and is told it's taken.
-     * This is what makes "System Assigns Delivery to the First Courier Who Accepts" actually
-     * safe under concurrent requests, not just "usually true".
-     */
+    /** Accept this rider's live delivery offer after rechecking eligibility and capacity. */
     public function acceptRequest(Request $request, $id)
     {
-        $riderId = auth()->id();
-        $actor = auth()->user();
-        abort_unless($actor->is_available, 422, 'Go online before accepting delivery jobs.');
-
-        $activeJobs = Shipment::where('courier_id', $riderId)->whereIn('shipping_status', ['assigned_to_rider', 'out_for_delivery'])->count();
-        abort_if($activeJobs >= RiderDeliveryOffers::LIMIT, 422, 'You already have the maximum of three active delivery jobs.');
-        $offer = DeliveryAssignment::where('shipment_id', $id)->where('leg', 'delivery')->where('courier_id', $riderId)->where('status', 'offered')->where('expires_at', '>', now())->first();
-        abort_unless($offer, 422, 'This delivery offer is no longer available.');
-        $claimed = Shipment::where('id', $id)->where('logistics_company', $actor->business_name)
-            ->where('shipping_status', 'sorted')
-            ->whereNull('courier_id')
-            ->update(['courier_id' => $riderId, 'shipping_status' => 'assigned_to_rider', 'assigned_at' => now()]);
-
-        if (! $claimed) {
-            return back()->withErrors(['status' => 'This delivery request was already accepted by another courier.']);
-        }
-
-        $offer->update(['status' => 'assigned_to_rider', 'accepted_at' => now(), 'expires_at' => null]);
-
-        $shipment = Shipment::find($id);
-        $shipment->order?->update(['status' => 'assigned_to_rider']);
-
-        if ($shipment->order_id) {
-            DB::table('order_status_history')->insert([
-                'id' => (string) Str::uuid(), 'order_id' => $shipment->order_id, 'status' => 'assigned_to_rider',
-                'changed_by' => $riderId, 'created_at' => now(),
-            ]);
-        }
-
-        return redirect()->route('rider.deliveries')->with('success', 'Delivery request accepted. Pick it up from the sorting center.');
+        app(RiderDeliveryOffers::class)->accept(auth()->user(), (string) $id, 'delivery');
+        return redirect()->route('rider.deliveries')->with('success', 'Delivery offer accepted. Pick it up from the sorting center.');
     }
 
     public function declineRequest($id)
     {
         app(RiderDeliveryOffers::class)->decline(auth()->user(), $id);
-        return back()->with('success', 'Delivery offer declined. It was offered to another eligible rider.');
+        return back()->with('success', 'Delivery offer declined. Hub staff can offer it again; the system will try another eligible rider when available.');
     }
 
     public function declinePickupRequest($id)
     {
         app(RiderDeliveryOffers::class)->decline(auth()->user(), $id, 'pickup');
-        return back()->with('success', 'Pickup offer declined. It was offered to another eligible rider.');
+        return back()->with('success', 'Pickup offer declined. Hub staff can offer it again; the system will try another eligible rider when available.');
     }
 
     public function availability(Request $request)
@@ -438,39 +367,15 @@ class RiderController extends Controller
     /** Rider reports a failed delivery attempt — "Reason Recorded" branch of the doc's flow. */
     public function markFailed(Request $request, $id)
     {
-        $data = $request->validate(['reason' => 'required|in:buyer_not_home,wrong_address,refused']);
-        $shipment = Shipment::with('order')->where('courier_id', auth()->id())
-            ->where('shipping_status', 'out_for_delivery')->findOrFail($id);
-
-        $attempts = (int) $shipment->delivery_attempts + 1;
-        $returned = $data['reason'] === 'refused' || $attempts >= 3;
-        $shipment->update([
-            'shipping_status' => $returned ? 'returned' : 'delivery_failed',
-            'delivery_failed_at' => now(),
-            'delivery_failed_reason' => $data['reason'],
-            'delivery_attempts' => $attempts,
-            'returned_at' => $returned ? now() : null,
-        ]);
-        $shipment->order?->update(['status' => $returned ? 'returned' : 'delivery_failed']);
-
-        DB::table('order_status_history')->insert([
-            'id' => (string) Str::uuid(), 'order_id' => $shipment->order_id, 'status' => $returned ? 'returned' : 'delivery_failed',
-            'changed_by' => auth()->id(), 'notes' => $data['reason'], 'created_at' => now(),
-        ]);
-
-        if ($shipment->order) {
-            DB::table('notifications')->insert([
-                'id' => (string) Str::uuid(), 'user_id' => $shipment->order->buyer_id,
-                'title' => 'Delivery Attempt Failed',
-                'message' => 'Your order #'.$shipment->order->order_number.' delivery attempt failed: '.$data['reason'],
-                'notification_type' => 'delivery_failed', 'reference_id' => $shipment->order_id,
-                'is_read' => false, 'created_at' => now(),
-            ]);
-            Order::notifyUser($shipment->order->seller_id, $returned ? 'Order Returning to Sender' : 'Delivery Attempt Failed', 'Order #'.$shipment->order->order_number.' could not be delivered: '.str_replace('_', ' ', $data['reason']).'.', 'delivery_failed', $shipment->order_id);
-            User::where('is_logistics', true)->where('business_name', $shipment->logistics_company)->each(fn ($staff) => Order::notifyUser($staff->id, $returned ? 'Return to Sender Required' : 'Delivery Attempt Failed', 'Order #'.$shipment->order->order_number.' requires logistics follow-up.', 'delivery_failed', $shipment->order_id));
-        }
-
-        return redirect()->route('rider.deliveries')->with('success', $returned ? 'Delivery marked for return to sender.' : 'Delivery attempt recorded. Logistics can schedule another attempt.');
+        $data = $request->validate(['reason' => 'required|in:buyer_not_home,wrong_address,refused', 'attempt_token' => 'required|string|size:64']);
+        $returnRequired = DB::transaction(function () use ($id, $data, $request) {
+            \App\Services\GcashLocks::operation([(string) $id], [], [$request->user()->id]);
+            $shipment = Shipment::whereKey($id)->lockForUpdate()->firstOrFail();
+            return app(RiderDeliveryOffers::class)->recordFailure($shipment, $request->user(), $data['reason'], $data['attempt_token']);
+        }, 3);
+        return redirect()->route('rider.deliveries')->with('success', $returnRequired
+            ? 'Failed delivery recorded. Return custody review is required; Seller receipt is not yet confirmed.'
+            : 'Delivery attempt recorded. Logistics can review eligibility for another attempt.');
     }
 
     public function history(Request $request)

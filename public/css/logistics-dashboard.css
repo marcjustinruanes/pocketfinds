@@ -1,5 +1,29 @@
 .logistics-dashboard { display: grid; gap: 24px; min-width: 0; }
 .logistics-dashboard .card { margin: 0; min-width: 0; }
+.logistics-ui .logistics-dashboard .dashboard-date-filter { display: grid; grid-template-columns: minmax(160px, 1fr) auto; align-items: center; gap: 20px; padding: 20px; }
+.logistics-ui .logistics-dashboard .dashboard-date-intro h2 { margin: 0; font-size: 14px; font-weight: 600; }
+.dashboard-date-intro p { margin: 5px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.dashboard-date-controls { display: grid; grid-template-columns: repeat(2, minmax(150px, 210px)) auto; align-items: end; gap: 12px; min-width: 0; }
+.dashboard-date-field { display: grid; gap: 7px; min-width: 0; }
+.dashboard-date-field label { color: var(--text); font-size: 12px; font-weight: 600; }
+.logistics-ui .logistics-dashboard .dashboard-date-field input { box-sizing: border-box; width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); font: 13px var(--font-body); transition: border-color .15s ease, box-shadow .15s ease; }
+.logistics-ui .logistics-dashboard .dashboard-date-field input:hover { border-color: var(--muted); }
+.logistics-ui .logistics-dashboard .dashboard-date-field input:focus-visible { outline: 2px solid var(--pink-dark); outline-offset: 2px; border-color: var(--pink-dark); }
+.dashboard-date-actions { display: flex; align-items: center; gap: 8px; }
+.logistics-ui .logistics-dashboard .dashboard-date-actions .btn { min-height: 44px; padding: 10px 16px; white-space: nowrap; }
+@media (max-width: 1000px) {
+  .logistics-ui .logistics-dashboard .dashboard-date-filter { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .dashboard-date-controls { grid-template-columns: repeat(2, minmax(0, 1fr)) auto; }
+}
+@media (max-width: 600px) {
+  .logistics-ui .logistics-dashboard .dashboard-date-filter { padding: 16px; }
+  .dashboard-date-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dashboard-date-actions { grid-column: 1 / -1; }
+  .dashboard-date-actions .btn-primary { flex: 1; }
+}
+@media (max-width: 380px) {
+  .dashboard-date-controls { grid-template-columns: minmax(0, 1fr); }
+}
 .dashboard-welcome { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 28px; border: 1px solid var(--border); border-radius: 16px; background: linear-gradient(110deg, var(--surface), var(--pink-soft)); }
 .dashboard-eyebrow { display: block; margin-bottom: 8px; color: var(--pink-dark); font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
 .dashboard-welcome h2 { margin: 0; font-size: clamp(22px, 2vw, 30px); line-height: 1.2; overflow-wrap: anywhere; }

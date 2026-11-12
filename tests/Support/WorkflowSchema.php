@@ -7,11 +7,28 @@ use Illuminate\Support\Facades\DB;
 /** Isolated SQLite fixtures for HTTP workflows; not a MySQL migration substitute. */
 trait WorkflowSchema
 {
+    protected function parcelIssueProof(string $marker): \Illuminate\Http\UploadedFile
+    {
+        return \Illuminate\Http\UploadedFile::fake()->createWithContent('parcel-issue.png',
+            base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aT1sAAAAASUVORK5CYII=')."\n".$marker);
+    }
+
     protected function deliveryEvidence(string $shipmentId): array
     {
         DB::table('shipments')->where('id',$shipmentId)->update(['delivery_otp_hash'=>\Illuminate\Support\Facades\Hash::make('123456')]);
         return ['delivery_otp'=>'123456','delivery_proof'=>\Illuminate\Http\UploadedFile::fake()->createWithContent('delivered.png',base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aT1sAAAAASUVORK5CYII='))];
     }
+    protected function transferOriginReceipt(\App\Models\Shipment $shipment, \App\Models\User $staff): void
+    {
+        $at = $shipment->at_sorting_center_at ?: now()->subMinutes(5);
+        $shipment->update(['seller_confirmed_pickup_at' => $at->copy()->subMinutes(2),
+            'rider_confirmed_pickup_at' => $at->copy()->subMinutes(2), 'picked_up_at' => $at->copy()->subMinute(), 'at_sorting_center_at' => $at]);
+        DB::table('order_status_history')->insert(['id' => (string) \Illuminate\Support\Str::uuid(), 'order_id' => $shipment->order_id,
+            'status' => 'at_sorting_center', 'changed_by' => $staff->id, 'created_at' => $at]);
+        DB::table('logistics_activity_logs')->insert(['company_name' => $shipment->logistics_company, 'hub_id' => $staff->logistics_hub_id,
+            'actor_id' => $staff->id, 'action' => 'logistics.scan.receive', 'record_id' => $shipment->id, 'created_at' => $at]);
+    }
+
     private function createWorkflowSchema(bool $transfers = true, bool $hiring = true, bool $legacyRiderFields = false): void
     {
         $this->assertSame('sqlite', config('database.default'));
@@ -54,6 +71,7 @@ trait WorkflowSchema
         }
         if ($transfers) {
             (require database_path('migrations/2026_10_14_000001_add_hub_transfer_batches.php'))->up();
+            (require database_path('migrations/2026_11_11_000002_add_transfer_discrepancy_request_keys.php'))->up();
         }
         (require database_path('migrations/2026_10_31_150000_add_rider_license_and_capacity.php'))->up();
         if(!$legacyRiderFields)(require database_path('migrations/2026_11_02_230000_remove_retired_rider_fields.php'))->up();

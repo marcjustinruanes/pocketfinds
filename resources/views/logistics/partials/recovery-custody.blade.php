@@ -19,11 +19,15 @@
 </section>
 @foreach($issues as $issue)@if($issue->recovery)
 @php($recovery=$issue->recovery)
+@if(!is_array($recovery) || !Illuminate\Support\Arr::has($recovery,['rider_id','leg','hub_id','received_by','observed_at','recorded_at','condition','reference','shipment_ids']) || !is_array($recovery['shipment_ids']))
+<section class="cash-card"><h2>Recovery custody needs evidence review · issue #{{ $issue->id }}</h2><p>The historical custody record is incomplete. No holder, location or receipt time will be inferred. Redispatch remains held.</p></section>
+@else
 <section class="cash-card"><h2>Recovered custody · issue #{{ $issue->id }}</h2><p>Rider #{{ $recovery['rider_id'] }} · {{ $recovery['leg'] }} · actual hub #{{ $recovery['hub_id'] }} · receiver #{{ $recovery['received_by'] }}</p>
 <p>Observed {{ $recovery['observed_at'] }} · recorded {{ $recovery['recorded_at'] }}</p><p>{{ $recovery['condition'] }} · {{ $recovery['reference'] }}</p><p>{{ count($recovery['shipment_ids']) }} parcels. Redispatch remains held even if the issue is marked resolved.</p>
 @php($proof=\Illuminate\Support\Facades\DB::table('logistics_finance_evidence')->where('source_type','parcel_recovery')->where('source_id',(string)$issue->id)->first())
 @if($proof)<a class="btn" href="{{ route('finance.evidence',$proof->id) }}">View private evidence</a>@endif
 </section>
+@endif
 @endif @endforeach
 </div>
 @endif

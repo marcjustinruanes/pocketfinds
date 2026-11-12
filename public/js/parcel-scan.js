@@ -211,19 +211,19 @@
       } else if (meta.area_riders.length && s.delivery_area) {
         const note = document.createElement('p');
         note.className = 'hint';
-        note.textContent = 'No rider registered in ' + s.delivery_area + ' yet — showing all approved riders.';
+        note.textContent = 'Showing eligible riders for the destination barangay. Review coverage before sending an offer.';
         wrap.appendChild(note);
       } else if (meta.area_riders.length) {
         const note = document.createElement('p');
         note.className = 'hint';
-        note.textContent = 'Delivery area not determined — showing all approved riders.';
+        note.textContent = 'Review the destination address and barangay coverage before sending an offer.';
         wrap.appendChild(note);
       }
 
       if (!meta.area_riders.length) {
         const note = document.createElement('p');
         note.className = 'hint';
-        note.textContent = 'No approved riders available to assign yet.';
+        note.textContent = 'No eligible rider covers this destination barangay. Ask your logistics admin to review coverage and availability.';
         wrap.appendChild(note);
         actions.appendChild(wrap);
         return;
@@ -243,8 +243,8 @@
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'btn btn-primary';
-      btn.textContent = 'Assign to Rider';
-      btn.addEventListener('click', () => runAction(btn, 'Assigning…', () => assignToRider(s.id, select.value, s.tracking_number)));
+      btn.textContent = 'Send Rider Offer';
+      btn.addEventListener('click', () => runAction(btn, 'Sending offer...', () => assignToRider(s.id, select.value, s.tracking_number)));
       row.appendChild(select);
       row.appendChild(btn);
       wrap.appendChild(row);
@@ -280,7 +280,7 @@
       failBtn.addEventListener('click', () => {
         const reason = prompt('Why did this delivery fail?');
         if (reason === null) return;
-        runAction(failBtn, 'Updating…', () => updateStatus(s.id, 'delivery_failed', s.tracking_number, reason));
+        runAction(failBtn, 'Updating…', () => updateStatus(s.id, 'delivery_failed', s.tracking_number, reason, s.attempt_token));
       });
       actions.appendChild(failBtn);
     }
@@ -349,9 +349,9 @@
     return readResponse(res);
   }
 
-  async function updateStatus(shipmentId, status, trackingNumber, reason) {
+  async function updateStatus(shipmentId, status, trackingNumber, reason, attemptToken) {
     try {
-      await patchJson(STATUS_URL_BASE + '/' + shipmentId, { status, reason });
+      await patchJson(STATUS_URL_BASE + '/' + shipmentId, { status, reason, ...(attemptToken ? { attempt_token: attemptToken } : {}) });
       showMessage('Status updated.', 'success');
       await lookup(trackingNumber);
     } catch (e) {
@@ -373,7 +373,7 @@
     if (!courierId) { showMessage('Select a rider first.', 'danger'); return; }
     try {
       await patchJson(ASSIGN_URL_BASE + '/' + shipmentId + '/assign', { courier_id: courierId });
-      showMessage('Parcel assigned to rider.', 'success');
+      showMessage('Offer sent. Awaiting rider confirmation.', 'success');
       await lookup(trackingNumber);
     } catch (e) {
       showMessage(e.message, 'danger');

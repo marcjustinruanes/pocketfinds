@@ -69,6 +69,7 @@ class MobileScannerController extends Controller
 
         return ['parcel' => array_intersect_key($shipment, array_flip(['id', 'tracking_number', 'order_number', 'status', 'status_label',
             'origin_hub', 'destination_hub', 'current_leg', 'hub_leg_progress', 'updated_at'])), 'actions' => $actions,
+            'custody' => $data['custody'],
             'offline_actions_enabled' => false];
     }
 
@@ -145,7 +146,9 @@ class MobileScannerController extends Controller
             MobileScannerAccess::check($actor);
             auth()->setUser($actor);
             $request->setUserResolver(fn () => $actor);
-            $receipt = DB::table('mobile_scanner_operations')->where('user_id', $actor->id)->where('operation_id', $data['operation_id'])->first();
+            // The earlier lookup may have established a repeatable-read snapshot before
+            // another request committed. Read the receipt's current state after the actor lock.
+            $receipt = DB::table('mobile_scanner_operations')->where('user_id', $actor->id)->where('operation_id', $data['operation_id'])->lockForUpdate()->first();
             if ($receipt) {
                 abort_unless(hash_equals($receipt->payload_hash, $hash), 409, 'This operation ID was used with a different payload.');
                 if ($receipt->http_status === 200) {
