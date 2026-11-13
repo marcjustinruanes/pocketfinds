@@ -210,13 +210,10 @@ class Order extends Model
                     return;
                 }
                 if(\App\Services\BuyerCommerce::installed() && DB::table('commerce_returns')->where('order_id',$order->id)->whereIn('status',['pending','approved','escalated','received','refunded'])->exists()) return;
-
-                $order->update(['status' => 'completed']);
-                $order->shipment?->update(['delivered_at' => $order->shipment->delivered_at ?: now()]);
-                $order->logStatus('completed', null, 'Auto-completed: buyer did not confirm receipt within '.self::AUTO_COMPLETE_DAYS.' days of delivery.');
-                static::notifyUser($order->buyer_id, 'Order Completed', 'Order #'.$order->order_number.' was automatically marked completed.', 'order_status', $order->id);
-                static::notifyUser($order->seller_id, 'Order Completed', 'Order #'.$order->order_number.' was automatically marked completed — the buyer did not respond after delivery.', 'order_delivered', $order->id);
-                $completed++;
+                $shipment = Shipment::where('order_id', $order->id)->lockForUpdate()->first();
+                if ($order->completeDelivered($shipment, null, 'Auto-completed: buyer did not confirm receipt within '.self::AUTO_COMPLETE_DAYS.' days of delivery.')) {
+                    $completed++;
+                }
             });
         }
 
@@ -233,6 +230,47 @@ class Order extends Model
         } catch (\Throwable $e) {
             report($e);
         }
+    }
+
+    /**
+     * Complete a delivered order and its shipment together. Call from a transaction
+     * after locking the order and shipment rows. A missing shipment is tolerated for
+     * legacy delivered orders; an existing shipment must still be in the delivered
+     * stage or nothing is changed.
+     */
+    public function completeDelivered(?Shipment $shipment, ?int $actorId, string $notes, bool $buyerConfirmed = false): bool
+    {
+        if ($this->status !== 'delivered') {
+            return false;
+        }
+        if ($shipment && ((string) $shipment->order_id !== (string) $this->id || $shipment->shipping_status !== 'delivered')) {
+            return false;
+        }
+        if ($buyerConfirmed && (int) $actorId !== (int) $this->buyer_id) {
+            return false;
+        }
+
+        $completedAt = now();
+        if ($shipment) {
+            $shipment->update([
+                'shipping_status' => 'completed',
+                'delivered_at' => $shipment->delivered_at ?: $completedAt,
+            ]);
+        }
+        $orderUpdates = ['status' => 'completed'];
+        if ($buyerConfirmed && app(\App\Services\LogisticsTreasury::class)->installed()) {
+            // This timestamp is intentionally not mass assignable from request data.
+            // Set it directly in this trusted, locked completion transition so COD
+            // payout eligibility can distinguish buyer confirmation from auto-completion.
+            $this->setAttribute('buyer_confirmed_at', $completedAt);
+        }
+        $this->update($orderUpdates);
+        $this->logStatus('completed', $actorId, $notes);
+
+        static::notifyUser($this->buyer_id, 'Order Completed', 'Order #'.$this->order_number.' is now completed.', 'order_status', $this->id);
+        static::notifyUser($this->seller_id, 'Order Completed', 'Order #'.$this->order_number.' has been completed.', 'order_delivered', $this->id);
+
+        return true;
     }
 
     public function buyer()

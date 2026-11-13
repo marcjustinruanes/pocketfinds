@@ -35,11 +35,11 @@
     <div class="table-wrap">
       <table class="dtable" id="usersTable">
         <thead>
-          <tr><th>User</th><th>Type</th><th>Username</th><th>Contact</th><th>Joined</th><th>Status</th><th></th></tr>
+          <tr><th>User</th><th>Type</th><th>Joined</th><th>Status</th><th></th></tr>
         </thead>
         <tbody>
           @forelse($users as $user)
-          <tr class="rail-row rail-{{ $user->status }}" data-type="{{ $user->account_type }}">
+          <tr class="rail-row rail-{{ $user->status }}" data-type="{{ $user->account_type }}" data-search="{{ $user->username }} {{ $user->contact_no }}">
             <td>
               <div class="cell-user">
                 <x-user-avatar :user="$user" size="30" class="avatar-sm" />
@@ -47,8 +47,6 @@
               </div>
             </td>
             <td><span class="stamp stamp-{{ $user->account_type }}">{{ ucfirst($user->account_type) }}</span></td>
-            <td class="mono" style="font-size:12px">{{ $user->username ?? '—' }}</td>
-            <td class="mono">{{ $user->contact_no }}</td>
             <td class="mono">{{ $user->created_at?->format('M d, Y') ?? '—' }}</td>
             <td><span class="stamp stamp-{{ $user->status }}">{{ ucfirst($user->status) }}</span></td>
             <td>
@@ -93,7 +91,7 @@
             </div>
           </div>
           @empty
-          <tr><td colspan="7"><div class="empty"><div class="ic"><x-admin-icon name="users" /></div><h3>No users yet</h3></div></td></tr>
+          <tr><td colspan="5"><div class="empty"><div class="ic"><x-admin-icon name="users" /></div><h3>No users yet</h3></div></td></tr>
           @endforelse
         </tbody>
       </table>

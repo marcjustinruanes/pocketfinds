@@ -63,7 +63,7 @@
     <div class="dashboard-pipeline-grid">
       @foreach([
         ['Awaiting review', $pending, 'Pickup requests to review', 'logistics.requests', 'edit',[]],
-        ['Awaiting pickup rider', $forVerify, 'Approved pickups without a rider', 'logistics.requests', 'users',['queue'=>'assignment']],
+        ['Approved pickups', $forVerify + $pickupAssigned, $forVerify.' awaiting rider · '.$pickupAssigned.' awaiting collection', 'logistics.monitor', 'users',['stage'=>'pickup']],
         ['Parcels in transit', $inTransit, 'Picked up, at a hub or transferring', 'logistics.monitor', 'truck',['stage'=>'transit']],
         ['Sorted', $available, 'Parcels at the sorted stage', 'logistics.assignments', 'layers',['stage'=>'sorted']],
         ['Deliveries in progress', $inProgress, 'Assigned or out for delivery', 'logistics.monitor', 'pin',['stage'=>'delivery']],
@@ -83,15 +83,23 @@
       <div class="card-head"><div><h2 id="recent-shipments-title">Recent shipments</h2><p class="dashboard-caption">Latest shipments in your company</p></div><a href="{{ route('logistics.monitor') }}" class="btn btn-sm btn-outline">View all</a></div>
       <div class="table-wrap">
         <table class="dtable">
-          <thead><tr><th scope="col">Tracking number</th><th scope="col">Buyer</th><th scope="col">Courier</th><th scope="col">Status</th><th scope="col">Created</th></tr></thead>
+          <thead><tr><th scope="col">Tracking number</th><th scope="col">Buyer</th><th scope="col">Assigned rider</th><th scope="col">Status</th><th scope="col">Created</th></tr></thead>
           <tbody>
             @forelse($recent as $s)
-            @php($buyerName = trim(($s->order?->buyer?->given_names ?? '') . ' ' . ($s->order?->buyer?->last_name ?? '')))
-            @php($courierName = trim(($s->courier?->given_names ?? '') . ' ' . ($s->courier?->last_name ?? '')))
+            @php
+              $buyerName = trim(($s->order?->buyer?->given_names ?? '') . ' ' . ($s->order?->buyer?->last_name ?? ''));
+              [$assignedRider, $riderLeg] = match($s->shipping_status) {
+                'ready_for_pickup', 'picked_up' => [$s->pickupRider, 'Pickup'],
+                'hub_transfer' => [$s->hubTransferRider, 'Hub transfer'],
+                'sorted', 'assigned_to_rider', 'out_for_delivery', 'delivered', 'completed', 'delivery_failed', 'returned' => [$s->courier, 'Delivery'],
+                default => [null, null],
+              };
+              $assignedRiderName = trim(($assignedRider?->given_names ?? '') . ' ' . ($assignedRider?->last_name ?? ''));
+            @endphp
             <tr>
               <td class="mono dashboard-tracking">{{ $s->tracking_number ?? substr($s->id, 0, 8) }}</td>
               <td>{{ $buyerName !== '' ? $buyerName : 'Unavailable' }}</td>
-              <td>{{ $courierName !== '' ? $courierName : 'Unassigned' }}</td>
+              <td>{{ $assignedRiderName !== '' ? $assignedRiderName : 'Unassigned' }}@if($riderLeg)<small class="dashboard-caption">{{ $riderLeg }} leg</small>@endif</td>
               <td><span class="stamp stamp-{{ $s->shipping_status }}">{{ ucfirst(str_replace('_', ' ', $s->shipping_status)) }}</span></td>
               <td class="dashboard-date">{{ $s->created_at?->format('M d, Y') ?? '?' }}</td>
             </tr>

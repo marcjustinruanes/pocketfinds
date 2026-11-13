@@ -40,7 +40,7 @@
             <p>{{ \Illuminate\Support\Str::limit($a->body, 140) }}</p>
             <span class="announcement-row-meta">{{ $a->created_at->diffForHumans() }} · Visible to Buyers</span>
           </div>
-          <form method="POST" action="{{ route('seller.announcements.destroy', $a->id) }}" onsubmit="return confirm('Delete this announcement?')">
+          <form method="POST" action="{{ route('seller.announcements.destroy', $a->id) }}" data-confirm="Delete this announcement? This action cannot be undone." data-confirm-action="Delete announcement">
             @csrf @method('DELETE')
             <button type="submit" class="btn btn-sm btn-danger icon-only" title="Delete" aria-label="Delete">
               @include('seller.partials.icon', ['name' => 'x', 'size' => 13])

@@ -13,6 +13,7 @@ use App\Models\Shipment;
 use App\Models\ShipmentHubLeg;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Ramsey\Uuid\Uuid;
 
 class HubTransferWorkflow
 {
@@ -127,6 +128,22 @@ class HubTransferWorkflow
     {
         HubTransferEvent::create(['batch_id' => $batch->id, 'actor_id' => $actor->id, 'action' => $action, 'from_status' => $from,
             'to_status' => $batch->status, 'reason' => $reason, 'shipment_id' => $shipmentId, 'created_at' => now()]);
+    }
+
+    private function notifyBuyerOnce(Order $order, Shipment $shipment, string $event, string $title, string $message): void
+    {
+        if (! $order->buyer_id) return;
+
+        DB::table('notifications')->insertOrIgnore([
+            'id' => (string) Uuid::uuid5(Uuid::NAMESPACE_URL, implode(':', ['buyer-shipment', $shipment->id, $event, $order->buyer_id])),
+            'user_id' => $order->buyer_id,
+            'title' => $title,
+            'message' => $message,
+            'notification_type' => 'order_status',
+            'reference_id' => $order->id,
+            'is_read' => false,
+            'created_at' => now(),
+        ]);
     }
 
     private function parcels(User $actor, array $ids, bool $receiving = false)
@@ -278,12 +295,16 @@ class HubTransferWorkflow
             foreach ($members as $member) {
                 $leg = ShipmentHubLeg::findOrFail($member->leg_id);
                 $shipment = Shipment::findOrFail($member->shipment_id);
+                $firstTransfer = ! $shipment->hub_transfer_started_at;
                 $leg->update(['status' => 'in_transit', 'rider_id' => $rider->id, 'started_at' => $now, 'rider_confirmed_pickup_at' => null]);
                 $shipment->update(['shipping_status' => 'hub_transfer', 'hub_transfer_rider_id' => $rider->id, 'hub_transfer_started_at' => $shipment->hub_transfer_started_at ?: $now]);
                 if ($shipment->order_id) {
                     $order = Order::findOrFail($shipment->order_id);
                     $order->update(['status' => 'hub_transfer']);
                     $order->logStatus('hub_transfer', $actor->id);
+                    if ($firstTransfer) {
+                        $this->notifyBuyerOnce($order, $shipment, 'transfer-started', 'Hub Transfer Started', 'Order #'.$order->order_number.' is being transferred through the logistics hub network.');
+                    }
                 }
                 DeliveryAssignment::updateOrCreate(['shipment_id' => $shipment->id, 'leg' => 'hub_transfer'], ['courier_id' => $rider->id, 'status' => 'hub_transfer', 'accepted_at' => $now, 'picked_up_at' => null, 'delivered_at' => null]);
             }
@@ -333,6 +354,7 @@ class HubTransferWorkflow
                     $order = Order::findOrFail($shipment->order_id);
                     $order->update(['status' => 'sorted']);
                     $order->logStatus('sorted', $actor->id);
+                    $this->notifyBuyerOnce($order, $shipment, 'sorted', 'Parcel Sorted', 'Order #'.$order->order_number.' reached its destination sorting hub and is awaiting local delivery assignment.');
                 }
                 $this->event($batch, $actor, 'parcel_received', 'in_transit', null, $shipment->id);
                 app(HubTransferNotifications::class)->receipt($batch, $shipment->id);

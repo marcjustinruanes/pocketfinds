@@ -17,6 +17,7 @@ use App\Models\Order;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Review;
+use App\Models\Shipment;
 use App\Models\ShopFollow;
 use App\Models\User;
 use App\Models\Voucher;
@@ -32,6 +33,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -527,7 +529,7 @@ class BuyerController extends Controller
         $baseQuery = Order::where('buyer_id', auth()->id());
         $orderCounts = (clone $baseQuery)->selectRaw('status, count(*) as aggregate')->groupBy('status')->pluck('aggregate', 'status');
         $returnRequests=\App\Services\BuyerCommerce::installed()?DB::table('commerce_returns')->where('buyer_id',auth()->id())->get()->keyBy('order_id'):collect();
-        $orders = $baseQuery->with(['seller', 'paymentMethod', 'shipment.courier', 'shipment.pickupRider', 'review'])
+        $orders = $baseQuery->with(['seller', 'paymentMethod', 'shipment.courier', 'shipment.pickupRider', 'shipment.hubTransferRider', 'shipment.hubLegs.rider', 'review'])
             ->when($tab === 'to_ship', fn ($query) => $query->whereIn('status', Order::BUYER_TO_SHIP_STATUSES))
             ->when($tab === 'in_transit', fn ($query) => $query->whereIn('status', Order::BUYER_IN_TRANSIT_STATUSES))
             ->when($tab==='refunds',fn($query)=>$query->whereIn('id',$returnRequests->keys()))
@@ -548,8 +550,14 @@ class BuyerController extends Controller
         }
 
         $orderHistory = DB::table('order_status_history')->whereIn('order_id', $orders->modelKeys())->orderBy('created_at')->get(['order_id', 'status', 'created_at'])->groupBy('order_id');
+        $paymentConfirmedAt = collect();
+        $purchaseIds = $orders->pluck('gcash_purchase_id')->filter()->unique()->values();
+        if ($purchaseIds->isNotEmpty() && Schema::hasTable('gcash_purchases')) {
+            $paymentConfirmedAt = DB::table('gcash_purchases')->whereIn('id', $purchaseIds)->whereIn('payment_state', ['verified', 'order_placed'])
+                ->whereNotNull('verified_at')->pluck('verified_at', 'id');
+        }
 
-        return view('buyer.orders', compact('orders', 'tab', 'period', 'categoryId', 'orderCategories', 'orderCounts', 'orderHistory','returnRequests'));
+        return view('buyer.orders', compact('orders', 'tab', 'period', 'categoryId', 'orderCategories', 'orderCounts', 'orderHistory', 'paymentConfirmedAt', 'returnRequests'));
     }
 
     /** Delivery proof is visible only to the buyer who owns the completed order. */
@@ -656,17 +664,9 @@ class BuyerController extends Controller
             if ($locked->status !== 'delivered') {
                 return false;
             }
-            if (app(\App\Services\LogisticsTreasury::class)->installed()) {
-                $locked->buyer_confirmed_at = now();
-            }
-            $locked->update(['status' => 'completed']);
-            if ($locked->shipment && ! $locked->shipment->delivered_at) {
-                $locked->shipment->update(['delivered_at' => now()]);
-            }
-            $locked->logStatus('completed', auth()->id(), 'Buyer confirmed receipt.');
-            Order::notifyUser($locked->seller_id, 'Order Delivered', 'Order #'.$locked->order_number.' has been delivered to the customer.', 'order_delivered', $locked->id);
+            $shipment = Shipment::where('order_id', $locked->id)->lockForUpdate()->first();
 
-            return true;
+            return $locked->completeDelivered($shipment, auth()->id(), 'Buyer confirmed receipt.', true);
         });
 
         if (! $confirmed) {

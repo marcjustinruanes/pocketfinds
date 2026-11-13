@@ -9,10 +9,10 @@
 @if($errors->any())<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ $errors->first() }}</div>@endif
 
 <div class="hub-dashboard-page">
-@if(app(\App\Services\AssignmentReassignment::class)->installed())<div class="card card-pad hub-dashboard-action"><a class="btn btn-primary" href="{{ route('logistics.assignments.review') }}">Assignment evidence & reassignment</a></div>@endif
-<div class="card" style="margin-bottom:16px">
+@if(app(\App\Services\AssignmentReassignment::class)->installed())<div class="card card-pad hub-dashboard-action"><div class="hub-dashboard-action-copy"><span class="hub-dashboard-action-icon"><x-admin-icon name="layers" /></span><div><strong>Assignment tools</strong><small>Review evidence and manage reassignment requests.</small></div></div><a class="btn btn-primary" href="{{ route('logistics.assignments.review') }}">Assignment evidence &amp; reassignment</a></div>@endif
+<div class="card hub-queue-card hub-queue-pickups" style="margin-bottom:16px">
   <div class="card-head">
-    <h2>Pickup Requests</h2>
+    <h2><span class="hub-queue-icon"><x-admin-icon name="clock" /></span>Pickup Requests</h2>
     <span class="stamp stamp-pending">{{ $pickupRequests->total() }} awaiting a rider</span>
   </div>
   <div class="card-pad">
@@ -39,15 +39,15 @@
       @if(($pickupRidersByShipment[$shipment->id] ?? collect())->isEmpty())<p role="status">No eligible rider is available for the pickup barangay {{ app(\App\Services\RiderBarangayCoverage::class)->barangay($shipment, 'pickup') ?: '(missing address)' }}. Ask your logistics admin to review rider coverage and availability.</p>@endif
     </div>
     @empty
-    <p style="color:var(--muted);font-size:13px;margin:0">No approved pickups waiting at this hub right now.</p>
+    <p class="hub-queue-empty">No approved pickups waiting at this hub right now.</p>
     @endforelse
     <div aria-label="Pickup request pages">{{ $pickupRequests->links() }}</div>
   </div>
 </div>
 
-<div class="card" style="margin-bottom:16px">
+<div class="card hub-queue-card hub-queue-incoming-pickups" style="margin-bottom:16px">
   <div class="card-head">
-    <h2>Incoming Pickups</h2>
+    <h2><span class="hub-queue-icon"><x-admin-icon name="truck" /></span>Incoming Pickups</h2>
     <span class="stamp stamp-active">{{ $incomingPickups->total() }} en route</span>
   </div>
   <div class="card-pad">
@@ -62,15 +62,15 @@
       <span style="color:var(--muted)">confirmed {{ optional($shipment->picked_up_at)->diffForHumans() }}</span>
     </div>
     @empty
-    <p style="color:var(--muted);font-size:13px;margin:0">Nothing on its way to this hub right now — scan a parcel in once its rider arrives.</p>
+    <p class="hub-queue-empty">Nothing on its way to this hub right now — scan a parcel in once its rider arrives.</p>
     @endforelse
     <div aria-label="Pickup arrival pages">{{ $incomingPickups->links() }}</div>
   </div>
 </div>
 
-<div class="card" style="margin-bottom:16px">
+<div class="card hub-queue-card hub-queue-ready" style="margin-bottom:16px">
   <div class="card-head">
-    <h2>Ready to Request</h2>
+    <h2><span class="hub-queue-icon"><x-admin-icon name="box" /></span>Ready to Request</h2>
     <span class="stamp stamp-pending">{{ $requestableCount }} parcel(s)</span>
   </div>
   <div class="card-pad">
@@ -90,15 +90,15 @@
       </form>
     </div>
     @empty
-    <p style="color:var(--muted);font-size:13px;margin:0">Nothing waiting to move on right now.</p>
+    <p class="hub-queue-empty">Nothing waiting to move on right now.</p>
     @endforelse
     {{ $requestablePages->links() }}
   </div>
 </div>
 
-<div class="card" style="margin-bottom:16px">
+<div class="card hub-queue-card hub-queue-approval" style="margin-bottom:16px">
   <div class="card-head">
-    <h2>Waiting on Admin Approval</h2>
+    <h2><span class="hub-queue-icon"><x-admin-icon name="clock" /></span>Waiting on Admin Approval</h2>
     <span class="stamp stamp-pending">{{ $pendingApprovalCount }} parcel(s)</span>
   </div>
   <div class="card-pad">
@@ -108,15 +108,15 @@
       <span style="color:var(--muted);font-size:11.5px">— {{ $legs->count() }} parcel(s), requested {{ optional($legs->first()->requested_at)?->diffForHumans() }}</span>
     </div>
     @empty
-    <p style="color:var(--muted);font-size:13px;margin:0">No requests are pending approval.</p>
+    <p class="hub-queue-empty">No requests are pending approval.</p>
     @endforelse
     {{ $pendingApprovalPages->links() }}
   </div>
 </div>
 
-<div class="card" style="margin-bottom:16px">
+<div class="card hub-queue-card hub-queue-dispatch" style="margin-bottom:16px">
   <div class="card-head">
-    <h2>Approved ? Awaiting Logistics Admin Dispatch</h2>
+    <h2><span class="hub-queue-icon"><x-admin-icon name="check-circle" /></span>Approved · Awaiting Logistics Admin Dispatch</h2>
     <span class="stamp stamp-active">{{ $readyToAssign->total() }} parcel(s)</span>
   </div>
   <div class="card-pad">
@@ -127,15 +127,15 @@
       <a href="{{ $leg->transfer_batch_id ? route('logistics.transfers.show', $leg->transfer_batch_id) : route('logistics.transfers') }}" class="btn btn-sm btn-outline">View transfer</a>
     </div>
     @empty
-    <p style="color:var(--muted);font-size:13px;margin:0">Nothing approved yet.</p>
+    <p class="hub-queue-empty">Nothing approved yet.</p>
     @endforelse
     <div aria-label="Transfer assignment pages">{{ $readyToAssign->links() }}</div>
   </div>
 </div>
 
-<div class="card">
+<div class="card hub-queue-card hub-queue-incoming" >
   <div class="card-head">
-    <h2>Incoming</h2>
+    <h2><span class="hub-queue-icon"><x-admin-icon name="layers" /></span>Incoming Transfers</h2>
     <span class="stamp stamp-active">{{ $incoming->total() }} en route</span>
   </div>
   <div class="card-pad">
@@ -146,7 +146,7 @@
       <span style="color:var(--muted)">{{ optional($leg->rider)->given_names }} {{ optional($leg->rider)->last_name }}</span>
     </div>
     @empty
-    <p style="color:var(--muted);font-size:13px;margin:0">Nothing en route to this hub right now.</p>
+    <p class="hub-queue-empty">Nothing en route to this hub right now.</p>
     @endforelse
     <div aria-label="Incoming transfer pages">{{ $incoming->links() }}</div>
   </div>

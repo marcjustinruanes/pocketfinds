@@ -144,7 +144,7 @@
     <div class="order-details-head"><div><h3 id="orderDetailsTitle{{ $order->id }}">{{ ($order->items[0]['name'] ?? 'Your order').(count($order->items ?? []) > 1 ? ' + '.(count($order->items) - 1).' more' : '') }}</h3><p class="order-reference">Order reference: <span data-order-reference>{{ $order->order_number }}</span> <button type="button" class="order-copy-reference" aria-label="Copy order reference">Copy</button></p></div><span class="order-kicker order-details-label">Order details</span></div>
     <div class="order-details-body" tabindex="0" role="region" aria-label="Scrollable order information">
     @php
-      $timeline = \App\Support\OrderTimeline::forOrder($order, $orderHistory->get($order->id, collect()));
+      $timeline = \App\Support\OrderTimeline::forOrder($order, $orderHistory->get($order->id, collect()), $paymentConfirmedAt[$order->gcash_purchase_id] ?? null);
       $addressPart = fn ($part) => filled($part) && $part !== 'Not provided';
       $addressLine1 = collect([$order->shipping_address['house_no'] ?? null, $order->shipping_address['street'] ?? null])->filter($addressPart)->join(', ');
       $displayAddress = $order->shipping_address ?? [];
@@ -160,20 +160,64 @@
         ?: 'Customer not provided';
       $customerContact = $order->shipping_address['contact_no'] ?? $order->buyer?->contact_no;
     @endphp
-    <section class="order-tracking order-tracking-horizontal" aria-label="Delivery progress">
-     <ol class="tracking-steps" aria-label="Recorded delivery progress">
+    <section class="order-tracking order-tracking-horizontal" aria-label="Recorded order and delivery progress">
+     <h3>Order and delivery progress</h3>
+     <ol class="tracking-steps" aria-label="Recorded order and delivery events">
       @foreach($timeline['rows'] as $step)
        <li class="tracking-step is-{{ $step['state'] }}" @if($step['state'] === 'current') aria-current="step" @endif>
         <span class="tracking-dot" aria-hidden="true">
-          @include('buyer.partials.icon', ['name' => ['bag', 'clipboard-check', 'package', 'map', 'rider-delivery', $order->status === 'completed' ? 'shield' : 'package-received'][$loop->index], 'size' => 18])
+          @include('buyer.partials.icon', ['name' => $step['icon'], 'size' => 18])
         </span>
         <div><strong>{{ $step['title'] }}</strong>
+         <small>{{ $step['label'] }}</small>
          @if($step['timestamp'])<time datetime="{{ $step['timestamp']->toIso8601String() }}">{{ $step['timestamp']->format('M j, Y g:i A') }}</time>@endif
         </div>
        </li>
       @endforeach
      </ol>
     </section>
+    @if($order->shipment)
+     @php $shipment = $order->shipment; @endphp
+    <section class="order-tracking order-shipment-details" aria-label="Shipment details">
+      <h3>Shipment details</h3>
+      <div class="order-detail-info-grid">
+        <div><span>Tracking number</span><strong>{{ $shipment->tracking_number ?: 'Not assigned' }}</strong></div>
+        <div><span>Logistics company</span><strong>{{ $shipment->logistics_company ?: 'Not assigned' }}</strong></div>
+        <div><span>Shipment status</span><strong>{{ str($shipment->shipping_status)->replace('_', ' ')->title() }}</strong></div>
+        @if($shipment->pickupRider)
+          <div><span>Pickup rider</span><strong>{{ trim($shipment->pickupRider->given_names.' '.$shipment->pickupRider->last_name) }}</strong></div>
+        @endif
+        @if($shipment->courier)
+          <div><span>Delivery rider</span><strong>{{ trim($shipment->courier->given_names.' '.$shipment->courier->last_name) }}</strong></div>
+        @endif
+        @foreach([
+          'scheduled_pickup_at' => 'Pickup scheduled', 'pickup_approved_at' => 'Pickup approved',
+          'picked_up_at' => 'Picked up', 'at_sorting_center_at' => 'Sorting center receipt',
+          'sorted_at' => 'Sorted', 'assigned_at' => 'Delivery rider assigned',
+          'out_for_delivery_at' => 'Out for delivery', 'delivered_at' => 'Delivered',
+          'delivery_failed_at' => 'Delivery attempt failed', 'returned_at' => 'Returned',
+        ] as $field => $label)
+          @if($shipment->{$field})<div><span>{{ $label }}</span><strong>{{ $shipment->{$field}->format('M j, Y g:i A') }}</strong></div>@endif
+        @endforeach
+      </div>
+      @if($shipment->hubLegs->isNotEmpty())
+        <div class="order-shipment-transfers">
+          <h4>Hub transfer progress</h4>
+          <ol>
+            @foreach($shipment->hubLegs as $leg)
+              <li>
+                <strong>{{ $leg->from_hub }}, {{ $leg->from_province }} <span aria-hidden="true">→</span> {{ $leg->to_hub }}, {{ $leg->to_province }}</strong>
+                <span>{{ match($leg->status) { 'in_transit' => 'In transit', 'completed' => 'Received', default => str($leg->status)->replace('_', ' ')->title() } }}</span>
+                @if($leg->rider)<span>Courier: {{ trim($leg->rider->given_names.' '.$leg->rider->last_name) }}</span>@endif
+                @if($leg->started_at)<time datetime="{{ $leg->started_at->toIso8601String() }}">Dispatched {{ $leg->started_at->format('M j, Y g:i A') }}</time>@endif
+                @if($leg->completed_at)<time datetime="{{ $leg->completed_at->toIso8601String() }}">Received {{ $leg->completed_at->format('M j, Y g:i A') }}</time>@endif
+              </li>
+            @endforeach
+          </ol>
+        </div>
+      @endif
+    </section>
+    @endif
     <div class="order-summary-columns"><div class="order-quantity-summary order-checkout-summary">
       <h3>Order summary</h3>
       <div class="order-cost-row"><span>Subtotal</span><strong>₱{{ number_format($order->subtotal, 2) }}</strong></div>
@@ -214,7 +258,7 @@
       @if($deliveryOtp)<div class="order-current-status"><strong>Delivery OTP: {{ $deliveryOtp }}</strong><p>Share this only after you receive the order.</p></div>@endif
     @endif
     @if($order->shipment?->delivery_proof_file)
-      <div class="order-current-status"><strong>Proof of delivery</strong><p><a href="{{ route('delivery-proofs.show', $order->shipment) }}" target="_blank" rel="noopener">View delivery photo</a></p></div>
+      <div class="order-current-status"><strong>Proof of delivery</strong><p><a href="{{ route('buyer.orders.delivery-proof', $order) }}" target="_blank" rel="noopener">View delivery photo</a></p></div>
     @endif
     @if(in_array($order->status, \App\Models\Order::CANCELLABLE_STATUSES, true))
       <div class="order-cancel-panel" hidden>

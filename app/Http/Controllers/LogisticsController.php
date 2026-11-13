@@ -180,6 +180,7 @@ class LogisticsController extends Controller
         $shipmentStats = $this->shipmentCounts(array_merge($this->sidebarShipmentFilters(), [
             'total' => 'true',
             'forVerify' => "shipping_status = 'ready_for_pickup' and pickup_approved_at is not null and pickup_rider_id is null",
+            'pickupAssigned' => "shipping_status = 'ready_for_pickup' and pickup_approved_at is not null and pickup_rider_id is not null",
             'available' => "shipping_status = 'sorted'",
             'completed' => "shipping_status in ('delivered', 'completed')",
             'cancelled' => "shipping_status in ('cancelled', 'delivery_failed', 'returned')",
@@ -233,6 +234,7 @@ class LogisticsController extends Controller
             app(\App\Services\LogisticsShipping::class)->gate($shipment);
             $shipment->update(['pickup_approved_at' => now()]);
             Order::notifyUser($shipment->order?->seller_id, 'Pickup Approved', $shipment->logistics_company.' approved the pickup for order #'.$shipment->order?->order_number.'. A rider will be assigned shortly.', 'order_status', $shipment->order_id);
+            Order::notifyUser($shipment->order?->buyer_id, 'Pickup Approved', 'The pickup for order #'.$shipment->order?->order_number.' was approved. A rider can now accept the pickup.', 'order_status', $shipment->order_id);
         }, 3);
 
         $approved = $this->companyScope()->find($id);
@@ -844,70 +846,76 @@ class LogisticsController extends Controller
      */
     public function receiveAtSortingCenter(Request $request, $id)
     {
-        GcashLocks::shipment((string) $id);
-        $shipment = $this->companyScope()->with('order')->lockForUpdate()->findOrFail($id);
-        abort_unless($shipment->shipping_status === 'picked_up', 422, 'This parcel has not been picked up from the seller yet.');
-        app(LogisticsAccess::class)->receivingStaff(auth()->user(), $shipment->origin_hub, $shipment->origin_province);
+        return DB::transaction(function () use ($request, $id) {
+            GcashLocks::shipment((string) $id);
+            $shipment = $this->companyScope()->with('order')->lockForUpdate()->findOrFail($id);
+            abort_unless($shipment->shipping_status === 'picked_up', 422, 'This parcel has not been picked up from the seller yet.');
+            app(LogisticsAccess::class)->receivingStaff(auth()->user(), $shipment->origin_hub, $shipment->origin_province);
 
-        $area = $shipment->order?->shipping_address['municipality'] ?? null;
-        $now = now();
+            $area = $shipment->order?->shipping_address['municipality'] ?? null;
+            $now = now();
 
-        if ($shipment->needsHubTransfer()) {
-            $shipment->buildHubLegs();
-            $shipment->recordHubReceipt(['shipping_status' => 'at_sorting_center', 'at_sorting_center_at' => $now]);
-            $shipment->order?->update(['status' => 'at_sorting_center']);
+            if ($shipment->needsHubTransfer()) {
+                $shipment->buildHubLegs();
+                $shipment->recordHubReceipt(['shipping_status' => 'at_sorting_center', 'at_sorting_center_at' => $now]);
+                $shipment->order?->update(['status' => 'at_sorting_center']);
+
+                DB::table('order_status_history')->insert([
+                    'id' => (string) Str::uuid(), 'order_id' => $shipment->order_id, 'status' => 'at_sorting_center',
+                    'changed_by' => auth()->id(), 'created_at' => $now,
+                ]);
+                Order::notifyUser($shipment->order?->buyer_id, 'Parcel Reached Sorting Center', 'Order #'.$shipment->order?->order_number.' reached '.$shipment->origin_hub.' sorting center.', 'order_status', $shipment->order_id);
+
+                app(\App\Services\AssignmentWork::class)->closeReceivedPickup($shipment);
+                app(\App\Services\RiderCompensation::class)->shipmentCompleted($shipment->id);
+
+                $firstLeg = $shipment->nextPendingHubLeg();
+
+                return response()->json(['ok' => true, 'message' => "Received at {$shipment->origin_hub}. This hub's staff can now request a transfer to ".($firstLeg->to_hub ?? $shipment->destination_hub).' from their dashboard.']);
+            }
+
+            $shipment->recordHubReceipt([
+                'shipping_status' => 'sorted',
+                'at_sorting_center_at' => $now,
+                'sorted_at' => $now,
+                'sorted_area' => $area,
+            ]);
+            $shipment->order?->update(['status' => 'sorted']);
 
             DB::table('order_status_history')->insert([
                 'id' => (string) Str::uuid(), 'order_id' => $shipment->order_id, 'status' => 'at_sorting_center',
                 'changed_by' => auth()->id(), 'created_at' => $now,
             ]);
+            DB::table('order_status_history')->insert([
+                'id' => (string) Str::uuid(), 'order_id' => $shipment->order_id, 'status' => 'sorted',
+                'changed_by' => auth()->id(), 'created_at' => $now,
+            ]);
+            Order::notifyUser($shipment->order?->buyer_id, 'Parcel Sorted', 'Order #'.$shipment->order?->order_number.' was received and sorted at '.$shipment->origin_hub.'.', 'order_status', $shipment->order_id);
 
             app(\App\Services\AssignmentWork::class)->closeReceivedPickup($shipment);
             app(\App\Services\RiderCompensation::class)->shipmentCompleted($shipment->id);
+            if (! app(\App\Services\LogisticsRecovery::class)->hasConditionHold($shipment->id)) {
+                app(\App\Services\RiderDeliveryOffers::class)->offer($shipment, 'delivery');
+            }
 
-            $firstLeg = $shipment->nextPendingHubLeg();
-
-            return response()->json(['ok' => true, 'message' => "Received at {$shipment->origin_hub}. This hub's staff can now request a transfer to ".($firstLeg->to_hub ?? $shipment->destination_hub).' from their dashboard.']);
-        }
-
-        $shipment->recordHubReceipt([
-            'shipping_status' => 'sorted',
-            'at_sorting_center_at' => $now,
-            'sorted_at' => $now,
-            'sorted_area' => $area,
-        ]);
-        $shipment->order?->update(['status' => 'sorted']);
-
-        DB::table('order_status_history')->insert([
-            'id' => (string) Str::uuid(), 'order_id' => $shipment->order_id, 'status' => 'at_sorting_center',
-            'changed_by' => auth()->id(), 'created_at' => $now,
-        ]);
-        DB::table('order_status_history')->insert([
-            'id' => (string) Str::uuid(), 'order_id' => $shipment->order_id, 'status' => 'sorted',
-            'changed_by' => auth()->id(), 'created_at' => $now,
-        ]);
-
-        app(\App\Services\AssignmentWork::class)->closeReceivedPickup($shipment);
-        app(\App\Services\RiderCompensation::class)->shipmentCompleted($shipment->id);
-        if (! app(\App\Services\LogisticsRecovery::class)->hasConditionHold($shipment->id)) {
-            app(\App\Services\RiderDeliveryOffers::class)->offer($shipment, 'delivery');
-        }
-
-        return response()->json(['ok' => true, 'message' => 'Parcel received and sorted'.($area ? " to {$area}" : '').'.']);
+            return response()->json(['ok' => true, 'message' => 'Parcel received and sorted'.($area ? " to {$area}" : '').'.']);
+        }, 3);
     }
 
     public function monitor(Request $request)
     {
-        $filters=$request->validate(['stage'=>'nullable|in:transit,delivery','search'=>'nullable|string|max:100']);
+        $filters=$request->validate(['stage'=>'nullable|in:pickup,transit,delivery','search'=>'nullable|string|max:100']);
         $stage=$filters['stage']??null;
         $search=trim($filters['search']??'');
         $counts = $this->sidebarCounts();
-        $shipments = $this->companyScope()->when($stage==='transit',fn($q)=>$q->whereIn('shipping_status',['picked_up','at_sorting_center','hub_transfer']))->when($stage==='delivery',fn($q)=>$q->whereIn('shipping_status',['assigned_to_rider','out_for_delivery']))->with(['order.buyer', 'courier', 'pickupRider', 'hubTransferRider', 'deliveryAssignment'])
+        $shipments = $this->companyScope()->when($stage==='pickup',fn($q)=>$q->where('shipping_status','ready_for_pickup')->whereNotNull('pickup_approved_at'))
+            ->when($stage==='transit',fn($q)=>$q->whereIn('shipping_status',['picked_up','at_sorting_center','hub_transfer']))
+            ->when($stage==='delivery',fn($q)=>$q->whereIn('shipping_status',['assigned_to_rider','out_for_delivery']))->with(['order.buyer', 'courier', 'pickupRider', 'hubTransferRider', 'deliveryAssignment'])
             ->when($search !== '', fn($q)=>$q->where(fn($q)=>$q->where('tracking_number','like','%'.$search.'%')->orWhereHas('order',fn($q)=>$q->where('order_number','like','%'.$search.'%')->orWhereHas('buyer',fn($buyer)=>$buyer->whereRaw("CONCAT(given_names, ' ', last_name) like ?",['%'.$search.'%'])))), fn($q)=>$q->whereIn('shipping_status', ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'hub_transfer', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'delivery_failed']))
             ->latest('created_at')->orderByDesc('id')->paginate(20)->withQueryString();
         $transitions = self::STATUS_TRANSITIONS;
 
-        return view('logistics.monitor', array_merge($counts, compact('shipments', 'transitions', 'search')));
+        return view('logistics.monitor', array_merge($counts, compact('shipments', 'transitions', 'search', 'stage')));
     }
 
     /** Shipment stage → the timestamp column on `shipments` to stamp. */
@@ -983,6 +991,16 @@ class LogisticsController extends Controller
                     .ucfirst(str_replace('_', ' ', $status)).'.';
             }
 
+            // Buyer, scheduled and logistics-admin completion all use the same
+            // delivered -> completed transition, history entry and notifications.
+            if ($status === 'completed') {
+                if (! $order || ! $order->completeDelivered($shipment, auth()->id(), $data['reason'])) {
+                    return 'The order and shipment must both be delivered before completion.';
+                }
+
+                return $shipment;
+            }
+
             if ($status === 'assigned_to_rider') {
                 app(\App\Services\RiderDeliveryOffers::class)->assertRetryEligible($shipment);
                 $rider = $shipment->courier;
@@ -1025,7 +1043,7 @@ class LogisticsController extends Controller
         }
         $shipment = $result;
 
-        if ($shipment->order && $status !== 'delivery_failed') {
+        if ($shipment->order && ! in_array($status, ['delivery_failed', 'completed'], true)) {
             DB::table('notifications')->insert([
                 'id' => (string) Str::uuid(),
                 'user_id' => $shipment->order->buyer_id,

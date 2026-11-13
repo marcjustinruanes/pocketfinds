@@ -293,7 +293,7 @@
             @csrf
             <button class="btn btn-danger" type="submit" style="width:100%">Clear Application Cache</button>
           </form>
-          <form method="POST" action="{{ route('admin.settings.sessions.clear') }}" onsubmit="return confirm('This signs out every other logged-in user immediately. Continue?')">
+          <form method="POST" action="{{ route('admin.settings.sessions.clear') }}" data-confirm data-confirm-title="Sign out all other sessions?" data-confirm-message="Every other logged-in user will be signed out immediately." data-confirm-action="Clear sessions" data-confirm-tone="danger">
             @csrf
             <button class="btn btn-danger" type="submit" style="width:100%">Clear All Other Sessions</button>
           </form>

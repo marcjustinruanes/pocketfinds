@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="{{ asset('css/notifications.css') }}?v={{ filemtime(public_path('css/notifications.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/navigation.css') }}?v={{ filemtime(public_path('css/navigation.css')) }}">
 @stack('head')
+<link rel="stylesheet" href="{{ asset('css/admin-ux.css') }}?v={{ filemtime(public_path('css/admin-ux.css')) }}">
 </head>
 <body class="admin">
 <div class="shell" id="appShell" data-navigation-shell data-collapse-key="sidebar_collapsed">
@@ -42,6 +43,25 @@
       </form>
     </div>
   </div>
+</div>
+
+<div class="modal-overlay" id="confirmActionModal">
+  <section class="modal admin-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirmActionTitle" aria-describedby="confirmActionMessage">
+    <header class="modal-head">
+      <div class="modal-head-main">
+        <span class="modal-icon" id="confirmActionIcon"><x-admin-icon name="shield" /></span>
+        <div class="modal-head-copy">
+          <h3 id="confirmActionTitle">Confirm this action?</h3>
+          <p id="confirmActionMessage">Please review this change before continuing.</p>
+        </div>
+      </div>
+      <button type="button" class="modal-close" data-modal-close aria-label="Close"><x-admin-icon name="close" /></button>
+    </header>
+    <footer class="modal-foot">
+      <button type="button" class="btn btn-outline" data-modal-close>Cancel</button>
+      <button type="button" class="btn btn-primary" data-confirm-submit>Continue</button>
+    </footer>
+  </section>
 </div>
 
 <div class="toast-stack" id="toastStack"></div>

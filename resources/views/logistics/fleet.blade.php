@@ -8,6 +8,21 @@
 @if(session('success'))<div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('success') }}</div>@endif
 @if($errors->any())<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ $errors->first() }}</div>@endif
 
+<section class="fleet-overview" aria-label="Fleet overview">
+  @foreach([
+    ['Total vehicles', $platformCounts->sum(), 'Vehicles across your company', 'box', 'neutral'],
+    ['Awaiting review', $platformCounts['pending'] ?? 0, 'Submitted to PocketFinds', 'clock', 'warning'],
+    ['Approved', $platformCounts['approved'] ?? 0, 'Available for hub assignment', 'check-circle', 'success'],
+    ['Company hubs', $hubs->count(), 'Vehicle assignment locations', 'pin', 'info'],
+  ] as [$label, $value, $description, $icon, $tone])
+  <article class="fleet-overview-stat fleet-overview-{{ $tone }}">
+    <div class="fleet-overview-head"><span>{{ $label }}</span><span class="fleet-overview-icon"><x-admin-icon :name="$icon" /></span></div>
+    <strong>{{ number_format($value) }}</strong>
+    <p>{{ $description }}</p>
+  </article>
+  @endforeach
+</section>
+
 {{-- Add a vehicle --}}
 <div class="card fleet-add-card" style="margin-bottom:20px">
   <div class="card-head">
@@ -109,7 +124,7 @@
             </td>
             <td>
               @if($vehicle->platform_status === 'pending')
-              <form method="POST" action="{{ route('logistics.vehicles.destroy', $vehicle->id) }}" onsubmit="return confirm('Remove this vehicle submission?')">
+              <form method="POST" action="{{ route('logistics.vehicles.destroy', $vehicle->id) }}" data-confirm data-confirm-title="Remove this vehicle?" data-confirm-message="This vehicle submission will be deleted from the company fleet." data-confirm-action="Remove vehicle" data-confirm-tone="danger">
                 @csrf @method('DELETE')
                 <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
               </form>

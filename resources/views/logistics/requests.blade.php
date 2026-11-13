@@ -49,10 +49,10 @@
             @if(($pickupRidersByShipment[$s->id] ?? collect())->isEmpty())<p role="status">No eligible rider is available for the pickup barangay {{ app(\App\Services\RiderBarangayCoverage::class)->barangay($s, 'pickup') ?: '(missing address)' }}. Review rider coverage and availability.</p>@endif
             @else
             <div class="row-actions">
-              <form method="POST" action="{{ route('logistics.requests.approve', $s->id) }}">@csrf @method('PATCH')
+              <form method="POST" action="{{ route('logistics.requests.approve', $s->id) }}" data-confirm data-confirm-title="Approve this pickup?" data-confirm-message="The seller pickup will be approved and can be assigned to an eligible rider." data-confirm-action="Approve pickup" data-confirm-tone="success">@csrf @method('PATCH')
                 <button class="btn btn-sm btn-success" @disabled($shippingBlocked) @if($shippingBlocked) title="Verify the shipping obligation before pickup approval" @endif>Approve</button>
               </form>
-              <form method="POST" action="{{ route('logistics.requests.reject', $s->id) }}" style="display:flex;gap:6px" onsubmit="return confirm('Reject this pickup? The order will be cancelled and the buyer and seller notified.')">@csrf @method('PATCH')
+              <form method="POST" action="{{ route('logistics.requests.reject', $s->id) }}" style="display:flex;gap:6px" data-confirm data-confirm-title="Reject this pickup?" data-confirm-message="The order will be cancelled and the buyer and seller will be notified." data-confirm-action="Reject pickup" data-confirm-tone="danger">@csrf @method('PATCH')
                 <input type="text" name="reason" maxlength="200" placeholder="Reason (optional)" style="border:1px solid var(--border);border-radius:8px;padding:5px 8px;font-size:12px;width:150px">
                 <button class="btn btn-sm btn-danger">Reject</button>
               </form>

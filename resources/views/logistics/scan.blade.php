@@ -53,8 +53,8 @@
 @section('content')
 <div class="scan-grid">
   @php($scannerPref = auth()->user()->preferred_scanner ?? 'both')
-  <div class="card">
-    <div class="card-head"><h2>Universal Scanner</h2></div>
+  <div class="card scan-workspace-card">
+    <div class="card-head"><h2><span class="scan-card-icon"><x-admin-icon name="scan" /></span>Universal Scanner</h2></div>
     <div class="card-pad">
       <h3>Workstation scanner</h3>
       <p class="hint">Use a USB scanner, this computer's camera, or enter a parcel code. Phone scanning is available in the PocketFinds Scanner Android app.</p>
@@ -97,10 +97,10 @@
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-head"><h2>Shipment</h2></div>
+  <div class="card scan-shipment-card">
+    <div class="card-head"><h2><span class="scan-card-icon"><x-admin-icon name="box" /></span>Shipment details</h2></div>
     <div class="card-pad">
-      <div id="emptyResult" class="scan-result-empty">Scan or enter a tracking number to view shipment details.</div>
+      <div id="emptyResult" class="scan-result-empty" role="status" aria-live="polite">Scan or enter a tracking number to view shipment details.</div>
 
       <div id="shipmentResult" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">

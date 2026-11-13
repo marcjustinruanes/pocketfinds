@@ -6,6 +6,8 @@
 @section('content')
 @php($money=fn($v)=>number_format($v/100,2))
 @php($isSeller=!$actor->is_admin && $actor->account_type==='seller')
+@php($isLogistics=!$actor->is_admin && $actor->account_type==='logistics')
+@php($logisticsMetricIcons=['provisional'=>'clock','earned_net'=>'peso','reversed'=>'edit','seller_due'=>'users','logistics_due'=>'box','overdue'=>'info','held'=>'shield'])
 <div class="commission-workspace">
     <div class="commission-policy" role="note">
         <span class="commission-policy-icon" aria-hidden="true"><x-admin-icon name="peso" /></span>
@@ -16,7 +18,7 @@
     @if($errors->any())<div class="commission-feedback is-error" role="alert">@foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
     <div class="commission-metrics">
         @foreach(['provisional'=>'Provisional','earned_net'=>'Net earned','reversed'=>'Reversed','seller_due'=>'Due from Sellers','logistics_due'=>'Due from Logistics','overdue'=>'Overdue','held'=>'On review hold'] as $key=>$label)
-        <article><span>{{ $isSeller ? (['earned_net'=>'Net commission','seller_due'=>'Your GCash commission due','logistics_due'=>'COD remittance pending'][$key] ?? $label) : $label }}</span><strong>&#8369;{{ $money($totals[$key]) }}</strong></article>
+        <article class="{{ $isLogistics ? 'commission-metric-card' : '' }}">@if($isLogistics)<span class="commission-metric-icon"><x-admin-icon :name="$logisticsMetricIcons[$key]" /></span>@endif<span>{{ $isSeller ? (['earned_net'=>'Net commission','seller_due'=>'Your GCash commission due','logistics_due'=>'COD remittance pending'][$key] ?? $label) : $label }}</span><strong>&#8369;{{ $money($totals[$key]) }}</strong></article>
         @endforeach
     </div>
     <div class="commission-receipts" aria-label="All-time payment activity">

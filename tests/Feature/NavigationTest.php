@@ -54,9 +54,9 @@ class NavigationTest extends TestCase
     public function test_all_six_roles_have_the_approved_groups_and_no_empty_groups(): void
     {
         $groups = ['admin' => ['Accounts & Recruitment', 'Marketplace & Resources', 'Compliance', 'Finance & Reports', 'Communications', 'System'],
-            'buyer' => [], 'seller' => [],
+            'buyer' => [], 'seller' => ['Products & Promotions', 'Customers & Updates', 'Finance & Reports', 'Store Settings'],
             'logistics_admin' => ['Operations', 'Personnel & Resources', 'Tracking & Reports', 'Finance', 'Administration'],
-            'hub_staff' => ['Operations', 'Hub Resources', 'Tracking', 'Finance', 'Communications'],
+            'hub_staff' => ['Operations', 'Tracking', 'Staff & Finance'],
             'rider' => ['Pickup Operations', 'Transfer Operations', 'Delivery Operations', 'Earnings & History', 'Communications']];
         foreach ($groups as $role => $expected) {
             $prefix = in_array($role, ['hub_staff', 'logistics_admin']) ? 'logistics' : $role;

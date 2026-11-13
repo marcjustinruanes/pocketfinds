@@ -5,18 +5,21 @@
 
 @section('content')
 <section class="delivery-reports-page">
-@include('logistics.partials.filters')
-<p class="logistics-note">Parcel and rider performance use parcel creation dates. Vehicle counts show current fleet availability.</p>
-<div class="kpi-grid">
+<div class="card report-filter-card">
+  <div class="report-filter-heading"><span class="report-filter-icon"><x-admin-icon name="chart" /></span><div><h2>Report filters</h2><p>Choose a date range, hub, or status to refine your report.</p></div></div>
+  @include('logistics.partials.filters')
+</div>
+<div class="card report-note"><span class="report-note-icon"><x-admin-icon name="info" /></span><p>Parcel and rider performance use parcel creation dates. Vehicle counts show current fleet availability.</p></div>
+<div class="kpi-grid report-kpi-grid">
   <div class="kpi"><div class="label">Total Shipments</div><div class="value">{{ $total }}</div></div>
   <div class="kpi"><div class="label">Completed</div><div class="value">{{ $completed }}</div><div class="delta up">{{ $total > 0 ? round($completed/$total*100,1) : 0 }}% success rate</div></div>
   <div class="kpi"><div class="label">Cancelled</div><div class="value">{{ $cancelled }}</div><div class="delta {{ $cancelled > 0 ? 'down' : 'up' }}"></div></div>
   <div class="kpi"><div class="label">Failed</div><div class="value">{{ $failed }}</div><div class="delta {{ $failed > 0 ? 'down' : 'up' }}"></div></div>
 </div>
 
-<div class="dash-grid">
-  <div class="card">
-    <div class="card-head"><h2>Courier Performance</h2><span style="font-size:12px;color:var(--muted)">Top 10 by deliveries</span></div>
+<div class="dash-grid report-performance-grid">
+  <div class="card report-courier-card">
+    <div class="card-head"><div><h2>Courier Performance</h2><p>Top 10 couriers by delivered parcels.</p></div><span class="report-head-note">Top 10</span></div>
     <div class="table-wrap">
       <table class="dtable">
         <thead><tr><th>#</th><th>Courier</th><th>Deliveries</th></tr></thead>
@@ -40,22 +43,22 @@
     </div>
   </div>
 
-  <div class="stack">
-    <div class="card card-pad">
+  <div class="stack report-stat-stack">
+    <div class="card card-pad report-stat-card">
       <div class="field-label">Active Couriers</div>
       <div class="value" style="font-family:var(--font-display);font-size:28px;font-weight:600;margin:6px 0">{{ $couriers }}</div>
     </div>
-    <div class="card card-pad">
+    <div class="card card-pad report-stat-card">
       <div class="field-label">Success Rate</div>
       <div class="value" style="font-family:var(--font-display);font-size:28px;font-weight:600;margin:6px 0">{{ $total > 0 ? round($completed/$total*100,1) : 0 }}%</div>
     </div>
-    <div class="card card-pad">
+    <div class="card card-pad report-stat-card">
       <div class="field-label">Issue Rate</div>
       <div class="value" style="font-family:var(--font-display);font-size:28px;font-weight:600;margin:6px 0">{{ $total > 0 ? round(($cancelled+$failed)/$total*100,1) : 0 }}%</div>
     </div>
   </div>
 </div>
-<div class="dash-grid report-summary-grid"><div class="card"><div class="card-head"><h2>Parcel and pickup summary</h2></div><div class="table-wrap"><table class="dtable"><thead><tr><th>Pipeline status</th><th>Parcels</th></tr></thead><tbody>@forelse($summary as $row)<tr><td>{{ ucfirst(str_replace('_',' ',$row->shipping_status)) }}</td><td>{{ $row->total }}</td></tr>@empty<tr><td colspan="2"><div class="empty"><h3>No matching parcels</h3></div></td></tr>@endforelse</tbody></table></div></div><div class="card"><div class="card-head"><h2>Current vehicle fleet</h2></div><div class="table-wrap"><table class="dtable"><thead><tr><th>Platform approval</th><th>Availability</th><th>Vehicles</th></tr></thead><tbody>@forelse($vehicleSummary as $row)<tr><td>{{ ucfirst($row->platform_status) }}</td><td>{{ $row->is_available ? 'Available' : 'Maintenance / unavailable' }}</td><td>{{ $row->total }}</td></tr>@empty<tr><td colspan="3"><div class="empty"><h3>No vehicles</h3></div></td></tr>@endforelse</tbody></table></div></div></div>
-<div class="card report-hub-table"><div class="card-head"><h2>Municipal hub summary</h2></div><div class="table-wrap"><table class="dtable"><thead><tr><th>Municipality</th><th>Province</th><th>Matching parcels on route</th><th>Operations</th></tr></thead><tbody>@forelse($hubSummary as $hub)<tr><td>{{ $hub->municipality }}</td><td>{{ $hub->province }}</td><td>{{ $hub->parcel_count }}</td><td>{{ $hub->is_operational ? 'Operational' : 'Closed' }}</td></tr>@empty<tr><td colspan="4"><div class="empty"><h3>No hubs</h3></div></td></tr>@endforelse</tbody></table></div></div>
+<div class="dash-grid report-summary-grid"><div class="card report-summary-card"><div class="card-head"><div><h2>Parcel and pickup summary</h2><p>Shipments grouped by their current pipeline status.</p></div></div><div class="table-wrap"><table class="dtable"><thead><tr><th>Pipeline status</th><th>Parcels</th></tr></thead><tbody>@forelse($summary as $row)<tr><td>{{ ucfirst(str_replace('_',' ',$row->shipping_status)) }}</td><td>{{ $row->total }}</td></tr>@empty<tr><td colspan="2"><div class="empty"><h3>No matching parcels</h3></div></td></tr>@endforelse</tbody></table></div></div><div class="card report-summary-card"><div class="card-head"><div><h2>Current vehicle fleet</h2><p>Approval and current availability across vehicles.</p></div></div><div class="table-wrap"><table class="dtable"><thead><tr><th>Platform approval</th><th>Availability</th><th>Vehicles</th></tr></thead><tbody>@forelse($vehicleSummary as $row)<tr><td>{{ ucfirst($row->platform_status) }}</td><td>{{ $row->is_available ? 'Available' : 'Maintenance / unavailable' }}</td><td>{{ $row->total }}</td></tr>@empty<tr><td colspan="3"><div class="empty"><h3>No vehicles</h3></div></td></tr>@endforelse</tbody></table></div></div></div>
+<div class="card report-hub-table"><div class="card-head"><div><h2>Municipal hub summary</h2><p>Matching shipment volume and operating status by hub.</p></div></div><div class="table-wrap"><table class="dtable"><thead><tr><th>Municipality</th><th>Province</th><th>Matching parcels on route</th><th>Operations</th></tr></thead><tbody>@forelse($hubSummary as $hub)<tr><td>{{ $hub->municipality }}</td><td>{{ $hub->province }}</td><td>{{ $hub->parcel_count }}</td><td>{{ $hub->is_operational ? 'Operational' : 'Closed' }}</td></tr>@empty<tr><td colspan="4"><div class="empty"><h3>No hubs</h3></div></td></tr>@endforelse</tbody></table></div></div>
 </section>
 @endsection

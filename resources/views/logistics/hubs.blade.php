@@ -19,8 +19,8 @@
   @if($errors->any())<div class="logistics-alert" role="alert"><strong>Changes could not be saved</strong>@foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
 
   <div class="coverage-stats">
-    @foreach([[$totalHubs,'Company hubs'],[$regionalHubsCount,'Regional gateways'],[$riderHiringCount,'Hubs accepting Riders'],[$staffHiringCount,'Hubs accepting Hub Staff']] as [$value,$label])
-    <div class="card coverage-stat"><strong>{{ $value }}</strong><span>{{ $label }}</span></div>
+    @foreach([[$totalHubs,'Company hubs','box'],[$regionalHubsCount,'Regional gateways','pin'],[$riderHiringCount,'Hubs accepting Riders','truck'],[$staffHiringCount,'Hubs accepting Hub Staff','users']] as [$value,$label,$icon])
+    <div class="card coverage-stat"><span class="coverage-stat-icon"><x-admin-icon :name="$icon" /></span><span class="coverage-stat-label">{{ $label }}</span><strong>{{ $value }}</strong></div>
     @endforeach
   </div>
 
@@ -42,7 +42,7 @@
   @forelse($allHubs as $hub)
   <article id="hiring-hub-{{ $hub->id }}" class="card coverage-hub">
     <header class="coverage-hub-header">
-      <div><h3>{{ $hub->name ?: $hub->municipality }}</h3><p>{{ $hub->municipality }}, {{ $hub->province }}</p></div>
+      <div class="coverage-hub-identity"><span class="coverage-hub-icon"><x-admin-icon name="pin" /></span><div><h3>{{ $hub->name ?: $hub->municipality }}</h3><p>{{ $hub->municipality }}, {{ $hub->province }}</p></div></div>
       <div class="coverage-tags"><span class="stamp {{ $hub->is_operational ? 'stamp-approved' : 'stamp-suspended' }}">{{ $hub->is_operational ? 'Operational' : 'Hub closed' }}</span><span class="stamp">{{ $hub->is_regional_hub ? 'Regional gateway' : 'Municipal hub' }}</span></div>
     </header>
     <div class="coverage-roles">
@@ -50,7 +50,7 @@
       @php($state = $hub->{$prefix.'_hiring_state'})
       @php($fieldId = 'hub-'.$hub->id.'-'.$prefix)
       <section class="coverage-role" aria-labelledby="{{ $fieldId }}-heading">
-        <div class="coverage-role-header"><h4 id="{{ $fieldId }}-heading">{{ $label }} Hiring</h4><span class="stamp {{ $state['eligible'] ? 'stamp-approved' : 'stamp-suspended' }}">{{ $state['status'] }}</span></div>
+        <div class="coverage-role-header"><div class="coverage-role-title"><span class="coverage-role-icon"><x-admin-icon :name="$prefix === 'rider' ? 'truck' : 'users'" /></span><h4 id="{{ $fieldId }}-heading">{{ $label }} Hiring</h4></div><span class="stamp {{ $state['eligible'] ? 'stamp-approved' : 'stamp-suspended' }}">{{ $state['status'] }}</span></div>
         <dl class="coverage-counts"><div><dt>Approved</dt><dd>{{ $state['count'] }}</dd></div><div><dt>Hire limit</dt><dd>{{ $state['limit'] === null ? 'Unlimited' : $state['limit'] }}</dd></div><div><dt>Vacancies</dt><dd>{{ $state['remaining'] === null ? 'Unlimited' : $state['remaining'] }}</dd></div></dl>
         @if(!$hub->is_operational)<div class="coverage-notice">This hub is closed. New applications are blocked for both roles.</div>@elseif($state['over_capacity'])<div class="coverage-notice">Over capacity. Existing personnel remain assigned; additional approvals are blocked.</div>@elseif($state['status'] === 'Full')<div class="coverage-notice">The approved-hire limit has been reached. New applications and approvals are blocked.</div>@elseif($state['status'] === 'Deadline passed')<div class="coverage-notice">The closing deadline has passed. Clear or change it to accept new applications.</div>@endif
         <form method="POST" action="{{ route('logistics.hubs.toggle-hiring', $hub->id) }}" class="coverage-hiring-form">
@@ -66,7 +66,7 @@
       @endforeach
     </div>
     <details class="coverage-details"><summary>Hub details and operational settings</summary><p>{{ $hub->staff_count }} assigned Hub Staff accounts; {{ $hub->riders_count }} assigned Rider accounts, across all statuses.</p>
-      <form method="POST" action="{{ route('logistics.hubs.update',$hub->id) }}" onsubmit="return confirm('Update this hub?')">@csrf @method('PATCH')
+      <form method="POST" action="{{ route('logistics.hubs.update',$hub->id) }}" data-confirm data-confirm-title="Save hub changes?" data-confirm-message="The hub details and coverage settings will be updated." data-confirm-action="Save changes" data-confirm-tone="success">@csrf @method('PATCH')
         @include('logistics.partials.hub-address-fields', ['addressHub'=>$hub])
         <button type="submit" class="btn btn-outline" data-hub-save disabled>Save hub details</button>
       </form>

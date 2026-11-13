@@ -18,8 +18,8 @@
 
   @include('logistics.partials.staff-salary-summary')
   {{-- ── Current rate ── --}}
-  <section class="cash-card" id="rate" aria-label="Configured salary rate">
-    <h2>My Salary Rate</h2>
+  <section class="cash-card salary-rate-card" id="rate" aria-label="Configured salary rate">
+    <h2 class="salary-section-title"><span class="salary-section-icon"><x-admin-icon name="peso" /></span>My Salary Rate</h2>
     @if($salary && $salary->monthly_cents>0)
     <p>Next scheduled pay date: <strong>{{ $upcomingPayDate->toDateString() }}</strong>. A date is a schedule, not confirmation of payment.</p>
     <div class="cash-stats">
@@ -45,8 +45,8 @@
   </section>
 
   {{-- ── Payroll periods ── --}}
-  <section class="cash-card" id="periods" aria-label="Payroll periods">
-    <h2>Payroll Periods</h2>
+  <section class="cash-card salary-periods-card" id="periods" aria-label="Payroll periods">
+    <h2 class="salary-section-title"><span class="salary-section-icon"><x-admin-icon name="file" /></span>Payroll Periods</h2>
     <p>Each row is one semi-monthly installment. Your Logistics Admin generates and pays these. Acknowledge receipt once you have confirmed the actual GCash transfer in your account.</p>
     <div class="cash-table">
       <table><thead><tr>
@@ -77,7 +77,7 @@
         </td>
       </tr>
       @empty
-      <tr><td colspan="5">No payroll periods generated yet. Contact your Logistics Admin.</td></tr>
+      <tr><td colspan="5"><div class="salary-empty-state"><span aria-hidden="true">—</span><strong>No payroll periods yet</strong><small>Contact your Logistics Admin when you need more information.</small></div></td></tr>
       @endforelse
       </tbody></table>
     </div>
@@ -85,8 +85,8 @@
   </section>
 
   {{-- ── Payment history ── --}}
-  <section class="cash-card" id="history" aria-label="Payment history">
-    <h2>Payment History</h2>
+  <section class="cash-card salary-payment-history" id="history" aria-label="Payment history">
+    <h2 class="salary-section-title"><span class="salary-section-icon"><x-admin-icon name="clock" /></span>Payment History</h2>
     @forelse($payouts as $p)
     @php($destination = $destinations->firstWhere('id',$p->destination_id))
     <article class="cash-handover">
@@ -113,14 +113,14 @@
       @endif
     </article>
     @empty
-    <p>No payments recorded yet.</p>
+    <div class="salary-empty-state"><span aria-hidden="true">—</span><strong>No payments recorded yet</strong><small>Your payment history will appear here.</small></div>
     @endforelse
     {{ $payouts->links() }}
   </section>
 
   {{-- ── Receiving account ── --}}
-  <section class="cash-card" id="receiving" aria-label="GCash receiving account">
-    <h2>My Receiving Account</h2>
+  <section class="cash-card salary-receiving-card" id="receiving" aria-label="GCash receiving account">
+    <h2 class="salary-section-title"><span class="salary-section-icon"><x-admin-icon name="account" /></span>My Receiving Account</h2>
     <p>Only you can add a receiving account. Your Logistics Admin will use this to send salary payments. Existing payouts retain their original instructions.</p>
     @forelse($destinations as $d)
     <div class="settlement-account">
@@ -130,7 +130,7 @@
       <small>Added {{ \Carbon\CarbonImmutable::parse($d->created_at,config('app.timezone'))->setTimezone('Asia/Manila')->format('M j, Y') }}</small>
     </div>
     @empty
-    <p>No receiving account added yet. Add one below so your Admin can prepare your salary payment.</p>
+    <p class="salary-receiving-empty">No receiving account added yet. Add one below so your Admin can prepare your salary payment.</p>
     @endforelse
     <a class="btn" href="{{ route('logistics.account') }}#salary-receiving">Manage GCash details in My Account</a>
   </section>

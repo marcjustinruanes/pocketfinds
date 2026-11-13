@@ -1,5 +1,6 @@
-<div class="card card-pad"><h2>Record a delivery issue</h2>
+<div class="card card-pad issue-record-card"><div class="issue-section-intro"><span class="issue-section-icon"><x-admin-icon name="flag" /></span><div><h2>Record a delivery issue</h2>
 <p>Investigation records do not change parcel custody, inventory, payments or Rider earnings. Lost/damaged reports block dispatch and release; resolving an investigation does not confirm recovered or sellable custody.</p>
+</div></div>
 <form method="POST" enctype="multipart/form-data" action="{{ route('logistics.issues.store') }}">@csrf
 <div class="logistics-form-grid">
 @if(auth()->user()->isLogisticsAdmin())<label>Responsible hub<select name="hub_id" required><option value="">Select a hub on the parcel route</option>@foreach($issueHubs as $hub)<option value="{{ $hub->id }}">{{ $hub->municipality }}, {{ $hub->province }}</option>@endforeach</select></label>@endif
@@ -8,7 +9,7 @@
 <label>Description<textarea name="description" required minlength="10" maxlength="2000">{{ old('description') }}</textarea></label>
 <label>Private evidence (required for damage, JPG/PNG, up to 5 MB)<input type="file" name="proof" accept="image/jpeg,image/png"></label>
 </div><button class="btn btn-primary">Record issue</button></form></div>
-<div class="card"><div class="card-head"><h2>Recorded issues</h2><span>{{ $issues->total() }} records</span></div><div class="table-wrap"><table class="dtable"><thead><tr><th>Parcel / issue</th><th>Investigation</th><th>Owner / status</th><th>Update</th></tr></thead><tbody>
+<div class="card issue-recorded-card"><div class="card-head"><div><h2 class="issue-card-title"><span class="issue-heading-icon"><x-admin-icon name="flag" /></span>Recorded issues</h2><p>Review investigations, evidence, and resolution progress.</p></div><span class="issue-count-pill">{{ $issues->total() }} {{ \Illuminate\Support\Str::plural('record', $issues->total()) }}</span></div><div class="table-wrap"><table class="dtable"><thead><tr><th>Parcel / issue</th><th>Investigation</th><th>Owner / status</th><th>Update</th></tr></thead><tbody>
 @forelse($issues as $issue)
 <tr><td>#{{ $issue->id }} - {{ $issue->shipment?->tracking_number }}<br>{{ ucfirst(str_replace('_',' ',$issue->kind)) }}</td>
 <td>{{ $issue->description }}@if($issue->resolution)<p>{{ $issue->resolution }}</p>@endif
@@ -36,6 +37,6 @@
 @endif</td></tr>
 @empty<tr><td colspan="4"><div class="empty"><h3>No recorded issues</h3></div></td></tr>@endforelse
 </tbody></table></div></div><div class="logistics-pagination">{{ $issues->links() }}</div>
-<div class="card"><div class="card-head"><h2>Recent investigation history</h2></div><div class="table-wrap"><table class="dtable"><thead><tr><th>Issue</th><th>Actor ID</th><th>Assignee ID</th><th>Status / recorded context</th><th>Time</th></tr></thead><tbody>
+<div class="card issue-history-card"><div class="card-head"><div><h2 class="issue-card-title"><span class="issue-heading-icon"><x-admin-icon name="clock" /></span>Recent investigation history</h2><p>Timeline of recorded changes and administrative actions.</p></div></div><div class="table-wrap"><table class="dtable"><thead><tr><th>Issue</th><th>Actor ID</th><th>Assignee ID</th><th>Status / recorded context</th><th>Time</th></tr></thead><tbody>
 @forelse($issueEvents as $event)<tr><td>#{{ $event->issue_id }}</td><td>{{ $event->actor_id }}</td><td>{{ $event->assigned_to??'Unassigned' }}</td><td>{{ $event->status }}<pre style="white-space:pre-wrap;overflow-wrap:anywhere">{{ json_decode($event->note??'',true)!==null?json_encode(json_decode($event->note,true),JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE):$event->note }}</pre></td><td>{{ $event->created_at ? \Illuminate\Support\Carbon::parse($event->created_at)->format('M j, Y g:i A') : '—' }}</td></tr>@empty<tr><td colspan="5"><div class="empty"><h3>No issue history</h3></div></td></tr>@endforelse
 </tbody></table></div></div>

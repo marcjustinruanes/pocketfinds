@@ -6,14 +6,14 @@
 <section class="hub-transfer-page hub-transfer-detail-page">
 @if(session('success'))<div class="card card-pad">{{ session('success') }}</div>@endif
 @if($errors->any())<div class="card card-pad">{{ $errors->first() }}</div>@endif
-<div class="card card-pad"><p class="mono">{{ $batch->id }}</p><p><strong>{{ $batch->from_hub }}, {{ $batch->from_province }}</strong> → <strong>{{ $batch->to_hub }}, {{ $batch->to_province }}</strong></p>
-<div class="logistics-form-grid">
-@foreach(['requested'=>'requester','approved'=>'approver','dispatched'=>'dispatcher','received'=>'receiver'] as $action=>$relation)<div>{{ ucfirst($action) }}: {{ $batch->$relation?->username ?? 'Not recorded' }}<br>{{ $batch->{$action.'_at'}?->format('Y-m-d g:i A') ?? '—' }}</div>@endforeach
-<div>Rider: {{ $batch->rider?->username ?? '—' }}</div><div>Vehicle: {{ $batch->vehicle?->plate_number ?? ($batch->rider_id ? 'Personal vehicle / legacy vehicle not recorded' : '—') }}</div>
+<div class="card card-pad transfer-overview-card"><p class="mono">{{ $batch->id }}</p><p class="transfer-route-summary"><strong>{{ $batch->from_hub }}, {{ $batch->from_province }}</strong><span aria-hidden="true">→</span><strong>{{ $batch->to_hub }}, {{ $batch->to_province }}</strong></p>
+<div class="logistics-form-grid transfer-timeline">
+@foreach(['requested'=>'requester','approved'=>'approver','dispatched'=>'dispatcher','received'=>'receiver'] as $action=>$relation)<div class="transfer-timeline-item"><span>{{ ucfirst($action) }}</span><strong>{{ $batch->$relation?->username ?? 'Not recorded' }}</strong><time>{{ $batch->{$action.'_at'}?->format('Y-m-d g:i A') ?? '—' }}</time></div>@endforeach
+<div class="transfer-timeline-item"><span>Rider</span><strong>{{ $batch->rider?->username ?? '—' }}</strong></div><div class="transfer-timeline-item"><span>Vehicle</span><strong>{{ $batch->vehicle?->plate_number ?? ($batch->rider_id ? 'Personal vehicle / legacy vehicle not recorded' : '—') }}</strong></div>
 </div>
-@if($batch->rejection_reason)<p>Rejection reason: {{ $batch->rejection_reason }}</p>@endif
-@if($batch->cancellation_reason)<p>Cancellation reason: {{ $batch->cancellation_reason }}</p>@endif
-@if($batch->legacy_import)<p>Imported legacy leg. Earlier actor details or event history may not have been recorded.</p>@endif
+@if($batch->rejection_reason)<p><strong>Rejection reason</strong><span>{{ $batch->rejection_reason }}</span></p>@endif
+@if($batch->cancellation_reason)<p><strong>Cancellation reason</strong><span>{{ $batch->cancellation_reason }}</span></p>@endif
+@if($batch->legacy_import)<p><strong>Legacy transfer</strong><span>Earlier actor details or event history may not have been recorded.</span></p>@endif
 </div>
 @if(auth()->user()->isLogisticsAdmin() && $batch->status === 'in_transit')
 <div class="card card-pad custody-receipt" role="status"><h2>Awaiting hub receipt</h2><p>Assigned destination Hub Staff must confirm the parcels have physically arrived. You can monitor progress and review discrepancies here.</p></div>

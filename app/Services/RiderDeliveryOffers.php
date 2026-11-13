@@ -192,6 +192,7 @@ class RiderDeliveryOffers
             if ($leg === 'delivery' && $shipment->order) {
                 $shipment->order->update(['status' => 'assigned_to_rider']);
                 $shipment->order->logStatus('assigned_to_rider', $rider->id);
+                Order::notifyUser($shipment->order->buyer_id, 'Rider Assigned', 'A courier has accepted delivery of order #'.$shipment->order->order_number.'.', 'order_status', $shipment->order_id);
             }
             if ($leg === 'pickup') {
                 Order::notifyUser($shipment->order?->seller_id, 'Pickup Rider Assigned', 'A rider accepted the pickup for order #'.$shipment->order?->order_number.'.', 'order_status', $shipment->order_id);

@@ -5,12 +5,12 @@
 
 @section('content')
 <section class="delivery-assignment-page">
-@if(app(\App\Services\AssignmentReassignment::class)->installed())<div class="card card-pad"><a class="btn btn-primary" href="{{ route('logistics.assignments.review') }}">Assignment evidence & reassignment</a></div>@endif
+@if(app(\App\Services\AssignmentReassignment::class)->installed())<div class="card card-pad delivery-assignment-action"><div class="delivery-assignment-action-copy"><span class="delivery-assignment-action-icon"><x-admin-icon name="layers" /></span><div><strong>Assignment tools</strong><small>Review evidence and manage reassignment requests.</small></div></div><a class="btn btn-primary" href="{{ route('logistics.assignments.review') }}">Assignment evidence &amp; reassignment</a></div>@endif
 @if(session('success'))<div role="status" class="card card-pad">{{ session('success') }}</div>@endif
 @if($errors->any())<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ $errors->first() }}</div>@endif
 <div class="card delivery-assignment-card">
   <div class="card-head">
-    <h2>Delivery Assignments</h2>
+    <h2><span class="delivery-assignment-heading-icon"><x-admin-icon name="truck" /></span>Delivery Assignments</h2>
     <div style="display:flex;gap:8px">
       <span class="stamp stamp-pending">{{ $assignmentCounts['sorted'] ?? 0 }} awaiting courier</span>
       <span class="stamp stamp-active">{{ ($assignmentCounts['assigned_to_rider'] ?? 0) + ($assignmentCounts['out_for_delivery'] ?? 0) }} in progress</span>
@@ -80,7 +80,7 @@
           </td>
         </tr>
         @empty
-        <tr><td colspan="6"><div class="empty"><h3>No active assignments</h3><p>Approved deliveries will appear here once available.</p></div></td></tr>
+        <tr><td colspan="6"><div class="empty delivery-assignment-empty"><span aria-hidden="true">—</span><h3>No active assignments</h3><p>Approved deliveries will appear here once available.</p></div></td></tr>
         @endforelse
       </tbody>
     </table>

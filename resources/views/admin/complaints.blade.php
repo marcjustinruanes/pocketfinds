@@ -101,7 +101,7 @@
               <div class="modal-foot">
                 <button class="btn btn-outline" data-modal-close>Close</button>
                 @if($c->status !== 'resolved')
-                <form method="POST" action="{{ route('admin.complaints.resolve', $c->id) }}">
+                <form method="POST" action="{{ route('admin.complaints.resolve', $c->id) }}" data-confirm data-confirm-title="Resolve this case?" data-confirm-message="This will mark the dispute as resolved." data-confirm-action="Mark resolved" data-confirm-tone="success">
                   @csrf @method('PATCH')
                   <button class="btn btn-success" type="submit">Mark Resolved</button>
                 </form>

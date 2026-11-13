@@ -15,6 +15,7 @@ use App\Services\GcashWorkflow;
 use App\Services\MediaLifecycle;
 use App\Support\OrderTimeline;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -490,29 +491,41 @@ class GcashPurchaseTest extends TestCase
     {
         foreach (Order::STATUSES as $status) {
             $order = new Order(['status' => $status]);
-            $order->forceFill(['created_at' => now()]);
+            $order->forceFill(['created_at' => Carbon::parse('2026-10-15 09:00:00')]);
             $order->setRelation('shipment', null);
             $timeline = OrderTimeline::forOrder($order, []);
-            $this->assertCount(6, $timeline['rows']);
+            $this->assertCount($status === 'placed' ? 1 : 2, $timeline['rows']);
             $this->assertCount(1, array_filter($timeline['rows'], fn ($row) => $row['timestamp'] !== null));
+            $this->assertSame('current', $timeline['rows'][array_key_last($timeline['rows'])]['state']);
             if (in_array($status, ['cancelled', 'returned', 'delivery_failed'])) {
                 $this->assertTrue($timeline['stopped']);
-                $this->assertCount(0, array_filter($timeline['rows'], fn ($row) => $row['state'] === 'current'));
             }
         }
-        $order->status = 'picked_up';
+        $order = new Order(['status' => 'picked_up']);
+        $order->forceFill(['created_at' => Carbon::parse('2026-10-15 09:00:00')]);
+        $order->setRelation('shipment', null);
         $timeline = OrderTimeline::forOrder($order, [(object) ['status' => 'confirmed', 'created_at' => '2026-10-15 09:10:00']]);
         $this->assertSame('completed', $timeline['rows'][1]['state']);
         $this->assertSame('09:10', $timeline['rows'][1]['timestamp']->format('H:i'));
-        $this->assertSame('unrecorded', $timeline['rows'][2]['state']);
-        $this->assertNull($timeline['rows'][2]['timestamp']);
-        $this->assertSame('current', $timeline['rows'][3]['state']);
-        $this->assertSame('pending', $timeline['rows'][4]['state']);
-        $this->assertSame('future', $timeline['rows'][5]['state']);
+        $this->assertSame('current', $timeline['rows'][2]['state']);
+        $this->assertSame('Picked up', $timeline['rows'][2]['title']);
+        $this->assertNotContains('Out for delivery', array_column($timeline['rows'], 'title'));
         $order->status = 'completed';
         $timeline = OrderTimeline::forOrder($order, [(object) ['status' => 'completed', 'created_at' => '2026-10-15 10:15:00']]);
-        $this->assertSame('Order completed', $timeline['rows'][5]['title']);
-        $this->assertSame('10:15', $timeline['rows'][5]['timestamp']->format('H:i'));
+        $this->assertSame('Order completed', $timeline['rows'][1]['title']);
+        $this->assertSame('10:15', $timeline['rows'][1]['timestamp']->format('H:i'));
+        $this->assertCount(2, $timeline['rows']);
+    }
+
+    public function test_payment_confirmation_is_shown_only_with_a_verified_payment_timestamp(): void
+    {
+        $order = new Order(['status' => 'placed']);
+        $order->forceFill(['created_at' => Carbon::parse('2026-10-15 09:10:00')]);
+        $order->setRelation('shipment', null);
+        $timeline = OrderTimeline::forOrder($order, [], '2026-10-15 09:00:00');
+
+        $this->assertSame(['Payment confirmed', 'Order placed'], array_column($timeline['rows'], 'title'));
+        $this->assertSame('09:00', $timeline['rows'][0]['timestamp']->format('H:i'));
     }
 
     public function test_json_cancellation_preserves_authorization_stock_and_payment_history_on_retries(): void

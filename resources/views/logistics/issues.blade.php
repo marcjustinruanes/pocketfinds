@@ -8,7 +8,7 @@
 @include('logistics.partials.recovery-custody')
 @include('logistics.partials.issue-management')
 <div class="card issues-table-card">
-  <div class="card-head"><h2>Problem Deliveries</h2><span class="stamp stamp-rejected">{{ $shipments->count() }} issues</span></div>
+  <div class="card-head"><h2 class="issue-card-title"><span class="issue-heading-icon"><x-admin-icon name="flag" /></span>Problem Deliveries</h2><span class="stamp stamp-rejected">{{ $shipments->count() }} issues</span></div>
   <div class="table-wrap">
     <table class="dtable">
       <thead>
@@ -44,7 +44,7 @@
             @if($s->shipping_status === 'delivery_failed')
             <div class="row-actions">
               @if($s->delivery_failed_reason !== 'refused' && $s->delivery_attempts < 3 && !app(App\Services\LogisticsRecovery::class)->hasConditionHold($s->id) && !app(App\Services\LogisticsRecovery::class)->hasRecoveryHold($s->id) && !app(App\Services\LogisticsRts::class)->active($s->id))
-              <form method="POST" action="{{ route('logistics.status.update', $s->id) }}">
+              <form method="POST" action="{{ route('logistics.status.update', $s->id) }}" data-confirm data-confirm-title="Retry this delivery?" data-confirm-message="The parcel will be returned to the rider assignment workflow." data-confirm-action="Retry delivery" data-confirm-tone="success">
                 @csrf @method('PATCH')
                 <input type="hidden" name="status" value="assigned_to_rider"><label>Retry reason<input name="reason" required minlength="10" maxlength="300" style="min-height:44px;max-width:180px"></label>
                 <button class="btn btn-sm btn-outline">Retry Delivery</button>
@@ -60,7 +60,7 @@
           </td>
         </tr>
         @empty
-        <tr><td colspan="6"><div class="empty"><h3>No issues found</h3><p>All deliveries are running smoothly.</p></div></td></tr>
+        <tr><td colspan="6"><div class="empty issue-empty-state"><h3>No issues found</h3><p>All deliveries are running smoothly.</p></div></td></tr>
         @endforelse
       </tbody>
     </table>

@@ -12,8 +12,8 @@
     <ul>@foreach(session('payroll_results') as $item)<li>{{ $item['name'] }} / #{{ $item['id'] }}: <strong>{{ ucfirst($item['state']) }}</strong> {{ $item['reason'] ?? '' }}</li>@endforeach</ul>
   </section>
   @endif
-  <section class="cash-card">
-    <h2>Payroll worklist</h2>
+  <section class="cash-card payroll-worklist-card">
+    <h2 class="payroll-worklist-heading"><span class="payroll-heading-icon"><x-admin-icon name="users" /></span><span>Payroll worklist</span></h2>
     <form method="GET" action="{{ route('logistics.finance.staff') }}" class="payroll-filters">
       <div><label for="payroll-q">Staff name or account ID</label><input id="payroll-q" name="q" value="{{ $filters['q'] }}" maxlength="100" type="search" placeholder="Search Staff"></div>
       <div><label for="payroll-hub">Assigned hub</label><select id="payroll-hub" name="hub"><option value="">All hubs</option>@foreach($hubs as $hub)<option value="{{ $hub->id }}" @selected($filters['hub']==$hub->id)>{{ $hub->municipality }} / {{ $hub->province }} #{{ $hub->id }}</option>@endforeach</select></div>
@@ -25,17 +25,17 @@
       <div class="payroll-filter-actions"><button class="btn btn-primary">Apply filters</button><a class="btn" href="{{ route('logistics.finance.staff') }}">Reset</a></div>
     </form>
     <div class="cash-stats payroll-summary">
-      <div><span>Matching Staff</span><strong>{{ $summary->staff_count }}</strong></div>
-      <div><span>Unpaid generated obligations</span><strong>PHP {{ number_format(($summary->outstanding??0)/100,2) }}</strong></div>
-      <div><span>Recorded paid</span><strong>PHP {{ number_format(($summary->paid??0)/100,2) }}</strong></div>
-      <div><span>Not generated</span><strong>{{ $summary->ungenerated??0 }}</strong></div>
+      <div><span class="payroll-metric-icon"><x-admin-icon name="users" /></span><span>Matching Staff</span><strong>{{ $summary->staff_count }}</strong></div>
+      <div><span class="payroll-metric-icon"><x-admin-icon name="clock" /></span><span>Unpaid generated obligations</span><strong>PHP {{ number_format(($summary->outstanding??0)/100,2) }}</strong></div>
+      <div><span class="payroll-metric-icon"><x-admin-icon name="check-circle" /></span><span>Recorded paid</span><strong>PHP {{ number_format(($summary->paid??0)/100,2) }}</strong></div>
+      <div><span class="payroll-metric-icon"><x-admin-icon name="info" /></span><span>Not generated</span><strong>{{ $summary->ungenerated??0 }}</strong></div>
     </div>
     <p>Totals follow the selected period and filters. Not generated is not an established payable balance. Prepared reserves funds; Verified is still unpaid. Overdue means an unpaid generated obligation is past its due date.</p>
     <a class="btn" href="{{ route('logistics.finance.staff.export',$filters) }}">Export filtered payroll CSV</a>
   </section>
 
   @include('logistics.partials.hub-salary-settings')
-  <section class="cash-card" id="salaries">
+  <section class="cash-card payroll-obligations-card" id="salaries">
     <h2>Staff and salary obligations</h2>
     <p>Select up to 25 Staff on this page. Selection is explicit and resets when you change pages or filters. Generation does not require a GCash account; preparation does. Due dates are the 15th and 30th, or earlier month end.</p>
     <form method="POST" action="{{ route('logistics.finance.staff.bulk.preview') }}" id="payroll-selection" class="payroll-bulk">@csrf
@@ -95,18 +95,18 @@
           </td>
         </tr>
       @empty
-        <tr><td colspan="6">No Staff match these filters. Try another hub, period or status.</td></tr>
+        <tr><td class="payroll-table-empty" colspan="6"><strong>No Staff match these filters</strong><small>Try another hub, period or status.</small></td></tr>
       @endforelse
       </tbody></table>
     </div>
     {{ $staff->links() }}
   </section>
-  <section class="cash-card" id="payouts">
+  <section class="cash-card payroll-history-card" id="payouts">
     <h2>Payout history</h2><p>Instructions for the selected period and Staff filters. Open a payment to verify, hold, record an actual transfer or inspect its audit history.</p>
     @forelse($allPayouts as $p)
       <div class="payroll-history-row"><div><strong>{{ $p->given_names }} {{ $p->last_name }} / #{{ $p->staff_id }}</strong><p>PHP {{ number_format($p->amount_cents/100,2) }} / {{ ucfirst($p->status) }} / {{ $p->acknowledged_at ? 'Acknowledged' : 'Not acknowledged' }}</p></div><a class="btn" href="{{ route('logistics.finance.staff.show',array_merge($filters,['id'=>$p->id])) }}">View payout</a></div>
     @empty
-      <p>No staff payouts recorded for this selection.</p>
+      <div class="payroll-empty-state"><span aria-hidden="true">—</span><strong>No payouts for this selection</strong><p>Payments matching the selected period and staff filters will appear here.</p></div>
     @endforelse
     {{ $allPayouts->links() }}
   </section>

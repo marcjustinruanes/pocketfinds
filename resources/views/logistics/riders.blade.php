@@ -4,7 +4,7 @@
 @section('page-sub', "Approve/disapprove courier applications, activate or suspend riders")
 
 @section('content')
-<section class="personnel-page">
+<section class="personnel-page rider-management-page">
 @include('logistics.partials.personnel-tabs')
 
 <details class="card card-pad acf-create-card" style="margin-bottom:20px" @if($errors->any()) open @endif>
@@ -44,7 +44,7 @@
     <div class="table-wrap">
       <table class="dtable">
         <thead>
-          <tr><th>Applicant</th><th>Vehicle</th><th>Plate No.</th><th>Barangay routes</th><th>Submitted</th><th>Status</th><th></th></tr>
+          <tr><th>Applicant</th><th>Vehicle &amp; plate</th><th>Coverage</th><th>Submitted</th><th>Status</th><th></th></tr>
         </thead>
         <tbody>
           @forelse($riders as $rider)
@@ -56,9 +56,8 @@
                 <div><strong>{{ $rider->given_names }} {{ $rider->last_name }}</strong><span>{{ $rider->email }}</span></div>
               </div>
             </td>
-            <td>{{ $rider->vehicle_type ? \Illuminate\Support\Str::title(str_replace('_', ' ', $rider->vehicle_type)) : '—' }}</td>
-            <td class="mono">{{ $rider->vehicle_ownership === 'company' ? 'Company Vehicle' : ($rider->plate_number ?: '—') }}</td>
-            <td>@if($coverageInstalled){{ $rider->barangayRoutes->where('hub_id', $rider->logistics_hub_id)->pluck('barangay_name')->implode(', ') ?: 'No barangay coverage assigned' }}<br><a href="{{ route('logistics.riders.coverage.edit', $rider->id) }}">Manage barangay routes</a>@else Coverage migration pending @endif</td>
+            <td>{{ $rider->vehicle_type ? \Illuminate\Support\Str::title(str_replace('_', ' ', $rider->vehicle_type)) : '—' }}<div class="mono" style="font-size:11px;color:var(--muted)">{{ $rider->vehicle_ownership === 'company' ? 'Company vehicle' : ($rider->plate_number ?: 'Plate not provided') }}</div></td>
+            <td>@if($coverageInstalled)<span>{{ $rider->barangayRoutes->where('hub_id', $rider->logistics_hub_id)->count() }} barangay routes</span><br><a href="{{ route('logistics.riders.coverage.edit', $rider->id) }}">Manage coverage</a>@else Coverage migration pending @endif</td>
             <td class="mono">{{ $rider->created_at?->format('M d, Y') ?? '—' }}</td>
             <td><span class="stamp stamp-{{ $rider->status }}">{{ $activationPending && $rider->status === 'pending' ? 'Pending activation' : ucfirst($rider->status) }}</span></td>
             <td>
@@ -70,7 +69,7 @@
           </tr>
 
           <div class="modal-overlay" id="riderModal-{{ $rider->id }}">
-            <div class="modal modal-lg">
+            <div class="modal modal-lg rider-application-modal">
               <div class="modal-head">
                 <div class="modal-head-main">
                   <span class="modal-icon"><x-admin-icon name="truck" /></span>
@@ -119,6 +118,17 @@
                   </div>
                 </div>
 
+                @if($coverageInstalled)
+                <div class="section-card">
+                  <div class="section-head"><span class="ic"><x-admin-icon name="pin" /></span><span>Barangay Coverage</span></div>
+                  <div class="detail-grid">
+                    <div><div class="field-label">Assigned Hub</div><div class="field-value">{{ $rider->logisticsHub?->municipality ?? '—' }}, {{ $rider->logisticsHub?->province ?? '' }}</div></div>
+                    <div><div class="field-label">Covered Barangays</div><div class="field-value">{{ $rider->barangayRoutes->where('hub_id', $rider->logistics_hub_id)->pluck('barangay_name')->implode(', ') ?: 'No barangay coverage assigned' }}</div></div>
+                    <div class="full"><a class="btn btn-sm btn-outline" href="{{ route('logistics.riders.coverage.edit', $rider->id) }}">Manage barangay routes</a></div>
+                  </div>
+                </div>
+                @endif
+
                 <div class="section-card">
                   <div class="section-head"><span class="ic"><x-admin-icon name="shield" /></span><span>Verification Documents</span></div>
                   <div class="doc-grid">
@@ -138,7 +148,7 @@
                   @if($activationPending)
                   <form method="POST" action="{{ route('logistics.riders.activation.resend', $rider->id) }}">@csrf<button class="btn btn-primary" type="submit">Resend activation email</button></form>
                   @else
-                  <form method="POST" enctype="multipart/form-data" action="{{ route('logistics.riders.approve', $rider->id) }}" style="display:inline">
+                  <form method="POST" enctype="multipart/form-data" action="{{ route('logistics.riders.approve', $rider->id) }}" style="display:inline" data-confirm data-confirm-title="Approve this Rider?" data-confirm-message="This will approve the Rider account and enable the next activation step." data-confirm-action="Approve Rider" data-confirm-tone="success">
                     @csrf @method('PATCH')
                     <button class="btn btn-success" type="submit">Approve</button>
                   </form>
@@ -156,7 +166,7 @@
             </div>
           </div>
           @empty
-          <tr><td colspan="7"><div class="empty"><div class="ic"><x-admin-icon name="truck" /></div><h3>No {{ $status }} courier applications</h3></div></td></tr>
+          <tr><td colspan="6"><div class="empty"><div class="ic"><x-admin-icon name="truck" /></div><h3>No {{ $status }} courier applications</h3></div></td></tr>
           @endforelse
         </tbody>
       </table>

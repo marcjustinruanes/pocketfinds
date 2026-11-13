@@ -152,8 +152,11 @@ class RemainingLogisticsAuditTest extends LogisticsReconciliationTest
     {
         $states=['ready_for_pickup','ready_for_pickup','picked_up','at_sorting_center','hub_transfer','sorted','assigned_to_rider','out_for_delivery','delivery_failed','returned','cancelled','completed'];
         foreach($states as $index=>$state){$row=$this->shipment->getAttributes();$row['id']=(string)Str::uuid();$row['tracking_number']='MATRIX-'.$index;$row['shipping_status']=$state;$row['pickup_approved_at']=$index===1?now():null;$row['pickup_rider_id']=null;DB::table('shipments')->insert($row);}
-        $this->actingAs($this->admin)->get('/logistics/dashboard')->assertOk()->assertViewHas('total',13)->assertViewHas('active',6)->assertViewHas('completed',2)->assertViewHas('failed',1)->assertViewHas('pending',1)->assertViewHas('forVerify',1)->assertViewHas('available',1)->assertViewHas('inTransit',3)->assertViewHas('inProgress',2);
-        $this->observe('A14_matrix',['total'=>13,'active'=>6,'completed'=>2,'failed'=>1,'pending'=>1,'forVerify'=>1,'sorted'=>1,'inTransit'=>3,'inProgress'=>2]);
+        $assignedPickup=$this->shipment->getAttributes();$assignedPickup['id']=(string)Str::uuid();$assignedPickup['tracking_number']='MATRIX-ASSIGNED-PICKUP';$assignedPickup['shipping_status']='ready_for_pickup';$assignedPickup['pickup_approved_at']=now();$assignedPickup['pickup_rider_id']=$this->rider->id;DB::table('shipments')->insert($assignedPickup);
+        $dashboard=$this->actingAs($this->admin)->get('/logistics/dashboard');
+        $dashboard->assertOk()->assertViewHas('total',14)->assertViewHas('active',6)->assertViewHas('completed',2)->assertViewHas('failed',1)->assertViewHas('pending',1)->assertViewHas('forVerify',1)->assertViewHas('pickupAssigned',1)->assertViewHas('available',1)->assertViewHas('inTransit',3)->assertViewHas('inProgress',2)->assertSee('Approved pickups');
+        $this->get('/logistics/monitor?stage=pickup')->assertOk()->assertSee('MATRIX-ASSIGNED-PICKUP')->assertSee('Payout Test')->assertSee('Pickup leg');
+        $this->observe('A14_matrix',['total'=>14,'active'=>6,'completed'=>2,'failed'=>1,'pending'=>1,'forVerify'=>1,'pickup_assigned'=>1,'sorted'=>1,'inTransit'=>3,'inProgress'=>2]);
     }
     protected function finishRts(string $shipment): void
     {

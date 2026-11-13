@@ -99,3 +99,158 @@
   .logistics-ui .staff-payroll .payroll-filters { grid-template-columns:minmax(0,1fr); }
   .logistics-ui .staff-payroll .payroll-summary { grid-template-columns:minmax(0,1fr); }
 }
+
+/* Hub Staff Salaries page: clearer payroll hierarchy at normal zoom. */
+.logistics-ui .staff-payroll { gap:16px; font-size:12px; }
+.logistics-ui .staff-payroll > .cash-card { padding:18px; border-radius:14px; }
+.logistics-ui .staff-payroll .cash-card > h2 { font-size:14px; }
+.logistics-ui .staff-payroll .cash-card > p { font-size:11px; line-height:1.6; }
+.logistics-ui .staff-payroll .payroll-worklist-card { background:linear-gradient(180deg,#fff 0%,#fff 70%,#fffafd 100%); }
+.logistics-ui .staff-payroll .payroll-filters { grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; padding:14px; }
+.logistics-ui .staff-payroll .payroll-filters label { font-size:10px; }
+.logistics-ui .staff-payroll :is(input:not([type=checkbox]),select,textarea) { min-height:39px; padding:8px 10px; font-size:11px; }
+.logistics-ui .staff-payroll .payroll-filter-actions { align-items:center; }
+.logistics-ui .staff-payroll .payroll-filter-actions .btn { min-height:38px; }
+.logistics-ui .staff-payroll .payroll-summary { grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:14px 0 10px; }
+.logistics-ui .staff-payroll .payroll-summary > div { min-height:76px; padding:14px; border-radius:11px; box-shadow:0 2px 7px rgba(38,24,34,.035); }
+.logistics-ui .staff-payroll .payroll-summary span { color:var(--muted,#77717a); font-size:10px; }
+.logistics-ui .staff-payroll .payroll-summary strong { margin-top:8px; font-size:21px; }
+.logistics-ui .staff-payroll .payroll-worklist-card > p { padding:10px 12px; border-left:3px solid #e8b4d1; border-radius:0 8px 8px 0; background:#fcf8fb; }
+.logistics-ui .staff-payroll .payroll-obligations-card .payroll-bulk { margin:12px 0 6px; padding:14px; border:1px solid var(--border,#e7e3e8); border-radius:11px; background:#faf9fa; }
+.logistics-ui .staff-payroll .payroll-obligations-card .payroll-bulk > div { flex:1 1 250px; }
+.logistics-ui .staff-payroll .payroll-obligations-card .cash-table { margin-top:12px; }
+.logistics-ui .staff-payroll .payroll-obligations-card .cash-table th { padding:12px; font-size:9px; }
+.logistics-ui .staff-payroll .payroll-obligations-card .cash-table td { padding:12px; font-size:10px; }
+.logistics-ui .staff-payroll .payroll-obligations-card .cash-table tbody tr:hover { background:#fffafd; }
+.logistics-ui .staff-payroll .payroll-obligations-card .cash-table td strong { font-size:10.5px; }
+.logistics-ui .staff-payroll .payroll-obligations-card details { margin:6px 0; }
+.logistics-ui .staff-payroll .payroll-obligations-card details summary { padding:8px 10px; border:1px solid var(--border,#e7e3e8); border-radius:8px; background:#fff; font-size:10px; }
+.logistics-ui .staff-payroll .payroll-obligations-card details[open] summary { margin-bottom:9px; border-color:#edc8dc; color:#9f2765; }
+.logistics-ui .staff-payroll .payroll-history-row { padding:13px 14px; border:1px solid var(--border,#e7e3e8); border-radius:10px; background:#fff; }
+.logistics-ui .staff-payroll .payroll-history-row + .payroll-history-row { margin-top:9px; }
+.logistics-ui .staff-payroll .payroll-history-row strong { font-size:11px; }
+.logistics-ui .staff-payroll .payroll-history-row p { font-size:10px; }
+.logistics-ui .staff-payroll .cash-card > h2 { padding-bottom:10px; border-bottom:1px solid #f0e8ed; color:#4b293e; }
+.logistics-ui .staff-payroll .payroll-worklist-card { border-top:3px solid #cf3b86; }
+.logistics-ui .staff-payroll .payroll-worklist-card .payroll-filters { background:#fbf9fb; }
+.logistics-ui .staff-payroll .payroll-summary > div { position:relative; overflow:hidden; }
+.logistics-ui .staff-payroll .payroll-summary > div::before { position:absolute; inset:0 auto 0 0; width:3px; background:#e5c5d6; content:""; }
+.logistics-ui .staff-payroll .payroll-summary > div:nth-child(2)::before { background:#cf3b86; }
+.logistics-ui .staff-payroll .payroll-summary > div:nth-child(3)::before { background:#76b69a; }
+.logistics-ui .staff-payroll .payroll-summary > div:nth-child(4)::before { background:#e8b56d; }
+.logistics-ui .staff-payroll .payroll-summary span { max-width:230px; }
+.logistics-ui .staff-payroll #salaries > p:first-of-type { max-width:1000px; }
+.logistics-ui .staff-payroll .payroll-obligations-card .cash-table { box-shadow:0 1px 3px rgba(35,24,33,.025); }
+.logistics-ui .staff-payroll .payroll-obligations-card .cash-table thead th { position:sticky; top:0; z-index:1; }
+.logistics-ui .staff-payroll #payouts .payroll-history-row:hover { border-color:#e8b4d1; background:#fffafd; }
+.logistics-ui .staff-payroll #funding > details { margin-top:10px; padding:0 12px; border:1px solid var(--border,#e7e3e8); border-radius:10px; background:#fff; }
+.logistics-ui .staff-payroll #funding > details > summary { min-height:42px; padding:12px 0; color:#4b293e; font-size:10px; }
+.logistics-ui .staff-payroll #funding > details[open] { padding:0 12px 12px; border-color:#e8b4d1; background:#fffafd; }
+.logistics-ui .staff-payroll > .cash-card > details > summary { padding:10px 12px; border:1px solid var(--border,#e7e3e8); border-radius:9px; background:#fbf9fb; color:#4b293e; font-size:10px; font-weight:700; }
+.logistics-ui .staff-payroll > .cash-card > details[open] > summary { margin-bottom:10px; border-color:#e8b4d1; }
+.logistics-ui .staff-payroll > .cash-card > details .cash-table { margin-top:10px; }
+.logistics-ui .staff-payroll .payroll-obligations-card > p:first-of-type { max-width:980px; }
+.logistics-ui .staff-payroll .payroll-obligations-card .payroll-bulk { align-items:end; border-color:#eadfe7; background:linear-gradient(135deg,#fcf9fb,#fff); }
+.logistics-ui .staff-payroll .payroll-obligations-card .payroll-bulk label { margin-bottom:2px; color:#594252; font-size:10px; }
+.logistics-ui .staff-payroll .payroll-obligations-card .payroll-bulk .btn { min-height:39px; white-space:nowrap; }
+.logistics-ui .staff-payroll .payroll-obligations-card > .payroll-checkbox { width:max-content; max-width:100%; min-height:32px; align-items:center; padding:5px 9px; border:1px solid #eee7ec; border-radius:8px; background:#fff; }
+.logistics-ui .staff-payroll .payroll-obligations-card #payroll-selection-count { display:inline-flex; width:fit-content; margin:5px 0 0; border:1px solid #eee7ec; background:#faf8fa; color:var(--muted); }
+.logistics-ui .staff-payroll .payroll-obligations-card .cash-table { border-color:#e7dfe5; }
+.logistics-ui .staff-payroll .payroll-obligations-card .cash-table thead th { background:#faf7f9; color:#706573; text-transform:uppercase; }
+.logistics-ui .staff-payroll .payroll-obligations-card .cash-table tbody tr { transition:background .15s ease; }
+.logistics-ui .staff-payroll .payroll-obligations-card .cash-table td strong { color:#452b3d; }
+.logistics-ui .staff-payroll .payroll-obligations-card .cash-table td:first-child { vertical-align:top; }
+.logistics-ui .staff-payroll .payroll-obligations-card .cash-table td:last-child { display:table-cell; }
+.logistics-ui .staff-payroll .payroll-obligations-card .cash-table td:last-child > details { margin:5px 0; }
+.logistics-ui .staff-payroll .payroll-obligations-card .cash-table td:last-child > details > summary { position:relative; min-height:34px; padding:8px 10px 8px 24px; border-color:#eee6ec; color:#a72f70; }
+.logistics-ui .staff-payroll .payroll-obligations-card .cash-table td:last-child > details > summary::before { position:absolute; left:10px; content:'›'; color:#bd347b; font-size:16px; line-height:1; }
+.logistics-ui .staff-payroll .payroll-obligations-card .cash-table td:last-child > details[open] > summary::before { content:'⌄'; }
+.logistics-ui .staff-payroll .payroll-obligations-card .cash-table td:last-child > a.btn { min-height:34px; margin:4px 0; }
+.logistics-ui .staff-payroll .payroll-obligations-card .cash-table .payroll-table-empty { height:100px; text-align:center; color:var(--muted); }
+.logistics-ui .staff-payroll .payroll-table-empty strong,.logistics-ui .staff-payroll .payroll-table-empty small { display:block; }
+.logistics-ui .staff-payroll .payroll-table-empty strong { color:var(--text); font-size:11px; }
+.logistics-ui .staff-payroll .payroll-table-empty small { margin-top:5px; }
+.logistics-ui .staff-payroll .payroll-history-card .payroll-empty-state { display:grid; justify-items:center; gap:7px; min-height:105px; margin-top:11px; padding:18px; border:1px dashed #e5dce3; border-radius:11px; background:#fcfafc; text-align:center; }
+.logistics-ui .staff-payroll .payroll-history-card .payroll-empty-state > span { display:grid; place-items:center; width:30px; height:30px; border-radius:9px; background:#fbf0f6; color:#bd347b; font-size:16px; }
+.logistics-ui .staff-payroll .payroll-history-card .payroll-empty-state strong { color:var(--text); font-size:11px; }
+.logistics-ui .staff-payroll .payroll-history-card .payroll-empty-state p { margin:0; color:var(--muted); font-size:10px; }
+.logistics-ui .staff-payroll #funding .cash-grid > p { grid-column:1/-1; margin:0; padding:14px; border:1px dashed #e5dce3; border-radius:9px; background:#fcfafc; }
+.logistics-ui .staff-payroll #funding > details > summary::-webkit-details-marker { display:none; }
+.logistics-ui .staff-payroll #funding > details > summary { position:relative; padding-right:25px; list-style:none; }
+.logistics-ui .staff-payroll #funding > details > summary::after { position:absolute; right:2px; content:'+'; color:#bd347b; font-size:16px; font-weight:500; }
+.logistics-ui .staff-payroll #funding > details[open] > summary::after { content:'−'; }
+.logistics-ui .staff-payroll .payroll-worklist-heading { display:flex; align-items:center; gap:9px; }
+.logistics-ui .staff-payroll .payroll-heading-icon { display:grid; place-items:center; width:30px; height:30px; flex:0 0 30px; border-radius:9px; background:#fbf0f6; color:#bd347b; }
+.logistics-ui .staff-payroll .payroll-heading-icon svg { width:15px; height:15px; }
+.logistics-ui .staff-payroll .payroll-summary > div { position:relative; padding-right:48px; }
+.logistics-ui .staff-payroll .payroll-summary .payroll-metric-icon { position:absolute; top:12px; right:12px; display:grid; place-items:center; width:28px; height:28px; border-radius:9px; background:#f4f0ff; color:#8065d8; }
+.logistics-ui .staff-payroll .payroll-summary .payroll-metric-icon svg { width:15px; height:15px; }
+.logistics-ui .staff-payroll .payroll-summary > div:nth-child(2) .payroll-metric-icon { background:#fcf0f6; color:#bd347b; }
+.logistics-ui .staff-payroll .payroll-summary > div:nth-child(3) .payroll-metric-icon { background:#edf8f2; color:#3c9b73; }
+.logistics-ui .staff-payroll .payroll-summary > div:nth-child(4) .payroll-metric-icon { background:#fff5e8; color:#ba7d27; }
+.logistics-ui .staff-payroll .payroll-summary > div > span:not(.payroll-metric-icon) { display:block; padding-right:8px; }
+.logistics-ui .attendance-workspace { gap:15px; }
+.logistics-ui .attendance-workspace > .cash-card { padding:17px; border:1px solid var(--border); border-radius:13px; box-shadow:0 2px 9px rgba(42,28,40,.035); }
+.logistics-ui .attendance-workspace > .cash-card > .attendance-section-title { display:flex; align-items:center; gap:9px; padding-bottom:10px; border-bottom:1px solid #efe8ed; color:var(--text); font-size:13px; }
+.logistics-ui .attendance-workspace .attendance-section-icon { display:grid; place-items:center; width:30px; height:30px; flex:0 0 30px; border-radius:9px; background:#fbf0f6; color:#bd347b; }
+.logistics-ui .attendance-workspace .attendance-section-icon svg { width:15px; height:15px; }
+.logistics-ui .attendance-workspace .attendance-today-card { border-top:2px solid #d889b2; background:linear-gradient(140deg,#fff 0%,#fffafd 100%); }
+.logistics-ui .attendance-workspace .attendance-today-card > p:nth-of-type(2) { margin:10px 0; padding:11px 12px; border:1px solid #eee5eb; border-radius:9px; background:#fcfafc; color:var(--text); }
+.logistics-ui .attendance-workspace .attendance-today-card > p:nth-of-type(2) strong { display:inline-flex; align-items:center; min-height:25px; padding:4px 9px; border-radius:999px; background:#fbf0f6; color:#a72f70; font-size:10px; }
+.logistics-ui .attendance-workspace .attendance-today-card > form .btn { min-height:38px; padding:9px 14px; border-radius:9px; font-size:10px; }
+.logistics-ui .attendance-workspace .attendance-history-card .payroll-filters { padding:13px; border-color:#e9e1e7; border-radius:10px; background:#fcfafc; }
+.logistics-ui .attendance-workspace .attendance-history-card .cash-table { border-color:#e7dfe5; border-radius:10px; }
+.logistics-ui .attendance-workspace .attendance-history-card .cash-table th { background:#faf7f9; color:#716572; text-transform:uppercase; }
+.logistics-ui .attendance-workspace .attendance-history-card .cash-table tbody tr:hover { background:#fffafd; }
+.logistics-ui .attendance-workspace .attendance-history-card .cash-table td { vertical-align:middle; }
+.logistics-ui .attendance-workspace .attendance-history-card .cash-table td details summary { display:inline-flex; align-items:center; min-height:33px; padding:7px 10px; border:1px solid #eee5eb; border-radius:8px; background:#fff; }
+.logistics-ui .attendance-workspace .attendance-history-card .cash-table td details[open] summary { border-color:#e8b4d1; background:#fffafd; }
+.logistics-ui .attendance-workspace .attendance-empty-state { display:grid; justify-items:center; gap:6px; min-height:104px; padding:20px 14px; border:1px dashed #e5dce3; border-radius:10px; background:#fcfafc; text-align:center; }
+.logistics-ui .attendance-workspace .attendance-empty-state > span { display:grid; place-items:center; width:30px; height:30px; border-radius:9px; background:#fbf0f6; color:#bd347b; font-size:15px; }
+.logistics-ui .attendance-workspace .attendance-empty-state strong { color:var(--text); font-size:11px; }
+.logistics-ui .attendance-workspace .attendance-empty-state small { color:var(--muted); font-size:9px; }
+.logistics-ui .attendance-workspace .attendance-correction-card { border-top:2px solid #d889b2; }
+.logistics-ui .attendance-workspace .attendance-correction-card > form { grid-template-columns:repeat(2,minmax(0,1fr)); max-width:none; gap:11px 14px; }
+.logistics-ui .attendance-workspace .attendance-correction-card > form > label[for="correction-record"],
+.logistics-ui .attendance-workspace .attendance-correction-card > form > label[for="correction-reason"] { grid-column:1/-1; }
+.logistics-ui .attendance-workspace .attendance-correction-card > form > button { justify-self:start; }
+.logistics-ui .attendance-workspace .attendance-document-card > form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); max-width:none; gap:11px 14px; }
+.logistics-ui .attendance-workspace .attendance-document-card > form > label[for="mark-reason"],
+.logistics-ui .attendance-workspace .attendance-document-card > form > label.payroll-checkbox,
+.logistics-ui .attendance-workspace .attendance-document-card > form > button { grid-column:1/-1; }
+.logistics-ui .attendance-workspace .attendance-corrections-queue .cash-handover { padding:15px; border-color:#e8e0e6; border-radius:10px; background:#fff; }
+.logistics-ui .attendance-workspace .attendance-corrections-queue .cash-handover h3 { margin-bottom:8px; color:#4b293e; font-size:11px; }
+.logistics-ui .attendance-workspace .attendance-corrections-queue .cash-handover form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 13px; max-width:none; }
+.logistics-ui .attendance-workspace .attendance-corrections-queue .cash-handover form label[for^="decision-reason-"] { grid-column:1/-1; }
+.logistics-ui .attendance-workspace .attendance-corrections-queue .cash-handover form button { justify-self:start; }
+.logistics-ui .attendance-workspace .attendance-corrections-queue > .attendance-empty-state { margin-top:10px; }
+@media(max-width:700px) {
+  .logistics-ui .staff-payroll .payroll-obligations-card .payroll-bulk { align-items:stretch; }
+  .logistics-ui .staff-payroll .payroll-obligations-card .payroll-bulk > div,
+  .logistics-ui .staff-payroll .payroll-obligations-card .payroll-bulk > button { flex:1 1 100%; }
+  .logistics-ui .staff-payroll .payroll-obligations-card > .payroll-checkbox { width:auto; }
+  .logistics-ui .attendance-workspace > .cash-card { padding:13px; }
+  .logistics-ui .attendance-workspace .attendance-correction-card > form,
+  .logistics-ui .attendance-workspace .attendance-document-card > form,
+  .logistics-ui .attendance-workspace .attendance-corrections-queue .cash-handover form { grid-template-columns:minmax(0,1fr); }
+  .logistics-ui .attendance-workspace .attendance-correction-card > form > label,
+  .logistics-ui .attendance-workspace .attendance-document-card > form > label,
+  .logistics-ui .attendance-workspace .attendance-corrections-queue .cash-handover form label[for^="decision-reason-"] { grid-column:1; }
+}
+.logistics-ui .staff-payroll #funding .cash-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+.logistics-ui .staff-payroll #funding .cash-grid > div { padding:14px; border:1px solid var(--border,#e7e3e8); border-radius:10px; background:#fff; }
+.logistics-ui .staff-payroll #funding .cash-grid h3 { margin:0 0 6px; font-size:11px; }
+.logistics-ui .staff-payroll #funding .cash-balance { display:block; margin:7px 0; color:#8e275e; font-size:18px; }
+@media(max-width:900px) {
+  .logistics-ui .staff-payroll .payroll-filters { grid-template-columns:repeat(3,minmax(0,1fr)); }
+}
+@media(max-width:700px) {
+  .logistics-ui .staff-payroll > .cash-card { padding:14px; }
+  .logistics-ui .staff-payroll .payroll-filters { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .logistics-ui .staff-payroll .payroll-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .logistics-ui .staff-payroll .payroll-filter-actions { grid-column:1/-1; }
+}
+@media(max-width:420px) {
+  .logistics-ui .staff-payroll .payroll-filters,
+  .logistics-ui .staff-payroll .payroll-summary { grid-template-columns:minmax(0,1fr); }
+}

@@ -215,3 +215,15 @@ body.buyer-pages {
  .buyer-pages.buyer-account-page .wallet-voucher form { grid-column: 2; }
  .buyer-pages.buyer-account-page .wallet-voucher-claim { min-width: 0; }
 }
+
+/* Buyer account forms share the same compact card and control rhythm as Seller. */
+.buyer-pages.buyer-account-page .account-main .card { overflow: hidden; border: 1px solid #eadfe6; border-radius: 12px; background: #fff; box-shadow: 0 2px 8px rgba(42,28,40,.035); }
+.buyer-pages.buyer-account-page .account-main .card-head { min-height: 52px; padding: 14px 17px; }
+.buyer-pages.buyer-account-page .account-main .card-head h2 { color: #593346; font-size: 13px; font-weight: 700; }
+.buyer-pages.buyer-account-page .account-main .card-pad { padding: 16px 17px; }
+.buyer-pages.buyer-account-page .account-main .form-row { margin-bottom: 12px; }
+.buyer-pages.buyer-account-page .account-main .form-row :is(input, select, textarea) { min-height: 38px; border: 1px solid #eadfe6; border-radius: 8px; background: #fff; }
+@media(max-width:600px) {
+ .buyer-pages.buyer-account-page .account-main .card-head,
+ .buyer-pages.buyer-account-page .account-main .card-pad { padding: 13px; }
+}

@@ -11,6 +11,15 @@
   .addr-combo-option{padding:9px 12px;font-size:13px;cursor:pointer}
   .addr-combo-option:hover,.addr-combo-option.active{background:var(--paper)}
   .addr-combo-empty{padding:9px 12px;font-size:12.5px;color:var(--muted)}
+  .rider-account-page>.stack>.card{overflow:hidden;border:1px solid var(--border);border-radius:12px;background:#fff;box-shadow:0 2px 8px rgba(42,28,40,.035)}
+  .rider-account-page>.stack>.card .card-head{min-height:52px;padding:14px 17px;border-bottom:1px solid var(--border)}
+  .rider-account-page>.stack>.card .card-head h2{color:var(--text);font-size:13px;font-weight:700}
+  .rider-account-page>.stack>.card .card-pad{padding:16px 17px}
+  .rider-account-page form .form-row{gap:6px;margin-bottom:12px}
+  .rider-account-page form .form-row>label{color:var(--text);font-size:10.5px;font-weight:700}
+  .rider-account-page form :is(input:not([type=file]),select,textarea){min-height:38px;border:1px solid var(--border);border-radius:8px;background:#fff}
+  .rider-account-page form input[type=file]{border:1px solid var(--border);border-radius:8px;background:#fff}
+  @media(max-width:600px){.rider-account-page>.stack>.card :is(.card-head,.card-pad){padding:13px}.rider-account-page form .form-grid-2{grid-template-columns:minmax(0,1fr)}}
 </style>
 @endpush
 
@@ -30,7 +39,7 @@
 </div>
 @endif
 
-<div class="dash-grid">
+<div class="dash-grid rider-account-page">
   <div class="stack">
 
     {{-- Profile --}}

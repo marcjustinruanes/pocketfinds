@@ -1,7 +1,7 @@
 @if(\Illuminate\Support\Facades\Schema::hasColumn('logistics_issues','recovery'))
 @push('head')<link rel="stylesheet" href="{{ asset('css/logistics-cash-desk.css') }}">@endpush
 <div class="cash-desk">
-<section class="cash-card recovery-form-card"><h2>Supervised parcel recovery</h2><p>Use normal hub receipt whenever its evidence is complete. Recovery records actual custody only; it does not complete delivery, return stock, earn compensation or authorize redispatch.</p>
+<section class="cash-card recovery-form-card"><h2 class="issue-card-title"><span class="issue-heading-icon"><x-admin-icon name="box" /></span>Supervised parcel recovery</h2><p>Use normal hub receipt whenever its evidence is complete. Recovery records actual custody only; it does not complete delivery, return stock, earn compensation or authorize redispatch.</p>
 @if(auth()->user()->isHubStaff())
 <details class="recovery-form-details"><summary>Record physical recovery</summary><form class="recovery-form" method="POST" enctype="multipart/form-data" action="{{ route('logistics.issues.recovery') }}">@csrf
 <input type="hidden" name="key" value="{{ (string)\Illuminate\Support\Str::uuid() }}">

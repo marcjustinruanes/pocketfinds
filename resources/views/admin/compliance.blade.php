@@ -131,11 +131,11 @@
               </div>
               <div class="modal-foot">
                 <button class="btn btn-outline" data-modal-close>Cancel</button>
-                <form method="POST" action="{{ route('admin.registrations.reject', $seller->id) }}" style="display:inline">
+                <form method="POST" action="{{ route('admin.registrations.reject', $seller->id) }}" style="display:inline" data-confirm data-confirm-title="Reject this seller application?" data-confirm-message="The seller application will be rejected." data-confirm-action="Reject application" data-confirm-tone="danger">
                   @csrf @method('PATCH')
                   <button class="btn btn-outline-danger" type="submit">Reject</button>
                 </form>
-                <form method="POST" action="{{ route('admin.registrations.approve', $seller->id) }}" style="display:inline">
+                <form method="POST" action="{{ route('admin.registrations.approve', $seller->id) }}" style="display:inline" data-confirm data-confirm-title="Approve this seller?" data-confirm-message="This will approve the seller account and its submitted documents." data-confirm-action="Approve seller" data-confirm-tone="success">
                   @csrf @method('PATCH')
                   <button class="btn btn-success" type="submit">Approve</button>
                 </form>

@@ -145,6 +145,35 @@ class HubTransferWorkflowTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_buyer_is_notified_once_when_transfer_starts_and_parcel_reaches_destination_sorting(): void
+    {
+        $buyer = User::create([
+            'account_type' => 'buyer', 'username' => 'transfer_buyer_'.bin2hex(random_bytes(4)),
+            'email' => 'transfer_buyer_'.bin2hex(random_bytes(4)).'@example.test', 'given_names' => 'Buyer',
+            'last_name' => 'Fixture', 'status' => 'approved',
+        ]);
+        $orderId = $this->parcels[0]->order_id;
+        DB::table('orders')->where('id', $orderId)->update(['buyer_id' => $buyer->id]);
+
+        $batch = $this->approved();
+        $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertOk();
+        $this->assertSame(1, DB::table('notifications')->where('user_id', $buyer->id)->where('reference_id', $orderId)->where('title', 'Hub Transfer Started')->count());
+        $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
+        $this->assertSame(1, DB::table('notifications')->where('user_id', $buyer->id)->where('reference_id', $orderId)->where('title', 'Hub Transfer Started')->count());
+
+        $leg = $this->legs[0];
+        $this->actingAs($this->rider)->patch('/rider/hub-transfers/'.$leg->id.'/confirm')->assertRedirect();
+        $this->actingAs($this->receiver)->patchJson('/logistics/transfers/'.$batch->id.'/receive', [
+            'tracking_number' => $this->parcels[0]->tracking_number,
+        ])->assertOk();
+
+        $this->assertSame('sorted', $this->parcels[0]->fresh()->shipping_status);
+        $this->assertSame('sorted', $this->parcels[0]->order->fresh()->status);
+        $this->assertSame(1, DB::table('notifications')->where('user_id', $buyer->id)->where('reference_id', $orderId)->where('title', 'Parcel Sorted')->count());
+        $this->patchJson('/logistics/transfers/'.$batch->id.'/receive', ['tracking_number' => $this->parcels[0]->tracking_number])->assertUnprocessable();
+        $this->assertSame(1, DB::table('notifications')->where('user_id', $buyer->id)->where('reference_id', $orderId)->where('title', 'Parcel Sorted')->count());
+    }
+
     public function test_staff_cannot_decide_or_dispatch_on_new_or_existing_routes(): void
     {
         $batch = $this->approved();

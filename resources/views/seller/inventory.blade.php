@@ -60,7 +60,8 @@
             <div style="display:flex;align-items:center;gap:10px;min-width:0">
               <div class="inv-img" style="flex:none">
                 @if($product->image)
-                  <img src="{{ Storage::url($product->image) }}" style="width:40px;height:40px;object-fit:cover;border-radius:7px">
+                  <img src="{{ Storage::url($product->image) }}" alt="" onerror="this.hidden=true;this.parentElement.classList.add('is-missing')" style="width:40px;height:40px;object-fit:cover;border-radius:7px">
+                  <span class="inv-img-fallback" aria-hidden="true">@include('seller.partials.icon',['name'=>'bag','size'=>19])</span>
                 @else
                   @include('seller.partials.icon',['name'=>'bag','size'=>20])
                 @endif
