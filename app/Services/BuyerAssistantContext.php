@@ -59,7 +59,7 @@ class BuyerAssistantContext
                 'description' => Str::limit(strip_tags($product->description ?? ''), 250),
                 'price' => $discount > 0 && $discount < $price ? $discount : $price,
                 'stock' => $product->total_stock,
-                'shipping_fee' => (float) ($product->seller?->shipping_fee ?? 0),
+                'shipping_fee' => \App\Services\FinancialPolicy::DELIVERY_CENTS / 100,
                 'options' => collect($product->variations ?? [])->take(5)->map(fn ($group) => [
                     'name' => $group['name'] ?? '', 'options' => collect($group['options'] ?? [])->take(12)->map(fn ($option) => [
                         'value' => $option['value'] ?? '', 'stock' => (int) ($option['stock'] ?? 0),

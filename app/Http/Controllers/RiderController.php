@@ -256,7 +256,8 @@ class RiderController extends Controller
         $codRequired = $cash->installed() && $cash->isCod($shipment->order);
         $codCollection = $codRequired ? $cash->find($shipment->id) : null;
 
-        return view('rider.show', array_merge($counts, compact('shipment', 'nextStage', 'codRequired', 'codCollection')));
+        $detail = $shipment->order ? app(\App\Support\OrderDetails::class)->forOrders([$shipment->order])->get($shipment->order->id) : null;
+        return view('rider.show', array_merge($counts, compact('detail', 'shipment', 'nextStage', 'codRequired', 'codCollection')));
     }
 
     /**

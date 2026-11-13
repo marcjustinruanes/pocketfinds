@@ -5,6 +5,8 @@
 @section('hide-page-heading', true)
 @section('body-class', 'buyer-orders-page')
 
+@push('head')<link rel="stylesheet" href="{{ asset('css/order-record.css') }}?v={{ filemtime(public_path('css/order-record.css')) }}">@endpush
+@push('head')<link rel="stylesheet" href="{{ asset('css/order-record.css') }}?v={{ filemtime(public_path('css/order-record.css')) }}">@endpush
 @section('content')
 <div class="orders-page">
 @if($errors->any())<div class="auth-error" role="alert">@foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
@@ -228,6 +230,17 @@
         ]]);
       }
     @endphp
+    @php $detail = $orderDetails->get($order->id); @endphp
+    @include('orders.partials.payment')
+    @include('orders.partials.refund')
+    @if($adminPayment && !$paymentApproved)
+      <details class="order-record-section"><summary>View products and order total</summary>
+        <table><thead><tr><th>Product / variation</th><th>Quantity</th><th>Line total</th></tr></thead><tbody>
+        @foreach($order->items ?? [] as $item)<tr><td>{{ $item['name'] ?? 'Product' }}<small>{{ collect([$item['variation_group'] ?? null, $item['variation_value'] ?? null])->filter()->join(' / ') }}</small></td><td>{{ $item['qty'] }}</td><td>PHP {{ number_format($item['price'] * $item['qty'], 2) }}</td></tr>@endforeach
+        </tbody></table>
+        @include('orders.partials.costs')
+      </details>
+    @endif
     @if($adminPayment)
       @include('buyer.partials.order-gcash-payment', [
         'order' => $order,
@@ -265,8 +278,9 @@
           <div><span>Pickup rider</span><strong>{{ trim($shipment->pickupRider->given_names.' '.$shipment->pickupRider->last_name) }}</strong></div>
         @endif
         @if($shipment->courier)
-          <div><span>Delivery rider</span><strong>{{ trim($shipment->courier->given_names.' '.$shipment->courier->last_name) }}</strong></div>
+          <div><span>Delivery rider</span><strong>{{ trim($shipment->courier->given_names.' '.$shipment->courier->last_name) }}</strong>@if($shipment->courier->contact_no)<a href="tel:{{ preg_replace('/[^+0-9]/', '', $shipment->courier->contact_no) }}">Call rider</a>@endif</div>
         @endif
+        @if($shipment->delivery_failed_reason)<div><span>Failed delivery reason</span><strong>{{ str($shipment->delivery_failed_reason)->replace('_', ' ')->title() }}</strong></div>@endif
         @foreach([
           'scheduled_pickup_at' => 'Pickup scheduled', 'pickup_approved_at' => 'Pickup approved',
           'picked_up_at' => 'Picked up', 'at_sorting_center_at' => 'Sorting center receipt',
@@ -297,10 +311,7 @@
     @endif
     <div class="order-summary-columns"><div class="order-quantity-summary order-checkout-summary">
       <h3>Order summary</h3>
-      <div class="order-cost-row"><span>Subtotal</span><strong>₱{{ number_format($order->subtotal, 2) }}</strong></div>
-      <div class="order-cost-row"><span>Shipping</span><strong>{{ (float) $order->shipping_amount > 0 ? '₱'.number_format($order->shipping_amount, 2) : 'Free' }}</strong></div>
-      <div class="order-cost-row order-cost-discount"><span>Discounts</span><strong>{{ (float) $order->discount_amount > 0 ? '−' : '' }}₱{{ number_format($order->discount_amount, 2) }}</strong></div>
-      <div class="order-cost-total"><span><strong>Total</strong><small>{{ $quantity = collect($order->items)->sum('qty') }} {{ $quantity === 1 ? 'item' : 'items' }}</small></span><strong>₱{{ number_format($order->total, 2) }}</strong></div>
+      @include('orders.partials.costs')
     </div>
     <div class="order-detail-info-grid">
       <div><span>Customer name</span><strong>{{ $customerName }}</strong></div>
@@ -320,7 +331,7 @@
           @endphp
           <tr>
             <td>@include('buyer.partials.order-product-summary', ['item'=>$item])</td>
-            <td>{{ $item['qty'] }} × ₱{{ number_format($item['original_price'] ?? $item['price'], 2) }}</td>
+            <td>{{ $item['qty'] }} × ₱{{ number_format($item['price'], 2) }}<br><small>Line total: PHP {{ number_format($item['qty'] * $item['price'], 2) }}</small></td>
           </tr>
           @endforeach
         </tbody>

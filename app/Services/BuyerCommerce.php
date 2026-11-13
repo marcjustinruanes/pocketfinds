@@ -14,7 +14,7 @@ use Illuminate\Validation\ValidationException;
 
 class BuyerCommerce
 {
-    private const FIXED_SHIPPING_AMOUNT = 50.00;
+    private const FIXED_SHIPPING_AMOUNT = FinancialPolicy::DELIVERY_CENTS / 100;
 
     public static function returnWindowOpen(Order $order): bool
     {
@@ -148,7 +148,7 @@ class BuyerCommerce
                     $order['delivery_policy']['late_voucher_seller_id'] = (int) $sellerId;
                 }
             }
-            $order += ['subtotal' => round(array_sum(array_map(fn ($i) => $i['price'] * $i['qty'], $order['items'])), 2), 'shipping_amount' => $shippingPending ? 0 : round($shippingAmount, 2), 'discount_amount' => 0, 'seller_discount' => 0, 'vouchers' => [], 'shipping_rate_id' => $rate?->id, 'chargeable_kg' => $kg, 'shipping_pending' => $shippingPending, 'carrier_selection_pending' => true];
+            $order += ['financial_policy' => FinancialPolicy::VERSION, 'subtotal' => round(array_sum(array_map(fn ($i) => $i['price'] * $i['qty'], $order['items'])), 2), 'shipping_amount' => $shippingPending ? 0 : round($shippingAmount, 2), 'discount_amount' => 0, 'seller_discount' => 0, 'vouchers' => [], 'shipping_rate_id' => $rate?->id, 'chargeable_kg' => $kg, 'shipping_pending' => $shippingPending, 'carrier_selection_pending' => true];
         }unset($order);
         // One selected value per type replaces its predecessor. Store selections are keyed by seller.
         $selection = [];

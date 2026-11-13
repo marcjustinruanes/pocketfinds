@@ -103,6 +103,7 @@ class LogisticsShipping
     public function preflight(User $seller, array $address, array $quote, bool $preview): ?string
     {
         if (! $this->installed() || ($quote['shipping_pending'] ?? false)) return null;
+        if (($quote['financial_policy'] ?? null) === FinancialPolicy::VERSION || app(LogisticsCashDesk::class)->amount((string)$quote['shipping_amount']) === FinancialPolicy::DELIVERY_CENTS) return null;
         $companies = LogisticsHub::companiesServicing($seller->municipality, $address['municipality'] ?? null, $seller->province, $address['province'] ?? null);
         if ($companies->isEmpty()) return 'Carrier coverage and approved shipping rates will be checked during seller preparation.';
         $kg = $this->kilograms($quote['items']); $gross = app(LogisticsCashDesk::class)->amount((string) $quote['shipping_amount']);
@@ -160,14 +161,15 @@ class LogisticsShipping
         $rate = $this->rate($shipment->logistics_company, $order->shipping_address['region'] ?? '', true);
         if (! $rate) $this->fail('This carrier has no approved rate for the destination region. Select another carrier or request rate review.');
         $kg = $this->kilograms($order->items ?? []);
-        $approved = (int) $rate->first_kg_cents + ($kg - 1) * (int) $rate->additional_kg_cents;
-        // Commerce checkout uses a flat buyer shipping fee; the seller selects
-        // the carrier after checkout and pays its independently approved rate.
+        $fixed = ($order->commerce_snapshot['financial_policy'] ?? null) === FinancialPolicy::VERSION || app(LogisticsCashDesk::class)->amount((string)$order->shipping_amount) === FinancialPolicy::DELIVERY_CENTS;
+        $approved = $fixed ? FinancialPolicy::DELIVERY_CENTS : (int) $rate->first_kg_cents + ($kg - 1) * (int) $rate->additional_kg_cents;
+        // New fixed-fee parcels retain the same logistics entitlement at handoff.
+        // Historical snapshots continue to use their agreed carrier rates.
         $sellerSelectsCarrierAfterOrder = is_array($order->commerce_snapshot);
         $gross = $sellerSelectsCarrierAfterOrder
             ? $approved
             : app(LogisticsCashDesk::class)->amount((string) $order->shipping_amount);
-        if (! $sellerSelectsCarrierAfterOrder && $gross !== $approved) $this->fail('The carrier-approved shipping rate does not match the original shipping charge. Handoff is held for rate review; the buyer total has not changed.');
+        if (! $fixed && ! $sellerSelectsCarrierAfterOrder && $gross !== $approved) $this->fail('The carrier-approved shipping rate does not match the original shipping charge. Handoff is held for rate review; the buyer total has not changed.');
         $gcash = $this->gcash($order);
         $account = $gcash && $gross > 0 ? DB::table('logistics_shipping_accounts')->where('company_name', $shipment->logistics_company)->lockForUpdate()->first() : null;
         if ($gcash && $gross > 0 && ! $account) $this->fail('The carrier must publish its company GCash receiving account before shipping payment can be requested.');
@@ -185,14 +187,14 @@ class LogisticsShipping
         if (array_sum(array_column($funding, 'amount_cents')) > $gross) $this->fail('Shipping voucher allocations exceed the original shipping charge.');
         $id = (string) Str::uuid();
         DB::table('logistics_shipping_obligations')->insert(['id' => $id, 'shipment_id' => $shipment->id, 'order_id' => $order->id,
-            'company_name' => $shipment->logistics_company, 'seller_id' => $order->seller_id, 'rate_id' => $rate->id,
+            'company_name' => $shipment->logistics_company, 'seller_id' => $order->seller_id, 'rate_id' => $rate?->id,
             'chargeable_kg' => $kg, 'amount_cents' => $gross, 'platform_claim_cents' => $claim, 'claim_status' => $claim > 0 ? 'unverified' : 'not_applicable',
             'voucher_funding' => json_encode($funding, JSON_THROW_ON_ERROR),
             'instructions' => $account ? json_encode(['name' => $account->account_name, 'number' => $account->account_number, 'revision' => $account->revision]) : null,
             'collection_mode' => $gcash ? 'gcash' : (app(CodCollection::class)->isCod($order) ? 'cod' : 'other'),
             'status' => $gcash ? ($gross > 0 ? 'pending' : 'not_required') : 'unsettled', 'revision' => 1, 'created_at' => now(), 'updated_at' => now()]);
         $this->event($shipment->logistics_company, 'shipping_obligation_created', 'shipping_obligation', $id,
-            ['rate_id' => $rate->id, 'amount_cents' => $gross, 'chargeable_kg' => $kg, 'voucher_funding' => $funding, 'platform_claim_cents' => $claim], auth()->id());
+            ['rate_id' => $rate?->id, 'amount_cents' => $gross, 'chargeable_kg' => $kg, 'voucher_funding' => $funding, 'platform_claim_cents' => $claim], auth()->id());
     }
 
     public function gate(Shipment $shipment): void

@@ -233,7 +233,7 @@ class CodSellerPayoutTest extends TestCase
         $this->treasury->receipt($this->admin,$h->id,$this->receiptData('900'),$this->proof('Short treasury receipt'));
         $this->assertSame(90000,$this->treasury->balance($this->account->id,'cod'));
         $this->invalid(fn()=>$this->flow->prepare($this->admin,$this->prepareData()));
-        $this->assertDatabaseHas('logistics_compensations',['rider_id'=>$this->rider->id,'amount_cents'=>4000,'status'=>'pending']);
+        $this->assertDatabaseHas('logistics_compensations',['rider_id'=>$this->rider->id,'amount_cents'=>1000,'status'=>'pending']);
     }
     public function test_negative_adjustments_and_missing_reasons_or_wrong_destinations_are_rejected():void
     {

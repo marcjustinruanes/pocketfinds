@@ -23,7 +23,7 @@
   @else
     <section class="cash-card" id="eligibility"><h2>COD settlement eligibility</h2><p>Full verified collection, buyer confirmation or 168 hours after delivery, and no active return/refund/dispute. Product proceeds exclude gross shipping and platform reimbursement claims. Eligible new transactions deduct the snapshotted 10% product commission; historical payouts retain their original terms.</p>
     @forelse($orders as $order)@php($e=$eligibility[$order->id])
-      <article class="cash-handover"><h3>{{ $order->order_number ?? $order->id }} · {{ $people[$order->seller_id] ?? 'Seller' }}</h3><p>{{ $e['reason'] }}</p>
+      <article class="cash-handover"><h3>{{ $order->order_number ?? $order->id }} · {{ $people[$order->seller_id] ?? 'Seller' }}</h3><p>{{ $e['reason'] }}</p><p><a class="btn" href="{{ route('orders.receipt', $order) }}" target="_blank" rel="noopener">Order details / receipt</a></p>
       @if($e['eligible'])<p>Product proceeds: <strong>PHP {{ number_format($e['product_cents']/100,2) }}</strong> · Shipping entitlement: PHP {{ number_format($e['shipping_cents']/100,2) }}.</p>
       @if(!isset($existingPayouts[$order->id]) || $existingPayouts[$order->id]==='cancelled')
       <details><summary>Prepare payout</summary><p>A funded company account and seller-provided receiving account are required.</p><form method="POST" action="{{ route('logistics.finance.payouts.prepare') }}">@csrf<input type="hidden" name="order_id" value="{{ $order->id }}">

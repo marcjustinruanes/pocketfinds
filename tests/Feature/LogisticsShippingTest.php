@@ -109,7 +109,7 @@ class LogisticsShippingTest extends TestCase
 
     public function test_missing_mismatched_or_weightless_rates_rollback_new_shipments(): void
     {
-        $this->invalid(fn () => $this->parcel($this->order(['shipping_amount'=>'61.00'])));
+        $this->invalid(fn () => $this->parcel($this->order(['shipping_amount'=>'61.00', 'commerce_snapshot'=>null])));
         $this->invalid(fn () => $this->parcel($this->order(['shipping_address'=>['region'=>'Unknown','municipality'=>'Santa Cruz','province'=>'Laguna']])));
         $this->invalid(fn () => $this->parcel($this->order(['items'=>[['qty'=>1,'name'=>'Unknown weight']]])));
         $this->assertDatabaseCount('shipments',1); $this->assertDatabaseCount('logistics_shipping_obligations',0);
@@ -117,7 +117,7 @@ class LogisticsShippingTest extends TestCase
 
     public function test_seller_handoff_mismatch_preserves_preparing_status_and_buyer_total(): void
     {
-        $order=$this->order(['shipping_amount'=>'55.00','total'=>'1055.00']);
+        $order=$this->order(['shipping_amount'=>'55.00','total'=>'1055.00','commerce_snapshot'=>null]);
         $this->actingAs($this->seller)->patch('/seller/orders/'.$order->id.'/ready',['logistics_company'=>'Alpha'])->assertSessionHasErrors('shipping');
         $this->assertSame('preparing',$order->fresh()->status); $this->assertSame('1055.00',number_format($order->fresh()->total,2,'.',''));
         $this->assertDatabaseCount('shipments',1);
@@ -199,7 +199,7 @@ class LogisticsShippingTest extends TestCase
         $same=DB::table('logistics_shipping_obligations')->where('id',$ob->id)->first();
         $this->assertSame($ob->rate_id,$same->rate_id); $this->assertSame($ob->instructions,$same->instructions);
         $this->assertDatabaseHas('logistics_shipping_rates',['id'=>$ob->rate_id,'first_kg_cents'=>4000,'is_active'=>false]);
-        $this->invalid(fn () => $this->obligation());
+        $this->invalid(fn () => $this->obligation($this->order(['commerce_snapshot'=>null])));
         $p=$this->submit($ob); $this->shipping->review($this->admin,$ob->id,$this->reviewData($ob,$p));
         $this->shipping->gate(Shipment::find($ob->shipment_id));
     }
@@ -269,14 +269,16 @@ class LogisticsShippingTest extends TestCase
         $p=$flow->instructions($this->seller,$p->id,$p->revision,'Seller Shop','09123456789');
         $file=$this->proof('Buyer original payment');
         $p=DB::transaction(function()use($flow,$p,$file){$path=app(\App\Services\MediaLifecycle::class)->store($file,'gcash-proofs','local');return $flow->proof($this->buyer,$p->id,(string)Str::uuid(),$path,'application/pdf',$file->getSize(),hash_file('sha256',$file->getRealPath()));});
-        $p=$flow->decide($this->seller,$p->id,$p->revision,true,'1040.00',null,'BUYERREF001');
+        $p=$flow->decide($this->seller,$p->id,$p->revision,true,'1030.00',null,'BUYERREF001');
         $order=$flow->place($this->buyer,$p->id,$p->revision); $order->update(['status'=>'preparing']);
         $this->actingAs($this->seller)->patch('/seller/orders/'.$order->id.'/ready',['logistics_company'=>'Alpha'])->assertSessionHasNoErrors()->assertRedirect();
         $ob=DB::table('logistics_shipping_obligations')->where('order_id',$order->id)->first();
-        $this->assertSame(6000,(int)$ob->amount_cents); $this->assertSame(2000,(int)$ob->platform_claim_cents);
+        $this->assertSame(5000,(int)$ob->amount_cents); $this->assertSame(2000,(int)$ob->platform_claim_cents);
         $this->invalid(fn()=>$this->submit($ob,'BUYERREF001'));
-        $payment=$this->submit($ob); $this->shipping->review($this->admin,$ob->id,$this->reviewData($ob,$payment));
-        $this->assertSame('1040.00',number_format($order->fresh()->total,2,'.',''));
+        $this->shipping->submit($this->seller, $ob->id, array_replace($this->submission($ob), ['amount'=>'50']), $this->proof('Fixed fee receipt'));
+        $payment=DB::table('logistics_shipping_payments')->where('obligation_id',$ob->id)->first();
+        $this->shipping->review($this->admin,$ob->id,array_replace($this->reviewData($ob,$payment), ['amount'=>'50']));
+        $this->assertSame('1030.00',number_format($order->fresh()->total,2,'.',''));
         $this->assertDatabaseHas('logistics_payment_references',['reference'=>'BUYERREF001','subject_type'=>'buyer_gcash']);
         $this->assertDatabaseCount('logistics_financial_transactions',1);
     }

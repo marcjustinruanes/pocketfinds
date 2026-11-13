@@ -110,12 +110,21 @@ class RiderCompensationTest extends TestCase
     {
         $p=$this->riderPayout();$this->riderFlow()->action($this->admin,$p->id,['revision'=>$p->revision,'action'=>'verify','notes'=>'Verified payroll and receiving instructions']);
     }
-    protected function riderPayData(): array { return ['revision'=>$this->riderPayout()->revision,'amount'=>'40','reference'=>'RIDERSENT001','sent'=>'1','notes'=>'Actual rider transfer confirmed']; }
+    protected function riderPayData(): array { return ['revision'=>$this->riderPayout()->revision,'amount'=>'10','reference'=>'RIDERSENT001','sent'=>'1','notes'=>'Actual rider transfer confirmed']; }
+    // Imported entitlements remain payable under their original completion checks.
+    protected function historicalEntitlement(string $type, string $source, string $leg, int $amount, ?int $rider = null): void
+    {
+        DB::table('logistics_compensations')->insert([
+            'id'=>(string)Str::uuid(), 'company_name'=>'Alpha', 'source_type'=>$type, 'source_id'=>$source,
+            'rider_id'=>$rider ?? $this->rider->id, 'hub_id'=>$this->hub->id, 'leg'=>$leg,
+            'amount_cents'=>$amount, 'settings_revision'=>1, 'status'=>'pending', 'created_at'=>now(), 'updated_at'=>now(),
+        ]);
+    }
     protected function riderPay(): void { $this->riderFlow()->pay($this->admin,$this->riderPayout()->id,$this->riderPayData(),$this->proof('Actual rider payment')); }
 
     public function test_delivery_earns_exact_snapshot_without_waiting_for_cash_remittance(): void
     {
-        $c=$this->earning();$this->assertSame('earned',$c->status);$this->assertSame(4000,(int)$c->amount_cents);
+        $c=$this->earning();$this->assertSame('earned',$c->status);$this->assertSame(1000,(int)$c->amount_cents);
         $this->assertSame(0,$this->desk->balances($this->collection)['verified']);
         $this->assertFalse($this->riderFlow()->recognize($c->id,$this->admin));
         $this->assertSame(1,DB::table('logistics_financial_events')->where('event','rider_compensation_earned')->count());
@@ -124,9 +133,9 @@ class RiderCompensationTest extends TestCase
     public function test_rider_payout_and_acknowledgement_leave_cod_shipping_and_seller_funds_untouched(): void
     {
         $this->payroll();$this->riderFlow()->prepare($this->admin,$this->riderPrepareData());
-        $this->assertSame(6000,$this->riderFlow()->available($this->account->id));$this->riderVerify();$this->riderPay();
-        $this->assertSame(6000,$this->treasury->balance($this->account->id,'rider_payroll'));
-        $this->assertDatabaseHas('logistics_financial_transactions',['kind'=>'rider_payout','rider_payout_id'=>$this->riderPayout()->id,'amount_cents'=>4000]);
+        $this->assertSame(9000,$this->riderFlow()->available($this->account->id));$this->riderVerify();$this->riderPay();
+        $this->assertSame(9000,$this->treasury->balance($this->account->id,'rider_payroll'));
+        $this->assertDatabaseHas('logistics_financial_transactions',['kind'=>'rider_payout','rider_payout_id'=>$this->riderPayout()->id,'amount_cents'=>1000]);
         $this->assertNull($this->riderPayout()->acknowledged_at);
         $this->riderFlow()->acknowledge($this->rider,$this->riderPayout()->id);$this->riderFlow()->acknowledge($this->rider,$this->riderPayout()->id);
         $this->assertNotNull($this->riderPayout()->acknowledged_at);$this->assertSame(0,$this->treasury->balance($this->account->id,'cod'));
@@ -142,7 +151,7 @@ class RiderCompensationTest extends TestCase
     {
         $f=$this->riderFlow();$this->payroll();$f->prepare($this->admin,$this->riderPrepareData());
         $f->action($this->admin,$this->riderPayout()->id,['revision'=>1,'action'=>'hold','notes'=>'Review receiving account']);
-        $this->invalid(fn()=>$this->riderVerify());$this->assertSame(6000,$f->available($this->account->id));
+        $this->invalid(fn()=>$this->riderVerify());$this->assertSame(9000,$f->available($this->account->id));
         $f->action($this->admin,$this->riderPayout()->id,['revision'=>2,'action'=>'release','notes'=>'Recipient confirmed account']);$this->riderVerify();
         $f->action($this->admin,$this->riderPayout()->id,['revision'=>4,'action'=>'hold','notes'=>'Documented payment hold']);
         $this->invalid(fn()=>$this->riderPay());
@@ -163,14 +172,15 @@ class RiderCompensationTest extends TestCase
     public function test_historical_recognition_uses_existing_rate_not_current_rate(): void
     {
         $c=$this->earning();DB::table('logistics_compensations')->where('id',$c->id)->update(['status'=>'pending','earned_at'=>null,'earned_source_key'=>null]);
-        $settings=DB::table('logistics_finance_settings')->first();app(\App\Services\LogisticsFinance::class)->configure($this->admin,['revision'=>$settings->revision,'pickup'=>'80','transfer'=>'200','delivery'=>'90']);
-        $this->assertTrue($this->riderFlow()->recognize($c->id,$this->admin));$this->assertSame(4000,(int)$this->earning()->amount_cents);
+        $settings=DB::table('logistics_finance_settings')->first();app(\App\Services\LogisticsFinance::class)->configure($this->admin,['revision'=>$settings->revision,'pickup'=>'0','transfer'=>'0','delivery'=>'10']);
+        $this->assertTrue($this->riderFlow()->recognize($c->id,$this->admin));$this->assertSame(1000,(int)$this->earning()->amount_cents);
         $this->assertSame(1,DB::table('logistics_compensations')->count());
     }
-    public function test_pickup_requires_two_sided_handover_and_actual_hub_receipt(): void
+    public function test_historical_pickup_requires_two_sided_handover_and_actual_hub_receipt(): void
     {
         DB::table('shipments')->where('id',$this->shipment->id)->update(['pickup_rider_id'=>$this->rider->id]);
         $a=DeliveryAssignment::create(['shipment_id'=>$this->shipment->id,'courier_id'=>$this->rider->id,'leg'=>'pickup','status'=>'accepted']);
+        $this->historicalEntitlement('assignment', $a->id, 'pickup', 2000);
         $c=DB::table('logistics_compensations')->where('source_id',$a->id)->first();
         $this->assertFalse($this->riderFlow()->recognize($c->id,$this->admin));
         DB::table('shipments')->where('id',$this->shipment->id)->update(['seller_confirmed_pickup_at'=>now(),'rider_confirmed_pickup_at'=>now(),'picked_up_at'=>now()]);
@@ -181,7 +191,7 @@ class RiderCompensationTest extends TestCase
     public function test_exact_amount_and_actual_sent_confirmation_are_required(): void
     {
         $this->payroll();$f=$this->riderFlow();$f->prepare($this->admin,$this->riderPrepareData());$this->riderVerify();
-        foreach(['39.99','40.01','-1'] as $amount)$this->invalid(fn()=>$f->pay($this->admin,$this->riderPayout()->id,array_replace($this->riderPayData(),['amount'=>$amount]),$this->proof($amount)));
+        foreach(['9.99','10.01','-1'] as $amount)$this->invalid(fn()=>$f->pay($this->admin,$this->riderPayout()->id,array_replace($this->riderPayData(),['amount'=>$amount]),$this->proof($amount)));
         $this->invalid(fn()=>$f->pay($this->admin,$this->riderPayout()->id,array_replace($this->riderPayData(),['sent'=>'0']),$this->proof('Not sent')));
         $this->assertSame(10000,$this->treasury->balance($this->account->id,'rider_payroll'));
     }
@@ -192,7 +202,7 @@ class RiderCompensationTest extends TestCase
         $this->riderVerify();$stale=$this->riderPayData();$this->riderPay();
         $this->actingAs($this->admin)->post(route('logistics.finance.riders.pay',$this->riderPayout()->id),$stale+['proof'=>$this->proof('Duplicate')])->assertStatus(409);
         $this->assertDatabaseCount('logistics_rider_payouts',1);$this->assertSame(1,DB::table('logistics_financial_transactions')->where('kind','rider_payout')->count());
-        $this->assertSame(6000,$this->treasury->balance($this->account->id,'rider_payroll'));
+        $this->assertSame(9000,$this->treasury->balance($this->account->id,'rider_payroll'));
     }
     public function test_role_company_destination_and_private_evidence_scopes(): void
     {
@@ -208,7 +218,7 @@ class RiderCompensationTest extends TestCase
     {
         $this->payroll();$this->riderFlow()->prepare($this->admin,$this->riderPrepareData());$this->riderVerify();
         $this->actingAs($this->admin)->get(route('logistics.finance.riders'))->assertOk()->assertSee('id="rider-pay-'.$this->riderPayout()->id.'-proof"',false)->assertSee('id="payroll-funding-proof"',false)->assertDontSee('@include')->assertSee('Rider Earnings &amp; Payouts',false);
-        $this->actingAs($this->rider)->get(route('rider.profit'))->assertOk()->assertSee('PHP 40.00')->assertSee('id="rider-destination-number"',false)->assertDontSee('shipping fee collected on that order')->assertDontSee('Record verified payroll contribution');
+        $this->actingAs($this->rider)->get(route('rider.profit'))->assertOk()->assertSee('PHP 10.00')->assertSee('id="rider-destination-number"',false)->assertDontSee('shipping fee collected on that order')->assertDontSee('Record verified payroll contribution');
     }
     public function test_funding_and_payment_audit_failures_roll_back_money_and_private_proofs(): void
     {
@@ -219,7 +229,7 @@ class RiderCompensationTest extends TestCase
         $this->assertSame(0,DB::table('logistics_finance_evidence')->where('source_type','rider_payout')->count());
         $this->assertSame(1,count(Storage::disk('local')->allFiles('logistics-finance-proofs')));
     }
-    public function test_whole_transfer_batch_earns_once_and_partial_receipt_earns_nothing(): void
+    public function test_historical_whole_transfer_batch_earns_once_and_partial_receipt_earns_nothing(): void
     {
         $to=LogisticsHub::create(['company_name'=>'Alpha','municipality'=>'Other City','province'=>'Laguna','is_operational'=>true]);
         $receiver=$this->person('hub_staff','Alpha',$to->id);
@@ -237,6 +247,7 @@ class RiderCompensationTest extends TestCase
         $b=$flow->request($this->staff,$this->hub->id,$to->id,$shipments);
         $flow->decide($this->admin,$b->id,'approved');
         $flow->dispatch($this->admin,$b->id,$transferRider->id);
+        $this->historicalEntitlement('transfer_batch', $b->id, 'transfer', 6000, $transferRider->id);
         $c=DB::table('logistics_compensations')->where('source_type','transfer_batch')->first();$this->assertSame(6000,(int)$c->amount_cents);
         foreach(DB::table('shipment_hub_legs')->where('transfer_batch_id',$b->id)->pluck('id') as $id)$flow->confirmPickup($transferRider,$id);
         $flow->receive($receiver,$b->id,[$shipments[0]]);$this->assertDatabaseHas('logistics_compensations',['id'=>$c->id,'status'=>'pending']);
@@ -269,6 +280,7 @@ class RiderCompensationTest extends TestCase
         DB::table('shipments')->where('id',$this->shipment->id)->update(['shipping_status'=>'picked_up','courier_id'=>null,'pickup_rider_id'=>$this->rider->id,'seller_confirmed_pickup_at'=>now(),'rider_confirmed_pickup_at'=>now(),'picked_up_at'=>now(),'at_sorting_center_at'=>null]);
         DB::table('orders')->where('id',$this->order->id)->update(['status'=>'picked_up']);
         $a=DeliveryAssignment::create(['shipment_id'=>$this->shipment->id,'courier_id'=>$this->rider->id,'leg'=>'pickup','status'=>'accepted']);
+        $this->historicalEntitlement('assignment', $a->id, 'pickup', 2000);
         DB::statement("CREATE TRIGGER fail_pickup_audit BEFORE INSERT ON logistics_financial_events WHEN NEW.event = 'rider_compensation_earned' BEGIN SELECT RAISE(ABORT, 'earning audit failed'); END");
         $this->actingAs($this->staff)->patchJson('/logistics/scan/'.$this->shipment->id.'/receive')->assertStatus(500);
         $this->assertDatabaseHas('shipments',['id'=>$this->shipment->id,'shipping_status'=>'picked_up','at_sorting_center_at'=>null]);
@@ -342,6 +354,7 @@ class RiderCompensationTest extends TestCase
     {
         DB::table('shipments')->where('id',$this->shipment->id)->update(['shipping_status'=>'picked_up','pickup_rider_id'=>$this->rider->id,'seller_confirmed_pickup_at'=>now(),'rider_confirmed_pickup_at'=>now(),'picked_up_at'=>now(),'at_sorting_center_at'=>null]);
         $a=DeliveryAssignment::create(['shipment_id'=>$this->shipment->id,'courier_id'=>$this->rider->id,'leg'=>'pickup','status'=>'accepted']);
+        $this->historicalEntitlement('assignment', $a->id, 'pickup', 2000);
         $this->actingAs($this->admin)->patchJson('/logistics/scan/'.$this->shipment->id.'/receive')->assertForbidden();
         $this->assertDatabaseHas('shipments',['id'=>$this->shipment->id,'shipping_status'=>'picked_up','at_sorting_center_at'=>null]);
         $this->assertDatabaseHas('logistics_compensations',['source_id'=>$a->id,'status'=>'pending']);

@@ -63,23 +63,23 @@
   <div class="fin-settings-head">
     <div>
       <p class="fin-section-label">Compensation settings</p>
-      <h2 id="fin-comp-heading">Assignment compensation rates</h2>
-      <p class="fin-note">Rates apply to <strong>future assignments only.</strong> Each assignment keeps its agreed amount at the time it was created. Transfer compensation is recorded once per batch, regardless of parcel count.</p>
+      <h2 id="fin-comp-heading">Official rider compensation</h2>
+      <p class="fin-note">Rates apply to <strong>future assignments only.</strong> Each assignment keeps its agreed amount at the time it was created. Logistics pays PHP 10 per successful final delivery from its own funds. Pickup and transfer do not create extra parcel entitlements.</p>
     </div>
-    <span class="fin-badge fin-badge--editable" aria-label="This section is editable">Editable</span>
+    <span class="fin-badge fin-badge--editable" aria-label="This section is editable">Fixed policy</span>
   </div>
   <form method="POST" action="{{ route('logistics.finance.settings') }}" class="fin-comp-form">
     @csrf
     <input type="hidden" name="revision" value="{{ $settings->revision }}">
     <div class="fin-comp-grid">
-      @foreach(['pickup' => ['Pickup assignment', 'Paid per accepted pickup trip'], 'transfer' => ['Hub-transfer batch / trip', 'One payment per approved transfer batch'], 'delivery' => ['Final-delivery assignment', 'Paid per completed delivery trip']] as $leg => [$label, $hint])
+      @foreach(['pickup' => ['Pickup assignment', 'No separate parcel compensation'], 'transfer' => ['Hub-transfer batch / trip', 'No separate parcel compensation'], 'delivery' => ['Final-delivery assignment', 'PHP 10 per successfully delivered parcel']] as $leg => [$label, $hint])
       <label for="finance-{{ $leg }}" class="fin-comp-label">
         <span class="fin-comp-label-text">{{ $label }}</span>
         <span class="fin-comp-hint">{{ $hint }}</span>
         <span class="fin-currency-wrap">
           <span class="fin-currency-prefix" aria-hidden="true">₱</span>
-          <input id="finance-{{ $leg }}" name="{{ $leg }}" type="number" min="0" step="0.01" required
-            value="{{ old($leg, number_format($settings->{$leg.'_cents'} / 100, 2, '.', '')) }}"
+          <input id="finance-{{ $leg }}" name="{{ $leg }}" type="number" min="0" step="0.01" required readonly
+            value="{{ number_format($leg === 'delivery' ? 10 : 0, 2, '.', '') }}"
             class="fin-currency-input" aria-label="{{ $label }} rate in Philippine Peso">
         </span>
       </label>

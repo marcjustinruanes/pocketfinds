@@ -45,6 +45,12 @@ class PaymentReporting
             $m['held_cod_payouts']=(int)$pending->filter(fn($p)=>filled($p->hold_reason))->sum(fn($p)=>(int)$p->product_cents+(int)$p->adjustment_cents-(int)($deductions[$p->id]??0));
             $m['unverified_platform_claims']=(int)$scope(DB::table('logistics_shipping_obligations'))->where('claim_status','unverified')->sum('platform_claim_cents');
         }
+        // Product earnings use the existing frozen ledger, never delivery fees or rider pay.
+        $obligations = Schema::hasTable('commission_obligations')
+            ? DB::table('commission_obligations')->whereIn('order_id', $orders->pluck('id'))->get()
+            : collect();
+        $m['product_commission'] = (int) $obligations->sum(fn($o) => max(0, (int)$o->commission_cents - (int)$o->reversed_cents));
+        $m['net_seller_earnings'] = $m['item_sales'] - $m['product_commission'];
         return ['orders'=>$orders,'metrics'=>$m,'available'=>$available,'from'=>$from,'to'=>$to,'snapshot_at'=>now()];
     }
 }

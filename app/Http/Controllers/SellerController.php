@@ -103,7 +103,8 @@ class SellerController extends Controller
 
         $shippingObligations = app(\App\Services\LogisticsShipping::class)->installed()
             ? DB::table('logistics_shipping_obligations')->where('seller_id', $sellerId)->whereIn('order_id', $orders->pluck('id'))->get()->keyBy('order_id') : collect();
-        return view('seller.orders', compact('orders', 'status', 'pendingConfirmation', 'deliveredToday', 'statusCounts','returnRequests', 'cancellationRefunds', 'refundOrderCount', 'gcashOrderCount', 'orderHistory', 'shippingObligations'));
+        $orderDetails = app(\App\Support\OrderDetails::class)->forOrders($orders);
+        return view('seller.orders', compact('orderDetails', 'orders', 'status', 'pendingConfirmation', 'deliveredToday', 'statusCounts','returnRequests', 'cancellationRefunds', 'refundOrderCount', 'gcashOrderCount', 'orderHistory', 'shippingObligations'));
     }
 
     /** Order stage transitions a seller drives on their own, before any shipment exists. */
@@ -1228,7 +1229,7 @@ class SellerController extends Controller
             'business_name' => 'required|string|min:3|max:30',
             'username' => 'nullable|string|max:255|unique:users,username,'.auth()->id(),
             'category_id' => 'nullable|integer|exists:categories,id',
-            'shipping_fee' => 'nullable|numeric|min:0|max:99999.99',
+            'shipping_fee' => 'nullable|numeric|in:50',
             'store_description' => 'nullable|string|max:500',
             'store_banner' => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
         ]);

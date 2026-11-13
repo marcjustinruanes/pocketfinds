@@ -8,16 +8,16 @@
   <input id="shipping-region-{{ $formId }}" name="region" maxlength="150" required
     value="{{ $rate?->region }}" @if($rate) readonly aria-readonly="true" @else placeholder="e.g. Region IV-A (CALABARZON)" @endif>
   <label for="shipping-first-{{ $formId }}">
-    First kilogram (PHP)
-    @if(!$rate)<span class="fin-field-hint">Base rate for the first kg</span>@endif
+    Fixed parcel fee (PHP)
+    @if(!$rate)<span class="fin-field-hint">PHP 50 goes entirely to logistics</span>@endif
   </label>
   <input id="shipping-first-{{ $formId }}" name="first_kg" type="number" min="0" max="9999999.99" step="0.01" required
-    value="{{ $rate ? number_format($rate->first_kg_cents/100,2,'.','') : '' }}" placeholder="0.00">
+    value="50.00" readonly placeholder="0.00">
   <label for="shipping-extra-{{ $formId }}">
-    Each additional kilogram (PHP)
-    @if(!$rate)<span class="fin-field-hint">Rate per kg beyond the first</span>@endif
+    Additional weight charge (PHP)
+    @if(!$rate)<span class="fin-field-hint">No additional weight charge for new parcels</span>@endif
   </label>
   <input id="shipping-extra-{{ $formId }}" name="additional_kg" type="number" min="0" max="9999999.99" step="0.01" required
-    value="{{ $rate ? number_format($rate->additional_kg_cents/100,2,'.','') : '' }}" placeholder="0.00">
+    value="0.00" readonly placeholder="0.00">
   <button class="btn btn-primary fin-rate-submit">{{ $rate ? 'Approve rate revision' : 'Approve regional rate' }}</button>
 </form>

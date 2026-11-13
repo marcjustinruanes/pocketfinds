@@ -34,6 +34,8 @@ use Illuminate\Support\Facades\Storage;
 
 require __DIR__.'/commerce.php';
 
+Route::get('/orders/{order}/receipt', [\App\Http\Controllers\OrderReceiptController::class, 'show'])->middleware(['auth', 'throttle:60,1'])->name('orders.receipt');
+
 Route::get('/', [GuestController::class, 'home']);
 Route::get('/auth/collage-image', \App\Http\Controllers\AuthCollageImageController::class)->name('auth.collage-image');
 Route::get('/auth/collage-image/{slot}', \App\Http\Controllers\AuthCollageImageController::class)->whereIn('slot', ['main', 'back', 'front'])->name('auth.collage-slot');

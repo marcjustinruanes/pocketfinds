@@ -75,6 +75,6 @@ class Setting extends Model
     /** The commission rate as a 0–1 fraction, ready to multiply into revenue math. */
     public function commissionFraction(): float
     {
-        return ((float) $this->commission_rate) / 100;
+        return 0.10;
     }
 }

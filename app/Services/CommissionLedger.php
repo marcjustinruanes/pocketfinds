@@ -86,8 +86,8 @@ class CommissionLedger
         }
         if ($discount > array_sum($weights)) $this->fail('Seller discounts exceed product value.');
         $shares = $this->split($discount, $weights); $basis = [];
-        foreach ($weights as $k => $w) $basis[$k] = $w - $shares[$k];
-        $fee = intdiv(array_sum($basis) + 5, 10);
+        foreach ($weights as $k => $w) $basis[$k] = $w;
+        $fee = FinancialPolicy::commission(array_sum($basis));
         $fees = $this->split($fee, $basis); $lines = [];
         foreach ($items as $k => $i) $lines[] = ['line_key' => $k, 'product_reference' => $i['product_id'] ?? null, 'item_snapshot' => json_encode($i, JSON_THROW_ON_ERROR), 'label' => mb_substr($i['name'] ?? 'Product', 0, 255), 'quantity' => (int) $i['qty'], 'selling_cents' => $weights[$k], 'seller_discount_cents' => $shares[$k], 'basis_cents' => $basis[$k], 'commission_cents' => $fees[$k]];
         return ['basis_cents' => array_sum($basis), 'commission_cents' => $fee, 'lines' => $lines];
@@ -125,7 +125,7 @@ class CommissionLedger
         $calc = $this->calculate($snapshot); $id = (string) Str::uuid();
         DB::table('commission_obligations')->insert(['id' => $id, 'source_key' => $key, 'seller_id' => $seller, 'method' => $method, 'order_id' => $order, 'purchase_id' => $purchase, 'basis_cents' => $calc['basis_cents'], 'commission_cents' => $calc['commission_cents'], 'activation_at' => $activation, 'created_at' => now(), 'updated_at' => now()]);
         foreach ($calc['lines'] as $line) DB::table('commission_lines')->insert($line + ['obligation_id' => $id]);
-        $this->event($id, 'snapshot:'.$key, 'snapshotted', $calc['commission_cents'], ['policy' => 'seller-net-products-v1', 'rate_bps' => 1000]);
+        $this->event($id, 'snapshot:'.$key, 'snapshotted', $calc['commission_cents'], ['policy' => 'gross-products-v2', 'rate_bps' => 1000]);
     }
 
     public function event(string $id, string $key, string $kind, int $amount, array $details = [], ?int $actorId = null): void

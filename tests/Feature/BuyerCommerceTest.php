@@ -85,8 +85,8 @@ class BuyerCommerceTest extends TestCase
         $this->actingAs($this->buyer)->post(route('buyer.commerce.place'),$d)->assertRedirect()->assertSessionHasNoErrors();
         $this->post(route('buyer.commerce.place'),$d)->assertRedirect()->assertSessionHasNoErrors();
         $this->assertDatabaseCount('commission_obligations',1);
-        $this->assertDatabaseHas('commission_obligations',['method'=>'cod','basis_cents'=>29000,'commission_cents'=>2900]);
-        $this->assertEquals(290,Order::first()->total);
+        $this->assertDatabaseHas('commission_obligations',['method'=>'cod','basis_cents'=>30000,'commission_cents'=>3000]);
+        $this->assertEquals(260,Order::first()->total);
     }
 
     public function test_commission_gcash_checkout_reserves_once_without_marking_commission_collected(): void
@@ -96,7 +96,7 @@ class BuyerCommerceTest extends TestCase
         $this->actingAs($this->buyer)->post(route('buyer.commerce.place'),$d)->assertRedirect()->assertSessionHasNoErrors();
         $this->post(route('buyer.commerce.place'),$d)->assertRedirect()->assertSessionHasNoErrors();
         $this->assertDatabaseCount('commission_obligations',1);$this->assertDatabaseCount('orders',0);
-        $o=DB::table('commission_obligations')->first();$this->assertSame(2900,(int)$o->commission_cents);$this->assertNull($o->earned_at);$this->assertSame(0,app(\App\Services\CommissionLedger::class)->collected($o->id));
+        $o=DB::table('commission_obligations')->first();$this->assertSame(3000,(int)$o->commission_cents);$this->assertNull($o->earned_at);$this->assertSame(0,app(\App\Services\CommissionLedger::class)->collected($o->id));
         $this->assertSame(17,$this->product->fresh()->stock);
     }
 
@@ -170,8 +170,8 @@ class BuyerCommerceTest extends TestCase
         $q = $this->quote(['STORE10', 'STORE20', 'PLAT30', 'SHIP50']);
         $row = $q['orders'][$this->seller->id];
         $this->assertSame(2, $row['chargeable_kg']);
-        $this->assertEquals(80, $row['shipping_amount']);
-        $this->assertEquals(280, $q['total']);
+        $this->assertEquals(50, $row['shipping_amount']);
+        $this->assertEquals(250, $q['total']);
         $this->assertCount(3, $row['vouchers']);
         $this->assertEquals(20, $row['seller_discount']);
         $this->assertSame(100, array_sum(app(BuyerCommerce::class)->split(100, [1 => 101, 2 => 200])));
@@ -182,7 +182,7 @@ class BuyerCommerceTest extends TestCase
         $id=$this->voucher('NEEDS321','platform',20);
         DB::table('commerce_vouchers')->where('id',$id)->update(['minimum_spend'=>321]);
         $data=['preview'=>true,'items'=>[$this->cart->id],'delivery_address_id'=>$this->address->id,'vouchers'=>['NEEDS321']];
-        $response=$this->actingAs($this->buyer)->postJson(route('buyer.commerce.quote'),$data)->assertOk()->assertJsonPath('quote.total',380);
+        $response=$this->actingAs($this->buyer)->postJson(route('buyer.commerce.quote'),$data)->assertOk()->assertJsonPath('quote.total',350);
         $offer=collect($response->json('quote.voucher_options'))->firstWhere('code','NEEDS321');
         $this->assertFalse($offer['eligible']);$this->assertEquals(21,$offer['remaining_spend']);
         $this->assertStringContainsString('Spend ₱21.00 more',$offer['reason']);
@@ -190,7 +190,7 @@ class BuyerCommerceTest extends TestCase
         $this->cart->update(['qty'=>4]);
         $quote=$this->quote(['NEEDS321']);
         $this->assertTrue(collect($quote['voucher_options'])->firstWhere('code','NEEDS321')['eligible']);
-        $this->assertEquals(460,$quote['total']);
+        $this->assertEquals(430,$quote['total']);
     }
 
     public function test_checkout_offers_exclude_a_voucher_the_buyer_already_used(): void
@@ -207,14 +207,14 @@ class BuyerCommerceTest extends TestCase
         $this->invalid(fn () => $this->quote());
         $this->seller->update(['is_on_vacation' => false]);
         DB::table('commerce_shipping_rates')->update(['is_active' => false]);
-        $this->invalid(fn () => $this->quote());
+        $this->assertEquals(50, $this->quote()['orders'][$this->seller->id]['shipping_amount']);
         DB::table('commerce_shipping_rates')->update(['is_active' => true]);
         $id = $this->voucher('FUTURE', 'platform', 10);
         DB::table('commerce_vouchers')->where('id', $id)->update(['starts_at' => now()->addHour()]);
         $this->invalid(fn () => $this->quote(['FUTURE']));
     }
 
-    public function test_seller_without_regional_rates_uses_legacy_flat_shipping_fee(): void
+    public function test_seller_without_regional_rates_uses_official_parcel_fee(): void
     {
         DB::table('commerce_shipping_rates')->where('seller_id', $this->seller->id)->delete();
         $this->seller->update(['shipping_fee' => 45]);
@@ -223,11 +223,11 @@ class BuyerCommerceTest extends TestCase
 
         $this->assertFalse($row['shipping_pending']);
         $this->assertNull($row['shipping_rate_id']);
-        $this->assertEquals(45, $row['shipping_amount']);
-        $this->assertEquals(345, $row['total']);
+        $this->assertEquals(50, $row['shipping_amount']);
+        $this->assertEquals(350, $row['total']);
     }
 
-    public function test_seller_without_regional_rates_or_legacy_fee_gets_free_shipping_fallback(): void
+    public function test_seller_without_regional_rates_or_legacy_fee_still_uses_official_parcel_fee(): void
     {
         DB::table('commerce_shipping_rates')->where('seller_id', $this->seller->id)->delete();
         $this->seller->update(['shipping_fee' => null]);
@@ -235,8 +235,8 @@ class BuyerCommerceTest extends TestCase
         $row = $this->quote()['orders'][$this->seller->id];
 
         $this->assertFalse($row['shipping_pending']);
-        $this->assertEquals(0, $row['shipping_amount']);
-        $this->assertEquals(300, $row['total']);
+        $this->assertEquals(50, $row['shipping_amount']);
+        $this->assertEquals(350, $row['total']);
     }
 
     public function test_flash_sale_excess_units_use_regular_price(): void
@@ -268,7 +268,7 @@ class BuyerCommerceTest extends TestCase
         $this->voucher('STORE10', 'store', 10);
         $q = $this->quote(['STORE10']);
         $p = app(GcashWorkflow::class)->create($this->buyer, [$this->cart->id], 2, (string) Str::uuid(), null, $this->address->id, null, $q)[0]->fresh();
-        $this->assertEquals(370, $p->amount_due);
+        $this->assertEquals(340, $p->amount_due);
         $this->assertSame(3600, $p->expires_at->timestamp - $p->activated_at->timestamp);
         $this->assertSame(17, $this->product->fresh()->stock);
         $this->travel(61)->minutes();
@@ -496,6 +496,7 @@ class BuyerCommerceTest extends TestCase
 
     public function test_other_roles_use_native_account_and_commerce_pages(): void
     {
+        (require database_path('migrations/2026_11_03_100000_add_buyer_module_tools.php'))->up();
         foreach (['seller', 'admin', 'logistics', 'rider'] as $role) {
             $user = $this->roleAccount($role);
             $this->actingAs($user)->get(route($role.'.account'))->assertOk()->assertSee('data-role-region', false)->assertSee('name="postal_code"', false)->assertSee(route('account.email.code'))->assertDontSee('buyer-shopping-tools', false);
@@ -503,7 +504,7 @@ class BuyerCommerceTest extends TestCase
         $this->actingAs($this->seller)->get(route('seller.account'))->assertOk()->assertSee('id="shipping-rates"', false)->assertSee('Vacation mode')->assertDontSee('Charged once per order');
         $this->get(route('seller.vouchers'))->assertOk()->assertSee('name="starts_at"', false);
         $this->get(route('seller.inventory'))->assertOk()->assertDontSee('id="flash-sales"', false);
-        $this->get(route('seller.promotions.flash'))->assertOk()->assertSee('id="flash-sales"', false);
+        $this->get(route('seller.promotions.flash'))->assertOk()->assertSee('seller-promotions.js', false);
         $this->get(route('seller.orders', ['status' => 'refunds']))->assertOk()->assertSee('Return / Refund');
         $this->actingAs($this->roleAccount('admin'))->get(route('admin.products'))->assertOk()->assertSee('id="platform-vouchers"', false);
         $this->get(route('admin.complaints'))->assertOk()->assertSee('id="returns-refunds"', false);
@@ -626,7 +627,7 @@ class BuyerCommerceTest extends TestCase
         $this->actingAs($this->buyer)->patchJson(route('buyer.addresses.complete', $this->address), ['region' => 'Test Region', 'postal_code' => '123'])->assertUnprocessable();
         $this->patchJson(route('buyer.addresses.complete', $this->address), $data)->assertOk()->assertJsonPath('success', true);
         $this->assertSame('0123', $this->address->fresh()->postal_code);
-        $this->assertEquals(380, $this->quote()['total']);
+        $this->assertEquals(350, $this->quote()['total']);
         $this->patchJson(route('buyer.addresses.complete', $this->address), ['region' => 'Another Region', 'postal_code' => '9999'])->assertUnprocessable();
         $this->assertSame('Test Region', $this->address->fresh()->region);
     }
@@ -658,11 +659,11 @@ class BuyerCommerceTest extends TestCase
         $this->voucher('STORE10', 'store', 10);
         $data = $this->payload();
         $data['vouchers'] = ['STORE10'];
-        $quote = $this->actingAs($this->buyer)->postJson(route('buyer.commerce.quote'), $data)->assertOk()->assertJsonPath('quote.total', 370)->json();
+        $quote = $this->actingAs($this->buyer)->postJson(route('buyer.commerce.quote'), $data)->assertOk()->assertJsonPath('quote.total', 340)->json();
         $data['quote_hash'] = $quote['hash'];
         $this->post(route('buyer.checkout'), $data)->assertRedirect(route('buyer.orders'))->assertSessionHasNoErrors();
         $this->assertDatabaseCount('orders', 1);
-        $this->assertEquals(370, Order::first()->total);
+        $this->assertEquals(340, Order::first()->total);
         $this->get(route('buyer.orders'))
             ->assertOk()
             ->assertSee('Customer name')
@@ -697,13 +698,13 @@ class BuyerCommerceTest extends TestCase
         $q = $this->quote(['STORE10', 'PLAT30']);
         $flow = app(GcashWorkflow::class);
         $p = $flow->create($this->buyer, [$this->cart->id], 2, (string) Str::uuid(), null, $this->address->id, null, $q)[0]->fresh();
-        $this->assertEquals(290, $p->amount_due);
+        $this->assertEquals(260, $p->amount_due);
         $p = $flow->instructions($this->seller, $p->id, $p->revision, 'Seller', '09123456789');
         $p = $flow->proof($this->buyer, $p->id, (string) Str::uuid(), 'gcash-proofs/fixture.png', 'image/png', 100, hash('sha256', 'proof'));
         $p = $flow->decide($this->seller, $p->id, $p->revision, true, $p->amount_due, null, 'COMMERCE-12345');
         DB::table('commerce_shipping_rates')->update(['first_kg' => 999]);
         $order = $flow->place($this->buyer, $p->id, $p->revision);
-        $this->assertEquals(290, $order->total);
+        $this->assertEquals(260, $order->total);
         $this->assertEquals(10, $order->commerce_snapshot['seller_discount']);
         $this->assertEquals(0, CartItem::count());
         $this->assertSame(17, $this->product->fresh()->stock);
@@ -721,7 +722,7 @@ class BuyerCommerceTest extends TestCase
         $row = $this->quote(['STOREBIG', 'PLATBIG'])['orders'][$this->seller->id];
         $this->assertEquals(300, array_sum(array_column($row['vouchers'], 'amount')));
         $this->assertEquals(300, $row['seller_discount']);
-        $this->assertEquals(80, $row['total']);
+        $this->assertEquals(50, $row['total']);
     }
 
     public function test_platform_voucher_counts_once_for_a_checkout_with_two_sellers(): void
@@ -736,7 +737,7 @@ class BuyerCommerceTest extends TestCase
         $d = ['items' => [$this->cart->id, $cart->id], 'delivery_address_id' => $this->address->id, 'payment_method' => 1, 'checkout_id' => (string) Str::uuid(), 'quote_hash' => hash('sha256', json_encode($q)), 'vouchers' => ['SHARED30']];
         $this->actingAs($this->buyer)->post(route('buyer.commerce.place'), $d)->assertSessionHasNoErrors();
         $this->assertDatabaseCount('orders', 2);
-        $this->assertEquals(510, Order::sum('total'));
+        $this->assertEquals(470, Order::sum('total'));
         $this->assertEquals(1, DB::table('commerce_allocations')->where('voucher_id', $id)->distinct()->count('usage_key'));
         $this->assertEquals(2, DB::table('commerce_allocations')->where('voucher_id', $id)->count());
     }

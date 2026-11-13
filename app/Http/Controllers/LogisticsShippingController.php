@@ -28,7 +28,9 @@ class LogisticsShippingController extends LogisticsController
         $history = DB::table('logistics_financial_events')->where('company_name', $ob->company_name)->where('subject_type', 'shipping_obligation')->where('subject_id', $id)->orderBy('id')->get();
         $rate = DB::table('logistics_shipping_rates')->where('id', $ob->rate_id)->firstOrFail();
         $shipment = \App\Models\Shipment::findOrFail($ob->shipment_id);
-        return response()->view('logistics.shipping-show', array_merge($seller ? [] : $this->sidebarCounts(), compact('ob', 'seller', 'payments', 'history', 'rate', 'shipment')))
+        $order = $shipment->order;
+        $detail = app(\App\Support\OrderDetails::class)->forOrders([$order])->get($order->id);
+        return response()->view('logistics.shipping-show', array_merge($seller ? [] : $this->sidebarCounts(), compact('order', 'detail', 'ob', 'seller', 'payments', 'history', 'rate', 'shipment')))
             ->header('Cache-Control', 'private, no-store')->header('X-Content-Type-Options', 'nosniff');
     }
 

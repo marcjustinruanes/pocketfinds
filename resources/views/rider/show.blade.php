@@ -23,6 +23,7 @@
   $info = $stageInfo[$shipment->shipping_status] ?? ['title' => ucfirst(str_replace('_',' ',$shipment->shipping_status)), 'hint' => '', 'button' => null];
 @endphp
 
+@push('head')<link rel="stylesheet" href="{{ asset('css/order-record.css') }}?v={{ filemtime(public_path('css/order-record.css')) }}">@endpush
 @section('content')
 @include('logistics.partials.rts-custody')
 <div class="card">
@@ -74,20 +75,21 @@
       <div class="card-head"><h2>Buyer — Delivery Address</h2></div>
       <div class="card-pad">
         <div style="display:flex;flex-direction:column;gap:6px;font-size:13px">
-          <div><strong>{{ trim(($buyer?->given_names ?? '') . ' ' . ($buyer?->last_name ?? '')) ?: 'Unknown buyer' }}</strong></div>
+          <div><strong>{{ ($addr['recipient_name'] ?? null) ?: (trim(($buyer?->given_names ?? '') . ' ' . ($buyer?->last_name ?? '')) ?: 'Unknown buyer') }}</strong></div>
           <div style="color:var(--muted)">{{ implode(', ', array_filter([$addr['house_no'] ?? null, $addr['street'] ?? null, $addr['barangay'] ?? null, $addr['municipality'] ?? null, $addr['province'] ?? null, $addr['region'] ?? null, $addr['postal_code'] ?? null])) ?: 'No address on file' }}</div>
-          <div style="color:var(--muted)">{{ $buyer?->contact_no ?: 'No contact number on file' }}</div>
+          <div style="color:var(--muted)">{{ ($addr['contact_no'] ?? null) ?: ($buyer?->contact_no ?: 'No contact number on file') }}</div>
         </div>
       </div>
     </div>
   </div>
 
   <div class="stack">
+    @include('rider.partials.payment-record')
     <div class="card">
       <div class="card-head"><h2>Actions</h2></div>
       <div class="card-pad">
         @if($codCollection ?? null)
-        <div role="status" style="padding:14px;border:1px solid var(--border);border-radius:12px;margin-bottom:16px;font-size:13px">COD collection recorded: <strong>?{{ number_format($codCollection->amount_cents / 100, 2) }}</strong><br>Hub cash verification: {{ ucfirst($codCollection->verification_state) }}.</div>
+        <div role="status" style="padding:14px;border:1px solid var(--border);border-radius:12px;margin-bottom:16px;font-size:13px">COD collection recorded: <strong>PHP {{ number_format($codCollection->amount_cents / 100, 2) }}</strong><br>Hub cash verification: {{ ucfirst($codCollection->verification_state) }}.</div>
         @elseif(($codRequired ?? false) && in_array($shipment->shipping_status, ['delivered','completed']))
         <p class="hint">Legacy delivery: no cash collection record is available. Payment or remittance has not been inferred.</p>
         @endif
@@ -99,7 +101,7 @@
           @if($errors->any())<div role="alert" style="padding:12px;border:1px solid var(--danger-line);border-radius:10px;color:var(--danger);margin-bottom:16px;font-size:13px"><ul style="margin:0;padding-left:18px">@foreach($errors->all() as $message)<li>{{ $message }}</li>@endforeach</ul></div>@endif
           <fieldset class="cod-collection">
             <legend>Cash on delivery</legend>
-            <p style="font-size:14px">Collect <strong>?{{ number_format($order->total, 2) }}</strong> from the buyer.</p>
+            <p style="font-size:14px">Collect <strong>PHP {{ number_format($order->total, 2) }}</strong> from the buyer.</p>
             <input type="hidden" name="collection_key" value="{{ old('collection_key', (string) \Illuminate\Support\Str::uuid()) }}">
             <div class="form-row"><label for="cod-amount">Amount collected (PHP)</label><input id="cod-amount" name="cod_amount" type="number" step="0.01" min="0" value="{{ old('cod_amount') }}" required inputmode="decimal" aria-describedby="cod-help"></div>
             <label style="display:flex;gap:10px;align-items:flex-start;font-size:13px"><input type="checkbox" name="cod_confirmed" value="1" required @checked(old('cod_confirmed')) style="width:18px;height:18px;flex:none"> I received the full cash amount and handed the parcel to the buyer.</label>

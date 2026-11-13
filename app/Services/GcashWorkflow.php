@@ -162,9 +162,9 @@ class GcashWorkflow
                 $this->fail('Product availability or agreed price changed. Explicit payment reconciliation is required.');
             }
         }
-        if (!isset($p->snapshot['commerce']) && $this->cents($seller->shipping_fee) !== $this->cents($p->snapshot['shipping_amount'])) {
-            $this->fail('Shipping amount changed. Explicit payment reconciliation is required.');
-        }
+        // Shipping was priced on the server at reservation; keep historical paid
+        // and pending snapshots immutable when the official parcel policy changes.
+
     }
 
     public function refreshCartPrices(User $buyer, array $ids, ?string $acknowledgement = null): array
@@ -274,7 +274,7 @@ class GcashWorkflow
             foreach ($grouped as $sellerId => $items) {
                 $seller = User::whereKey($sellerId)->lockForUpdate()->firstOrFail();
                 $subtotal = array_sum(array_map(fn ($i) => $this->cents($i['price']) * $i['qty'], $items));
-                $shipping = $this->cents($seller->shipping_fee);
+                $shipping = \App\Services\FinancialPolicy::DELIVERY_CENTS;
                 $discount = 0;
                 $voucher = null;
                 if ($code) {

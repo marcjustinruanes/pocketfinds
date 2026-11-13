@@ -9,6 +9,8 @@
 @endpush
 @push('scripts')<script src="{{ asset('js/seller-order-details.js') }}?v={{ filemtime(public_path('js/seller-order-details.js')) }}"></script>@endpush
 
+@push('head')<link rel="stylesheet" href="{{ asset('css/order-record.css') }}?v={{ filemtime(public_path('css/order-record.css')) }}">@endpush
+@push('head')<link rel="stylesheet" href="{{ asset('css/order-record.css') }}?v={{ filemtime(public_path('css/order-record.css')) }}">@endpush
 @section('content')
 <div class="orders-management">
 @include('commerce.messages')

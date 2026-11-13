@@ -159,9 +159,9 @@
           <div class="form-row"><label>Store banner (optional)</label><input type="file" name="store_banner" accept="image/jpeg,image/png"><small style="color:var(--muted)">JPG or PNG, maximum 5 MB.</small></div>
           @if(!\App\Services\BuyerCommerce::installed())<div class="form-row">
             <label>Shipping Fee (₱)</label>
-            <input type="number" name="shipping_fee" min="0" step="0.01" value="{{ old('shipping_fee', $u->shipping_fee) }}" placeholder="0.00 for free shipping">
+            <input type="number" name="shipping_fee" readonly value="50.00">
             <span style="font-size:11px;color:var(--muted)">Charged once per order from your shop, shown to buyers at checkout.</span>
-          </div>@else<p>Checkout uses your <a href="#shipping-rates">regional shipping rates</a> and product weight.</p>@endif
+          </div>@else<p>Checkout charges PHP 50 per parcel, payable in full to logistics. Regional settings continue to control delivery estimates and voucher eligibility.</p>@endif
           <button type="submit" class="btn btn-primary">Update Shop</button>
         </form>
       </div>

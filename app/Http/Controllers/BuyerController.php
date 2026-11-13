@@ -198,7 +198,7 @@ class BuyerController extends Controller
         // Real, seller-configured shipping fee per shop in the cart (defaults
         // to free when a seller hasn't set one).
         $sellers = User::whereIn('username', $groups->keys())->get()->keyBy('username');
-        $shippingFees = $groups->keys()->mapWithKeys(fn ($slug) => [$slug => (float) ($sellers->get($slug)?->shipping_fee ?? 0)]);
+        $shippingFees = $groups->keys()->mapWithKeys(fn ($slug) => [$slug => \App\Services\FinancialPolicy::DELIVERY_CENTS / 100]);
 
         // Every voucher belonging to a shop currently in the cart, split into
         // ones that actually apply right now (shown up front) and ones that
@@ -586,7 +586,8 @@ class BuyerController extends Controller
         $paymentPurchase = $request->query('payment_purchase');
         $paymentOrderId = $paymentPurchase ? $orders->first(fn ($order) => (string) ($order->gcash_purchase_id ?? '') === (string) $paymentPurchase)?->id : null;
         $openOrderDetails = $request->query('order_details') ?: $paymentOrderId;
-        return view('buyer.orders', compact('orders', 'tab', 'period', 'payment', 'paymentPurchase', 'paymentHistories', 'paymentProofs', 'openOrderDetails', 'orderCounts', 'orderHistory','returnRequests','refundOrderIds','cancellationRefunds', 'categoryId', 'orderCategories', 'paymentConfirmedAt'));
+        $orderDetails = app(\App\Support\OrderDetails::class)->forOrders($orders);
+        return view('buyer.orders', compact('orderDetails', 'orders', 'tab', 'period', 'payment', 'paymentPurchase', 'paymentHistories', 'paymentProofs', 'openOrderDetails', 'orderCounts', 'orderHistory','returnRequests','refundOrderIds','cancellationRefunds', 'categoryId', 'orderCategories', 'paymentConfirmedAt'));
     }
 
     /** Delivery proof is visible only to the buyer who owns the completed order. */
@@ -908,7 +909,7 @@ class BuyerController extends Controller
                         }
 
                         $subtotal = $sellerItems->sum(fn ($item) => $item['price'] * $item['qty']);
-                        $shipping = (float) ($seller->shipping_fee ?? 0);
+                        $shipping = \App\Services\FinancialPolicy::DELIVERY_CENTS / 100;
 
                         // A voucher only ever belongs to one shop — apply it to that
                         // shop's order when the code matches and the cart qualifies.
@@ -1056,7 +1057,7 @@ class BuyerController extends Controller
                 return response()->json([
                     'applies' => true,
                     'free_shipping' => $freeShipping,
-                    'discount' => $freeShipping ? (float) ($seller->shipping_fee ?? 0) : min((float) $voucher->discount_amount, $subtotal),
+                    'discount' => $freeShipping ? \App\Services\FinancialPolicy::DELIVERY_CENTS / 100 : min((float) $voucher->discount_amount, $subtotal),
                     'shop' => $sellerSlug,
                 ]);
             }

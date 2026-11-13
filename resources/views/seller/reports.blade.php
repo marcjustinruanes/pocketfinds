@@ -45,6 +45,15 @@
   <div class="kpi"><div class="label">Avg. Order Value</div><div class="value">₱{{ number_format($avgOrderValue, 2) }}</div><div class="delta">Per order</div></div>
 </div>
 
+<div class="kpi-grid reports-kpis">
+  <div class="kpi"><div class="label">Gross product sales</div><div class="value">PHP {{ number_format($paymentReport['metrics']['item_sales']/100, 2) }}</div><div class="delta">Delivery fees excluded</div></div>
+  <div class="kpi"><div class="label">Product commission deducted</div><div class="value">PHP {{ number_format($paymentReport['metrics']['product_commission']/100, 2) }}</div><div class="delta">10% on eligible product subtotals</div></div>
+  <div class="kpi"><div class="label">Net seller earnings</div><div class="value">PHP {{ number_format($paymentReport['metrics']['net_seller_earnings']/100, 2) }}</div><div class="delta">90% before seller-funded discounts; historical ledger amounts preserved</div></div>
+  <div class="kpi"><div class="label">Pending COD payouts</div><div class="value">PHP {{ number_format($paymentReport['metrics']['pending_cod_payouts']/100, 2) }}</div><div class="delta">Current prepared and verified transfers</div></div>
+  <div class="kpi"><div class="label">Released COD payouts</div><div class="value">PHP {{ number_format($paymentReport['metrics']['seller_cod_paid']/100, 2) }}</div><div class="delta">Actual payments during this period</div></div>
+</div>
+<p class="reports-explainer">Logistics receives the PHP 50 parcel fee and pays PHP 10 to the rider after successful delivery. These amounts are separate from seller earnings and the 10% product commission. GCash is received directly by sellers; its commission remains payable through Commission Statements. Seller-funded vouchers reduce actual transfers separately.</p>
+
 <div class="dash-grid payment-report-layout reports-grid">
   <div class="stack">
     {{-- Revenue chart --}}

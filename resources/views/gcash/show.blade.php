@@ -51,6 +51,7 @@
 <div class="gcash-page" data-purchase="{{ $p->id }}" data-review-flow="{{ $platformFlow?'admin':'seller' }}" data-reviewer="{{ $reviewer ? '1' : '0' }}" data-orders-url="{{ route($buyer ? 'buyer.orders' : 'seller.orders') }}" data-payment-state="{{ $p->payment_state }}">
  <nav class="gcash-nav" aria-label="GCash navigation">
   <a href="{{ route('gcash.index') }}">All GCash purchases</a>
+  @if($linkedOrder && ($reviewer || $buyer || !$linkedOrder->awaitingAdminPayment()))<a href="{{ route('orders.receipt', $linkedOrder) }}" target="_blank" rel="noopener">Print order summary / receipt</a>@endif
   @if($buyer)<a href="{{ $conversation }}">Open existing conversation</a>@endif
   @if($linkedOrder && !$reviewer)<a href="{{ route($buyer ? 'buyer.orders' : 'seller.orders') }}">View linked order {{ $linkedOrder->order_number }}</a>@endif
  </nav>

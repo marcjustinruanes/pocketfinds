@@ -14,13 +14,14 @@
         </li>
         @endforeach
       </ol></section>
+      @php $detail = $orderDetails->get($order->id); @endphp
+      @include('orders.partials.payment')
+      @include('orders.partials.settlement')
+      @include('orders.partials.refund')
       <div class="order-summary-columns">
         <div class="order-quantity-summary order-checkout-summary">
           <h3>Order summary</h3>
-          <div class="order-cost-row"><span>Subtotal</span><strong>₱{{ number_format($order->subtotal,2) }}</strong></div>
-          <div class="order-cost-row"><span>Shipping</span><strong>{{ (float)$order->shipping_amount>0?'₱'.number_format($order->shipping_amount,2):'Free' }}</strong></div>
-          <div class="order-cost-row order-cost-discount"><span>Discounts</span><strong>{{ (float)$order->discount_amount>0?'−':'' }}₱{{ number_format($order->discount_amount,2) }}</strong></div>
-          <div class="order-cost-total"><span><strong>Total</strong><small>{{ $items->sum('qty') }} {{ $items->sum('qty')===1?'item':'items' }}</small></span><strong>₱{{ number_format($order->total,2) }}</strong></div>
+          @include('orders.partials.costs')
         </div>
         <div class="order-detail-info-grid">
           <div><span>Customer name</span><strong>{{ $customerName }}</strong></div>
@@ -35,12 +36,12 @@
           @php
             $summaryVariant=collect([$item['variation_group']??null,$item['variation_value']??$item['color']??null,$item['size']??null])->filter()->unique()->join(': ');
           @endphp
-          <tr><td><div class="order-summary-product"><div class="order-summary-product-image">@if(!empty($item['img']))<img src="{{ $item['img'] }}" alt="{{ $item['name']??'Product' }}" loading="lazy">@else @include('seller.partials.icon',['name'=>'package','size'=>22]) @endif</div><div><strong>{{ $item['name']??'Product not provided' }}</strong>@if($summaryVariant)<small>{{ $summaryVariant }}</small>@endif</div></div></td><td>{{ $item['qty'] }} × ₱{{ number_format($item['original_price']??$item['price'],2) }}</td></tr>
+          <tr><td><div class="order-summary-product"><div class="order-summary-product-image">@if(!empty($item['img']))<img src="{{ $item['img'] }}" alt="{{ $item['name']??'Product' }}" loading="lazy">@else @include('seller.partials.icon',['name'=>'package','size'=>22]) @endif</div><div><strong>{{ $item['name']??'Product not provided' }}</strong>@if($summaryVariant)<small>{{ $summaryVariant }}</small>@endif</div></div></td><td>{{ $item['qty'] }} × ₱{{ number_format($item['price'],2) }}<br><small>Line total: PHP {{ number_format($item['qty'] * $item['price'], 2) }}</small></td></tr>
           @endforeach
         </tbody></table></section>
       </div>
       @if($order->status==='cancelled')<p class="seller-order-cancel-note">{{ preg_match('/^Cancelled\b/i', $order->cancellation_reason ?? '') ? $order->cancellation_reason : 'Cancelled: '.($order->cancellation_reason ?: 'Reason not provided') }}@if($order->cancellation_note)<br>{{ $order->cancellation_note }}@endif</p>@endif
-      @if($shipment)<div class="seller-order-shipment-info"><span>Tracking: <strong>{{ $shipment->tracking_number }}</strong></span>@if($shipment->pickupRider)<span>Pickup rider: {{ $shipment->pickupRider->given_names }} {{ $shipment->pickupRider->last_name }}</span>@endif @if($shipment->courier)<span>Delivery rider: {{ $shipment->courier->given_names }} {{ $shipment->courier->last_name }}</span>@endif @if($shipment->scheduled_pickup_at)<span>Scheduled pickup: {{ $shipment->scheduled_pickup_at->format('M j, Y g:i A') }}</span>@endif</div>@endif
+      @if($shipment)<div class="seller-order-shipment-info"><span>Tracking: <strong>{{ $shipment->tracking_number }}</strong></span><span>Logistics company: <strong>{{ $shipment->logistics_company ?: 'Not assigned' }}</strong></span>@if($shipment->pickupRider)<span>Pickup rider: {{ $shipment->pickupRider->given_names }} {{ $shipment->pickupRider->last_name }}</span>@endif @if($shipment->courier)<span>Delivery rider: {{ $shipment->courier->given_names }} {{ $shipment->courier->last_name }}</span>@endif @if($shipment->scheduled_pickup_at)<span>Scheduled pickup: {{ $shipment->scheduled_pickup_at->format('M j, Y g:i A') }}</span>@endif</div>@endif
       @include('seller.partials.order-cancel')
     </div>
     <div class="order-details-footer">

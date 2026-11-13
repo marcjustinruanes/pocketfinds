@@ -9,6 +9,18 @@ use Illuminate\Support\Str;
 
 class CommissionTest extends CodSellerPayoutTest
 {
+    public function test_official_seller_report_separates_products_commission_and_released_payouts(): void
+    {
+        $this->paidCod();
+        DB::table('orders')->where('id', $this->order->id)->update(['status' => 'completed']);
+        $metrics = app(PaymentReporting::class)->snapshot($this->seller->id)['metrics'];
+        $this->assertSame(100000, $metrics['item_sales']);
+        $this->assertSame(10000, $metrics['product_commission']);
+        $this->assertSame(90000, $metrics['net_seller_earnings']);
+        $this->assertSame(90000, $metrics['seller_cod_paid']);
+        $this->assertSame(0, $metrics['pending_cod_payouts']);
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -42,11 +54,11 @@ class CommissionTest extends CodSellerPayoutTest
         return $order;
     }
 
-    public function test_calculation_excludes_shipping_and_only_subtracts_seller_product_discounts(): void
+    public function test_calculation_is_ten_percent_of_product_subtotal_excluding_shipping(): void
     {
         $r = $this->ledger()->calculate(['items' => [['name' => 'A', 'qty' => 2, 'price' => '500.00']], 'subtotal' => '1000', 'shipping_amount' => '100', 'discount_amount' => '200', 'commerce' => ['vouchers' => [
             ['kind' => 'store', 'funding_source' => 'seller', 'amount' => '100'], ['kind' => 'platform', 'funding_source' => 'platform', 'amount' => '50'], ['kind' => 'shipping', 'funding_source' => 'seller', 'amount' => '50']]]]);
-        $this->assertSame(90000, $r['basis_cents']); $this->assertSame(9000, $r['commission_cents']);
+        $this->assertSame(100000, $r['basis_cents']); $this->assertSame(10000, $r['commission_cents']);
         $small = $this->ledger()->calculate(['items' => [['qty' => 1, 'price' => '0.05'], ['qty' => 1, 'price' => '0.05']], 'subtotal' => '0.10', 'discount_amount' => 0]);
         $this->assertSame(1, array_sum(array_column($small['lines'], 'commission_cents')));
         $this->assertSame([50000000000,50000000000],$this->ledger()->split(100000000000,[500000000000,500000000000]));

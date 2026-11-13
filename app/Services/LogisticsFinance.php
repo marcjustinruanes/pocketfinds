@@ -41,13 +41,13 @@ class LogisticsFinance
     {
         abort_unless(filled($company), 422, 'A logistics company is required.');
         $created = DB::table('logistics_finance_settings')->insertOrIgnore([
-            'company_name' => $company, 'pickup_cents' => 3000, 'transfer_cents' => 15000,
-            'delivery_cents' => 5000, 'confirmation_hours' => 168, 'revision' => 1,
+            'company_name' => $company, 'pickup_cents' => 0, 'transfer_cents' => 0,
+            'delivery_cents' => FinancialPolicy::RIDER_CENTS, 'confirmation_hours' => 168, 'revision' => 1,
             'created_at' => now(), 'updated_at' => now(),
         ]);
         if ($created) {
             $this->event($company, 'rates_initialized', 'settings', $company,
-                ['pickup_cents' => 3000, 'transfer_cents' => 15000, 'delivery_cents' => 5000, 'confirmation_hours' => 168], auth()->id());
+                ['pickup_cents' => 0, 'transfer_cents' => 0, 'delivery_cents' => FinancialPolicy::RIDER_CENTS, 'confirmation_hours' => 168], auth()->id());
         }
 
         return DB::table('logistics_finance_settings')->where('company_name', $company)->first();
@@ -66,7 +66,10 @@ class LogisticsFinance
         $actor = $this->admin($actor);
         $values = [];
         foreach (['pickup', 'transfer', 'delivery'] as $leg) {
-            $values[$leg.'_cents'] = $this->cents((string) $data[$leg]);
+            $values[$leg.'_cents'] = $leg === 'delivery' ? FinancialPolicy::RIDER_CENTS : 0;
+            if ($this->cents((string) $data[$leg]) !== $values[$leg.'_cents']) {
+                throw ValidationException::withMessages([$leg => 'Official rider pay is PHP 10 per successful final delivery; pickup and transfer carry no separate parcel compensation.']);
+            }
         }
         // The initial approved timeout is fixed at seven days; do not add a new policy range here.
         DB::transaction(function () use ($actor, $data, $values) {
@@ -85,7 +88,7 @@ class LogisticsFinance
 
     public function snapshotAssignment(DeliveryAssignment $assignment): void
     {
-        if (! $this->installed() || ! in_array($assignment->leg, ['pickup', 'delivery'], true)
+        if (! $this->installed() || $assignment->leg !== 'delivery'
             || ! in_array($assignment->status, ['accepted', 'assigned_to_rider'], true)) {
             return;
         }
@@ -98,9 +101,7 @@ class LogisticsFinance
 
     public function snapshotTransfer(HubTransferBatch $batch): void
     {
-        if ($this->installed() && $batch->rider_id && ! $batch->legacy_import) {
-            $this->snapshot('transfer_batch', $batch->id, $batch->company_name, (int) $batch->rider_id, 'transfer');
-        }
+        // Operational transfers remain available; only final delivery earns parcel pay.
     }
 
     private function snapshot(string $type, string $source, string $company, int $riderId, string $leg): void
@@ -140,12 +141,12 @@ class LogisticsFinance
             DB::table('logistics_compensations')->insert([
                 'id' => $id, 'company_name' => $company, 'source_type' => $type, 'source_id' => $source,
                 'rider_id' => $riderId, 'hub_id' => $rider->logistics_hub_id, 'leg' => $leg,
-                'amount_cents' => $settings->{$leg.'_cents'}, 'settings_revision' => $settings->revision,
+                'amount_cents' => FinancialPolicy::RIDER_CENTS, 'settings_revision' => $settings->revision,
                 'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
             ]);
             $this->event($company, 'compensation_snapshotted', 'compensation', $id, [
                 'source_type' => $type, 'source_id' => $source, 'rider_id' => $riderId,
-                'amount_cents' => $settings->{$leg.'_cents'}, 'settings_revision' => $settings->revision,
+                'amount_cents' => FinancialPolicy::RIDER_CENTS, 'settings_revision' => $settings->revision,
             ]);
         });
     }
