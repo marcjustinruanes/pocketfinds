@@ -181,7 +181,7 @@
           onclick="openReasonModal('reject', '{{ route('admin.vehicles.reject', $vehicle->id) }}')">
           <x-admin-icon name="close" /> Reject
         </button>
-        <form method="POST" action="{{ route('admin.vehicles.approve', $vehicle->id) }}" style="display:inline">
+        <form method="POST" action="{{ route('admin.vehicles.approve', $vehicle->id) }}" style="display:inline" data-confirm data-confirm-title="Approve this vehicle?" data-confirm-message="This vehicle will be approved for the platform." data-confirm-action="Approve vehicle" data-confirm-tone="success">
           @csrf @method('PATCH')
           <button class="btn btn-success" type="submit"><x-admin-icon name="edit" /> Approve Vehicle</button>
         </form>
@@ -190,7 +190,7 @@
           <x-admin-icon name="check-circle" /> Already approved — hub staff manages availability
         </span>
       @elseif($vehicle->platform_status === 'rejected')
-        <form method="POST" action="{{ route('admin.vehicles.approve', $vehicle->id) }}" style="display:inline">
+        <form method="POST" action="{{ route('admin.vehicles.approve', $vehicle->id) }}" style="display:inline" data-confirm data-confirm-title="Approve this vehicle?" data-confirm-message="This vehicle will be approved for the platform despite its previous rejection." data-confirm-action="Approve anyway" data-confirm-tone="success">
           @csrf @method('PATCH')
           <button class="btn btn-success" type="submit"><x-admin-icon name="edit" /> Approve Anyway</button>
         </form>

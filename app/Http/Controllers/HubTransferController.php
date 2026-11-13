@@ -6,7 +6,6 @@ use App\Models\CompanyVehicle;
 use App\Models\HubTransferBatch;
 use App\Models\LogisticsHub;
 use App\Models\ShipmentHubLeg;
-use App\Models\User;
 use App\Services\HubTransferWorkflow;
 use Illuminate\Http\Request;
 
@@ -44,12 +43,13 @@ class HubTransferController extends LogisticsController
         $batch = $flow->scope($request->user())->with(['requester', 'approver', 'dispatcher', 'receiver', 'rider', 'vehicle', 'origin', 'destination'])->findOrFail($id);
         $members = $batch->members()->with(['leg', 'receiver', 'shipment.hubLegs.transferBatch.members', 'shipment.courier', 'shipment.pickupRider', 'shipment.deliveryAssignment'])->orderBy('id')->paginate(30)->withQueryString();
         $events = $batch->events()->with('actor')->reorder()->orderByDesc('id')->paginate(30, ['*'], 'event_page')->withQueryString();
-        $riders = $request->user()->isLogisticsAdmin() && $batch->status === 'approved'
-            ? User::where('account_type', 'rider')->where('business_name', $batch->company_name)->where('status', 'approved')->where('logistics_hub_id', $batch->origin_hub_id)->where('vehicle_type', 'four_wheels')->orderBy('username')->get() : collect();
+        $riders = $request->user()->isLogisticsAdmin() && $batch->status === 'approved' && $batch->origin
+            ? app(\App\Services\TransferRiderEligibility::class)->available($batch->origin) : collect();
         $vehicles = $request->user()->isLogisticsAdmin() && $batch->status === 'approved'
             ? CompanyVehicle::where('company_name', $batch->company_name)->where('logistics_hub_id', $batch->origin_hub_id)->where('vehicle_type', 'four_wheels')->riderVisible()->get() : collect();
 
-        return view('logistics.transfer-show', array_merge($this->sidebarCounts(), compact('batch', 'members', 'events', 'riders', 'vehicles')));
+        $custodyProblems = app(\App\Services\TransferCustodyEvidence::class)->review($batch);
+        return view('logistics.transfer-show', array_merge($this->sidebarCounts(), compact('batch', 'members', 'events', 'riders', 'vehicles', 'custodyProblems')));
     }
 
     public function create(Request $request)
@@ -81,7 +81,7 @@ class HubTransferController extends LogisticsController
 
     private function result(Request $request, HubTransferBatch $batch)
     {
-        $request->attributes->set('logistics_record_ids', $batch->members()->whereNotNull('leg_id')->pluck('leg_id')->all());
+        $request->attributes->set('logistics_record_ids', $batch->relationLoaded('activityLegIds') ? $batch->getRelation('activityLegIds')->all() : $batch->members()->whereNotNull('leg_id')->pluck('leg_id')->all());
         if ($request->expectsJson()) {
             return response()->json(['ok' => true, 'batch_id' => $batch->id, 'status' => $batch->status]);
         }
@@ -138,8 +138,8 @@ class HubTransferController extends LogisticsController
 
     public function discrepancy(Request $r, string $id, HubTransferWorkflow $flow)
     {
-        $data = $r->validate(['reason' => 'required|string|max:1000', 'shipment_id' => 'nullable|string|max:36']);
+        $data = $r->validate(['reason' => 'required|string|max:1000', 'shipment_id' => 'nullable|string|max:36', 'request_key' => 'required|uuid']);
 
-        return $this->result($r, $flow->discrepancy($r->user(), $id, $data['reason'], $data['shipment_id'] ?? null));
+        return $this->result($r, $flow->discrepancy($r->user(), $id, $data['reason'], $data['shipment_id'] ?? null, $data['request_key']));
     }
 }

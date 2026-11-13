@@ -7,20 +7,9 @@
 <div class="seller-vouchers-page">
 
 @if(session('voucher_success'))
-<div class="modal-overlay open" id="voucherResultModal">
-  <div class="modal" style="max-width:400px">
-    <div class="modal-body" style="text-align:center;padding:30px 26px 20px">
-      <span style="width:48px;height:48px;border-radius:50%;background:var(--success-soft);color:var(--success);display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
-        @include('seller.partials.icon',['name'=>'check-circle','size'=>24])
-      </span>
-      <h3 style="font-family:var(--font-display);font-size:16px;margin:0 0 6px">Success</h3>
-      <p style="font-size:13px;color:var(--muted);margin:0">{{ session('voucher_success') }}</p>
-    </div>
-    <div class="modal-foot" style="justify-content:center">
-      <button class="btn btn-primary" type="button" data-modal-close>OK</button>
-    </div>
-  </div>
-</div>
+  @push('scripts')
+  <script>showToast(@json(session('voucher_success')));</script>
+  @endpush
 @endif
 
 <div class="filter-bar vouchers-toolbar">
@@ -80,7 +69,7 @@
                   @include('seller.partials.icon',['name'=>$voucher->is_active ? 'x' : 'check','size'=>13])
                 </button>
               </form>
-              <form method="POST" action="{{ route('seller.vouchers.destroy', $voucher) }}" onsubmit="return confirm('Delete this voucher?')">
+              <form method="POST" action="{{ route('seller.vouchers.destroy', $voucher) }}" data-confirm="Delete this voucher? Buyers will no longer be able to use it." data-confirm-action="Delete voucher">
                 @csrf
                 @method('DELETE')
                 <button type="submit" class="btn btn-sm btn-outline" title="Delete">

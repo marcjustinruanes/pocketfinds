@@ -122,6 +122,7 @@
         <button type="button" class="btn btn-outline" style="width:100%;margin-top:10px;color:var(--danger)" onclick="document.getElementById('failedForm').hidden = !document.getElementById('failedForm').hidden">Delivery Failed?</button>
         <form id="failedForm" method="POST" action="{{ route('rider.deliveries.failed', $shipment->id) }}" hidden style="margin-top:10px">
           @csrf @method('PATCH')
+          <input type="hidden" name="attempt_token" value="{{ $shipment->failedDeliveryToken() }}">
           <select name="reason" required style="width:100%;border:1px solid var(--border);border-radius:9px;padding:8px 10px;font-size:12.5px;font-family:var(--font-body)"><option value="">Choose a reason</option><option value="buyer_not_home">Buyer not home</option><option value="wrong_address">Wrong address</option><option value="refused">Buyer refused the order</option></select>
           <button type="submit" class="btn btn-danger" style="width:100%;margin-top:8px">Report Failed Delivery</button>
         </form>

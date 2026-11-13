@@ -7,7 +7,7 @@
       <p>Add your GCash details before your Admin prepares salary payments.</p>
     @endforelse
     <details><summary>Add or update receiving account</summary>
-      <form method="POST" action="{{ route('logistics.my-salary.destination') }}" onsubmit="return confirm('Save these GCash details? Existing payment instructions retain their original account.');">
+      <form method="POST" action="{{ route('logistics.my-salary.destination') }}" data-confirm data-confirm-title="Save GCash details?" data-confirm-message="New salary payments will use these details. Existing payment instructions will retain their original account." data-confirm-action="Save details" data-confirm-tone="success">
         @csrf
         @include('logistics.partials.finance-account-fields',['prefix'=>'staff-salary-account'])
         <label class="salary-account-confirmation"><input type="checkbox" name="confirmed" value="1" required><span>I checked the account name and GCash number and confirm they belong to me.</span></label>

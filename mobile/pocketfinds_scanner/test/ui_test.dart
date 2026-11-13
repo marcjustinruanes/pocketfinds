@@ -92,9 +92,16 @@ void main() {
       final parcel = {
         'parcel': {
           'tracking_number': 'PF-123',
+          'order_number': 'ORDER-123',
           'status_label': 'Picked up',
           'origin_hub': 'Pila',
           'destination_hub': 'Cavinti',
+          'hub_leg_progress': 'Leg 1 of 2',
+        },
+        'custody': {
+          'label': 'At hub',
+          'responsible': 'Pila',
+          'next': 'Review transfer',
         },
         'actions': [
           {'id': 'receive', 'label': 'Receive and sort'},
@@ -125,6 +132,11 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
+      expect(find.text('Order: ORDER-123'), findsOneWidget);
+      expect(find.text('Transfer: Leg 1 of 2'), findsOneWidget);
+      expect(find.text('Parcel handling: At hub'), findsOneWidget);
+      expect(find.text('Hub or rider: Pila'), findsOneWidget);
+      expect(find.text('Next step: Review transfer'), findsOneWidget);
       await tester.tap(find.text('Retry same operation'));
       expect(called, 1);
       expect(tester.takeException(), isNull);

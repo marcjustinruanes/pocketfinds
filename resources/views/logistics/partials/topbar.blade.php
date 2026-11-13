@@ -22,7 +22,7 @@ $storedUnread=\Illuminate\Support\Facades\DB::table('notifications')->where('use
   <div class="topbar-actions">
         @php
           $notificationTasks=[];
-          if($showRequestAlert) $notificationTasks[]=['title'=>'Delivery requests','message'=>$pendingDeliveries.' delivery requests pending approval.','url'=>route('logistics.requests'),'notification_type'=>'pickup_request'];
+          if($showRequestAlert) $notificationTasks[]=['title'=>'Delivery requests','message'=>$pendingDeliveries.' delivery requests '.(auth()->user()->isHubStaff() ? 'awaiting Logistics Admin approval.' : 'pending approval.'),'url'=>route(auth()->user()->isHubStaff() ? 'logistics.dashboard' : 'logistics.requests'),'notification_type'=>'pickup_request'];
           if($showUnassignedAlert) $notificationTasks[]=['title'=>'Unassigned shipments','message'=>$unassigned.' shipments awaiting assignment.','url'=>route('logistics.assignments'),'notification_type'=>'shipment_unassigned'];
         @endphp
         @include('account.partials.notification-menu', ['panelUnreadCount'=>$storedUnread, 'panelSummaries'=>$notificationTasks])

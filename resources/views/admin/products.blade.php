@@ -87,7 +87,7 @@
           <td>
             <div style="display:flex;align-items:center;gap:10px">
               @if($product->image)
-                <img src="{{ Storage::url($product->image) }}" style="width:44px;height:44px;object-fit:cover;border-radius:8px;flex-shrink:0;border:1px solid var(--border)">
+                <span class="product-review-image"><img src="{{ Storage::url($product->image) }}" alt="" onerror="this.hidden=true;this.parentElement.classList.add('is-missing')"><span class="product-review-image-fallback" aria-hidden="true"><x-admin-icon name="bag" /></span></span>
               @else
                 <div style="width:44px;height:44px;background:var(--paper);border-radius:8px;display:grid;place-items:center;flex-shrink:0;color:var(--muted)">
                   <x-admin-icon name="bag" />
@@ -331,7 +331,7 @@
       <button type="button" class="btn btn-outline" data-modal-close>Close</button>
       @if($product->status === 'pending')
         <button type="button" class="btn btn-outline-danger" onclick="openReject('{{ $product->id }}', '{{ addslashes($product->name) }}')"><x-admin-icon name="close" /> Reject</button>
-        <form method="POST" action="{{ route('admin.products.approve', $product->id) }}" style="display:inline">
+        <form method="POST" action="{{ route('admin.products.approve', $product->id) }}" style="display:inline" data-confirm data-confirm-title="Approve this product?" data-confirm-message="This product will become available to buyers." data-confirm-action="Approve product" data-confirm-tone="success">
           @csrf @method('PATCH')
           <button class="btn btn-success" type="submit"><x-admin-icon name="edit" /> Approve Product</button>
         </form>

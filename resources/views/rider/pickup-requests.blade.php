@@ -1,7 +1,7 @@
 @extends('rider.layout')
 @section('title', 'Pickup Offers')
 @section('page-title', 'Pickup Offers')
-@section('page-sub', 'Personal pickup offers expire after 60 seconds')
+@section('page-sub', 'Confirm a personal pickup offer within 60 seconds. Maximum three active pickup and delivery jobs combined.')
 @section('content')
 <div class="card"><div class="card-head"><h2>Pickup Offers</h2><span class="stamp stamp-approved">{{ $shipments->count() }} available</span></div><div class="table-wrap"><table class="dtable"><thead><tr><th>Tracking #</th><th>Seller Location</th><th>Order Amount</th><th>Pickup pay</th><th>Expires</th><th>Action</th></tr></thead><tbody>
 @forelse($shipments as $s)

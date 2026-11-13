@@ -9,7 +9,7 @@
 <div class="cash-desk staff-payroll attendance-workspace">
 @include('commerce.messages')
 @if(!$admin)
-<section class="cash-card"><h2>Today / {{ $flow->now()->toDateString() }}</h2>
+<section class="cash-card attendance-today-card"><h2 class="attendance-section-title"><span class="attendance-section-icon"><x-admin-icon name="clock" /></span>Today / {{ $flow->now()->toDateString() }}</h2>
 <p>Assigned hub: {{ $hub->municipality ?? 'Unassigned' }} / #{{ $actor->logistics_hub_id }}. Timestamps are recorded by the server.</p>
 @if($active)
 <p><strong>{{ $active->needs_review ? 'Missing Time Out - review required' : 'Working' }}</strong> / Shift started {{ $pht($active->time_in) }}. Shift hub #{{ $active->hub_id }}.</p>
@@ -22,7 +22,7 @@
 <p>No Record does not mean Absent. No work schedule, deductions or automatic penalties are applied.</p>
 </section>
 @endif
-<section class="cash-card"><h2>Attendance history</h2>
+<section class="cash-card attendance-history-card"><h2 class="attendance-section-title"><span class="attendance-section-icon"><x-admin-icon name="chart" /></span>Attendance history</h2>
 <form method="GET" class="payroll-filters">
 <div><label for="att-from">From (Time In / business date)</label><input id="att-from" name="from" type="date" value="{{ $filters['from'] }}" required></div>
 <div><label for="att-to">Through</label><input id="att-to" name="to" type="date" value="{{ $filters['to'] }}" required></div>
@@ -50,11 +50,11 @@
 <label for="review-reason-{{ $row->id }}">Required review reason</label><textarea id="review-reason-{{ $row->id }}" name="reason" minlength="5" maxlength="2000" required></textarea>
 <button class="btn">{{ $row->kind==='shift'?'Flag Missing Time Out':'Void documented leave/absence' }}</button></form></details>
 @endif</td></tr>
-@empty<tr><td colspan="5">No matching records. Adjust your filters.</td></tr>@endforelse
+@empty<tr><td colspan="5"><div class="attendance-empty-state"><span aria-hidden="true">—</span><strong>No attendance records match</strong><small>Adjust the filters or date range to see other records.</small></div></td></tr>@endforelse
 </tbody></table></div>{{ $records->links() }}
 </section>
 @if(!$admin)
-<section class="cash-card" id="attendance-correction"><h2>Request attendance correction</h2><p>Submit proposed times and a reason. Admin must review them. Original clock timestamps remain preserved. For an overnight shift, the affected date is its Time In date.</p>
+<section class="cash-card attendance-correction-card" id="attendance-correction"><h2 class="attendance-section-title"><span class="attendance-section-icon"><x-admin-icon name="edit" /></span>Request attendance correction</h2><p>Submit proposed times and a reason. Admin must review them. Original clock timestamps remain preserved. For an overnight shift, the affected date is its Time In date.</p>
 <form method="POST" action="{{ route('logistics.my-attendance.correction') }}" data-attendance-confirm="Submit these proposed times for Admin review? This does not change recorded attendance or salary yet.">@csrf
 <label for="correction-record">Affected shift</label><select id="correction-record" name="attendance_id"><option value="">Forgot Time In / no existing record</option>
 @if($active && !$records->contains('id',$active->id))<option value="{{ $active->id }}">Active shift / {{ $active->business_date }}</option>@endif
@@ -65,7 +65,7 @@
 <label for="correction-reason">Reason</label><textarea id="correction-reason" name="reason" minlength="5" maxlength="2000" required>{{ old('reason') }}</textarea><button class="btn btn-primary">Request correction</button>
 </form></section>
 @else
-<section class="cash-card"><h2>Document approved leave or confirmed absence</h2><p>There is no work-schedule engine. Confirm an absence only after verifying an actual scheduled workday, not a rest day or approved leave. These records never deduct salary.</p>
+<section class="cash-card attendance-document-card"><h2 class="attendance-section-title"><span class="attendance-section-icon"><x-admin-icon name="file" /></span>Document approved leave or confirmed absence</h2><p>There is no work-schedule engine. Confirm an absence only after verifying an actual scheduled workday, not a rest day or approved leave. These records never deduct salary.</p>
 <form method="POST" action="{{ route('logistics.attendance.mark') }}" data-attendance-confirm="Record this documented day status for the selected Staff member? Salary will remain unchanged.">@csrf
 <label for="mark-staff">Staff account ID</label><input id="mark-staff" name="staff_id" type="number" min="1" required value="{{ old('staff_id') }}">
 <label for="mark-date">Business date</label><input id="mark-date" name="business_date" type="date" required value="{{ old('business_date') }}">
@@ -74,7 +74,7 @@
 <label for="mark-reason">Required approval / scheduling evidence and reason</label><textarea id="mark-reason" name="reason" minlength="5" maxlength="2000" required>{{ old('reason') }}</textarea><button class="btn btn-primary">Record documented day</button>
 </form></section>
 @endif
-<section class="cash-card"><h2>Attendance corrections / {{ ucfirst($filters['corrections']) }}</h2><p>Queue follows hub, Staff search and decision status; older pending issues remain visible outside the history date range.</p>
+<section class="cash-card attendance-corrections-queue"><h2 class="attendance-section-title"><span class="attendance-section-icon"><x-admin-icon name="clock" /></span>Attendance corrections / {{ ucfirst($filters['corrections']) }}</h2><p>Queue follows hub, Staff search and decision status; older pending issues remain visible outside the history date range.</p>
 @forelse($corrections as $item)
 <article class="cash-handover"><h3>{{ $item->given_names }} {{ $item->last_name }} / #{{ $item->staff_id }} / {{ $item->business_date }} / Request hub #{{ $item->hub_id }}</h3>
 <p>Status: {{ ucfirst($item->status) }}. Reason: {{ $item->reason }}</p>
@@ -85,7 +85,7 @@
 <label for="decision-{{ $item->id }}">Decision</label><select id="decision-{{ $item->id }}" name="decision"><option value="approve">Approve proposed times</option><option value="reject">Reject correction</option></select>
 <label for="decision-reason-{{ $item->id }}">Required decision reason</label><textarea id="decision-reason-{{ $item->id }}" name="reason" minlength="5" maxlength="2000" required></textarea><button class="btn btn-primary">Record decision</button></form>
 @endif</article>
-@empty<p>No correction requests match these filters.</p>@endforelse
+@empty<div class="attendance-empty-state"><span aria-hidden="true">—</span><strong>No correction requests match</strong><small>Requests matching this decision status and staff scope will appear here.</small></div>@endforelse
 {{ $corrections->links() }}
 </section></div>
 @endsection

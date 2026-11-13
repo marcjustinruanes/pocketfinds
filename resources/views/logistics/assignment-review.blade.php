@@ -25,7 +25,8 @@
 @elseif(!$seller && in_array($a->leg,['pickup','delivery']) && in_array($a->status,['accepted','assigned_to_rider']) && $a->work_class==='active')
 <details><summary>Request pre-collection reassignment</summary><form method="POST" action="{{ route('logistics.assignments.reassign',$a->id) }}">@csrf
 <input type="hidden" name="key" value="{{ (string)\Illuminate\Support\Str::uuid() }}"><input type="hidden" name="revision" value="{{ $a->revision }}"><input type="hidden" name="old_rider_id" value="{{ $a->courier_id }}">
-<label for="replacement-{{ $a->id }}">Replacement rider</label><select id="replacement-{{ $a->id }}" name="replacement_rider_id" required><option value="">Select an eligible rider</option>@foreach($riders as $r)@if($r->id!=$a->courier_id && $r->logisticsHub?->is_operational && $r->logisticsHub?->municipality===($a->leg==='pickup'?$a->shipment?->origin_hub:$a->shipment?->destination_hub) && $r->logisticsHub?->province===($a->leg==='pickup'?$a->shipment?->origin_province:$a->shipment?->destination_province))<option value="{{ $r->id }}">{{ $r->username }}</option>@endif @endforeach</select>
+<label for="replacement-{{ $a->id }}">Replacement rider</label><select id="replacement-{{ $a->id }}" name="replacement_rider_id" required><option value="">Select an eligible rider</option>@foreach($riders[$a->id] ?? [] as $r)<option value="{{ $r->id }}">{{ $r->username }}</option>@endforeach</select>
+@if(empty($riders[$a->id]) || $riders[$a->id]->isEmpty())<p>No eligible online rider covering this parcel's barangay is available at its hub with capacity for another pickup/delivery job.</p>@endif
 <label for="reason-{{ $a->id }}">Reason</label><textarea id="reason-{{ $a->id }}" name="reason" minlength="3" maxlength="1000" required></textarea><button class="btn btn-primary">Request possession review</button></form></details>
 @endif
 <details><summary>Recorded assignment decisions</summary>

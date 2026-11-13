@@ -44,7 +44,7 @@
     <div class="table-wrap">
       <table class="dtable" id="regTable">
         <thead>
-          <tr><th>Applicant</th><th>Type</th><th>Username</th><th>Method</th><th>Submitted</th><th>Status</th><th></th></tr>
+          <tr><th>Applicant</th><th>Type</th><th>Submitted</th><th>Status</th><th></th></tr>
         </thead>
         <tbody>
           @forelse($users as $user)
@@ -56,8 +56,6 @@
               </div>
             </td>
             <td><span class="stamp stamp-{{ $user->account_type }}">{{ ucfirst($user->account_type) }}</span></td>
-            <td class="mono" style="font-size:12px">{{ $user->username ?? '—' }}</td>
-            <td>{{ ucfirst($user->auth_method) }}</td>
             <td class="mono">{{ $user->created_at?->format('M d, Y') ?? '—' }}</td>
             <td><span class="stamp stamp-{{ $user->status }}">{{ ucfirst($user->status) }}</span></td>
             <td>
@@ -228,7 +226,7 @@
                 <button type="button" class="btn btn-outline" onclick="openReasonModal('reject', '{{ route('admin.registrations.reject', $user->id) }}')">Update rejection decision</button>
                 @endif
                 @if($user->status !== 'approved')
-                <form method="POST" action="{{ route('admin.registrations.approve', $user->id) }}" style="display:inline">
+                <form method="POST" action="{{ route('admin.registrations.approve', $user->id) }}" style="display:inline" data-confirm data-confirm-title="Approve this application?" data-confirm-message="This will activate the account and complete its initial review." data-confirm-action="Approve account" data-confirm-tone="success">
                   @csrf @method('PATCH')
                   <button class="btn btn-success" type="submit">Approve</button>
                 </form>
@@ -237,7 +235,7 @@
             </div>
           </div>
           @empty
-          <tr><td colspan="7"><div class="empty"><div class="ic"><x-admin-icon name="edit" /></div><h3>No registrations yet</h3></div></td></tr>
+          <tr><td colspan="5"><div class="empty"><div class="ic"><x-admin-icon name="edit" /></div><h3>No registrations yet</h3></div></td></tr>
           @endforelse
         </tbody>
       </table>

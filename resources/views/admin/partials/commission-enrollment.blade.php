@@ -30,7 +30,10 @@
           <a href="{{ route('commissions.index') }}">Review commission statements &amp; receiving account <span aria-hidden="true">&rarr;</span></a>
         </div>
         <form class="ce-form" method="POST" action="{{ route('admin.settings.commission.update') }}"
-          onsubmit="if (!confirm('{{ $commissionActive ? 'Deactivate commission enrollment for future orders? Existing obligations and payments will continue.' : 'Activate fixed 10% commission for eligible new transactions from the new activation time? Previous transactions will stay excluded. Confirm the official GCash account and live activation requirements have been verified.' }}')) return false; this.querySelector('button[type=submit]').disabled = true; this.querySelector('button[type=submit]').textContent = 'Saving change…';">
+          data-confirm data-confirm-title="{{ $commissionActive ? 'Deactivate commission enrollment?' : 'Activate commission enrollment?' }}"
+          data-confirm-message="{{ $commissionActive ? 'Only future enrollment will stop. Existing obligations and payments will continue.' : 'This starts a new cutoff for eligible transactions. Verify the official GCash account and readiness requirements before continuing.' }}"
+          data-confirm-action="{{ $commissionActive ? 'Deactivate' : 'Activate' }}" data-confirm-tone="{{ $commissionActive ? 'danger' : 'success' }}"
+          onsubmit="if (this.dataset.confirmed === '1') { const button = this.querySelector('button[type=submit]'); button.disabled = true; button.textContent = 'Saving change…'; }">
           @csrf
           <input type="hidden" name="revision" value="{{ $commissionEnrollment->revision }}">
           <input type="hidden" name="action" value="{{ $commissionActive ? 'deactivate' : 'activate' }}">

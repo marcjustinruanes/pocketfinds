@@ -1,0 +1,83 @@
+/* Hub Staff portal uses the same warm PocketFinds account palette as Buyer and Seller. */
+.hub-staff-ui {
+  --paper: #fffafd;
+  --surface: #fff;
+  --white: #fff;
+  --text: #593346;
+  --muted: #8c7381;
+  --pink: #bc387f;
+  --pink-dark: #a52d6e;
+  --pink-soft: #fcf1f7;
+  --pink-line: #edc8dc;
+  --border: #eadfe6;
+  --font-body: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: Inter, system-ui, sans-serif;
+  --font-mono: Inter, system-ui, sans-serif;
+  background: var(--paper);
+  color: var(--text);
+}
+
+.hub-staff-ui .topbar { height: 73px; border-color: #eadfe6; background: #fff; }
+.hub-staff-ui .page-heading h1 { color: #593346; font-size: 18px; font-weight: 700; }
+.hub-staff-ui .page-heading p { color: #8c7381; }
+.hub-staff-ui .menu-toggle,
+.hub-staff-ui .icon-btn { color: #8c7381; }
+.hub-staff-ui .icon-btn { width: 39px; height: 39px; border-radius: 50%; }
+.hub-staff-ui .topbar-avatar { color: #bc387f; background: #fcf1f7; }
+.hub-staff-ui .content { width: min(1440px, calc(100% - 48px)); padding-top: 26px; }
+.hub-staff-ui .btn { border-radius: 8px; box-shadow: none; font-family: Inter, system-ui, sans-serif; }
+.hub-staff-ui .btn-primary { background: #bc387f; }
+.hub-staff-ui .btn-primary:hover { background: #a52d6e; }
+.hub-staff-ui .btn-outline { border-color: #eadfe6; color: #876b7b; }
+.hub-staff-ui .btn-outline:hover { background: #fcf1f7; color: #bc387f; }
+
+.hub-staff-ui .hub-dashboard-page {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.hub-staff-ui .hub-dashboard-page > .card {
+  border: 1px solid #eadfe6;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: none;
+}
+.hub-staff-ui .hub-dashboard-page > .hub-dashboard-action { padding: 14px 16px; }
+.hub-staff-ui .hub-dashboard-page .card-head { min-height: 60px; gap: 12px; padding: 15px 18px; border-bottom: 1px solid #f0e8ed; }
+.hub-staff-ui .hub-dashboard-page .card-head h2 { color: #593346; font-size: 14px; font-weight: 650; }
+.hub-staff-ui .hub-dashboard-page .card-head .stamp { padding: 4px 9px; border-radius: 999px; font: 600 10px/1.5 Inter, system-ui, sans-serif; }
+.hub-staff-ui .hub-dashboard-page .card-pad { padding: 16px 18px; }
+.hub-staff-ui .hub-dashboard-page .card-pad > div[style*="justify-content:space-between"] {
+  align-items: center;
+  gap: 14px !important;
+  padding: 13px 0 !important;
+  color: #593346;
+  font-size: 12px !important;
+}
+.hub-staff-ui .hub-dashboard-page .card-pad > div[style*="justify-content:space-between"] > :first-child { min-width: 0; overflow-wrap: anywhere; }
+.hub-staff-ui .hub-dashboard-page .card-pad > div[style*="justify-content:space-between"] > span:last-child { color: #8c7381; font-size: 11px; }
+.hub-staff-ui .hub-dashboard-page .card-pad p { color: #8c7381; font-size: 11px !important; line-height: 1.55; }
+.hub-staff-ui .hub-dashboard-page .card-pad strong { font-size: 12px; }
+.hub-staff-ui .hub-dashboard-page .card-pad .mono { color: #593346; font-size: 11px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.hub-staff-ui .hub-dashboard-page .card-pad :is(.select, select) { min-height: 38px; max-width: 220px; padding: 8px 10px; border: 1px solid #eadfe6; border-radius: 8px; background: #fff; color: #593346; font: 12px Inter, system-ui, sans-serif; }
+.hub-staff-ui .hub-dashboard-page .btn { min-height: 36px; padding: 8px 12px; font-size: 11px; font-weight: 650; }
+.hub-staff-ui .hub-dashboard-page .card-pad > p[style*="color:var(--muted)"] { margin: 2px 0; }
+.hub-staff-ui .hub-dashboard-page .parcel-custody { margin: 0 0 10px; }
+.hub-staff-ui .hub-dashboard-page .pagination { margin-top: 12px; }
+.hub-staff-ui .logistics-alert { border-color: #eadfe6; border-radius: 10px; background: #fff; }
+
+@media (max-width: 900px) {
+  .hub-staff-ui .content { width: min(100% - 32px, 760px); }
+  .hub-staff-ui .hub-dashboard-page { grid-template-columns: minmax(0, 1fr); }
+  .hub-staff-ui .hub-dashboard-page > .hub-dashboard-action { grid-column: auto; }
+}
+@media (max-width: 600px) {
+  .hub-staff-ui .content { width: calc(100% - 24px); padding-top: 20px; }
+  .hub-staff-ui .topbar { height: 65px; padding: 0 14px; gap: 10px; }
+  .hub-staff-ui .hub-dashboard-page { gap: 12px; }
+  .hub-staff-ui .hub-dashboard-page .card-head { min-height: 54px; padding: 13px 14px; }
+  .hub-staff-ui .hub-dashboard-page .card-pad { padding: 13px 14px; }
+  .hub-staff-ui .hub-dashboard-page .card-pad > div[style*="justify-content:space-between"] { align-items: flex-start !important; flex-direction: column; gap: 9px !important; }
+  .hub-staff-ui .hub-dashboard-page .card-pad form[style*="display:flex"] { width: 100%; }
+  .hub-staff-ui .hub-dashboard-page .card-pad form :is(select, button) { flex: 1; max-width: none; }
+  .hub-staff-ui .hub-dashboard-page .card-pad form button { flex: 0 0 auto; }
+}

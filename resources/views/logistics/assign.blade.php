@@ -1,15 +1,16 @@
 @extends('logistics.layout')
 @section('title', 'Delivery Assignments')
 @section('page-title', 'Delivery Assignments')
-@section('page-sub', 'Sorted parcels ready for a rider — assign directly, or let riders self-accept first come, first served')
+@section('page-sub', 'Send personal offers to eligible riders at the parcel hub. Riders must confirm within 60 seconds.')
 
 @section('content')
 <section class="delivery-assignment-page">
-@if(app(\App\Services\AssignmentReassignment::class)->installed())<div class="card card-pad"><a class="btn btn-primary" href="{{ route('logistics.assignments.review') }}">Assignment evidence & reassignment</a></div>@endif
+@if(app(\App\Services\AssignmentReassignment::class)->installed())<div class="card card-pad delivery-assignment-action"><div class="delivery-assignment-action-copy"><span class="delivery-assignment-action-icon"><x-admin-icon name="layers" /></span><div><strong>Assignment tools</strong><small>Review evidence and manage reassignment requests.</small></div></div><a class="btn btn-primary" href="{{ route('logistics.assignments.review') }}">Assignment evidence &amp; reassignment</a></div>@endif
+@if(session('success'))<div role="status" class="card card-pad">{{ session('success') }}</div>@endif
 @if($errors->any())<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ $errors->first() }}</div>@endif
 <div class="card delivery-assignment-card">
   <div class="card-head">
-    <h2>Delivery Assignments</h2>
+    <h2><span class="delivery-assignment-heading-icon"><x-admin-icon name="truck" /></span>Delivery Assignments</h2>
     <div style="display:flex;gap:8px">
       <span class="stamp stamp-pending">{{ $assignmentCounts['sorted'] ?? 0 }} awaiting courier</span>
       <span class="stamp stamp-active">{{ ($assignmentCounts['assigned_to_rider'] ?? 0) + ($assignmentCounts['out_for_delivery'] ?? 0) }} in progress</span>
@@ -22,9 +23,9 @@
           <th>Tracking #</th>
           <th>Buyer</th>
           <th>Delivery Status</th>
-          <th>Assigned Courier</th>
+          <th>Rider / Offer</th>
           <th>Assignment Status</th>
-          <th>Assigned At</th>
+          <th>Accepted At</th>
         </tr>
       </thead>
       <tbody>
@@ -35,7 +36,7 @@
           <td>{{ optional(optional($s->order)->buyer)->given_names }} {{ optional(optional($s->order)->buyer)->last_name }}</td>
           <td><span class="stamp stamp-{{ $s->shipping_status }}">{{ ucfirst(str_replace('_',' ',$s->shipping_status)) }}</span></td>
           <td>
-            @if($courier->given_names)
+            @if($s->courier_id && $courier->given_names)
               <div class="cell-user">
                 <div class="avatar-sm">{{ strtoupper(substr($courier->given_names,0,1)) }}</div>
                 <div>
@@ -43,17 +44,21 @@
                   <div style="font-size:11px;color:var(--muted)">{{ $courier->email }}</div>
                 </div>
               </div>
-            @elseif($s->shipping_status === 'sorted')
+            @elseif($s->shipping_status === 'sorted' && (!auth()->user()->isHubStaff() || app(\App\Services\LogisticsAccess::class)->matches(auth()->user()->logisticsHub, $s->destination_hub, $s->destination_province)))
+              @if($s->assignment)<p>{{ $s->assignment->status === 'offered' && $s->assignment->expires_at?->isFuture() ? 'Awaiting rider confirmation: ' : 'Previous offer: ' }}{{ $courier->given_names }} - {{ $s->assignment->status === 'offered' && ! $s->assignment->expires_at?->isFuture() ? 'expired' : $s->assignment->status }}</p>@endif
               <form method="POST" action="{{ route('logistics.assignments.assign', $s->id) }}" style="display:flex;gap:6px">
                 @csrf @method('PATCH')
                 <select name="courier_id" class="select" aria-label="Delivery Rider for {{ $s->tracking_number ?? $s->id }}" style="min-height:44px" required>
                   <option value="" selected disabled>Select courier…</option>
-                  @foreach($couriers as $rider)
+                  @foreach(($couriersByShipment[$s->id] ?? collect()) as $rider)
                   <option value="{{ $rider->id }}">{{ $rider->given_names }} {{ $rider->last_name }}</option>
                   @endforeach
                 </select>
-                <button class="btn btn-sm btn-primary">Assign</button>
+                <button class="btn btn-sm btn-primary" @disabled(($couriersByShipment[$s->id] ?? collect())->isEmpty())>Send offer</button>
               </form>
+              @if(($couriersByShipment[$s->id] ?? collect())->isEmpty())<p role="status">No eligible rider is available for the destination barangay {{ app(\App\Services\RiderBarangayCoverage::class)->barangay($s, 'delivery') ?: '(missing address)' }}. Ask your logistics admin to review rider coverage and availability.</p>@endif
+            @elseif($s->shipping_status === 'sorted')
+              <span>Awaiting a rider offer from the destination hub.</span>
             @elseif($s->shipping_status === 'at_sorting_center' && $s->needsHubTransfer())
               <span style="color:var(--muted);font-size:12.5px">At {{ $s->origin_hub }} — awaiting Logistics Admin dispatch of the approved batch</span>
             @elseif($s->shipping_status === 'hub_transfer')
@@ -65,7 +70,7 @@
           </td>
           <td>
             @if($s->assignment)
-              <span class="stamp stamp-{{ $s->assignment->status }}">{{ ucfirst($s->assignment->status) }}</span>
+              <span class="stamp stamp-{{ $s->assignment->status }}">{{ $s->assignment->status === 'offered' ? ($s->assignment->expires_at?->isFuture() ? 'Awaiting rider confirmation' : 'Offer expired') : ucfirst($s->assignment->status) }}</span>
             @else
               <span class="stamp stamp-pending">Unassigned</span>
             @endif
@@ -75,7 +80,7 @@
           </td>
         </tr>
         @empty
-        <tr><td colspan="6"><div class="empty"><h3>No active assignments</h3><p>Approved deliveries will appear here once available.</p></div></td></tr>
+        <tr><td colspan="6"><div class="empty delivery-assignment-empty"><span aria-hidden="true">—</span><h3>No active assignments</h3><p>Approved deliveries will appear here once available.</p></div></td></tr>
         @endforelse
       </tbody>
     </table>

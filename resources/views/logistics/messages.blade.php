@@ -264,7 +264,9 @@ function renderFileChips() {
   attachedFiles.forEach((f, i) => {
     const chip = document.createElement('div');
     chip.className = 'file-chip';
-    chip.innerHTML = `<span>${f.name}</span>`;
+    const name = document.createElement('span');
+    name.textContent = f.name;
+    chip.appendChild(name);
     const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = '×';
     btn.onclick = () => removeFile(i);
     chip.appendChild(btn);
@@ -298,7 +300,7 @@ function toggleReaction(btn) {
 function replyToMessage(btn) {
   const wrap = btn.closest('.chat-msg-wrap');
   const text = wrap.querySelector('.chat-bubble')?.textContent?.trim() || 'Attachment';
-  replyTarget = text;
+  replyTarget = wrap.dataset.messageId;
   document.getElementById('replyText').textContent = text;
   document.getElementById('replyBox').classList.add('open');
   document.getElementById('chatInput').focus();
@@ -357,12 +359,22 @@ function appendMessage(msg) {
     if (msg.attachment_type === 'image') {
       const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'chat-media-button';
       btn.onclick = () => openMediaViewer(msg.attachment_path, 'image');
-      btn.innerHTML = `<img src="${msg.attachment_path}" class="chat-attach-preview-img" alt="${msg.attachment_name || 'Image attachment'}">`;
+      const image = document.createElement('img');
+      image.src = msg.attachment_path;
+      image.className = 'chat-attach-preview-img';
+      image.alt = msg.attachment_name || 'Image attachment';
+      btn.appendChild(image);
       content.appendChild(btn);
     } else if (msg.attachment_type === 'video') {
       const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'chat-media-button';
       btn.onclick = () => openMediaViewer(msg.attachment_path, 'video');
-      btn.innerHTML = `<video src="${msg.attachment_path}" class="chat-attach-preview-img" controls preload="metadata" playsinline></video>`;
+      const video = document.createElement('video');
+      video.src = msg.attachment_path;
+      video.className = 'chat-attach-preview-img';
+      video.controls = true;
+      video.preload = 'metadata';
+      video.playsInline = true;
+      btn.appendChild(video);
       content.appendChild(btn);
     } else {
       const a = document.createElement('a'); a.href = msg.attachment_path; a.target = '_blank'; a.className = 'chat-doc-bubble';
@@ -399,6 +411,7 @@ async function sendMessage(e) {
   const fd = new FormData();
   fd.append('receiver_id', RECEIVER);
   if (text) fd.append('body', text);
+  if (replyTarget) fd.append('reply_to_id', replyTarget);
   attachedFiles.forEach(f => fd.append('attachments[]', f));
 
   const sendBtn = document.querySelector('#chatForm .btn-primary');

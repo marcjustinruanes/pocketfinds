@@ -69,6 +69,16 @@ class CommerceController extends Controller
         $user = $this->emailAccount($r);
         $notification = DB::table('notifications')->where('id', $id)->where('user_id', $user->id)->first();
         abort_unless($notification, 404);
+        if (in_array($notification->notification_type, \App\Services\HubTransferNotifications::TYPES, true)) {
+            $batch = app(\App\Services\HubTransferNotifications::class)->target($user, $notification);
+            DB::table('notifications')->where('id', $id)->where('user_id', $user->id)->update(['is_read' => true]);
+            return redirect()->route('logistics.transfers.show', $batch->id);
+        }
+        if (in_array($notification->notification_type, ['delivery_failed', 'rts_custody'], true)) {
+            $url = app(\App\Services\LogisticsParcelNotifications::class)->target($user, $notification);
+            DB::table('notifications')->where('id', $id)->where('user_id', $user->id)->update(['is_read' => true]);
+            return redirect($url);
+        }
         if($notification->notification_type==='commission'){
             app(\App\Services\CommissionPayments::class)->actor($user);
             DB::table('notifications')->where('id',$id)->where('user_id',$user->id)->update(['is_read'=>true]);

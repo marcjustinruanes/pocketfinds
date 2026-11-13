@@ -120,6 +120,9 @@ class SellerController extends Controller
 
             $locked->update(['status' => $to]);
             $locked->logStatus($to, auth()->id());
+            if ($to === 'preparing') {
+                Order::notifyUser($locked->buyer_id, 'Order Being Prepared', 'The seller is preparing order #'.$locked->order_number.'.', 'order_status', $locked->id);
+            }
         });
     }
 
@@ -176,6 +179,7 @@ class SellerController extends Controller
                 }
                 $locked->update(['status' => 'confirmed']);
                 $locked->logStatus('confirmed', auth()->id());
+                Order::notifyUser($locked->buyer_id, 'Order Confirmed', 'The seller accepted order #'.$locked->order_number.'.', 'order_status', $locked->id);
             });
         } catch (QueryException $e) {
             Log::warning('Order confirmation database operation failed', ['exception_type' => $e::class]);
@@ -247,6 +251,21 @@ class SellerController extends Controller
             }
             $locked->update(['status' => 'ready_for_pickup']);
             $locked->logStatus('ready_for_pickup', auth()->id());
+            Order::notifyUser($locked->buyer_id, 'Parcel Ready for Pickup', 'Order #'.$locked->order_number.' is ready for courier pickup.', 'order_status', $locked->id);
+
+            // Make the new linked Shipment visible to the carrier's approval workflow.
+            // Only company Logistics Admins receive this request alert; riders remain
+            // gated by pickup_approved_at in their existing offer/query flow.
+            User::where('account_type', 'logistics')->where('is_logistics', true)->where('is_admin', false)
+                ->where('status', 'approved')->where('business_name', $data['logistics_company'])
+                ->where(fn ($query) => $query->whereNull('logistics_role')->orWhere('logistics_role', 'admin'))
+                ->get()->each(fn (User $admin) => Order::notifyUser(
+                    $admin->id,
+                    'New Seller Pickup Request',
+                    'Order #'.$locked->order_number.' is ready for pickup and requires your approval before rider assignment.',
+                    'order_status',
+                    $locked->id
+                ));
         });
 
         return back()->with('order_success', 'Order handed off to '.$data['logistics_company'].' for courier pickup.');
@@ -346,7 +365,19 @@ class SellerController extends Controller
         DB::transaction(function () use ($order, $data) {
             $locked = Order::lockFresh($order->id);
             app(GcashWorkflow::class)->assertOrderOperation($locked, $locked->status === 'ready_for_pickup');
-            $locked->shipment->update(['scheduled_pickup_at' => $data['scheduled_pickup_at']]);
+            $shipment = Shipment::where('order_id', $locked->id)->lockForUpdate()->firstOrFail();
+            $scheduledAt = Carbon::parse($data['scheduled_pickup_at']);
+            $previouslyScheduled = $shipment->scheduled_pickup_at;
+            if (! $previouslyScheduled || ! $previouslyScheduled->equalTo($scheduledAt)) {
+                $shipment->update(['scheduled_pickup_at' => $scheduledAt]);
+                Order::notifyUser(
+                    $locked->buyer_id,
+                    'Pickup Scheduled',
+                    'Courier pickup for order #'.$locked->order_number.' is scheduled for '.$scheduledAt->format('M d, Y g:i A').'.',
+                    'order_status',
+                    $locked->id
+                );
+            }
         }, 3);
 
         return back()->with('order_success', 'Courier pickup scheduled for '.Carbon::parse($data['scheduled_pickup_at'])->format('M d, Y g:i A').'.');
@@ -1040,6 +1071,12 @@ class SellerController extends Controller
     {
         $notification = Order::sellerNotificationsQuery((int) auth()->id())->where('id', $id)->first();
         abort_unless($notification, 404);
+        if (in_array($notification->notification_type, ['delivery_failed', 'rts_custody'], true)) {
+            $url = app(\App\Services\LogisticsParcelNotifications::class)->target(auth()->user(), $notification);
+            DB::table('notifications')->where('id', $id)->where('user_id', auth()->id())->update(['is_read' => true]);
+            return redirect($url);
+        }
+
         if($notification->notification_type==='commission'){
             app(\App\Services\CommissionPayments::class)->actor(auth()->user());
             DB::table('notifications')->where('id',$id)->where('user_id',auth()->id())->update(['is_read'=>true]);

@@ -67,9 +67,7 @@
     </a>
 </x-navigation-group>
 @elseif(auth()->user()->isHubStaff())
-<x-navigation-group id="hub-staff-operations" label="Operations" :active="request()->routeIs('logistics.transfers*', 'logistics.assignments*', 'logistics.scan', 'logistics.cash-desk*', 'logistics.my-attendance*')">
-<a href="{{ route('logistics.my-attendance') }}" class="nav-item {{ request()->routeIs('logistics.my-attendance*') ? 'active' : '' }}" @if(request()->routeIs('logistics.my-attendance*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="account" /></span> My Attendance</a>
-<a href="{{ route('logistics.cash-desk') }}" class="nav-item {{ request()->routeIs('logistics.cash-desk*') ? 'active' : '' }}" @if(request()->routeIs('logistics.cash-desk*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="peso" /></span> Cash Desk</a>
+<x-navigation-group id="hub-staff-operations" label="Operations" :active="request()->routeIs('logistics.transfers*', 'logistics.assignments*', 'logistics.scan', 'logistics.hub.vehicles*')">
 <a @if(request()->routeIs('logistics.transfers*')) aria-current="page" @endif href="{{ route('logistics.transfers') }}" class="nav-item {{ request()->routeIs('logistics.transfers*') ? 'active' : '' }}"><span class="ic"><x-admin-icon name="edit" /></span> Hub Transfers</a>
 <a @if(request()->routeIs('logistics.assignments*')) aria-current="page" @endif href="{{ route('logistics.assignments') }}" class="nav-item {{ request()->routeIs('logistics.assignments*') ? 'active' : '' }}">
       <span class="ic"><x-admin-icon name="users" /></span> Delivery Assignments
@@ -78,8 +76,6 @@
 <a @if(request()->routeIs('logistics.scan')) aria-current="page" @endif href="{{ route('logistics.scan') }}" class="nav-item {{ request()->routeIs('logistics.scan') ? 'active' : '' }}">
       <span class="ic"><x-admin-icon name="scan" /></span> Scan Parcel
     </a>
-</x-navigation-group>
-<x-navigation-group id="hub-staff-hub-resources" label="Hub Resources" :active="request()->routeIs('logistics.hub.vehicles*')">
 <a @if(request()->routeIs('logistics.hub.vehicles*')) aria-current="page" @endif href="{{ route('logistics.hub.vehicles') }}" class="nav-item {{ request()->routeIs('logistics.hub.vehicles*') ? 'active' : '' }}">
       <span class="ic"><x-admin-icon name="shield" /></span> Hub Vehicles
     </a>
@@ -96,14 +92,14 @@
       <span class="ic"><x-admin-icon name="shield" /></span> Delivery History
     </a>
 </x-navigation-group>
-<x-navigation-group id="hub-staff-finance" label="Finance" :active="request()->routeIs('logistics.my-salary*')">
+<x-navigation-group id="hub-staff-staff-finance" label="Staff & Finance" :active="request()->routeIs('logistics.my-attendance*', 'logistics.cash-desk*', 'logistics.my-salary*')">
+<a href="{{ route('logistics.my-attendance') }}" class="nav-item {{ request()->routeIs('logistics.my-attendance*') ? 'active' : '' }}" @if(request()->routeIs('logistics.my-attendance*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="account" /></span> My Attendance</a>
+<a href="{{ route('logistics.cash-desk') }}" class="nav-item {{ request()->routeIs('logistics.cash-desk*') ? 'active' : '' }}" @if(request()->routeIs('logistics.cash-desk*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="peso" /></span> Cash Desk</a>
 <a href="{{ route('logistics.my-salary') }}" class="nav-item {{ request()->routeIs('logistics.my-salary*') ? 'active' : '' }}" @if(request()->routeIs('logistics.my-salary*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="peso" /></span> My Salary</a>
 </x-navigation-group>
-<x-navigation-group id="hub-staff-communications" label="Communications" :active="request()->routeIs('logistics.messages*')">
 <a @if(request()->routeIs('logistics.messages*')) aria-current="page" @endif href="{{ route('logistics.messages') }}" class="nav-item {{ request()->routeIs('logistics.messages*') ? 'active' : '' }}">
       <span class="ic"><x-admin-icon name="mail" /></span> Messages
     </a>
-</x-navigation-group>
 @endif
 <a @if(request()->routeIs('logistics.account', 'logistics.account.*')) aria-current="page" @endif href="{{ route('logistics.account') }}" class="nav-item {{ request()->routeIs('logistics.account', 'logistics.account.*') ? 'active' : '' }}">
       <span class="ic"><x-admin-icon name="account" /></span> My Account

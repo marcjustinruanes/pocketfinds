@@ -107,7 +107,9 @@ class LogisticsHub extends Model
      */
     public static function buildRoute(string $companyName, string $originMunicipality, ?string $originProvince, string $destinationMunicipality, ?string $destinationProvince): array
     {
-        if (mb_strtolower(trim($originMunicipality)) === mb_strtolower(trim($destinationMunicipality))) {
+        if (mb_strtolower(trim($originMunicipality)) === mb_strtolower(trim($destinationMunicipality))
+            && (! filled($originProvince) || ! filled($destinationProvince)
+                || mb_strtolower(trim($originProvince)) === mb_strtolower(trim($destinationProvince)))) {
             return [];
         }
 

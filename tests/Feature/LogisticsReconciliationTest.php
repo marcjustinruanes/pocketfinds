@@ -241,11 +241,13 @@ class LogisticsReconciliationTest extends TestCase
         session()->forget('errors');
         $this->actingAs($this->admin)->patch('/logistics/requests/'.$ob->shipment_id.'/approve')->assertRedirect()->assertSessionHasNoErrors();
         $this->actingAs($this->staff)->patch('/logistics/requests/'.$ob->shipment_id.'/assign-pickup',['courier_id'=>$this->rider->id])->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($this->rider)->patch('/rider/pickup-requests/'.$ob->shipment_id.'/accept')->assertRedirect()->assertSessionHasNoErrors();
         $tracking=DB::table('shipments')->where('id',$ob->shipment_id)->value('tracking_number');
         $this->actingAs($this->rider)->patch('/rider/my-pickups/'.$ob->shipment_id.'/confirm',['tracking_number'=>$tracking])->assertRedirect()->assertSessionHasNoErrors();
         $this->actingAs($this->seller)->patch(route('seller.orders.confirm-pickup',$o))->assertRedirect()->assertSessionHasNoErrors();
         $this->actingAs($this->staff)->patchJson('/logistics/scan/'.$ob->shipment_id.'/receive')->assertOk();
         $this->patch('/logistics/assignments/'.$ob->shipment_id.'/assign',['courier_id'=>$this->rider->id])->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($this->rider)->patch('/rider/requests/'.$ob->shipment_id.'/accept')->assertRedirect()->assertSessionHasNoErrors();
         $this->actingAs($this->rider)->patch('/rider/deliveries/'.$ob->shipment_id.'/advance',['from'=>'assigned_to_rider'])->assertRedirect()->assertSessionHasNoErrors();
         $this->patch('/rider/deliveries/'.$ob->shipment_id.'/advance',array_merge(['from'=>'out_for_delivery'],$this->deliveryEvidence($ob->shipment_id)))->assertRedirect()->assertSessionHasNoErrors();
         $this->actingAs($this->buyer)->patch(route('buyer.orders.confirm-receipt',$o))->assertRedirect();

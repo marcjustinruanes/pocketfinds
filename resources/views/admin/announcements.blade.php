@@ -86,9 +86,9 @@
               <span>{{ $ann->created_at?->format('Y-m-d') }}</span>
             </div>
         </div>
-          <form class="active-announcement-delete" method="POST" action="{{ route('admin.settings.announcements.destroy', $ann->id) }}">
+          <form class="active-announcement-delete" method="POST" action="{{ route('admin.settings.announcements.destroy', $ann->id) }}" data-confirm data-confirm-title="Delete this announcement?" data-confirm-message="This announcement will be permanently removed." data-confirm-action="Delete announcement" data-confirm-tone="danger">
             @csrf @method('DELETE')
-            <button class="btn btn-sm btn-danger icon-only" type="submit" onclick="return confirm('Delete this announcement?')" aria-label="Delete announcement"><x-admin-icon name="trash" /></button>
+            <button class="btn btn-sm btn-danger icon-only" type="submit" aria-label="Delete announcement"><x-admin-icon name="trash" /></button>
           </form>
       </article>
       @empty

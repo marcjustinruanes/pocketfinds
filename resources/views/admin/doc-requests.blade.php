@@ -79,7 +79,7 @@
             <td>
               @if($req->status === 'pending')
                 <div style="display:flex;gap:6px">
-                  <form method="POST" action="{{ route('admin.doc-requests.approve', $req->id) }}">
+                  <form method="POST" action="{{ route('admin.doc-requests.approve', $req->id) }}" data-confirm data-confirm-title="Approve these document updates?" data-confirm-message="The submitted documents and verified details will be applied to the seller account." data-confirm-action="Approve updates" data-confirm-tone="success">
                     @csrf @method('PATCH')
                     <button class="btn btn-sm btn-success" type="submit">Approve</button>
                   </form>

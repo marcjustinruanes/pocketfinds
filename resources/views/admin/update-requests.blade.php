@@ -71,36 +71,18 @@
             <td><span class="stamp stamp-approved">{{ ucfirst($req->user->account_type) }}</span></td>
             <td class="mono" style="font-size:12px">{{ $req->created_at?->format('M d, Y h:i A') ?? '—' }}</td>
             <td>
-              <div style="display:flex;flex-direction:column;gap:6px;max-width:340px">
-                @forelse($req->requested_changes ?? [] as $field => $value)
-                  <div style="font-size:12.5px">
-                    <strong>{{ $fieldLabels[$field] ?? \Illuminate\Support\Str::headline($field) }}:</strong>
-                    <span style="color:var(--muted)">was</span> {{ $req->user->{$field} ?? '—' }}
-                    <span style="color:var(--muted)">→</span>
-                    <span style="font-weight:600">{{ $field === 'id_type_id' ? ($idTypes[$value]->name ?? $value) : $value }}</span>
-                  </div>
-                @empty
-                @endforelse
-                <div style="display:flex;gap:6px;flex-wrap:wrap">
-                  @foreach($req->requested_documents ?? [] as $docKey => $docPath)
-                    <button type="button" class="btn btn-sm btn-outline" data-doc-trigger
-                      data-src="{{ app(\App\Services\SensitiveDocuments::class)->url($docPath) }}"
-                      data-type="{{ in_array(strtolower(pathinfo($docPath,PATHINFO_EXTENSION)),['jpg','jpeg','png']) ? 'image' : 'pdf' }}"
-                      data-title="{{ $documentLabels[$docKey] ?? \Illuminate\Support\Str::headline($docKey) }}">
-                      <x-admin-icon name="eye" /> {{ $documentLabels[$docKey] ?? \Illuminate\Support\Str::headline($docKey) }}
-                    </button>
-                  @endforeach
-                </div>
-                @if(empty($req->requested_changes) && empty($req->requested_documents))
-                  <span style="color:var(--muted);font-size:12px">None</span>
-                @endif
+              <div class="admin-request-summary">
+                <span>{{ count($req->requested_changes ?? []) }} field changes</span>
+                <span aria-hidden="true">·</span>
+                <span>{{ count($req->requested_documents ?? []) }} documents</span>
+                <button type="button" class="btn btn-sm btn-outline" data-modal-open="updateRequestModal-{{ $req->id }}">View details</button>
               </div>
             </td>
             <td><span class="stamp stamp-{{ $req->status }}">{{ ucfirst($req->status) }}</span></td>
             <td>
               @if($req->status === 'pending')
                 <div style="display:flex;gap:6px">
-                  <form method="POST" action="{{ route('admin.update-requests.approve', $req->id) }}">
+                  <form method="POST" action="{{ route('admin.update-requests.approve', $req->id) }}" data-confirm data-confirm-title="Apply these account changes?" data-confirm-message="The submitted updates will be written to this user’s account." data-confirm-action="Apply changes" data-confirm-tone="success">
                     @csrf @method('PATCH')
                     <button class="btn btn-sm btn-success" type="submit">Approve</button>
                   </form>
@@ -117,6 +99,60 @@
         </tbody>
       </table>
     </div>
+      @foreach($requests as $req)
+      <div class="modal-overlay" id="updateRequestModal-{{ $req->id }}">
+        <section class="modal modal-lg" role="dialog" aria-modal="true" aria-labelledby="updateRequestTitle-{{ $req->id }}">
+          <header class="modal-head">
+            <div class="modal-head-main">
+              <span class="modal-icon"><x-admin-icon name="file" /></span>
+              <div class="modal-head-copy">
+                <h3 id="updateRequestTitle-{{ $req->id }}">Requested account updates</h3>
+                <p>{{ $req->user->given_names }} {{ $req->user->last_name }} · {{ ucfirst($req->user->account_type) }}</p>
+              </div>
+            </div>
+            <button type="button" class="modal-close" data-modal-close aria-label="Close"><x-admin-icon name="close" /></button>
+          </header>
+          <div class="modal-body admin-request-details">
+            <div class="admin-request-section">
+              <h4>Field changes <span class="stamp stamp-review">{{ count($req->requested_changes ?? []) }}</span></h4>
+              @if(!empty($req->requested_changes))
+              <div class="admin-request-changes">
+                @foreach($req->requested_changes as $field => $value)
+                <div class="admin-request-change">
+                  <span class="admin-request-change-label">{{ $fieldLabels[$field] ?? \Illuminate\Support\Str::headline($field) }}</span>
+                  <span class="admin-request-change-values"><span style="color:var(--muted)">{{ $req->user->{$field} ?? '—' }}</span> <span aria-label="changed to">→</span> <strong>{{ $field === 'id_type_id' ? ($idTypes[$value]->name ?? $value) : $value }}</strong></span>
+                </div>
+                @endforeach
+              </div>
+              @else
+              <p class="field-value" style="margin:0;color:var(--muted)">No field changes included.</p>
+              @endif
+            </div>
+            <div class="admin-request-section">
+              <h4>Supporting documents <span class="stamp stamp-review">{{ count($req->requested_documents ?? []) }}</span></h4>
+              @if(!empty($req->requested_documents))
+              <div class="admin-request-documents">
+                @foreach($req->requested_documents as $docKey => $docPath)
+                <button type="button" class="btn btn-sm btn-outline" data-doc-trigger
+                  data-src="{{ app(\App\Services\SensitiveDocuments::class)->url($docPath) }}"
+                  data-type="{{ in_array(strtolower(pathinfo($docPath,PATHINFO_EXTENSION)),['jpg','jpeg','png']) ? 'image' : 'pdf' }}"
+                  data-title="{{ $documentLabels[$docKey] ?? \Illuminate\Support\Str::headline($docKey) }}">
+                  <x-admin-icon name="eye" /> {{ $documentLabels[$docKey] ?? \Illuminate\Support\Str::headline($docKey) }}
+                </button>
+                @endforeach
+              </div>
+              @else
+              <p class="field-value" style="margin:0;color:var(--muted)">No documents attached.</p>
+              @endif
+            </div>
+            @if($req->reviewed_at)
+            <p class="admin-request-summary" style="margin:0">Reviewed {{ $req->reviewed_at->format('M d, Y h:i A') }}</p>
+            @endif
+          </div>
+          <footer class="modal-foot"><button type="button" class="btn btn-outline" data-modal-close>Close</button></footer>
+        </section>
+      </div>
+      @endforeach
   </div>
 </div>
 

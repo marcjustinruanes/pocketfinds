@@ -12,9 +12,10 @@ class ParcelCustody
     {
         abort_unless($actor->account_type==='logistics' && $actor->status==='approved' && ($actor->isHubStaff() || $actor->isLogisticsAdmin()) && $actor->business_name===$s->logistics_company,403);
         $unknown=['label'=>'Custody needs review','responsible'=>'Not established','at'=>null,'next'=>'Review parcel history and Issues before any physical handover.','note'=>'Shipment status alone does not establish current physical possession.'];
+        if(app(LogisticsRecovery::class)->hasRecoveryHold($s->id))return array_replace($unknown,['label'=>'Recovery hold','next'=>'Use the existing supervised recovery record in Issues.']);
+        if(Schema::hasColumn('logistics_issues','rts_shipment_id') && ($issue=\App\Models\LogisticsIssue::where('rts_shipment_id',$s->id)->first()))return $this->returnCustody($s,$issue,$unknown);
+        if(app(LogisticsRecovery::class)->hasConditionHold($s->id))return array_replace($unknown,['label'=>'Parcel investigation hold','next'=>'Review physical disposition before dispatch or release; investigation resolution is not physical clearance.']);
         if(in_array($s->shipping_status,['delivered','completed','returned','cancelled','delivery_failed']))return $unknown;
-        if(Schema::hasColumn('logistics_issues','recovery') && DB::table('logistics_issues')->whereJsonContains('recovery->shipment_ids',$s->id)->exists())return array_replace($unknown,['label'=>'Recovery hold','next'=>'Use the existing supervised recovery record in Issues.']);
-        if(Schema::hasColumn('logistics_issues','rts_shipment_id') && DB::table('logistics_issues')->where('rts_shipment_id',$s->id)->exists())return array_replace($unknown,['label'=>'RTS custody review','next'=>'Use the authenticated RTS custody record in Issues.']);
         $s->loadMissing(['hubLegs.transferBatch.members','courier','pickupRider','deliveryAssignment']);
         $legs=$s->hubLegs->sortBy('sequence');
         $active=$legs->where('status','in_transit');
@@ -45,5 +46,29 @@ class ParcelCustody
         if($s->shipping_status==='assigned_to_rider' && (!$s->courier_id || !$s->deliveryAssignment || (int)$s->deliveryAssignment->courier_id!==(int)$s->courier_id))return $unknown;
         $label=match($s->shipping_status){'assigned_to_rider'=>'Awaiting Rider Pickup','sorted'=>'Awaiting Final Delivery',default=>$transferred?'Received at Next Hub':'At Hub'};
         return ['label'=>$label,'responsible'=>$hub.($s->shipping_status==='assigned_to_rider'?' / assigned Rider #'.$s->courier_id:''),'at'=>$receipt,'next'=>match($s->shipping_status){'assigned_to_rider'=>'Assigned Rider must confirm departure from their own delivery page.','sorted'=>'Assign an eligible final-delivery Rider or allow an eligible claim.',default=>'Review the next transfer leg; request/approval/dispatch does not confirm pickup.'},'note'=>'Last confirmed receipt shown. Assignment and sorting do not record another physical handover.'];
+    }
+
+    private function returnCustody(Shipment $shipment, \App\Models\LogisticsIssue $issue, array $unknown): array
+    {
+        $review=array_replace($unknown,['label'=>'RTS custody review','next'=>'Review the authenticated RTS custody events in Issues.']);
+        $state=$issue->rts['state']??null;
+        $event=app(LogisticsRts::class)->witness($shipment,$issue);
+        if(!$event)return $review;
+        $hub=\App\Models\LogisticsHub::whereKey($issue->hub_id)->where('company_name',$shipment->logistics_company)->first();
+        $rider=(int)($issue->rts['rider_id']??0);
+        if(in_array($state,['to_hub','to_seller'],true) && (!$rider || (int)$event->actor_id!==$rider))return $review;
+        if($state==='seller_received' && (int)$event->actor_id!==(int)$shipment->order?->seller_id)return $review;
+        if(in_array($state,['at_hub','released_to_rider'],true) && !$hub)return $review;
+        $details=match($state){
+            'to_hub'=>['Return transport to hub','Return Rider #'.$rider,'Destination Hub Staff must confirm actual receipt.'],
+            'at_hub'=>['Received at return hub',$hub->municipality.', '.$hub->province,'Review the recorded return custody before release.'],
+            'released_to_rider'=>['Awaiting return rider pickup',$hub->municipality.', '.$hub->province.' / assigned Rider #'.$rider,'Assigned rider must confirm return transport. Staff release alone is not rider pickup.'],
+            'to_seller'=>['Return transport to Seller','Return Rider #'.$rider,'The owning Seller must confirm actual sellable receipt.'],
+            'seller_received'=>['Seller receipt confirmed','Seller #'.$shipment->order->seller_id,'Physical return is complete; payment review remains separate.'],
+            default=>null,
+        };
+        if(!$details)return $review;
+        return ['label'=>$details[0],'responsible'=>$details[1],'at'=>\Illuminate\Support\Carbon::parse($event->created_at),
+            'next'=>$details[2],'note'=>'Based on the recorded authenticated return-custody attestation, not shipment status.'];
     }
 }

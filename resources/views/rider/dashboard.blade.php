@@ -37,7 +37,7 @@
 
 <div class="card">
   <div class="card-head">
-    <h2>Open Pickup Requests</h2>
+    <h2>Your Pickup Offers</h2>
     <a href="{{ route('rider.pickup-requests') }}" class="btn btn-sm btn-outline">View all</a>
   </div>
   <div class="table-wrap">
@@ -57,7 +57,7 @@
           </td>
         </tr>
         @empty
-        <tr><td colspan="5"><div class="empty"><h3>No pickup requests right now</h3></div></td></tr>
+        <tr><td colspan="5"><div class="empty"><h3>No pickup offers right now</h3></div></td></tr>
         @endforelse
       </tbody>
     </table>
@@ -66,7 +66,7 @@
 
 <div class="card">
   <div class="card-head">
-    <div><h2>Open Delivery Requests</h2><p style="font-size:11.5px;color:var(--muted)">Sorted parcels ready for a delivery rider</p></div>
+    <div><h2>Your Delivery Offers</h2><p style="font-size:11.5px;color:var(--muted)">Accept your personal offer within 60 seconds.</p></div>
     <a href="{{ route('rider.requests') }}" class="btn btn-sm btn-outline">View all</a>
   </div>
   <div class="table-wrap">
@@ -86,7 +86,7 @@
           </td>
         </tr>
         @empty
-        <tr><td colspan="5"><div class="empty"><h3>No delivery requests right now</h3></div></td></tr>
+        <tr><td colspan="5"><div class="empty"><h3>No delivery offers right now</h3></div></td></tr>
         @endforelse
       </tbody>
     </table>

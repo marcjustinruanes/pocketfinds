@@ -35,12 +35,14 @@ class OperationalRecoveryTest extends TestCase
 
     protected function person(string $role,?int $hub=null,string $company='Alpha'): User
     {
-        return User::create(['username'=>(string)Str::uuid(),'account_type'=>in_array($role,['admin','hub_staff'])?'logistics':$role,'business_name'=>$company,'status'=>'approved',
+        $person = User::create(['username'=>(string)Str::uuid(),'account_type'=>in_array($role,['admin','hub_staff'])?'logistics':$role,'business_name'=>$company,'status'=>'approved',
             'is_admin'=>false,'is_logistics'=>in_array($role,['admin','hub_staff']),'logistics_role'=>in_array($role,['admin','hub_staff'])?$role:null,'logistics_hub_id'=>$hub??$this->hub->id,'vehicle_type'=>'two_wheels','vehicle_ownership'=>'own','municipality'=>'Santa Cruz','province'=>'Laguna','given_names'=>'Test','last_name'=>'Recovery']);
+        $person->forceFill(['is_available'=>true])->save();
+        return $person;
     }
     protected function requestData(): array { return ['key'=>(string)Str::uuid(),'revision'=>$this->assignment->fresh()->revision,'old_rider_id'=>$this->assignment->fresh()->courier_id,'replacement_rider_id'=>$this->replacement->id,'reason'=>'Rider unavailable before collection']; }
     protected function confirmData(): array { $a=$this->assignment->fresh();return ['key'=>$a->reassignment['key'],'revision'=>$a->revision,'action'=>'confirm','confirmed'=>'1']; }
-    protected function requestChange(): void { $this->actingAs($this->admin)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$this->requestData())->assertRedirect(); }
+    protected function requestChange(): void { $this->actingAs($this->admin)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$this->requestData())->assertRedirect()->assertSessionHasNoErrors(); }
 
     public function test_classification_is_read_only_and_receipt_prospectively_closes_pickup(): void
     {
@@ -52,30 +54,30 @@ class OperationalRecoveryTest extends TestCase
         $this->assertSame($original['accepted_at'],$this->assignment->fresh()->getRawOriginal('accepted_at'));
         $this->assertSame('completed',$work->classify($this->assignment->fresh()));
         $this->assertSame(1,DB::table('logistics_compensations')->where('source_id',$this->assignment->id)->count());
-        $this->assertSame(2500,(int)DB::table('logistics_compensations')->where('source_id',$this->assignment->id)->value('amount_cents'));
+        $this->assertSame(3000,(int)DB::table('logistics_compensations')->where('source_id',$this->assignment->id)->value('amount_cents'));
     }
 
     public function test_reassignment_requires_seller_possession_and_preserves_original_snapshot_on_return(): void
     {
         $this->requestChange();$stale=$this->confirmData();$this->assertSame($this->rider->id,$this->shipment->fresh()->pickup_rider_id);
         $this->actingAs($this->admin)->postJson(route('logistics.assignments.decide',$this->assignment->id),$this->confirmData())->assertForbidden();
-        $this->actingAs($this->rider)->patchJson(route('rider.my-pickups.confirm',$this->shipment->id))->assertConflict();
-        $this->actingAs($this->seller)->postJson(route('seller.assignments.decide',$this->assignment->id),$this->confirmData())->assertRedirect();
+        $this->actingAs($this->rider)->patchJson(route('rider.my-pickups.confirm',$this->shipment->id),['tracking_number'=>$this->shipment->tracking_number])->assertConflict();
+        $this->actingAs($this->seller)->postJson(route('seller.assignments.decide',$this->assignment->id),$this->confirmData())->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame($this->replacement->id,$this->shipment->fresh()->pickup_rider_id);
-        $this->assertDatabaseHas('logistics_compensations',['source_id'=>$this->assignment->id,'rider_id'=>$this->rider->id,'status'=>'cancelled','amount_cents'=>2500]);
+        $this->assertDatabaseHas('logistics_compensations',['source_id'=>$this->assignment->id,'rider_id'=>$this->rider->id,'status'=>'cancelled','amount_cents'=>3000]);
         DB::table('logistics_finance_settings')->where('company_name','Alpha')->update(['pickup_cents'=>5000,'revision'=>2]);
         $old=$this->rider;$this->replacement=$old;$this->requestChange();
-        $this->actingAs($this->seller)->postJson(route('seller.assignments.decide',$this->assignment->id),$this->confirmData())->assertRedirect();
-        $this->assertDatabaseHas('logistics_compensations',['source_id'=>$this->assignment->id,'rider_id'=>$old->id,'status'=>'pending','amount_cents'=>2500]);
+        $this->actingAs($this->seller)->postJson(route('seller.assignments.decide',$this->assignment->id),$this->confirmData())->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('logistics_compensations',['source_id'=>$this->assignment->id,'rider_id'=>$old->id,'status'=>'pending','amount_cents'=>3000]);
         $this->assertSame(1,DeliveryAssignment::whereKey($this->assignment->id)->count());
         $this->postJson(route('seller.assignments.decide',$this->assignment->id),$stale)->assertConflict();
     }
 
     public function test_handover_stale_duplicate_and_wrong_hub_requests_are_rejected(): void
     {
-        $data=$this->requestData();$this->actingAs($this->admin)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$data)->assertRedirect();
-        $this->postJson(route('logistics.assignments.reassign',$this->assignment->id),$data)->assertRedirect();
-        $stale=$this->confirmData();$this->actingAs($this->seller)->postJson(route('seller.assignments.decide',$this->assignment->id),$stale)->assertRedirect();
+        $data=$this->requestData();$this->actingAs($this->admin)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->postJson(route('logistics.assignments.reassign',$this->assignment->id),$data)->assertRedirect()->assertSessionHasNoErrors();
+        $stale=$this->confirmData();$this->actingAs($this->seller)->postJson(route('seller.assignments.decide',$this->assignment->id),$stale)->assertRedirect()->assertSessionHasNoErrors();
         $this->postJson(route('seller.assignments.decide',$this->assignment->id),$stale)->assertConflict();
         $this->assertSame(1,DB::table('logistics_financial_events')->where('event','assignment_reassigned_confirmed')->count());
         DB::table('shipments')->where('id',$this->shipment->id)->update(['rider_confirmed_pickup_at'=>now()]);
@@ -92,10 +94,19 @@ class OperationalRecoveryTest extends TestCase
     protected function collected(): object
     {
         $this->delivery();
-        $this->actingAs($this->rider)->patch(route('rider.deliveries.advance',$this->shipment->id),['from'=>'assigned_to_rider'])->assertRedirect();
-        $this->patch(route('rider.deliveries.advance',$this->shipment->id),['from'=>'out_for_delivery','cod_amount'=>'1100','cod_confirmed'=>'1','collection_key'=>(string)Str::uuid()])->assertRedirect();
+        $this->actingAs($this->rider)->patch(route('rider.deliveries.advance',$this->shipment->id),['from'=>'assigned_to_rider'])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('out_for_delivery',$this->shipment->fresh()->shipping_status);
+        $this->assertSame('out_for_delivery',$this->assignment->fresh()->status);
+        $this->patch(route('rider.deliveries.advance',$this->shipment->id),['from'=>'out_for_delivery','cod_amount'=>'1100','cod_confirmed'=>'1','collection_key'=>(string)Str::uuid()]+$this->deliveryEvidence($this->shipment->id))->assertRedirect()->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->assertSame('delivered',$this->shipment->fresh()->shipping_status);
+        $this->assertSame('delivered',$this->shipment->order->fresh()->status);
+        $collection=DB::table('logistics_financial_transactions')->where('kind','cod_collection')->where('collection_shipment_id',$this->shipment->id)->first();
+        $this->assertNotNull($collection,'Successful delivery must create its actual COD collection.');
+        $this->assertSame($this->rider->id,(int)$collection->actor_id);
+        $this->assertSame(110000,(int)$collection->amount_cents);
+        $this->assertSame('pending',$collection->verification_state);
         DB::table('users')->where('id',$this->rider->id)->update(['status'=>'suspended']);
-        return DB::table('logistics_financial_transactions')->where('kind','cod_collection')->first();
+        return $collection;
     }
     protected function recoveryData(): array
     {
@@ -106,22 +117,22 @@ class OperationalRecoveryTest extends TestCase
         $this->delivery();$this->requestChange();
         $this->actingAs($this->admin)->postJson(route('logistics.assignments.decide',$this->assignment->id),$this->confirmData())->assertForbidden();
         $this->actingAs($this->rider)->patchJson(route('rider.deliveries.advance',$this->shipment->id),['from'=>'assigned_to_rider'])->assertConflict();
-        $this->actingAs($this->staff)->postJson(route('logistics.assignments.decide',$this->assignment->id),$this->confirmData())->assertRedirect();
+        $this->actingAs($this->staff)->postJson(route('logistics.assignments.decide',$this->assignment->id),$this->confirmData())->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame($this->replacement->id,$this->shipment->fresh()->courier_id);
         $this->assertNotNull($this->shipment->fresh()->picked_up_at); // Earlier pickup leg evidence is retained.
         $this->actingAs($this->rider)->patchJson(route('rider.deliveries.advance',$this->shipment->id),['from'=>'assigned_to_rider'])->assertNotFound();
-        $this->actingAs($this->replacement)->patchJson(route('rider.deliveries.advance',$this->shipment->id),['from'=>'assigned_to_rider'])->assertRedirect();
+        $this->actingAs($this->replacement)->patchJson(route('rider.deliveries.advance',$this->shipment->id),['from'=>'assigned_to_rider'])->assertRedirect()->assertSessionHasNoErrors();
     }
     public function test_delivery_release_wins_before_reassignment_and_cannot_be_cleared(): void
     {
-        $this->delivery();$this->actingAs($this->rider)->patch(route('rider.deliveries.advance',$this->shipment->id),['from'=>'assigned_to_rider'])->assertRedirect();
+        $this->delivery();$this->actingAs($this->rider)->patch(route('rider.deliveries.advance',$this->shipment->id),['from'=>'assigned_to_rider'])->assertRedirect()->assertSessionHasNoErrors();
         $this->actingAs($this->admin)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$this->requestData())->assertUnprocessable();
         $this->assertNotNull($this->shipment->fresh()->out_for_delivery_at);
     }
     public function test_stale_authenticated_rider_cannot_confirm_pickup_after_suspension(): void
     {
         DB::table('users')->where('id',$this->rider->id)->update(['status'=>'suspended']);
-        $this->actingAs($this->rider)->patchJson(route('rider.my-pickups.confirm',$this->shipment->id))->assertForbidden();
+        $this->actingAs($this->rider)->patchJson(route('rider.my-pickups.confirm',$this->shipment->id),['tracking_number'=>$this->shipment->tracking_number])->assertForbidden();
         $this->assertNull($this->shipment->fresh()->rider_confirmed_pickup_at);
     }
     public function test_pickup_handover_first_and_wrong_company_or_hub_are_protected(): void
@@ -131,7 +142,8 @@ class OperationalRecoveryTest extends TestCase
         $this->actingAs($staff)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$this->requestData())->assertForbidden();
         $foreign=$this->person('admin',null,'Other');
         $this->actingAs($foreign)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$this->requestData())->assertNotFound();
-        $this->actingAs($this->rider)->patch(route('rider.my-pickups.confirm',$this->shipment->id))->assertRedirect();
+        $this->actingAs($this->rider)->patch(route('rider.my-pickups.confirm',$this->shipment->id),['tracking_number'=>$this->shipment->tracking_number])->assertRedirect()->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->assertNotNull($this->shipment->fresh()->rider_confirmed_pickup_at);
         $this->actingAs($this->admin)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$this->requestData())->assertUnprocessable();
     }
     public function test_reassignment_audit_failure_rolls_back_owner_revision_and_snapshot(): void
@@ -147,9 +159,9 @@ class OperationalRecoveryTest extends TestCase
     }
     public function test_cancellation_preserves_assignment_and_stale_request_cannot_reappear(): void
     {
-        $data=$this->requestData();$this->actingAs($this->admin)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$data)->assertRedirect();
+        $data=$this->requestData();$this->actingAs($this->admin)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$data)->assertRedirect()->assertSessionHasNoErrors();
         $cancel=$this->confirmData();unset($cancel['confirmed']);$cancel['action']='cancel';$cancel['reason']='Seller cannot confirm current possession';
-        $this->actingAs($this->seller)->postJson(route('seller.assignments.decide',$this->assignment->id),$cancel)->assertRedirect();
+        $this->actingAs($this->seller)->postJson(route('seller.assignments.decide',$this->assignment->id),$cancel)->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame($this->rider->id,$this->shipment->fresh()->pickup_rider_id);
         $this->actingAs($this->admin)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$data)->assertConflict();
     }
@@ -158,16 +170,16 @@ class OperationalRecoveryTest extends TestCase
         $c=$this->collected();$d=['key'=>(string)Str::uuid(),'rider_id'=>$this->rider->id,'allocations'=>[$c->id=>'600'],'reason'=>'Suspended rider remittance recovery','reference'=>'CASH-CUSTODY-01'];
         $snapshots=DB::table('logistics_compensations')->get()->toJson();
         $this->actingAs($this->admin)->postJson(route('logistics.cash-desk.recovery'),$d)->assertForbidden();
-        $this->actingAs($this->staff)->postJson(route('logistics.cash-desk.recovery'),$d)->assertRedirect();
-        $this->postJson(route('logistics.cash-desk.recovery'),$d)->assertRedirect();
+        $this->actingAs($this->staff)->postJson(route('logistics.cash-desk.recovery'),$d)->assertRedirect()->assertSessionHasNoErrors();
+        $this->postJson(route('logistics.cash-desk.recovery'),$d)->assertRedirect()->assertSessionHasNoErrors();
         $h=DB::table('logistics_cash_handovers')->first();
         $this->assertSame($this->rider->id,(int)$h->actor_id);$this->assertSame($this->staff->id,(int)$h->submitted_by);
         $this->assertNull($h->counted_at);$this->assertSame(0,app(\App\Services\LogisticsCashDesk::class)->custody($this->hub->id));
-        $this->postJson(route('logistics.cash-desk.count',$h->id),['counted'=>'500','allocations'=>[$c->id=>'500'],'notes'=>'Actual count has a shortage'])->assertRedirect();
+        $this->postJson(route('logistics.cash-desk.count',$h->id),['counted'=>'500','allocations'=>[$c->id=>'500'],'notes'=>'Actual count has a shortage'])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame(60000,app(\App\Services\LogisticsCashDesk::class)->balances($c)['outstanding']);
-        $d['key']=(string)Str::uuid();$d['reference']='CASH-CUSTODY-02';$this->postJson(route('logistics.cash-desk.recovery'),$d)->assertRedirect();
+        $d['key']=(string)Str::uuid();$d['reference']='CASH-CUSTODY-02';$this->postJson(route('logistics.cash-desk.recovery'),$d)->assertRedirect()->assertSessionHasNoErrors();
         $last=DB::table('logistics_cash_handovers')->where('id','!=',$h->id)->first();
-        $this->postJson(route('logistics.cash-desk.count',$last->id),['counted'=>'650','allocations'=>[$c->id=>'600'],'notes'=>'Actual overage remains unallocated'])->assertRedirect();
+        $this->postJson(route('logistics.cash-desk.count',$last->id),['counted'=>'650','allocations'=>[$c->id=>'600'],'notes'=>'Actual overage remains unallocated'])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame(0,app(\App\Services\LogisticsCashDesk::class)->balances($c)['outstanding']);
         $this->assertSame(115000,app(\App\Services\LogisticsCashDesk::class)->custody($this->hub->id));
         $this->assertSame($snapshots,DB::table('logistics_compensations')->get()->toJson());
@@ -178,12 +190,12 @@ class OperationalRecoveryTest extends TestCase
     }
     public function test_physical_recovery_preserves_parcel_finances_and_holds_redispatch_with_private_evidence(): void
     {
-        $this->delivery();$this->actingAs($this->rider)->patch(route('rider.deliveries.advance',$this->shipment->id),['from'=>'assigned_to_rider'])->assertRedirect();
+        $this->delivery();$this->actingAs($this->rider)->patch(route('rider.deliveries.advance',$this->shipment->id),['from'=>'assigned_to_rider'])->assertRedirect()->assertSessionHasNoErrors();
         DB::table('users')->where('id',$this->rider->id)->update(['status'=>'suspended']);
         $d=$this->recoveryData();$proof=\Illuminate\Http\UploadedFile::fake()->createWithContent('recovery.pdf',"%PDF-1.4\nPrivate recovery evidence");
         $this->actingAs($this->admin)->postJson(route('logistics.issues.recovery'),$d)->assertForbidden();
         $before=$this->shipment->fresh()->getRawOriginal();$snapshots=DB::table('logistics_compensations')->get()->toJson();
-        $this->actingAs($this->staff)->post(route('logistics.issues.recovery'),$d+['proof'=>$proof])->assertRedirect();
+        $this->actingAs($this->staff)->post(route('logistics.issues.recovery'),$d+['proof'=>$proof])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame($before,$this->shipment->fresh()->getRawOriginal());
         $this->assertSame($snapshots,DB::table('logistics_compensations')->get()->toJson());
         $this->assertSame(0,DB::table('logistics_financial_transactions')->count());
@@ -254,7 +266,7 @@ class OperationalRecoveryTest extends TestCase
 
     public function test_recovery_audit_failure_removes_rolled_back_proof_and_issue(): void
     {
-        $this->delivery();$this->actingAs($this->rider)->patch(route('rider.deliveries.advance',$this->shipment->id),['from'=>'assigned_to_rider'])->assertRedirect();
+        $this->delivery();$this->actingAs($this->rider)->patch(route('rider.deliveries.advance',$this->shipment->id),['from'=>'assigned_to_rider'])->assertRedirect()->assertSessionHasNoErrors();
         DB::table('users')->where('id',$this->rider->id)->update(['status'=>'suspended']);
         DB::statement("CREATE TRIGGER fail_parcel_recovery BEFORE INSERT ON logistics_financial_events WHEN NEW.event='parcel_recovery_received' BEGIN SELECT RAISE(ABORT,'audit failed'); END");
         $proof=\Illuminate\Http\UploadedFile::fake()->createWithContent('recovery.pdf',"%PDF-1.4\nRollback private recovery proof");
@@ -275,7 +287,7 @@ class OperationalRecoveryTest extends TestCase
         DB::table('shipments')->where('id',$this->shipment->id)->update(['shipping_status'=>'hub_transfer','hub_transfer_rider_id'=>$this->rider->id]);
         DB::table('users')->where('id',$this->rider->id)->update(['status'=>'suspended']);
         $d=$this->recoveryData();$d['leg']='hub_transfer';
-        $this->actingAs($this->staff)->postJson(route('logistics.issues.recovery'),$d)->assertRedirect();
+        $this->actingAs($this->staff)->postJson(route('logistics.issues.recovery'),$d)->assertRedirect()->assertSessionHasNoErrors();
         DB::table('users')->where('id',$this->rider->id)->update(['status'=>'approved']);
         $this->actingAs($this->rider->fresh())->patchJson('/rider/hub-transfers/'.$leg->id.'/confirm')->assertUnprocessable();
         $this->assertNull($leg->fresh()->rider_confirmed_pickup_at);
@@ -291,6 +303,6 @@ class OperationalRecoveryTest extends TestCase
         $this->actingAs($this->staff)->postJson(route('logistics.issues.recovery'),$d)->assertUnprocessable();
         $this->patchJson('/logistics/scan/'.$this->shipment->id.'/receive')->assertOk();
         $this->assertSame('completed',$this->assignment->fresh()->status);
-        $this->assertDatabaseHas('logistics_compensations',['source_id'=>$this->assignment->id,'rider_id'=>$this->rider->id,'status'=>'earned','amount_cents'=>2500]);
+        $this->assertDatabaseHas('logistics_compensations',['source_id'=>$this->assignment->id,'rider_id'=>$this->rider->id,'status'=>'earned','amount_cents'=>3000]);
     }
 }

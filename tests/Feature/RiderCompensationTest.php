@@ -224,13 +224,14 @@ class RiderCompensationTest extends TestCase
         $to=LogisticsHub::create(['company_name'=>'Alpha','municipality'=>'Other City','province'=>'Laguna','is_operational'=>true]);
         $receiver=$this->person('hub_staff','Alpha',$to->id);
         $transferRider=$this->person('rider');
-        $transferRider->update(['vehicle_type'=>'four_wheels','vehicle_ownership'=>'own']);
+        $transferRider->forceFill(['vehicle_type'=>'four_wheels','vehicle_ownership'=>'own','is_available'=>true])->save();
         DB::table('delivery_assignments')->update(['status'=>'completed']);
         DB::table('shipments')->where('id',$this->shipment->id)->update(['shipping_status'=>'at_sorting_center','destination_hub'=>'Other City','delivered_at'=>null]);
         DB::table('orders')->where('id',$this->order->id)->update(['status'=>'at_sorting_center']);
         $secondOrder=$this->order->replicate();$secondOrder->id=(string)Str::uuid();$secondOrder->status='at_sorting_center';$secondOrder->save();
         $s=$this->shipment->getRawOriginal();$s['id']=(string)Str::uuid();$s['order_id']=$secondOrder->id;$s['tracking_number']='SECOND-'.Str::uuid();$s['shipping_status']='at_sorting_center';$s['destination_hub']='Other City';DB::table('shipments')->insert($s);
         $shipments=[$this->shipment->id,$s['id']];
+        foreach ($shipments as $id) $this->transferOriginReceipt(Shipment::findOrFail($id), $this->staff);
         foreach($shipments as $id)\App\Models\ShipmentHubLeg::create(['shipment_id'=>$id,'sequence'=>1,'leg_type'=>'direct','from_hub'=>'Santa Cruz','from_province'=>'Laguna','to_hub'=>'Other City','to_province'=>'Laguna','status'=>'pending']);
         $flow=app(\App\Services\HubTransferWorkflow::class);
         $b=$flow->request($this->staff,$this->hub->id,$to->id,$shipments);

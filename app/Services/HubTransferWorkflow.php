@@ -13,6 +13,7 @@ use App\Models\Shipment;
 use App\Models\ShipmentHubLeg;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Ramsey\Uuid\Uuid;
 
 class HubTransferWorkflow
 {
@@ -32,7 +33,7 @@ class HubTransferWorkflow
             $actor = $this->actor($user);
             $leg = ShipmentHubLeg::forCompany($actor->business_name)->findOrFail($legId);
             $shipment = Shipment::whereKey($leg->shipment_id)->lockForUpdate()->firstOrFail();
-            app(LogisticsRecovery::class)->assertNotRecovered($shipment->id);
+            app(LogisticsRecovery::class)->assertOperational($shipment->id);
             $leg = ShipmentHubLeg::whereKey($legId)->lockForUpdate()->firstOrFail();
             if ($leg->transfer_batch_id) {
                 return $this->scope($actor)->findOrFail($leg->transfer_batch_id);
@@ -74,14 +75,14 @@ class HubTransferWorkflow
             $batch = HubTransferBatch::where('company_name', $rider->business_name)->where('rider_id', $rider->id)->whereKey($leg->transfer_batch_id)->lockForUpdate()->firstOrFail();
             abort_unless($batch->status === 'in_transit' && $batch->dispatched_at, 422);
             $shipment = Shipment::whereKey($leg->shipment_id)->lockForUpdate()->firstOrFail();
-            app(LogisticsRecovery::class)->assertNotRecovered($shipment->id);
+            app(LogisticsRecovery::class)->assertOperational($shipment->id);
             $leg = ShipmentHubLeg::whereKey($legId)->lockForUpdate()->firstOrFail();
             abort_unless($leg->status === 'in_transit' && ! $leg->rider_confirmed_pickup_at && $leg->rider_id === $rider->id && $shipment->shipping_status === 'hub_transfer', 422, 'This pickup is not available for confirmation.');
             $leg->update(['rider_confirmed_pickup_at' => now()]);
             DeliveryAssignment::where('shipment_id', $leg->shipment_id)->where('courier_id', $rider->id)->where('leg', 'hub_transfer')->update(['picked_up_at' => now()]);
             $this->event($batch, $rider, 'pickup_confirmed', 'in_transit', null, $leg->shipment_id);
             foreach (User::where('business_name', $batch->company_name)->where('account_type', 'logistics')->where('is_logistics', true)->where('is_admin', false)->where('logistics_role', 'hub_staff')->where('status', 'approved')->where('logistics_hub_id', $batch->destination_hub_id)->pluck('id') as $staffId) {
-                Order::notifyUser($staffId, 'Hub Transfer On The Way', 'A parcel in an incoming transfer has been collected by its assigned rider.', 'hub_transfer_pickup_confirmed', $shipment->id);
+                Order::notifyUser($staffId, 'Hub Transfer On The Way', 'A parcel in an incoming transfer has been collected by its assigned rider.', 'hub_transfer_pickup_confirmed', $batch->id);
             }
         });
     }
@@ -129,12 +130,31 @@ class HubTransferWorkflow
             'to_status' => $batch->status, 'reason' => $reason, 'shipment_id' => $shipmentId, 'created_at' => now()]);
     }
 
-    private function parcels(User $actor, array $ids)
+    private function notifyBuyerOnce(Order $order, Shipment $shipment, string $event, string $title, string $message): void
+    {
+        if (! $order->buyer_id) return;
+
+        DB::table('notifications')->insertOrIgnore([
+            'id' => (string) Uuid::uuid5(Uuid::NAMESPACE_URL, implode(':', ['buyer-shipment', $shipment->id, $event, $order->buyer_id])),
+            'user_id' => $order->buyer_id,
+            'title' => $title,
+            'message' => $message,
+            'notification_type' => 'order_status',
+            'reference_id' => $order->id,
+            'is_read' => false,
+            'created_at' => now(),
+        ]);
+    }
+
+    private function parcels(User $actor, array $ids, bool $receiving = false)
     {
         abort_unless($ids && count($ids) === count(array_unique($ids)), 422, 'Select distinct parcels.');
         $parcels = Shipment::where('logistics_company', $actor->business_name)->whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get();
         abort_unless($parcels->count() === count($ids), 422, 'One or more parcels are unavailable in this company.');
-        foreach ($parcels as $parcel) app(LogisticsRecovery::class)->assertNotRecovered($parcel->id);
+        foreach ($parcels as $parcel) {
+            if ($receiving) app(LogisticsRecovery::class)->assertNotRecovered($parcel->id);
+            else app(LogisticsRecovery::class)->assertOperational($parcel->id);
+        }
 
         return $parcels;
     }
@@ -195,6 +215,8 @@ class HubTransferWorkflow
         $parcels = $this->parcels($actor, $members->pluck('shipment_id')->all())->keyBy('id');
         foreach ($members as $member) {
             $leg = $this->nextEligible($parcels[$member->shipment_id], $origin, $destination);
+            $problem = app(TransferCustodyEvidence::class)->problem($parcels[$member->shipment_id], $leg, $origin);
+            abort_if($problem !== null, 422, $problem ?? 'Custody needs review.');
             abort_unless($leg->id === $member->leg_id && $leg->transfer_batch_id === $batch->id && $leg->requested_at, 422, 'Transfer membership or parcel eligibility changed.');
         }
 
@@ -250,10 +272,8 @@ class HubTransferWorkflow
             abort_unless($batch->status === 'approved' && $batch->approved_at && $batch->approved_by, 422, 'Only an approved, undispatched batch can be dispatched.');
             [$origin, $destination] = $this->hubs($actor, $batch->origin_hub_id, $batch->destination_hub_id);
             $rider = User::where('business_name', $actor->business_name)->whereKey($riderId)->lockForUpdate()->firstOrFail();
-            abort_unless($rider->account_type === 'rider' && ! $rider->is_admin && ! $rider->is_logistics && $rider->status === 'approved'
-                && (int) $rider->logistics_hub_id === $origin->id && $rider->vehicle_type === 'four_wheels' && in_array($rider->vehicle_ownership, ['own', 'company'], true), 422, 'Choose an approved four-wheel transfer rider assigned to the origin hub.');
-            abort_if(HubTransferBatch::where('rider_id', $rider->id)->where('status', 'in_transit')->lockForUpdate()->first(['id'])
-                || app(AssignmentWork::class)->blocksRider($rider->id), 422, 'The rider has active or ambiguous work requiring review.');
+            $problem = app(TransferRiderEligibility::class)->problem($rider, $origin);
+            abort_if($problem !== null, 422, $problem ?? 'Ineligible transfer rider.');
             $vehicle = null;
             if ($rider->vehicle_ownership === 'company') {
                 $query = CompanyVehicle::where('company_name', $actor->business_name)->where('logistics_hub_id', $origin->id)->where('vehicle_type', 'four_wheels')->riderVisible();
@@ -275,12 +295,16 @@ class HubTransferWorkflow
             foreach ($members as $member) {
                 $leg = ShipmentHubLeg::findOrFail($member->leg_id);
                 $shipment = Shipment::findOrFail($member->shipment_id);
+                $firstTransfer = ! $shipment->hub_transfer_started_at;
                 $leg->update(['status' => 'in_transit', 'rider_id' => $rider->id, 'started_at' => $now, 'rider_confirmed_pickup_at' => null]);
                 $shipment->update(['shipping_status' => 'hub_transfer', 'hub_transfer_rider_id' => $rider->id, 'hub_transfer_started_at' => $shipment->hub_transfer_started_at ?: $now]);
                 if ($shipment->order_id) {
                     $order = Order::findOrFail($shipment->order_id);
                     $order->update(['status' => 'hub_transfer']);
                     $order->logStatus('hub_transfer', $actor->id);
+                    if ($firstTransfer) {
+                        $this->notifyBuyerOnce($order, $shipment, 'transfer-started', 'Hub Transfer Started', 'Order #'.$order->order_number.' is being transferred through the logistics hub network.');
+                    }
                 }
                 DeliveryAssignment::updateOrCreate(['shipment_id' => $shipment->id, 'leg' => 'hub_transfer'], ['courier_id' => $rider->id, 'status' => 'hub_transfer', 'accepted_at' => $now, 'picked_up_at' => null, 'delivered_at' => null]);
             }
@@ -304,7 +328,7 @@ class HubTransferWorkflow
             $members = $batch->members()->orderBy('shipment_id')->lockForUpdate()->get();
             $selected = $shipmentIds === null ? $members->whereNull('received_at') : $members->whereIn('shipment_id', $shipmentIds);
             abort_unless($selected->isNotEmpty() && ($shipmentIds === null || (count($shipmentIds) === count(array_unique($shipmentIds)) && $selected->count() === count($shipmentIds))), 422, 'Select distinct parcels in this batch.');
-            $parcels = $this->parcels($actor, $selected->pluck('shipment_id')->all())->keyBy('id');
+            $parcels = $this->parcels($actor, $selected->pluck('shipment_id')->all(), true)->keyBy('id');
             foreach ($selected as $member) {
                 $shipment = $parcels[$member->shipment_id];
                 $leg = ShipmentHubLeg::whereKey($member->leg_id)->lockForUpdate()->firstOrFail();
@@ -316,35 +340,40 @@ class HubTransferWorkflow
                 }
                 abort_unless(! $member->received_at && $leg->transfer_batch_id === $batch->id && $leg->status === 'in_transit' && $leg->rider_id === $batch->rider_id
                     && $leg->rider_confirmed_pickup_at && $shipment->shipping_status === 'hub_transfer' && $shipment->hub_transfer_rider_id === $batch->rider_id, 422, 'This parcel is not ready for receipt; confirm rider pickup first.');
-                $leg->update(['status' => 'completed', 'completed_at' => now()]);
-                $member->update(['received_by' => $actor->id, 'received_at' => now()]);
+                $receivedAt = now();
+                $leg->update(['status' => 'completed', 'completed_at' => $receivedAt]);
+                $member->update(['received_by' => $actor->id, 'received_at' => $receivedAt]);
                 DeliveryAssignment::where('shipment_id', $shipment->id)->where('leg', 'hub_transfer')->where('courier_id', $batch->rider_id)->update(['status' => 'completed', 'delivered_at' => now()]);
                 $next = $shipment->nextPendingHubLeg();
                 $updates = ['hub_transfer_rider_id' => null];
                 if (! $next) {
                     $updates += ['shipping_status' => 'sorted', 'hub_transfer_completed_at' => now(), 'sorted_at' => now(), 'sorted_area' => $shipment->destination_hub];
                 }
-                $shipment->update($updates);
+                $shipment->recordHubReceipt($updates);
                 if (! $next && $shipment->order_id) {
                     $order = Order::findOrFail($shipment->order_id);
                     $order->update(['status' => 'sorted']);
                     $order->logStatus('sorted', $actor->id);
+                    $this->notifyBuyerOnce($order, $shipment, 'sorted', 'Parcel Sorted', 'Order #'.$order->order_number.' reached its destination sorting hub and is awaiting local delivery assignment.');
                 }
                 $this->event($batch, $actor, 'parcel_received', 'in_transit', null, $shipment->id);
+                app(HubTransferNotifications::class)->receipt($batch, $shipment->id);
             }
             if ($batch->members()->whereNull('received_at')->lockForUpdate()->get(['id'])->isEmpty()) {
                 $batch->update(['status' => 'completed', 'received_by' => $actor->id, 'received_at' => now()]);
                 $this->event($batch, $actor, 'received', 'in_transit');
+                app(HubTransferNotifications::class)->receipt($batch);
                 app(RiderCompensation::class)->batchCompleted($batch->id);
             }
 
+            $batch->setRelation('activityLegIds', collect($selected->pluck('leg_id')->all()));
             return $batch;
         });
     }
 
-    public function discrepancy(User $user, string $id, string $reason, ?string $shipmentId): HubTransferBatch
+    public function discrepancy(User $user, string $id, string $reason, ?string $shipmentId, string $requestKey): HubTransferBatch
     {
-        return DB::transaction(function () use ($user, $id, $reason, $shipmentId) {
+        return DB::transaction(function () use ($user, $id, $reason, $shipmentId, $requestKey) {
             GcashLocks::operation([], [$id], [$user->id]);
             $actor = $this->actor($user);
             $batch = $this->scope($actor)->lockForUpdate()->findOrFail($id);
@@ -355,7 +384,18 @@ class HubTransferWorkflow
             if ($shipmentId) {
                 abort_unless($batch->members()->where('shipment_id', $shipmentId)->exists(), 422, 'This parcel is not in this batch.');
             }
-            $this->event($batch, $actor, 'discrepancy', $batch->status, trim($reason), $shipmentId);
+            abort_unless(\Illuminate\Support\Str::isUuid($requestKey), 422, 'A discrepancy request key is required.');
+            $requestKey = strtolower($requestKey);
+            $hash = hash('sha256', json_encode([$actor->id, trim($reason), $shipmentId]));
+            $existing = $batch->events()->where('request_key', $requestKey)->lockForUpdate()->first();
+            if ($existing) {
+                abort_unless(hash_equals((string) $existing->request_hash, $hash), 409, 'This request key was already used for a different observation.');
+                $batch->setRelation('activityLegIds', collect());
+                return $batch;
+            }
+            HubTransferEvent::create(['batch_id' => $batch->id, 'actor_id' => $actor->id, 'action' => 'discrepancy',
+                'from_status' => $batch->status, 'to_status' => $batch->status, 'reason' => trim($reason),
+                'shipment_id' => $shipmentId, 'request_key' => $requestKey, 'request_hash' => $hash, 'created_at' => now()]);
 
             return $batch;
         });

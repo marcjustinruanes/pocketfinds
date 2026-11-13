@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="{{ asset('css/seller-shell.css') }}?v={{ filemtime(public_path('css/seller-shell.css')) }}">
 @stack('head')
 @include('account.partials.notification-assets')
+<link rel="stylesheet" href="{{ asset('css/seller-modern.css') }}?v={{ filemtime(public_path('css/seller-modern.css')) }}">
 </head>
 <body class="seller @yield('body-class')">
 <div class="shell" id="appShell" data-navigation-shell data-sidebar-hover data-collapse-key="seller_sidebar_collapsed">
@@ -42,6 +43,20 @@
       </form>
     </div>
   </div>
+</div>
+
+{{-- Shared confirmation dialog for Seller actions --}}
+<div class="modal-overlay seller-confirm-overlay" id="sellerConfirmModal" aria-hidden="true">
+  <section class="modal seller-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="sellerConfirmTitle" aria-describedby="sellerConfirmMessage">
+    <div class="modal-head">
+      <div><h3 id="sellerConfirmTitle">Confirm action</h3><p id="sellerConfirmMessage">Are you sure you want to continue?</p></div>
+      <button class="modal-close" type="button" data-confirm-cancel aria-label="Close">✕</button>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" type="button" data-confirm-cancel>Cancel</button>
+      <button class="btn btn-danger" type="button" id="sellerConfirmSubmit">Continue</button>
+    </div>
+  </section>
 </div>
 
 <div class="toast-stack" id="toastStack"></div>

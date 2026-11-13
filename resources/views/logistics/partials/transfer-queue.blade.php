@@ -60,13 +60,13 @@
           <td class="mono">{{ optional($first->requested_at)?->format('M d, Y g:i A') }}</td>
           <td>
             <div class="row-actions">
-              <form method="POST" action="{{ route('logistics.hub-requests.approve') }}">
+              <form method="POST" action="{{ route('logistics.hub-requests.approve') }}" data-confirm data-confirm-title="Approve all {{ $legs->count() }} transfer requests?" data-confirm-message="The requested parcels will be approved for transfer dispatch." data-confirm-action="Approve requests" data-confirm-tone="success">
                 @csrf @method('PATCH')
                 <input type="hidden" name="from_hub" value="{{ $fromHub }}"><input type="hidden" name="from_province" value="{{ $fromProvince }}">
                 <input type="hidden" name="to_hub" value="{{ $toHub }}"><input type="hidden" name="to_province" value="{{ $toProvince }}">
                 <button class="btn btn-sm btn-success">Approve All</button>
               </form>
-              <form method="POST" action="{{ route('logistics.hub-requests.reject') }}" onsubmit="return confirm('Reject these requests and allow a fresh request?')">
+              <form method="POST" action="{{ route('logistics.hub-requests.reject') }}" data-confirm data-confirm-title="Reject these transfer requests?" data-confirm-message="These requests will be rejected so the hub can submit a fresh request." data-confirm-action="Reject requests" data-confirm-tone="danger">
                 @csrf @method('PATCH')
                 <input type="hidden" name="from_hub" value="{{ $fromHub }}"><input type="hidden" name="from_province" value="{{ $fromProvince }}">
                 <input type="hidden" name="to_hub" value="{{ $toHub }}"><input type="hidden" name="to_province" value="{{ $toProvince }}">

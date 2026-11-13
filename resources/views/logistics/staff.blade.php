@@ -148,17 +148,17 @@
                 <button class="btn btn-outline" data-modal-close>Cancel</button>
                 @if($member->status === 'pending')
                 <button type="button" class="btn btn-outline-danger" onclick="openReasonModal('reject', '{{ route('logistics.staff.reject', $member->id) }}')">Reject</button>
-                <button type="button" class="btn btn-success" data-modal-open="interviewModal-{{ $member->id }}">Interview</button>
+                <button type="button" class="btn btn-success" onclick="openStaffFollowupModal('interviewModal-{{ $member->id }}')">Interview</button>
                 @elseif($member->status === 'interview')
                 <button type="button" class="btn btn-outline-danger" onclick="openReasonModal('reject', '{{ route('logistics.staff.reject', $member->id) }}')">Reject</button>
-                <button type="button" class="btn btn-success" data-modal-open="confirmInterviewModal-{{ $member->id }}">Approve</button>
+                <button type="button" class="btn btn-success" onclick="openStaffFollowupModal('confirmInterviewModal-{{ $member->id }}')">Approve</button>
                 @elseif($member->status === 'rejected')
                 <span>{{ $member->can_resubmit ? 'Resubmission allowed' : 'Final rejection' }}</span>
                 <button type="button" class="btn btn-outline" onclick="openReasonModal('reject', '{{ route('logistics.staff.reject', $member->id) }}')">Update rejection decision</button>
                 @elseif($member->status === 'approved')
                 <button type="button" class="btn btn-outline" onclick="openReasonModal('suspend', '{{ route('logistics.staff.suspend', $member->id) }}')">Suspend</button>
                 @elseif($member->status === 'suspended')
-                <form method="POST" enctype="multipart/form-data" action="{{ route('logistics.staff.activate', $member->id) }}" style="display:inline">
+                <form method="POST" enctype="multipart/form-data" action="{{ route('logistics.staff.activate', $member->id) }}" style="display:inline" data-confirm data-confirm-title="Activate this Hub Staff account?" data-confirm-message="This account will be enabled for Hub Staff access." data-confirm-action="Activate account" data-confirm-tone="success">
                   @csrf @method('PATCH')
                   <button class="btn btn-success" type="submit">Activate</button>
                 </form>
@@ -251,6 +251,14 @@
 @include('admin.partials.doc-lightbox')
 @include('admin.partials.reason-modals')
 {{ $staff->links() }}
+<script>
+function openStaffFollowupModal(id) {
+  document.querySelectorAll('.modal-overlay.open').forEach(modal => modal.classList.remove('open'));
+  const modal = document.getElementById(id);
+  modal?.classList.add('open');
+  modal?.querySelector('[data-modal-close]')?.focus();
+}
+</script>
 <script src="{{ asset('js/registration-unsaved.js') }}?v={{ filemtime(public_path('js/registration-unsaved.js')) }}"></script>
 <script src="{{ asset('js/license-number-input.js') }}?v={{ filemtime(public_path('js/license-number-input.js')) }}"></script>
 </section>

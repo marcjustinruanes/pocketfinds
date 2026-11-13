@@ -186,7 +186,7 @@
       <div class="modal" style="max-width:420px">
         <div class="modal-head">
           <div><h3>Share a Product</h3><p>Sends it into this conversation</p></div>
-          <button class="modal-close" data-modal-close><x-admin-icon name="close" /></button>
+          <button type="button" class="modal-close" data-modal-close aria-label="Close"><x-admin-icon name="close" /></button>
         </div>
         <div class="modal-body" style="padding:12px 16px">
           <input type="text" id="productPickerSearch" placeholder="Search products…" style="width:100%;border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:13px;margin-bottom:10px">

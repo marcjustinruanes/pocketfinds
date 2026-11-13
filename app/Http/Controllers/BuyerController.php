@@ -17,6 +17,7 @@ use App\Models\Order;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Review;
+use App\Models\Shipment;
 use App\Models\ShopFollow;
 use App\Models\User;
 use App\Models\Voucher;
@@ -523,6 +524,8 @@ class BuyerController extends Controller
         $allowedPeriods = ['all', '30d', '6m', 'year'];
         $period = in_array($request->query('period'), $allowedPeriods, true) ? $request->query('period') : 'all';
         $payment = in_array($request->query('payment'), ['cod', 'gcash'], true) ? $request->query('payment') : 'all';
+        $categoryId = $request->filled('category') && ctype_digit((string) $request->query('category'))
+            ? (int) $request->query('category') : null;
         $baseQuery = Order::where('buyer_id', auth()->id());
         $orderCounts = (clone $baseQuery)->selectRaw('status, count(*) as aggregate')->groupBy('status')->pluck('aggregate', 'status');
         $returnRequests=\App\Services\BuyerCommerce::installed()?DB::table('commerce_returns')->where('buyer_id',auth()->id())->get()->keyBy('order_id'):collect();
@@ -530,7 +533,7 @@ class BuyerController extends Controller
         $cancellationRefundIds = $cancellationRefunds->keys();
         $returnedOrderIds = (clone $baseQuery)->where('status', 'returned')->pluck('id');
         $refundOrderIds = $returnRequests->keys()->merge($cancellationRefundIds)->merge($returnedOrderIds)->unique();
-        $orderRelations = ['seller', 'paymentMethod', 'shipment.courier', 'shipment.pickupRider', 'review'];
+        $orderRelations = ['seller', 'paymentMethod', 'shipment.courier', 'shipment.pickupRider', 'shipment.hubTransferRider', 'shipment.hubLegs.rider', 'review'];
         if (Schema::hasTable('gcash_purchases')) $orderRelations[] = 'gcashPurchase';
         $orders = $baseQuery->with($orderRelations)
             ->when($tab === 'to_ship', fn ($query) => $query->whereIn('status', Order::BUYER_TO_SHIP_STATUSES))
@@ -542,6 +545,15 @@ class BuyerController extends Controller
             ->when($period === 'year', fn ($query) => $query->where('created_at', '>=', now()->startOfYear()))
             ->latestActivity()
             ->get();
+
+        $productIds = $orders->flatMap(fn ($order) => collect($order->items ?? [])->pluck('product_id'))->filter()->unique()->values();
+        $productCategories = Product::whereIn('id', $productIds)->pluck('category_id', 'id');
+        $orderCategories = Category::whereIn('id', $productCategories->filter()->unique())->orderBy('name')->get(['id', 'name']);
+        if ($categoryId) {
+            $orders = $orders->filter(fn ($order) => collect($order->items ?? [])->contains(
+                fn ($item) => (int) ($productCategories[$item['product_id'] ?? null] ?? 0) === $categoryId
+            ))->values();
+        }
 
         $paymentPurchaseIds = Schema::hasColumn('orders', 'gcash_purchase_id')
             ? $orders->pluck('gcash_purchase_id')->filter()->unique()->values()
@@ -564,11 +576,17 @@ class BuyerController extends Controller
         }
 
         $orderHistory = DB::table('order_status_history')->whereIn('order_id', $orders->modelKeys())->orderBy('created_at')->get(['order_id', 'status', 'created_at'])->groupBy('order_id');
+        $paymentConfirmedAt = collect();
+        $purchaseIds = $orders->pluck('gcash_purchase_id')->filter()->unique()->values();
+        if ($purchaseIds->isNotEmpty() && Schema::hasTable('gcash_purchases')) {
+            $paymentConfirmedAt = DB::table('gcash_purchases')->whereIn('id', $purchaseIds)->whereIn('payment_state', ['verified', 'order_placed'])
+                ->whereNotNull('verified_at')->pluck('verified_at', 'id');
+        }
 
         $paymentPurchase = $request->query('payment_purchase');
         $paymentOrderId = $paymentPurchase ? $orders->first(fn ($order) => (string) ($order->gcash_purchase_id ?? '') === (string) $paymentPurchase)?->id : null;
         $openOrderDetails = $request->query('order_details') ?: $paymentOrderId;
-        return view('buyer.orders', compact('orders', 'tab', 'period', 'payment', 'paymentPurchase', 'paymentHistories', 'paymentProofs', 'openOrderDetails', 'orderCounts', 'orderHistory','returnRequests','refundOrderIds','cancellationRefunds'));
+        return view('buyer.orders', compact('orders', 'tab', 'period', 'payment', 'paymentPurchase', 'paymentHistories', 'paymentProofs', 'openOrderDetails', 'orderCounts', 'orderHistory','returnRequests','refundOrderIds','cancellationRefunds', 'categoryId', 'orderCategories', 'paymentConfirmedAt'));
     }
 
     /** Delivery proof is visible only to the buyer who owns the completed order. */
@@ -677,17 +695,9 @@ class BuyerController extends Controller
             if ($locked->status !== 'delivered') {
                 return false;
             }
-            if (app(\App\Services\LogisticsTreasury::class)->installed()) {
-                $locked->buyer_confirmed_at = now();
-            }
-            $locked->update(['status' => 'completed']);
-            if ($locked->shipment && ! $locked->shipment->delivered_at) {
-                $locked->shipment->update(['delivered_at' => now()]);
-            }
-            $locked->logStatus('completed', auth()->id(), 'Buyer confirmed receipt.');
-            Order::notifyUser($locked->seller_id, 'Order Delivered', 'Order #'.$locked->order_number.' has been delivered to the customer.', 'order_delivered', $locked->id);
+            $shipment = Shipment::where('order_id', $locked->id)->lockForUpdate()->first();
 
-            return true;
+            return $locked->completeDelivered($shipment, auth()->id(), 'Buyer confirmed receipt.', true);
         });
 
         if (! $confirmed) {
@@ -1355,6 +1365,12 @@ class BuyerController extends Controller
     {
         $notification = DB::table('notifications')->where('id', $id)->where('user_id', auth()->id())->first();
         abort_unless($notification, 404);
+        if (in_array($notification->notification_type, ['delivery_failed', 'rts_custody'], true)) {
+            $url = app(\App\Services\LogisticsParcelNotifications::class)->target(auth()->user(), $notification);
+            DB::table('notifications')->where('id', $id)->where('user_id', auth()->id())->update(['is_read' => true]);
+            return redirect($url);
+        }
+
 
         DB::table('notifications')->where('id', $id)->update(['is_read' => true]);
 

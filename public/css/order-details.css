@@ -193,6 +193,23 @@
 .order-products-summary tbody tr:last-child td { border-bottom: 0; }
 @media(max-width:1050px) and (min-width:761px) { .order-summary-columns { grid-template-columns: minmax(180px,.65fr) minmax(0,1.3fr); } .order-products-summary { grid-column: 1/-1; } }
 @media(max-width:760px) { .order-summary-columns { grid-template-columns: 1fr; } }
+
+/* Buyer tracking: show recorded events and the linked shipment context together. */
+[data-order-summary] .order-tracking > h3 { margin: 0; padding: 14px 16px 0; color: #503a46; font-size: 13px; }
+[data-order-summary] .order-tracking-horizontal { overflow-x: auto; }
+[data-order-summary] .order-tracking-horizontal .tracking-steps { align-items: stretch; }
+[data-order-summary] .tracking-step small { display: block; margin-top: 3px; color: #8c7381; font-size: 10px; }
+[data-order-summary] .tracking-step.is-current small { color: #b33272; font-weight: 700; }
+[data-order-summary] .order-shipment-details { padding-bottom: 15px; }
+[data-order-summary] .order-shipment-details .order-detail-info-grid { margin: 12px 14px 0; }
+[data-order-summary] .order-shipment-transfers { margin: 14px; padding: 14px 15px; border: 1px solid #eee3e9; border-radius: 12px; background: #fff; }
+[data-order-summary] .order-shipment-transfers h4 { margin: 0 0 10px; color: #503a46; font-size: 12px; }
+[data-order-summary] .order-shipment-transfers ol { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
+[data-order-summary] .order-shipment-transfers li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 10px 0; border-top: 1px solid #f1e9ed; }
+[data-order-summary] .order-shipment-transfers li:first-child { border-top: 0; }
+[data-order-summary] .order-shipment-transfers li strong { min-width: 0; color: #503a46; font-size: 11px; overflow-wrap: anywhere; }
+[data-order-summary] .order-shipment-transfers li > span { color: #b33272; font-size: 10px; font-weight: 700; }
+[data-order-summary] .order-shipment-transfers li time { grid-column: 1 / -1; color: #8c7381; font-size: 10px; }
 [data-order-summary] .order-details-dialog { width: min(1100px, 100%); }
 .order-summary-columns { grid-template-columns: minmax(170px,.6fr) minmax(0,1.1fr) minmax(0,1fr); gap: 12px; }
 [data-order-summary] .order-detail-info-grid > div { grid-template-columns: 100px minmax(0,1fr); gap: 8px; padding: 12px; }

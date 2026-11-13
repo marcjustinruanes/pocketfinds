@@ -33,7 +33,7 @@
     };
   @endphp
   @foreach($orderTabs as [$key, $icon, $label])
-  <a href="{{ route('buyer.orders', array_filter(['tab' => $key, 'period' => $period !== 'all' ? $period : null, 'payment' => $payment !== 'all' ? $payment : null])) }}" class="tab {{ $tab === $key ? 'active' : '' }}" aria-label="{{ $label }} ({{ $tabCount($key) }})" title="{{ $label }}" @if($tab === $key) aria-current="page" @endif>
+  <a href="{{ route('buyer.orders', array_filter(['tab' => $key, 'period' => $period !== 'all' ? $period : null, 'payment' => $payment !== 'all' ? $payment : null, 'category' => $categoryId])) }}" class="tab {{ $tab === $key ? 'active' : '' }}" aria-label="{{ $label }} ({{ $tabCount($key) }})" title="{{ $label }}" @if($tab === $key) aria-current="page" @endif>
     <span class="order-tab-icon">
       @if($key === 'all')
         @include('guest.partials.category-filter-icon', ['category' => null])
@@ -54,6 +54,7 @@
   <div class="orders-search-field"><span class="orders-search-icon">@include('buyer.partials.icon', ['name' => 'search', 'size' => 14])</span><input type="search" id="orderSearch" placeholder="Search orders" aria-label="Search orders"></div>
   <label class="orders-filter-field"><span>Date</span><select name="period" onchange="this.form.requestSubmit()"><option value="all" @selected($period === 'all')>All time</option><option value="30d" @selected($period === '30d')>Last 30 days</option><option value="6m" @selected($period === '6m')>Last 6 months</option><option value="year" @selected($period === 'year')>This year</option></select></label>
   <label class="orders-filter-field"><span>Payment</span><select name="payment" onchange="this.form.requestSubmit()"><option value="all" @selected($payment === 'all')>All payments</option><option value="cod" @selected($payment === 'cod')>Cash on Delivery</option><option value="gcash" @selected($payment === 'gcash')>GCash</option></select></label>
+  <label class="orders-filter-field"><span>Category</span><select name="category" onchange="this.form.requestSubmit()"><option value="" @selected(! $categoryId)>All categories</option>@foreach($orderCategories as $category)<option value="{{ $category->id }}" @selected($categoryId === $category->id)>{{ $category->name }}</option>@endforeach</select></label>
 </form>
 @if(session('success'))<div class="auth-success" style="margin-bottom:16px">{{ session('success') }}</div>@endif
 @if(session('error'))<div class="auth-error" style="margin-bottom:16px">{{ session('error') }}</div>@endif
@@ -198,7 +199,7 @@
 @endif</div></div>
     <div class="order-details-body" tabindex="0" role="region" aria-label="Scrollable order information">
     @php
-      $timeline = \App\Support\OrderTimeline::forOrder($order, $orderHistory->get($order->id, collect()));
+      $timeline = \App\Support\OrderTimeline::forOrder($order, $orderHistory->get($order->id, collect()), $paymentConfirmedAt[$order->gcash_purchase_id] ?? null);
       $addressPart = fn ($part) => filled($part) && $part !== 'Not provided';
       $addressLine1 = collect([$order->shipping_address['house_no'] ?? null, $order->shipping_address['street'] ?? null])->filter($addressPart)->join(', ');
       $displayAddress = $order->shipping_address ?? [];
@@ -221,6 +222,7 @@
         $sellerIndex = collect($timeline['rows'])->search(fn ($step) => $step['title'] === 'Seller confirmed');
         array_splice($timeline['rows'], $sellerIndex === false ? 1 : $sellerIndex, 0, [[
           'title' => 'Payment approved',
+          'icon' => 'shield',
           'state' => $order->status === 'placed' ? 'current' : 'completed',
           'timestamp' => $paymentApprovalEvent?->created_at ? \Illuminate\Support\Carbon::parse($paymentApprovalEvent->created_at) : null,
         ]]);
@@ -241,14 +243,56 @@
       @foreach($timeline['rows'] as $step)
        <li class="tracking-step is-{{ $step['state'] }}" @if($step['state'] === 'current') aria-current="step" @endif>
         <span class="tracking-dot" aria-hidden="true">
-          @include('buyer.partials.icon', ['name' => match ($step['title']) { 'Order placed' => 'bag', 'Payment approved' => 'shield', 'Seller confirmed' => 'clipboard-check', 'Preparation & pickup' => 'package', 'In transit' => 'map', 'Out for delivery' => 'rider-delivery', default => $order->status === 'completed' ? 'shield' : 'package-received' }, 'size' => 18])
+          @include('buyer.partials.icon', ['name' => $step['icon'] ?? 'package', 'size' => 18])
         </span>
         <div><strong>{{ $step['title'] }}</strong>
+         <small>{{ $step['label'] }}</small>
          @if($step['timestamp'])<time datetime="{{ $step['timestamp']->toIso8601String() }}">{{ $step['timestamp']->format('M j, Y g:i A') }}</time>@endif
         </div>
        </li>
       @endforeach
      </ol>
+    </section>
+    @if($order->shipment)
+     @php $shipment = $order->shipment; @endphp
+    <section class="order-tracking order-shipment-details" aria-label="Shipment details">
+      <h3>Shipment details</h3>
+      <div class="order-detail-info-grid">
+        <div><span>Tracking number</span><strong>{{ $shipment->tracking_number ?: 'Not assigned' }}</strong></div>
+        <div><span>Logistics company</span><strong>{{ $shipment->logistics_company ?: 'Not assigned' }}</strong></div>
+        <div><span>Shipment status</span><strong>{{ str($shipment->shipping_status)->replace('_', ' ')->title() }}</strong></div>
+        @if($shipment->pickupRider)
+          <div><span>Pickup rider</span><strong>{{ trim($shipment->pickupRider->given_names.' '.$shipment->pickupRider->last_name) }}</strong></div>
+        @endif
+        @if($shipment->courier)
+          <div><span>Delivery rider</span><strong>{{ trim($shipment->courier->given_names.' '.$shipment->courier->last_name) }}</strong></div>
+        @endif
+        @foreach([
+          'scheduled_pickup_at' => 'Pickup scheduled', 'pickup_approved_at' => 'Pickup approved',
+          'picked_up_at' => 'Picked up', 'at_sorting_center_at' => 'Sorting center receipt',
+          'sorted_at' => 'Sorted', 'assigned_at' => 'Delivery rider assigned',
+          'out_for_delivery_at' => 'Out for delivery', 'delivered_at' => 'Delivered',
+          'delivery_failed_at' => 'Delivery attempt failed', 'returned_at' => 'Returned',
+        ] as $field => $label)
+          @if($shipment->{$field})<div><span>{{ $label }}</span><strong>{{ $shipment->{$field}->format('M j, Y g:i A') }}</strong></div>@endif
+        @endforeach
+      </div>
+      @if($shipment->hubLegs->isNotEmpty())
+        <div class="order-shipment-transfers">
+          <h4>Hub transfer progress</h4>
+          <ol>
+            @foreach($shipment->hubLegs as $leg)
+              <li>
+                <strong>{{ $leg->from_hub }}, {{ $leg->from_province }} <span aria-hidden="true">→</span> {{ $leg->to_hub }}, {{ $leg->to_province }}</strong>
+                <span>{{ match($leg->status) { 'in_transit' => 'In transit', 'completed' => 'Received', default => str($leg->status)->replace('_', ' ')->title() } }}</span>
+                @if($leg->rider)<span>Courier: {{ trim($leg->rider->given_names.' '.$leg->rider->last_name) }}</span>@endif
+                @if($leg->started_at)<time datetime="{{ $leg->started_at->toIso8601String() }}">Dispatched {{ $leg->started_at->format('M j, Y g:i A') }}</time>@endif
+                @if($leg->completed_at)<time datetime="{{ $leg->completed_at->toIso8601String() }}">Received {{ $leg->completed_at->format('M j, Y g:i A') }}</time>@endif
+              </li>
+            @endforeach
+          </ol>
+        </div>
+      @endif
     </section>
     @endif
     <div class="order-summary-columns"><div class="order-quantity-summary order-checkout-summary">
@@ -288,8 +332,9 @@
       @if($deliveryOtp)<div class="order-current-status"><strong>Delivery OTP: {{ $deliveryOtp }}</strong><p>Share this only after you receive the order.</p></div>@endif
     @endif
     @if($order->shipment?->delivery_proof_file)
-      <div class="order-current-status"><strong>Proof of delivery</strong><p><a href="{{ route('delivery-proofs.show', $order->shipment) }}" target="_blank" rel="noopener">View delivery photo</a></p></div>
+      <div class="order-current-status"><strong>Proof of delivery</strong><p><a href="{{ route('buyer.orders.delivery-proof', $order) }}" target="_blank" rel="noopener">View delivery photo</a></p></div>
     @endif
+    @endif {{-- Order details are available after admin payment approval. --}}
     </div>
     @if(in_array($order->status, \App\Models\Order::CANCELLABLE_STATUSES, true))
       <div class="order-cancel-panel" hidden>

@@ -34,7 +34,7 @@ class RemainingLogisticsAuditTest extends LogisticsReconciliationTest
         DB::table('shipments')->where('id',$this->shipment->id)->update(['out_for_delivery_at'=>now()]);
         $a=\App\Models\DeliveryAssignment::create(['shipment_id'=>$this->shipment->id,'courier_id'=>$this->rider->id,'leg'=>'delivery','status'=>'assigned_to_rider']);
         DB::table('delivery_assignments')->where('id',$a->id)->update(['status'=>'out_for_delivery']);
-        $this->actingAs($this->admin)->patchJson('/logistics/status/'.$this->shipment->id,['status'=>'delivery_failed','reason'=>'Recipient unavailable'])->assertRedirect();
+        $this->actingAs($this->admin)->patchJson('/logistics/status/'.$this->shipment->id,['status'=>'delivery_failed','reason'=>'Recipient unavailable','attempt_token'=>$this->shipment->fresh()->failedDeliveryToken()])->assertRedirect();
         $this->patchJson('/logistics/status/'.$this->shipment->id,['status'=>'returned'])->assertStatus(422);
         $this->assertSame(4,(int)$product->fresh()->stock);
         $this->finishRts($this->shipment->id);
@@ -55,7 +55,7 @@ class RemainingLogisticsAuditTest extends LogisticsReconciliationTest
     public function test_audit_issue_scope_resolution_history_and_lost_kind(): void
     {
         $notifications=DB::table('notifications')->count();
-        $this->actingAs($this->admin)->post('/logistics/issues',['tracking_number'=>$this->shipment->tracking_number,'kind'=>'damaged','description'=>'Synthetic damaged packaging','hub_id'=>$this->hub->id,'proof'=>$this->proof('Synthetic damage evidence')])->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($this->admin)->post('/logistics/issues',['tracking_number'=>$this->shipment->tracking_number,'kind'=>'damaged','description'=>'Synthetic damaged packaging','hub_id'=>$this->hub->id,'proof'=>$this->parcelIssueProof('Synthetic damage evidence')])->assertRedirect()->assertSessionHasNoErrors();
         $issue=DB::table('logistics_issues')->first();$this->assertNotNull($issue);
         $this->patchJson('/logistics/issues/'.$issue->id,['status'=>'resolved'])->assertUnprocessable();
         $this->patch('/logistics/issues/'.$issue->id,['status'=>'in_progress','revision'=>0])->assertRedirect()->assertSessionHasNoErrors();
@@ -81,7 +81,7 @@ class RemainingLogisticsAuditTest extends LogisticsReconciliationTest
     {
         DB::unprepared("CREATE TRIGGER audit_failure BEFORE INSERT ON logistics_activity_logs BEGIN SELECT RAISE(ABORT, 'audit failure fixture'); END");
         $this->withoutExceptionHandling();
-        try { $this->actingAs($this->admin)->post('/logistics/issues',['tracking_number'=>$this->shipment->tracking_number,'kind'=>'damaged','description'=>'Rollback fixture','hub_id'=>$this->hub->id]); $this->fail('Expected audit failure'); } catch (\Illuminate\Database\QueryException $e) { $this->assertStringContainsString('audit failure fixture',$e->getMessage()); }
+        try { $this->actingAs($this->admin)->post('/logistics/issues',['tracking_number'=>$this->shipment->tracking_number,'kind'=>'damaged','description'=>'Rollback fixture','hub_id'=>$this->hub->id,'proof'=>$this->parcelIssueProof('Audit rollback damage evidence')]); $this->fail('Expected audit failure'); } catch (\Illuminate\Database\QueryException $e) { $this->assertStringContainsString('audit failure fixture',$e->getMessage()); }
         $this->assertSame(0,DB::table('logistics_issues')->count());$this->assertSame(0,DB::table('logistics_issue_events')->count());
         $this->observe('A12_rollback',['issue_rows'=>0,'event_rows'=>0]);
     }
@@ -99,6 +99,7 @@ class RemainingLogisticsAuditTest extends LogisticsReconciliationTest
     {
         $this->seller->update(['shipping_fee'=>100]);$this->buyer->update(['postal_code'=>'4009','barangay'=>'B','street'=>'Main Street','contact_no'=>'09123456789']);
         $this->rider->update(['vehicle_type'=>'two_wheels','vehicle_ownership'=>'own']);
+        $this->rider->forceFill(['is_available'=>true])->save();
         $shipping=app(LogisticsShipping::class);$shipping->configure($this->admin,['revision'=>0,'account_name'=>'Alpha GCash','account_number'=>'09123456789']);
         $product=\App\Models\Product::create(['seller_id'=>$this->seller->id,'name'=>'End to end parcel','status'=>'active','stock'=>5,'price'=>1000,'weight_grams'=>1000]);
         $cart=\App\Models\CartItem::create(['buyer_id'=>$this->buyer->id,'product_id'=>$product->id,'seller_slug'=>$this->seller->username,'name'=>$product->name,'price'=>1000,'qty'=>1]);
@@ -119,12 +120,14 @@ class RemainingLogisticsAuditTest extends LogisticsReconciliationTest
         session()->forget('errors');
         $this->actingAs($this->admin)->patch('/logistics/requests/'.$ob->shipment_id.'/approve')->assertRedirect()->assertSessionHasNoErrors();
         $this->actingAs($this->staff)->patch('/logistics/requests/'.$ob->shipment_id.'/assign-pickup',['courier_id'=>$this->rider->id])->assertRedirect()->assertSessionHasNoErrors();
-        $this->actingAs($this->rider)->patch('/rider/my-pickups/'.$ob->shipment_id.'/confirm')->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($this->rider)->patch('/rider/pickup-requests/'.$ob->shipment_id.'/accept')->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($this->rider)->patch('/rider/my-pickups/'.$ob->shipment_id.'/confirm', ['tracking_number'=>\App\Models\Shipment::findOrFail($ob->shipment_id)->tracking_number])->assertRedirect()->assertSessionHasNoErrors();
         $this->actingAs($this->seller)->patch(route('seller.orders.confirm-pickup',$o))->assertRedirect()->assertSessionHasNoErrors();
         $this->actingAs($this->staff)->patchJson('/logistics/scan/'.$ob->shipment_id.'/receive')->assertOk();
         $this->patch('/logistics/assignments/'.$ob->shipment_id.'/assign',['courier_id'=>$this->rider->id])->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($this->rider)->patch('/rider/requests/'.$ob->shipment_id.'/accept')->assertRedirect()->assertSessionHasNoErrors();
         $this->actingAs($this->rider)->patch('/rider/deliveries/'.$ob->shipment_id.'/advance',['from'=>'assigned_to_rider'])->assertRedirect()->assertSessionHasNoErrors();
-        $this->actingAs($this->admin)->patch('/logistics/status/'.$ob->shipment_id,['status'=>'delivery_failed','reason'=>'No recipient'])->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($this->admin)->patch('/logistics/status/'.$ob->shipment_id,['status'=>'delivery_failed','reason'=>'No recipient','attempt_token'=>\App\Models\Shipment::findOrFail($ob->shipment_id)->failedDeliveryToken()])->assertRedirect()->assertSessionHasNoErrors();
         $this->patchJson('/logistics/status/'.$ob->shipment_id,['status'=>'returned'])->assertStatus(422);
         $this->assertSame(4,(int)$product->fresh()->stock);
         $this->finishRts($ob->shipment_id);
@@ -140,7 +143,7 @@ class RemainingLogisticsAuditTest extends LogisticsReconciliationTest
         $own=$this->shipment->getAttributes();unset($own['id']);$own['id']=(string)Str::uuid();$own['tracking_number']='AUDIT-APPROVED-PICKUP';$own['shipping_status']='ready_for_pickup';$own['pickup_approved_at']=now();$own['pickup_rider_id']=null;DB::table('shipments')->insert($own);
         $foreign=$own;$foreign['id']=(string)Str::uuid();$foreign['tracking_number']='AUDIT-FOREIGN';$foreign['logistics_company']='Foreign';DB::table('shipments')->insert($foreign);
         $this->actingAs($this->admin)->get('/logistics/dashboard')->assertOk()->assertViewHas('total',2)->assertViewHas('forVerify',1)->assertDontSee('AUDIT-FOREIGN');
-        $requests=$this->get('/logistics/requests?queue=assignment');$requests->assertOk()->assertSee('AUDIT-APPROVED-PICKUP')->assertSee('Assign pickup Rider');
+        $requests=$this->get('/logistics/requests?queue=assignment');$requests->assertOk()->assertSee('AUDIT-APPROVED-PICKUP')->assertSee('Send pickup offer');
         $this->get('/logistics/requests')->assertOk()->assertDontSee('AUDIT-APPROVED-PICKUP');
         $this->get('/logistics/reports/export')->assertOk();$csv=$this->get('/logistics/reports/export')->streamedContent();$this->assertStringNotContainsString('AUDIT-FOREIGN',$csv);
         $this->observe('A14_pickup_link',['card_count'=>1,'destination_requests_contains_approved_pickup'=>true,'foreign_tracking_excluded'=>true]);
@@ -149,8 +152,11 @@ class RemainingLogisticsAuditTest extends LogisticsReconciliationTest
     {
         $states=['ready_for_pickup','ready_for_pickup','picked_up','at_sorting_center','hub_transfer','sorted','assigned_to_rider','out_for_delivery','delivery_failed','returned','cancelled','completed'];
         foreach($states as $index=>$state){$row=$this->shipment->getAttributes();$row['id']=(string)Str::uuid();$row['tracking_number']='MATRIX-'.$index;$row['shipping_status']=$state;$row['pickup_approved_at']=$index===1?now():null;$row['pickup_rider_id']=null;DB::table('shipments')->insert($row);}
-        $this->actingAs($this->admin)->get('/logistics/dashboard')->assertOk()->assertViewHas('total',13)->assertViewHas('active',6)->assertViewHas('completed',2)->assertViewHas('failed',1)->assertViewHas('pending',1)->assertViewHas('forVerify',1)->assertViewHas('available',1)->assertViewHas('inTransit',3)->assertViewHas('inProgress',2);
-        $this->observe('A14_matrix',['total'=>13,'active'=>6,'completed'=>2,'failed'=>1,'pending'=>1,'forVerify'=>1,'sorted'=>1,'inTransit'=>3,'inProgress'=>2]);
+        $assignedPickup=$this->shipment->getAttributes();$assignedPickup['id']=(string)Str::uuid();$assignedPickup['tracking_number']='MATRIX-ASSIGNED-PICKUP';$assignedPickup['shipping_status']='ready_for_pickup';$assignedPickup['pickup_approved_at']=now();$assignedPickup['pickup_rider_id']=$this->rider->id;DB::table('shipments')->insert($assignedPickup);
+        $dashboard=$this->actingAs($this->admin)->get('/logistics/dashboard');
+        $dashboard->assertOk()->assertViewHas('total',14)->assertViewHas('active',6)->assertViewHas('completed',2)->assertViewHas('failed',1)->assertViewHas('pending',1)->assertViewHas('forVerify',1)->assertViewHas('pickupAssigned',1)->assertViewHas('available',1)->assertViewHas('inTransit',3)->assertViewHas('inProgress',2)->assertSee('Approved pickups');
+        $this->get('/logistics/monitor?stage=pickup')->assertOk()->assertSee('MATRIX-ASSIGNED-PICKUP')->assertSee('Payout Test')->assertSee('Pickup leg');
+        $this->observe('A14_matrix',['total'=>14,'active'=>6,'completed'=>2,'failed'=>1,'pending'=>1,'forVerify'=>1,'pickup_assigned'=>1,'sorted'=>1,'inTransit'=>3,'inProgress'=>2]);
     }
     protected function finishRts(string $shipment): void
     {

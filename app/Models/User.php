@@ -103,6 +103,11 @@ class User extends Authenticatable
         return $this->is_logistics && $this->logistics_role === 'hub_staff';
     }
 
+    public function barangayRoutes()
+    {
+        return $this->hasMany(RiderBarangayRoute::class, 'rider_id');
+    }
+
     public function logisticsHub()
     {
         return $this->belongsTo(LogisticsHub::class, 'logistics_hub_id');
