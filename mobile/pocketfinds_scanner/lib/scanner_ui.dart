@@ -28,10 +28,9 @@ class ScannerLogin extends StatelessWidget {
             padding: const EdgeInsets.all(24),
             shrinkWrap: true,
             children: [
-              const Icon(
-                Icons.local_shipping_rounded,
-                size: 54,
-                color: scannerPink,
+              Image.asset(
+                'assets/logo.png',
+                height: 72,
               ),
               const SizedBox(height: 12),
               Text(

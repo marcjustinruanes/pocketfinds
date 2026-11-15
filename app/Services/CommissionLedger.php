@@ -190,7 +190,7 @@ class CommissionLedger
         $shipment = DB::table('shipments')->where('order_id', $order->id)->first();
         $delivered = $shipment->delivered_at ?? DB::table('order_status_history')->where('order_id', $order->id)->where('status', 'delivered')->min('created_at');
         $confirmed = $order->buyer_confirmed_at || DB::table('order_status_history')->where('order_id', $order->id)->where('status', 'completed')->where('changed_by', $order->buyer_id)->exists();
-        if (!$delivered || (!$confirmed && CarbonImmutable::parse($delivered)->addHours(168)->isFuture())) return $o;
+        if (!$delivered || !$confirmed) return $o;
         if ($o->method === 'gcash' && !DB::table('gcash_purchases')->where('id', $o->purchase_id)->whereNotNull('verified_at')->whereNotNull('payment_reference')->exists()) return $o;
         if ($this->platformReceived($o)) {
             $purchase = GcashPurchase::find($o->purchase_id);

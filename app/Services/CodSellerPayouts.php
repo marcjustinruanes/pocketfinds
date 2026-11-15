@@ -49,8 +49,8 @@ class CodSellerPayouts
         if(!$delivered){$result['reason']='A reliable delivery timestamp is required.';return $result;}
         $eligibleAt=CarbonImmutable::parse($delivered,config('app.timezone'))->addHours(168);
         $result['eligible_at']=$eligibleAt;
-        if(!$confirmed && $eligibleAt->isFuture()){$result['reason']='Awaiting buyer confirmation or 168 hours after delivery.';return $result;}
-        $result['eligible']=true;$result['reason']='Eligible: full verified COD funds and buyer confirmation or the 168-hour timeout.';
+        if(!$confirmed){$result['reason']='Awaiting explicit buyer Order Received confirmation.';return $result;}
+        $result['eligible']=true;$result['reason']='Eligible: full verified COD funds and explicit buyer confirmation.';
         return $result;
     }
 
