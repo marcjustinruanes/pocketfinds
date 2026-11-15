@@ -2,7 +2,7 @@
 <div class="card issue-recorded-card"><div class="card-head"><div><h2 class="issue-card-title"><span class="issue-heading-icon"><x-admin-icon name="flag" /></span>Recorded issues</h2><p>Review investigations, evidence, and resolution progress.</p></div><span class="issue-count-pill">{{ $issues->total() }} {{ \Illuminate\Support\Str::plural('record', $issues->total()) }}</span></div><div class="table-wrap"><table class="dtable"><thead><tr><th>Parcel / issue</th><th>Investigation</th><th>Owner / status</th><th>Update</th></tr></thead><tbody>
 @forelse($issues as $issue)
 <tr><td>#{{ $issue->id }} - {{ $issue->shipment?->tracking_number }}<br>{{ ucfirst(str_replace('_',' ',$issue->kind)) }}</td>
-<td>{{ $issue->description }}@if($issue->resolution)<p>{{ $issue->resolution }}</p>@endif
+<td>@if($issue->resolution)<p>{{ $issue->resolution }}</p>@endif
 @if($issue->investigation['outcome']??null)<p>Outcome: {{ ucfirst(str_replace('_',' ',$issue->investigation['outcome'])) }}</p>@endif
 @foreach(($issueEvidence??collect())->get((string)$issue->id,collect()) as $evidence)<a href="{{ route('finance.evidence',$evidence->id) }}" target="_blank" rel="noopener">Private evidence {{ $loop->iteration }}</a><br>@endforeach
 </td><td>{{ $issue->assignee?->username??'Unassigned' }}<br>{{ ucfirst(str_replace('_',' ',$issue->status)) }}</td><td>

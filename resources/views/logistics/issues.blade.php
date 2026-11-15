@@ -9,15 +9,6 @@
   $issueView = in_array(request('view'), ['recorded', 'history', 'deliveries'], true) ? request('view') : 'recorded';
 @endphp
 <div class="issues-columns"><div class="issues-results">
-<form method="GET" action="{{ route('logistics.issues') }}" class="issue-view-filter">
-  <label for="issue-view">Show</label>
-  <select name="view" id="issue-view" onchange="this.form.requestSubmit()">
-    <option value="recorded" @selected($issueView === 'recorded')>Recorded issues</option>
-    <option value="history" @selected($issueView === 'history')>Investigation history</option>
-    <option value="deliveries" @selected($issueView === 'deliveries')>Problem deliveries</option>
-  </select>
-  <noscript><button class="btn btn-outline">Show table</button></noscript>
-</form>
 @include('logistics.partials.issue-management')
 @if($issueView === 'deliveries')
 <div class="card issues-table-card">

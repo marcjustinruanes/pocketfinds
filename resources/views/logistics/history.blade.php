@@ -5,12 +5,14 @@
 
 @section('content')
 <section class="delivery-history-page">
-<div class="card history-filter-card">
-  <div class="history-filter-heading"><span class="history-filter-icon"><x-admin-icon name="search" /></span><div><h2>Find delivery records</h2><p>Filter by tracking number, date, hub, or delivery status.</p></div></div>
-  @include('logistics.partials.filters')
-</div>
+<form method="GET" id="deliveryHistoryFilters" class="history-filters" aria-label="Delivery record filters">
+  <label class="history-search-field"><span>Search records</span><span class="history-search-input"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg><input name="search" value="{{ request('search') }}" placeholder="Tracking or order number" aria-label="Tracking or order number" oninput="clearTimeout(this._filterTimer); this._filterTimer = setTimeout(() => this.form.requestSubmit(), 350)"></span></label>
+  <label><span>From date</span><input type="date" name="from" value="{{ request('from') }}" onchange="this.form.requestSubmit()"></label>
+  <label><span>To date</span><input type="date" name="to" value="{{ request('to') }}" onchange="this.form.requestSubmit()"></label>
+  <label class="history-hub-filter"><span>Hub</span><select name="hub_id" aria-label="Municipal hub" onchange="this.form.requestSubmit()"><option value="">All authorized hubs</option>@foreach($hubs as $hub)<option value="{{ $hub->id }}" @selected((string)request('hub_id') === (string)$hub->id)>{{ $hub->municipality }}, {{ $hub->province }}</option>@endforeach</select></label>
+</form>
 <div class="card history-table-card">
-  <div class="card-head history-table-heading"><div><h2>Delivery Records</h2><p>Completed, failed, returned, and cancelled deliveries.</p></div><span class="history-record-count">{{ number_format($shipments->total()) }} {{ \Illuminate\Support\Str::plural('record', $shipments->total()) }}</span></div>
+  <div class="card-head history-table-heading"><div class="history-table-title"><span class="history-record-icon"><x-admin-icon name="box" /></span><div><h2>Delivery Records</h2><p>Completed, failed, returned, and cancelled deliveries.</p></div></div><span class="history-record-count">{{ number_format($shipments->total()) }} {{ \Illuminate\Support\Str::plural('record', $shipments->total()) }}</span></div>
   <div class="table-wrap">
     <table class="dtable">
       <thead>
@@ -18,7 +20,7 @@
           <th>Tracking #</th>
           <th>Buyer</th>
           <th>Courier</th>
-          <th>Status</th>
+          <th><label class="logistics-table-status-filter"><span aria-hidden="true">Status</span><select name="status" form="deliveryHistoryFilters" aria-label="Filter delivery records by status" onchange="this.form.requestSubmit()"><option value="">Status</option>@foreach(['delivered'=>'Delivered','completed'=>'Completed','delivery_failed'=>'Delivery failed','returned'=>'Returned','cancelled'=>'Cancelled'] as $key=>$label)<option value="{{ $key }}" @selected(request('status') === $key)>{{ $label }}</option>@endforeach</select><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></label></th>
           <th>Delivered At</th>
           <th></th>
         </tr>
@@ -41,7 +43,7 @@
           <td><button type="button" class="btn btn-sm btn-outline" data-modal-open="deliveryDetails-{{ $s->id }}">View details</button></td>
         </tr>
         @empty
-        <tr><td colspan="6"><div class="empty history-empty"><span class="history-empty-icon"><x-admin-icon name="box" /></span><h3>No delivery records found</h3><p>Try adjusting the filters or reset them to view all authorized records.</p></div></td></tr>
+        <tr><td colspan="6"><div class="empty history-empty"><span class="history-empty-icon"><x-admin-icon name="box" /></span><h3>No delivery records found</h3><p>Adjust the filters to see matching records.</p></div></td></tr>
         @endforelse
       </tbody>
     </table>

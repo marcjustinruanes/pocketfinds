@@ -48,7 +48,6 @@
       <p class="logistics-transfer-details-loading">Loading transfer details…</p>
     </div>
     <footer class="modal-foot">
-      <a class="btn btn-outline" id="transferDetailsFullPage" href="#">Open full page</a>
       <button type="button" class="btn btn-primary" data-modal-close>Close</button>
     </footer>
   </section>

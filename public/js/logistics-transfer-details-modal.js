@@ -1,8 +1,7 @@
 (() => {
   const modal = document.getElementById('transferDetailsModal');
   const content = document.getElementById('transferDetailsContent');
-  const fullPageLink = document.getElementById('transferDetailsFullPage');
-  if (!modal || !content || !fullPageLink) return;
+  if (!modal || !content) return;
 
   let requestController = null;
 
@@ -32,7 +31,7 @@
       content.replaceChildren(document.importNode(details, true));
     } catch (error) {
       if (error.name === 'AbortError') return;
-      setMessage('Transfer details could not be loaded. Open the full page to review this transfer.');
+      setMessage('Transfer details could not be loaded. Close the dialog and try again.');
     }
   };
 
@@ -40,7 +39,6 @@
     const trigger = event.target.closest('[data-transfer-details-url]');
     if (trigger) {
       event.preventDefault();
-      fullPageLink.href = trigger.href;
       modal.classList.add('open');
       modal.setAttribute('aria-hidden', 'false');
       loadDetails(trigger.dataset.transferDetailsUrl);

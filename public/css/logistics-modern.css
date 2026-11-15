@@ -992,34 +992,38 @@ body.logistics-ui { background-color: #faf7f7; }
   .logistics-ui .delivery-issues-page :is(.issue-recorded-card,.issue-history-card,.issues-table-card) .table-wrap { margin: 0 7px 7px; }
 }
 
-/* Delivery History: separate the filter tools from the records they refine. */
-.logistics-ui .delivery-history-page { gap: 14px; }
-.logistics-ui .delivery-history-page > .history-filter-card { padding: 14px 16px; }
-.logistics-ui .delivery-history-page .history-filter-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 11px; }
-.logistics-ui .delivery-history-page .history-filter-icon { display: grid; place-items: center; flex: 0 0 29px; width: 29px; height: 29px; border-radius: 8px; background: var(--pink-soft); color: var(--pink-dark); }
-.logistics-ui .delivery-history-page .history-filter-icon svg { width: 14px; height: 14px; }
-.logistics-ui .delivery-history-page .history-filter-heading h2 { margin: 0; color: var(--text); font-size: 13px; }
-.logistics-ui .delivery-history-page .history-filter-heading p { margin: 3px 0 0; color: var(--muted); font-size: 9.5px; }
-.logistics-ui .delivery-history-page .history-filter-card > .logistics-toolbar { align-items: end; gap: 8px; margin: 0; padding: 0; border: 0; background: transparent; }
-.logistics-ui .delivery-history-page .history-filter-card > .logistics-toolbar > input { flex: 1 1 190px; min-width: 160px; min-height: 39px; font-size: 10px; }
-.logistics-ui .delivery-history-page .history-filter-card > .logistics-toolbar > label { flex: 0 1 125px; min-width: 110px; font-size: 9px; }
-.logistics-ui .delivery-history-page .history-filter-card > .logistics-toolbar > label input { width: 100%; min-height: 39px; padding: 8px; font-size: 10px; }
-.logistics-ui .delivery-history-page .history-filter-card > .logistics-toolbar > select { flex: 0 1 160px; min-width: 135px; min-height: 39px; padding: 8px 9px; font-size: 10px; }
-.logistics-ui .delivery-history-page .history-filter-card > .logistics-toolbar > .btn { min-height: 36px; padding: 7px 10px; font-size: 9.5px; }
-.logistics-ui .delivery-history-page > .history-table-card { overflow: hidden; }
-.logistics-ui .delivery-history-page .history-table-heading { justify-content: space-between; gap: 12px; min-height: 54px; padding: 12px 15px; }
-.logistics-ui .delivery-history-page .history-table-heading h2 { color: var(--text); font-size: 13px; }
-.logistics-ui .delivery-history-page .history-table-heading p { margin: 3px 0 0; color: var(--muted); font-size: 9.5px; }
-.logistics-ui .delivery-history-page .history-record-count { flex: 0 0 auto; padding: 5px 9px; border: 1px solid var(--pink-line); border-radius: 999px; background: var(--pink-soft); color: var(--pink-dark); font-size: 9.5px; font-weight: 700; }
-.logistics-ui .delivery-history-page .history-table-card .table-wrap { margin: 0 11px 11px; border: 1px solid var(--border); border-radius: 9px; }
-.logistics-ui .delivery-history-page .history-table-card .dtable th { padding: 10px 11px; background: #fcf7fa; color: var(--muted); font-size: 9.5px; }
-.logistics-ui .delivery-history-page .history-table-card .dtable td { padding: 11px; color: var(--text); font-size: 10.5px; vertical-align: middle; }
-.logistics-ui .delivery-history-page .history-table-card .dtable .cell-user strong { font-size: 10.5px; }
-.logistics-ui .delivery-history-page .history-empty { display: grid; justify-items: center; padding: 34px 16px; text-align: center; }
-.logistics-ui .delivery-history-page .history-empty-icon { display: grid; place-items: center; width: 42px; height: 42px; margin-bottom: 8px; border-radius: 13px; background: var(--pink-soft); color: var(--pink-dark); }
+/* Delivery History: match the shared logistics toolbar, cards, and table rhythm. */
+.logistics-ui .delivery-history-page { gap: 16px; }
+.logistics-ui .delivery-history-page > .history-filters { display: grid; grid-template-columns: minmax(220px,1.5fr) repeat(2,minmax(145px,.75fr)) minmax(190px,1fr); align-items: end; gap: 12px; margin: 0; padding: 0; border: 0; background: transparent; }
+.logistics-ui .delivery-history-page .history-filters > label { display: grid; gap: 6px; min-width: 0; color: var(--text); font-size: 11px; font-weight: 650; }
+.logistics-ui .delivery-history-page .history-filters > label > span:first-child { color: var(--muted); font-size: 10px; font-weight: 650; }
+.logistics-ui .delivery-history-page .history-filters :is(input,select) { box-sizing: border-box; width: 100%; min-width: 0; min-height: 42px; padding: 9px 11px; border-color: var(--border); border-radius: 9px; font-size: 11px; }
+.logistics-ui .delivery-history-page .history-filters .history-search-input { position: relative; display: block; }
+.logistics-ui .delivery-history-page .history-filters .history-search-input svg { position: absolute; top: 50%; left: 12px; width: 15px; height: 15px; transform: translateY(-50%); fill: none; stroke: var(--muted); stroke-width: 1.8; pointer-events: none; }
+.logistics-ui .delivery-history-page .history-filters .history-search-input input { padding-left: 36px; }
+.logistics-ui .delivery-history-page > .history-table-card { overflow: hidden; border-color: var(--border); border-radius: 13px; box-shadow: 0 2px 9px rgba(42,28,40,.035); }
+.logistics-ui .delivery-history-page .history-table-heading { justify-content: space-between; gap: 14px; min-height: 66px; padding: 14px 17px; border-bottom: 1px solid #efe8ed; }
+.logistics-ui .delivery-history-page .history-table-title { display: flex; align-items: center; gap: 11px; }
+.logistics-ui .delivery-history-page .history-record-icon { display: grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px; border: 1px solid #f0e4ec; border-radius: 11px; background: #fff7fb; color: #bd347b; }
+.logistics-ui .delivery-history-page .history-record-icon svg { width: 17px; height: 17px; }
+.logistics-ui .delivery-history-page .history-table-heading h2 { margin: 0; color: var(--text); font-size: 14px; }
+.logistics-ui .delivery-history-page .history-table-heading p { margin: 4px 0 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.logistics-ui .delivery-history-page .history-record-count { flex: 0 0 auto; padding: 6px 10px; border: 1px solid #f0e4ec; border-radius: 999px; background: #fffafd; color: #8e426b; font-size: 10px; font-weight: 700; }
+.logistics-ui .delivery-history-page .history-table-card .table-wrap { margin: 0 12px 12px; border: 1px solid var(--border); border-radius: 10px; }
+.logistics-ui .delivery-history-page .history-table-card .dtable th { padding: 12px 13px; background: #fcf7fa; color: var(--muted); font-size: 10px; letter-spacing: .045em; }
+.logistics-ui .delivery-history-page .history-table-card .dtable td { padding: 13px; color: var(--text); font-size: 11px; vertical-align: middle; }
+.logistics-ui .delivery-history-page .history-table-card .dtable tbody tr:hover { background: #fffafd; }
+.logistics-ui .delivery-history-page .history-table-card .dtable .cell-user strong { font-size: 11px; }
+.logistics-ui .delivery-history-page .history-table-card .dtable .mono { font-size: 10.5px; }
+.logistics-ui .delivery-history-page .history-table-card .logistics-table-status-filter { gap: 10px; min-height: 26px; }
+.logistics-ui .delivery-history-page .history-table-card .logistics-table-status-filter select { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; max-width: none; min-width: 0; min-height: 0; margin: 0; padding: 0; border: 0; opacity: 0; cursor: pointer; }
+.logistics-ui .delivery-history-page .history-table-card .logistics-table-status-filter > svg { position: static; flex: none; width: 12px; height: 12px; }
+.logistics-ui .delivery-history-page .history-table-card .logistics-table-status-filter:focus-within { outline: 2px solid #bc387f; outline-offset: 3px; border-radius: 3px; }
+.logistics-ui .delivery-history-page .history-empty { display: grid; justify-items: center; padding: 42px 18px; text-align: center; }
+.logistics-ui .delivery-history-page .history-empty-icon { display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: 9px; border-radius: 13px; background: var(--pink-soft); color: var(--pink-dark); }
 .logistics-ui .delivery-history-page .history-empty-icon svg { width: 20px; height: 20px; }
-.logistics-ui .delivery-history-page .history-empty h3 { margin: 0; color: var(--text); font-size: 12px; }
-.logistics-ui .delivery-history-page .history-empty p { margin: 5px 0 0; color: var(--muted); font-size: 10px; }
+.logistics-ui .delivery-history-page .history-empty h3 { margin: 0; color: var(--text); font-size: 13px; }
+.logistics-ui .delivery-history-page .history-empty p { margin: 6px 0 0; color: var(--muted); font-size: 11px; }
 .logistics-ui .delivery-history-page .logistics-history-modal { width: min(760px,calc(100vw - 28px)); max-height: min(88vh,900px); overflow: hidden; border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 24px 70px rgba(58,35,50,.2); }
 .logistics-ui .delivery-history-page .logistics-history-modal .modal-body { max-height: calc(88vh - 130px); overflow: auto; padding: 16px; }
 .logistics-ui .delivery-history-page .logistics-history-modal .section-card { margin-bottom: 10px; border: 1px solid var(--border); border-radius: 10px; }
@@ -1028,10 +1032,16 @@ body.logistics-ui { background-color: #faf7f7; }
 .logistics-ui .delivery-history-page .logistics-history-modal .field-label { color: var(--muted); font-size: 9px; }
 .logistics-ui .delivery-history-page .logistics-history-modal .field-value { color: var(--text); font-size: 10.5px; overflow-wrap: anywhere; }
 .logistics-ui .delivery-history-page .logistics-history-modal .modal-foot { padding: 11px 15px; }
+@media (max-width: 900px) {
+  .logistics-ui .delivery-history-page > .history-filters { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
 @media (max-width: 700px) {
-  .logistics-ui .delivery-history-page > .history-filter-card { padding: 12px; }
-  .logistics-ui .delivery-history-page .history-filter-card > .logistics-toolbar > * { flex: 1 1 100%; min-width: 0; width: 100%; }
-  .logistics-ui .delivery-history-page .history-table-heading { align-items: flex-start; padding: 11px 12px; }
+  .logistics-ui .delivery-history-page { gap: 12px; }
+  .logistics-ui .delivery-history-page > .history-filters { grid-template-columns: minmax(0,1fr); gap: 10px; }
+  .logistics-ui .delivery-history-page .history-table-heading { align-items: flex-start; padding: 12px; }
+  .logistics-ui .delivery-history-page .history-table-title { align-items: flex-start; }
+  .logistics-ui .delivery-history-page .history-table-heading p { max-width: 250px; }
+  .logistics-ui .delivery-history-page .history-record-icon { flex-basis: 32px; width: 32px; height: 32px; }
   .logistics-ui .delivery-history-page .history-table-card .table-wrap { margin: 0 7px 7px; }
   .logistics-ui .delivery-history-page .logistics-history-modal .modal-body { padding: 11px; }
 }
@@ -1928,7 +1938,11 @@ body.logistics-ui { background-color: #faf7f7; }
 @media(max-width:600px){.logistics-ui .live-monitor-page .monitor-table-heading{padding:16px}.logistics-ui .live-monitor-page .monitor-table-heading h2{max-width:none;font-size:13px}}
 
 /* Issues show one selected table, with optional issue entry. */
-.logistics-ui .issue-view-filter{display:flex;align-items:center;gap:12px;margin:0 0 16px}.logistics-ui .issue-view-filter label{font-size:12px;color:#775565}.logistics-ui .issue-view-filter select{width:auto;min-width:210px;max-width:100%;background:#fff}.logistics-ui .issue-record-card>summary{cursor:pointer;color:#775565;font-size:13px;font-weight:600}.logistics-ui .issue-record-card[open]>form{margin-top:18px}
+.logistics-ui .issue-entry-panel .issue-view-filter{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px;margin:0 0 16px;padding:0 0 16px;border-bottom:1px solid #eadfe6}
+.logistics-ui .issue-entry-panel .issue-view-filter label{font-size:12px;color:#775565}
+.logistics-ui .issue-entry-panel .issue-view-filter select{width:100%;min-width:0;max-width:100%;background:#fff}
+.logistics-ui .issue-entry-panel .issue-view-filter noscript{grid-column:1/-1;justify-self:end}
+.logistics-ui .issue-record-card>summary{cursor:pointer;color:#775565;font-size:13px;font-weight:600}.logistics-ui .issue-record-card[open]>form{margin-top:18px}
 
 /* Compact personnel overview and focused account dialogs. */
 .logistics-ui .team-staff-tabs{display:flex;gap:4px;padding:4px;margin-bottom:18px;width:fit-content;border:1px solid #eadfe6;border-radius:12px;background:#f3edf1}.team-staff-tabs a{padding:10px 20px;border-radius:8px;color:#775565;font-size:12px;text-decoration:none}.team-staff-tabs a.active{background:#bc387f;color:#fff}
