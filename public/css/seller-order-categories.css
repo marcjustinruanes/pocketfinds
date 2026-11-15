@@ -3,6 +3,22 @@
 @media(max-width:600px){.seller-order-layout{grid-template-columns:minmax(0,1fr);gap:16px}.seller-order-categories{position:static;max-height:none;padding:9px}.seller-order-category-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.seller-order-category{font-size:11px;padding:8px;gap:8px}.seller-order-category-icon{width:25px;height:25px}.seller-order-category-count{left:25px;top:2px}.seller-order-content{gap:14px}}
 @media(prefers-reduced-motion:reduce){.seller-order-categories,.seller-order-category-label{transition:none}}
 
+/* A steady right-hand status sidebar beside the scrolling order list. */
+body.seller-orders-page .seller-order-layout{grid-template-columns:minmax(0,1fr) 220px;gap:20px}
+body.seller-orders-page .seller-order-content{grid-column:1;grid-row:1}
+body.seller-orders-page .seller-order-categories{grid-column:2;grid-row:1;position:sticky;top:85px;z-index:20;width:100%;max-height:calc(100dvh - 105px);padding:4px 0 4px 18px;background:transparent;border:0;border-radius:0;overflow:auto;box-shadow:none;transition:none}
+body.seller-orders-page .seller-order-categories:is(:hover,:focus-within){width:100%;box-shadow:none}
+body.seller-orders-page .seller-order-status-heading{margin:6px 12px 16px;font:600 11px/1.5 Inter,system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#947b8a}
+body.seller-orders-page .seller-order-category-list{display:flex;flex-direction:column;gap:2px;width:100%;min-width:0}
+body.seller-orders-page .seller-order-category{box-sizing:border-box;min-height:43px;padding:10px 12px;gap:9px;border-radius:0;border-left:2px solid transparent;font-size:12px;text-decoration:none;background:transparent}
+body.seller-orders-page .seller-order-category:hover{background:transparent;color:#bc387f}
+body.seller-orders-page .seller-order-category-icon{display:none}
+body.seller-orders-page .seller-order-category-label{flex:1;width:auto;opacity:1;overflow:visible}
+body.seller-orders-page .seller-order-category-count{position:static;min-width:18px;height:auto;padding:0;border:0;border-radius:0;background:transparent;color:#a38b99;font-size:12px;font-variant-numeric:tabular-nums}
+body.seller-orders-page .seller-order-category.active{background:#f7e3ee;color:#b22e76;border-left-color:transparent;border-radius:9px;box-shadow:none;font-weight:700}
+body.seller-orders-page .seller-order-category.active .seller-order-category-count{background:transparent;color:#bc387f}
+body.seller-orders-page .seller-order-category:focus-visible{outline:2px solid #bc387f;outline-offset:-2px}
+@media(max-width:900px){body.seller-orders-page .seller-order-layout{grid-template-columns:minmax(0,1fr);gap:16px}body.seller-orders-page .seller-order-content{grid-column:1;grid-row:2}body.seller-orders-page .seller-order-categories{grid-column:1;grid-row:1;max-height:none;padding:0;border:0;border-bottom:1px solid #eadfe6;background:var(--bg,#fffafd)}body.seller-orders-page .seller-order-status-heading{margin:6px 12px 8px}body.seller-orders-page .seller-order-category-list{flex-direction:row;width:max-content;min-width:100%}body.seller-orders-page .seller-order-category{min-height:40px;padding:8px 12px;border-left:0;border-bottom:2px solid transparent}body.seller-orders-page .seller-order-category.active{border-bottom-color:#bc387f;box-shadow:none}}
 .seller-order-content .orders-filter-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .seller-order-content .orders-filter-bar .search-mini{flex:1;min-width:200px}
 .seller-order-content .orders-filter-bar .seller-workspace-tabs{margin:0;flex-shrink:0}
@@ -11,3 +27,26 @@
 .seller-order-filter select{box-sizing:border-box;width:100%;height:52px;padding:12px 16px;border:1px solid #eadce4;border-radius:12px;background:transparent;color:#593346;font:13px Inter,system-ui,sans-serif}
 .seller-order-content .orders-filter-bar .search-mini{box-sizing:border-box;min-height:52px}
 @media(max-width:600px){.seller-order-content .seller-order-filter{flex:1 1 calc(50% - 12px);min-width:0}.seller-order-content .orders-filter-bar .search-mini{flex-basis:100%}}
+
+
+/* Vertical navigation tabs matching inventory and reviews. */
+body.seller-orders-page .seller-order-category-list{display:flex;flex-direction:column;width:100%;min-width:0;gap:5px}
+body.seller-orders-page .seller-order-category{display:flex;gap:10px;border:1px solid transparent;border-radius:10px;min-height:42px;padding:10px 14px;font-size:12px;background:transparent}
+body.seller-orders-page .seller-order-category:hover{background:#fbf5f9}
+body.seller-orders-page .seller-order-category.active{border-color:#e9a6cd;background:#fbedf5;color:#b52d78;font-weight:600}
+body.seller-orders-page .seller-order-category-label{white-space:normal;line-height:1.5}
+body.seller-orders-page .seller-order-category-count{font-size:11px;min-width:16px}
+@media(max-width:900px){body.seller-orders-page .seller-order-categories{border:0;background:transparent}}
+
+
+/* Match the My Account navigation column. */
+body.seller-orders-page .seller-order-categories{padding:18px 16px;background:#fcf7fa;border:1px solid #eee3e9;border-radius:12px;box-shadow:none}
+body.seller-orders-page .seller-order-category-list{display:flex;flex-direction:column;gap:5px;margin:0;padding:0;border:0;border-radius:0;background:transparent}
+body.seller-orders-page .seller-order-category{display:flex;align-items:center;gap:11px;min-height:38px;padding:9px 10px;border:1px solid transparent;border-radius:8px;background:transparent;color:#775565;font-size:12px;font-weight:600;box-shadow:none}
+body.seller-orders-page .seller-order-category:hover,body.seller-orders-page .seller-order-category:focus-visible{background:#fcf1f7;color:#bc387f}
+body.seller-orders-page .seller-order-category.active,body.seller-orders-page .seller-order-category.active:hover{border-color:#efc5da;background:#fff3f9;color:#a52f6b;font-weight:650;box-shadow:none}
+body.seller-orders-page .seller-order-category-icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 18px;width:18px;height:18px;padding:0;border:0;background:transparent;color:#a17d90}
+body.seller-orders-page .seller-order-category-icon svg{width:18px;height:18px}
+body.seller-orders-page .seller-order-category-label{flex:1;min-width:0;line-height:1.5}
+body.seller-orders-page .seller-order-category-count,body.seller-orders-page .seller-order-category.active .seller-order-category-count{position:static;flex:none;min-width:20px;height:auto;box-sizing:border-box;padding:2px 6px;border:1px solid #e6bcd3;border-radius:20px;background:#fcf1f7;color:#bc387f;font-size:10px;line-height:1.3;text-align:center}
+@media(max-width:900px){body.seller-orders-page .seller-order-categories{padding:16px;position:static;max-height:none}}

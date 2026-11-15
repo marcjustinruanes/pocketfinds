@@ -1,0 +1,31 @@
+@if($a->work_class==='ambiguous')<p>Evidence is incomplete or inconsistent. Manual review is required; no work or earnings were invented.</p>@endif
+@if($a->work_class==='completed' && $a->status==='accepted')<p>Completion evidence is present. This historical assignment has not been rewritten.</p>@endif
+@if($p=$a->reassignment)
+<p>Requested change: rider #{{ $p['old_rider_id'] }} → rider #{{ $p['replacement_rider_id'] }}. {{ $p['reason'] }}</p>
+@if(($seller && $a->leg==='pickup') || (!$seller && $actor->isHubStaff() && $a->leg==='delivery'))
+<form method="POST" action="{{ route($seller?'seller.assignments.decide':'logistics.assignments.decide',$a->id) }}">@csrf
+<input type="hidden" name="_assignment_review" value="{{ $a->id }}">
+<input type="hidden" name="key" value="{{ $p['key'] }}"><input type="hidden" name="revision" value="{{ $a->revision }}"><input type="hidden" name="action" value="confirm">
+<label class="cash-check" for="possession-{{ $a->id }}"><input id="possession-{{ $a->id }}" type="checkbox" name="confirmed" value="1" required><span>{{ $seller?'I still physically hold this parcel and have not handed it to the rider.':'I physically checked that this parcel remains at this destination hub and has not been released to the rider.' }}</span></label>
+<button class="btn btn-primary">Confirm possession and reassign</button></form>
+@else<p>{{ $a->leg==='pickup'?'Awaiting the seller’s possession confirmation.':'Awaiting destination Hub Staff’s physical no-release confirmation.' }}</p>@endif
+<details><summary>Cancel this request</summary><form method="POST" action="{{ route($seller?'seller.assignments.decide':'logistics.assignments.decide',$a->id) }}">@csrf
+<input type="hidden" name="_assignment_review" value="{{ $a->id }}">
+<input type="hidden" name="key" value="{{ $p['key'] }}"><input type="hidden" name="revision" value="{{ $a->revision }}"><input type="hidden" name="action" value="cancel">
+<label for="cancel-{{ $a->id }}">Cancellation reason</label><textarea id="cancel-{{ $a->id }}" name="reason" minlength="3" maxlength="1000" required>{{ old('_assignment_review')===$a->id ? old('reason') : '' }}</textarea><button class="btn">Cancel request</button></form></details>
+@elseif(!$seller && in_array($a->leg,['pickup','delivery']) && in_array($a->status,['accepted','assigned_to_rider']) && $a->work_class==='active')
+<section class="assignment-review-action"><h3>Request pre-collection reassignment</h3><form method="POST" action="{{ route('logistics.assignments.reassign',$a->id) }}">@csrf
+<input type="hidden" name="_assignment_review" value="{{ $a->id }}">
+<input type="hidden" name="key" value="{{ (string)\Illuminate\Support\Str::uuid() }}"><input type="hidden" name="revision" value="{{ $a->revision }}"><input type="hidden" name="old_rider_id" value="{{ $a->courier_id }}">
+<label for="replacement-{{ $a->id }}">Replacement rider</label><select id="replacement-{{ $a->id }}" name="replacement_rider_id" required><option value="">Select an eligible rider</option>@foreach($riders[$a->id] ?? [] as $r)<option value="{{ $r->id }}" @selected(old('_assignment_review')===$a->id && (string)old('replacement_rider_id')===(string)$r->id)>{{ $r->username }}</option>@endforeach</select>
+@if(empty($riders[$a->id]) || $riders[$a->id]->isEmpty())<p>No eligible online rider covering this parcel's barangay is available at its hub with capacity for another pickup/delivery job.</p>@endif
+<label for="reason-{{ $a->id }}">Reason</label><textarea id="reason-{{ $a->id }}" name="reason" minlength="3" maxlength="1000" required>{{ old('_assignment_review')===$a->id ? old('reason') : '' }}</textarea><button class="btn btn-primary">Request possession review</button></form></section>
+@endif
+<section class="assignment-review-history"><h3>Recorded assignment decisions</h3>
+@forelse($events[$a->id] ?? [] as $e)
+@php($decision=json_decode($e->details,true) ?? [])
+<p>{{ $e->created_at ? \Illuminate\Support\Carbon::parse($e->created_at)->format('M j, Y g:i A') : '—' }} &middot; {{ ucfirst(str_replace('_',' ',$e->event)) }} &middot; actor #{{ $e->actor_id }}<br>{{ $decision['reason'] ?? '' }}
+@if(isset($decision['old_rider_id'],$decision['replacement_rider_id']))<br>Rider #{{ $decision['old_rider_id'] }} &rarr; rider #{{ $decision['replacement_rider_id'] }}@endif
+@if(isset($decision['attested_by']))<br>Possession confirmed by #{{ $decision['attested_by'] }} at {{ $decision['attested_at'] }}@endif
+@if(isset($decision['cancel_reason']))<br>{{ $decision['cancel_reason'] }}@endif</p>
+@empty<p>No recorded decisions.</p>@endforelse</section>

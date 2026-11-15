@@ -5,9 +5,7 @@
 
 @section('content')
 <section class="delivery-assignment-page">
-@if(app(\App\Services\AssignmentReassignment::class)->installed())<div class="card card-pad delivery-assignment-action"><div class="delivery-assignment-action-copy"><span class="delivery-assignment-action-icon"><x-admin-icon name="layers" /></span><div><strong>Assignment tools</strong><small>Review evidence and manage reassignment requests.</small></div></div><a class="btn btn-primary" href="{{ route('logistics.assignments.review') }}">Assignment evidence &amp; reassignment</a></div>@endif
-@if(session('success'))<div role="status" class="card card-pad">{{ session('success') }}</div>@endif
-@if($errors->any())<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ $errors->first() }}</div>@endif
+@if(!auth()->user()->isLogisticsAdmin() && app(\App\Services\AssignmentReassignment::class)->installed())<div class="card card-pad delivery-assignment-action"><div class="delivery-assignment-action-copy"><span class="delivery-assignment-action-icon"><x-admin-icon name="layers" /></span><div><strong>Assignment tools</strong><small>Review evidence and manage reassignment requests.</small></div></div><a class="btn btn-primary" href="{{ route('logistics.assignments.review') }}">Assignment evidence &amp; reassignment</a></div>@endif
 <div class="card delivery-assignment-card">
   <div class="card-head">
     <h2><span class="delivery-assignment-heading-icon"><x-admin-icon name="truck" /></span>Delivery Assignments</h2>
@@ -38,7 +36,6 @@
           <td>
             @if($s->courier_id && $courier->given_names)
               <div class="cell-user">
-                <div class="avatar-sm">{{ strtoupper(substr($courier->given_names,0,1)) }}</div>
                 <div>
                   <strong>{{ $courier->given_names }} {{ $courier->last_name }}</strong>
                   <div style="font-size:11px;color:var(--muted)">{{ $courier->email }}</div>
@@ -70,7 +67,7 @@
           </td>
           <td>
             @if($s->assignment)
-              <span class="stamp stamp-{{ $s->assignment->status }}">{{ $s->assignment->status === 'offered' ? ($s->assignment->expires_at?->isFuture() ? 'Awaiting rider confirmation' : 'Offer expired') : ucfirst($s->assignment->status) }}</span>
+              <span class="stamp assignment-status-value stamp-{{ $s->assignment->status }}">{{ $s->assignment->status === 'offered' ? ($s->assignment->expires_at?->isFuture() ? 'Awaiting rider confirmation' : 'Offer expired') : ucfirst($s->assignment->status) }}</span>
             @else
               <span class="stamp stamp-pending">Unassigned</span>
             @endif

@@ -116,6 +116,22 @@ class PasswordResetTest extends TestCase
         $this->post(route('buyer.account.password-change'),$data)->assertSessionHasErrors('password_link');
     }
 
+    public function test_seller_uses_the_same_single_use_email_link_flow_as_buyer(): void
+    {
+        Schema::table('users', function(Blueprint $table){$table->string('username')->nullable()->unique();});
+        $seller=$this->account();$seller->update(['account_type'=>'seller','username'=>'old_seller']);
+        $this->actingAs($seller)->post(route('seller.account.password-link'),['email'=>'someone@example.com'])->assertSessionHasNoErrors();
+        $token=null;
+        Notification::assertSentTo($seller,ResetPassword::class,function($notice)use(&$token){$token=$notice->token;return true;});
+        $data=['username'=>'new_seller','password'=>'Changed@2026','password_confirmation'=>'Changed@2026'];
+        $this->post(route('seller.account.password-change'),$data)->assertSessionHasErrors('password_link');
+        $this->get(route('password.reset',['token'=>$token,'email'=>$seller->email]))->assertRedirect(route('seller.account').'#account-security');
+        $this->post(route('seller.account.password-change'),$data)->assertSessionHasNoErrors()->assertSessionHas('password_success');
+        $this->assertSame('new_seller',$seller->fresh()->username);
+        $this->assertTrue(Hash::check('Changed@2026',$seller->fresh()->password));
+        $this->post(route('seller.account.password-change'),$data)->assertSessionHasErrors('password_link');
+    }
+
     public function test_reset_email_uses_text_branding_without_image_attachments_or_a_url_footer(): void
     {
         $user = $this->account();

@@ -16,8 +16,12 @@ class LogisticsOperationsController extends LogisticsController
         abort_unless($actor->status==='approved',403);
         if($seller) $source=Shipment::whereHas('order',fn($q)=>$q->where('seller_id',$actor->id));
         else { $actor=$workflow->actor($actor);$source=app(LogisticsAccess::class)->shipments($actor); }
-        $assignments=DeliveryAssignment::with('shipment.order')->whereIn('shipment_id',$source->select('shipments.id'))
-            ->when($seller,fn($q)=>$q->where('leg','pickup')->whereNotNull('reassignment'))->orderByDesc('accepted_at')->orderBy('id')->paginate(15);
+        $assignmentSource=DeliveryAssignment::whereIn('shipment_id',$source->select('shipments.id'))
+            ->when($seller,fn($q)=>$q->where('leg','pickup')->whereNotNull('reassignment'));
+        $parcelPages=(clone $assignmentSource)->select('shipment_id')->selectRaw('MAX(accepted_at) AS latest_accepted_at')
+            ->groupBy('shipment_id')->orderByDesc('latest_accepted_at')->orderBy('shipment_id')->paginate(15)->withQueryString();
+        $assignments=(clone $assignmentSource)->with('shipment.order')->whereIn('shipment_id',$parcelPages->pluck('shipment_id'))
+            ->orderBy('id')->get();
         foreach($assignments as $a)$a->work_class=$work->classify($a);
         $riders=[];
         if (! $seller) foreach ($assignments as $a) {
@@ -27,7 +31,7 @@ class LogisticsOperationsController extends LogisticsController
             }
         }
         $events=DB::table('logistics_financial_events')->where('subject_type','assignment')->whereIn('subject_id',$assignments->pluck('id'))->orderByDesc('id')->get()->groupBy('subject_id');
-        return response()->view('logistics.assignment-review',array_merge($seller?[]:$this->sidebarCounts(),compact('actor','seller','assignments','riders','events')))->header('Cache-Control','private, no-store');
+        return response()->view('logistics.assignment-review',array_merge($seller?[]:$this->sidebarCounts(),compact('actor','seller','assignments','parcelPages','riders','events')))->header('Cache-Control','private, no-store');
     }
 
     public function requestReassignment(Request $request,string $id,AssignmentReassignment $workflow)

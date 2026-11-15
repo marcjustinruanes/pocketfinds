@@ -20,8 +20,12 @@
 <div class="seller-order-layout">
 @include('seller.partials.order-categories')
 <div class="seller-order-content">
+@if($status==='refunds' && request('refund_state')==='open')
+<p class="seller-open-refunds-note">Showing unresolved return/refund cases. <a href="{{ route('seller.orders',['status'=>'refunds']) }}">View all cases</a></p>
+@endif
 <form class="filter-bar orders-filter-bar" method="GET" action="{{ route('seller.orders') }}" aria-label="Filter orders">
   <input type="hidden" name="status" value="{{ $status }}">
+  @if($status==='refunds' && request('refund_state')==='open')<input type="hidden" name="refund_state" value="open">@endif
   <div class="search-mini">
     <span class="ic">@include('seller.partials.icon', ['name' => 'search', 'size' => 13])</span>
     <input type="search" name="q" value="{{ request('q') }}" placeholder="Search by order ID or customer…" id="orderSearch" aria-label="Search orders">

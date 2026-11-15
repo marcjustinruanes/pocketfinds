@@ -1,0 +1,134 @@
+.seller-upload-box { height:54px; margin-top:-6px; border-radius:8px; }
+.registration-shop-row .seller-upload-box legend { height:12px; line-height:12px; font-size:11px; }
+@media(max-width:480px) { .registration-shop-row { grid-template-columns:minmax(0,1fr); } }
+body.auth-page.registration-flow .change-address-btn, body.auth-page.registration-flow .btn-change-hub { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; padding:0; }
+body.auth-page.registration-flow .rider-address-intro { text-align:center; font-style:italic; margin:0 0 24px; }
+body.auth-page.registration-flow .rider-hub-error { padding:12px 14px; border:1px solid #f0d1db; border-radius:10px; background:#fff6f8; color:#793044; box-shadow:none; font-size:13px; line-height:1.5; }
+body.auth-page.registration-flow .selected-hub-main { flex:1; }
+body.auth-page.registration-flow .selected-hub-details { width:100%; }
+body.auth-page.registration-flow .selected-hub-header { flex-wrap:nowrap; min-width:0; }
+body.auth-page.registration-flow .selected-hub-name { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+body.auth-page.registration-flow .selected-hub-header .hub-badge { flex-shrink:0; white-space:nowrap; }
+.rider-company-choice { display:flex; align-items:center; gap:12px; width:100%; min-height:76px; padding:12px 14px; border:1px solid #e1e1e7; border-radius:10px; background:#fff; color:var(--auth-text); font:600 13px Inter,system-ui,sans-serif; text-align:left; cursor:pointer; }
+.rider-company-choice img,.rider-company-placeholder { width:48px; height:48px; flex:none; object-fit:cover; border-radius:8px; }
+.rider-company-placeholder { display:grid; place-items:center; background:#fdf2f8; color:#bc387f; }
+.rider-company-choice .company-title { flex:1; }
+.rider-company-arrow { margin-left:auto; font-size:24px; color:var(--auth-muted); }
+.rider-company-dialog { width:min(540px,calc(100% - 32px)); max-height:80svh; padding:0; border:1px solid #e8e0e5; border-radius:16px; background:white; color:var(--auth-text); box-shadow:0 20px 60px #0003; }
+.rider-company-dialog::backdrop { background:#20151d70; }
+.rider-company-dialog > header { display:flex; align-items:center; justify-content:space-between; padding:20px; }
+.rider-company-dialog h2 { font:700 19px Inter,system-ui,sans-serif; margin:0; }
+.rider-company-close { border:0; background:transparent; color:var(--auth-muted); font-size:26px; cursor:pointer; }
+.rider-company-tabs { display:flex; border-bottom:1px solid #e8e0e5; padding:0 20px; }
+.rider-company-tabs button { flex:1; padding:12px 8px; border:0; border-bottom:2px solid transparent; background:transparent; color:var(--auth-muted); font:600 13px Inter,system-ui,sans-serif; cursor:pointer; }
+.rider-company-tabs button[aria-selected=true] { color:#bc387f; border-bottom-color:#bc387f; }
+.rider-company-dialog #riderCompanyResults { padding:0 20px 20px; }
+.rider-company-dialog .company-grid { grid-template-columns:minmax(0,1fr); margin:0; }
+.rider-company-dialog .company-option-label[hidden] { display:none; }
+.rider-company-dialog .company-card { display:grid; grid-template-columns:48px minmax(0,1fr); justify-items:start; align-content:center; min-height:84px; padding:12px; text-align:left; gap:5px 12px; border-width:1px; }
+.rider-company-dialog .company-card img,.rider-company-dialog .company-card > svg { grid-row:1 / 3; width:48px; height:48px; border-radius:8px; object-fit:cover; }
+.rider-company-dialog .company-title,.rider-company-dialog .company-tag { grid-column:2; }
+.rider-company-empty { margin:12px 0; color:var(--auth-muted); font-size:13px; }
+body.auth-page.registration-flow:has(#hubsModal[open]) { overflow:hidden; }
+body.auth-page.registration-flow #hubsModal { inset:0; margin:auto; width:min(560px,calc(100% - 32px)); height:fit-content; max-width:none; max-height:calc(100svh - 32px); padding:0; border:1px solid #eadce4; border-radius:16px; background:#fff; color:var(--auth-text); box-shadow:0 20px 60px #20151d33; backdrop-filter:none; animation:none; overflow:hidden; }
+body.auth-page.registration-flow #hubsModal:not([open]) { display:none; }
+body.auth-page.registration-flow #hubsModal[open] { display:block; }
+#hubsModal::backdrop { background:#20151d70; }
+body.auth-page.registration-flow #hubsModal .hubs-modal-dialog { width:100%; max-height:min(720px,calc(100svh - 34px)); border-radius:0; box-shadow:none; animation:none; }
+body.auth-page.registration-flow #hubsModal .hubs-modal-header { padding:20px 20px 14px; border:0; align-items:center; }
+body.auth-page.registration-flow #hubsModal .hubs-modal-title { font:700 20px/1.3 Inter,system-ui,sans-serif; color:var(--auth-text); }
+body.auth-page.registration-flow #hubsModal .hubs-modal-sub { margin-top:5px; font-size:12px; color:var(--auth-muted); overflow-wrap:anywhere; }
+#hubsModal .hubs-modal-close { display:grid; place-items:center; width:32px; height:32px; border:1px solid #eadce4; border-radius:8px; flex:none; }
+body.auth-page.registration-flow #hubsModal .hubs-modal-search { padding:0 20px 16px; background:#fff; border:0; }
+#hubsModal .hubs-search-input { min-height:44px; padding:10px 12px 10px 36px; border-color:#e1e1e7; border-radius:9px; font:400 13px Inter,system-ui,sans-serif; }
+body.auth-page.registration-flow #hubsModal .hubs-modal-body { padding:0 20px 18px; min-height:100px; max-height:none; overflow-y:auto; overscroll-behavior:contain; gap:10px; }
+body.auth-page.registration-flow #hubsModal .hub-choice-card { display:flex; gap:12px; padding:14px; min-height:76px; border:1px solid #e1e1e7; border-radius:10px; background:#fff; transform:none; box-shadow:none; }
+body.auth-page.registration-flow #hubsModal .hub-choice-card.selected { border-color:#bc387f !important; background:#fdf2f8 !important; box-shadow:none !important; }
+#hubsModal .hub-choice-card:focus-within { outline:2px solid #bf3c7d40; outline-offset:2px; }
+#hubsModal .hub-choice-card input { width:16px; height:16px; flex:none; margin:0; accent-color:#bc387f; }
+#hubsModal .hub-choice-copy { display:flex; flex-direction:column; gap:5px; min-width:0; flex:1; }
+#hubsModal .hub-choice-copy strong { font-size:13px; font-weight:650; overflow-wrap:anywhere; }
+#hubsModal .hub-choice-location { color:var(--auth-muted); font-size:11px; line-height:1.4; }
+#hubsModal .hubs-empty-state { margin:20px 0; text-align:center; color:var(--auth-muted); font-size:13px; }
+body.auth-page.registration-flow #hubsModal .hubs-modal-footer { padding:16px 20px; border-top:1px solid #eee7eb; background:#fff; gap:12px; flex-wrap:wrap; }
+#hubsModal .hubs-footer-left { flex:1; min-width:100px; font-size:12px; }
+#hubsModal .hubs-footer-actions { gap:8px; }
+#hubsModal .btn-hubs-cancel,#hubsModal .btn-hubs-confirm { min-height:40px; padding:10px 14px; font:600 12px Inter,system-ui,sans-serif; border-radius:8px; }
+#hubsModal .btn-hubs-cancel { border-color:#eadce4; background:#fff; color:var(--auth-muted); }
+@media(max-width:480px) { #hubsModal .hubs-footer-left { flex-basis:100%; } #hubsModal .hubs-footer-actions { width:100%; } #hubsModal .hubs-footer-actions button { flex:1; } }
+.registration-upload-surface [id$="Preview"] button:not(.enlarge-btn) { display:inline-flex; align-items:center; justify-content:center; }
+body.auth-page.registration-flow .rider-vehicle-choice { display:grid; grid-template-columns:140px minmax(0,1fr); align-items:center; gap:10px 14px; }
+.rider-vehicle-choice > .auth-label { margin:0; font-size:12px; }
+.rider-vehicle-choice > div { margin-top:0 !important; gap:8px !important; }
+.rider-vehicle-choice > span { grid-column:2; }
+body.auth-page.registration-flow .rider-vehicle-choice .ownership-card,body.auth-page.registration-flow .rider-vehicle-choice .vehicle-type-card { display:flex; flex-direction:row; align-items:center; justify-content:center; min-height:42px; height:auto; padding:8px 10px; gap:7px; font-size:12px; border-radius:8px; }
+.rider-vehicle-choice .ownership-card > span:last-child:not(:first-of-type) { display:none; }
+.rider-vehicle-choice .ownership-card svg,.rider-vehicle-choice .vehicle-type-card svg { width:18px; height:18px; flex:none; }
+@media(max-width:480px) { body.auth-page.registration-flow .rider-vehicle-choice { grid-template-columns:100px minmax(0,1fr); gap:10px; } .rider-vehicle-choice > div { grid-template-columns:minmax(0,1fr) !important; } .rider-vehicle-choice #vehicleTypeGroup { flex-direction:column; } .rider-vehicle-choice #vehicleTypeGroup > label { min-width:0 !important; } }
+.seller-document-fields { display:grid; grid-template-columns:minmax(0,1fr); gap:18px; }
+.seller-document-fields > [hidden] { display:none !important; }
+.seller-upload-box { position:relative; width:100%; min-width:0; height:64px; margin:0; padding:0; border:1px solid #e1e1e7; border-radius:12px; background:#fff; box-sizing:border-box; }
+.seller-upload-box legend { position:relative; z-index:3; max-width:calc(100% - 24px); margin-left:12px; padding:0 5px; color:#73737d; font:500 12px/1.4 Inter,system-ui,sans-serif; }
+.seller-upload-box:focus-within { border-color:#bc387f; }
+.seller-upload-box > input[type=file] { display:block !important; position:absolute; inset:0; opacity:0; width:100%; height:100%; padding:0; margin:0; cursor:pointer; z-index:2; }
+.seller-upload-idle,.seller-upload-pdf { position:absolute; inset:0; display:flex; flex-direction:row; align-items:center; justify-content:flex-start; gap:8px; padding:0 14px; color:#888; font:500 12px/1.4 Inter,system-ui,sans-serif; text-align:left; }
+.seller-upload-idle svg { width:20px; height:20px; }
+.seller-upload-pdf { display:block; padding:17px 92px 0 54px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.seller-upload-pdf-icon { position:absolute; top:50%; left:14px; width:24px; height:28px; transform:translateY(-50%); color:#8c7381; pointer-events:none; }
+.seller-upload-pdf-icon:not([hidden]) { display:block; }
+.seller-upload-pdf-icon[hidden] { display:none !important; }
+.seller-upload-pdf.seller-upload-image-name { padding-left:66px; }
+.seller-upload-preview { position:absolute; left:12px; top:5px; width:42px; height:38px; object-fit:cover; border-radius:5px; }
+.seller-upload-box [hidden] { display:none !important; }
+.seller-upload-enlarge,.seller-upload-replace { position:absolute; top:12px; z-index:4; border:0; border-radius:7px; background:#0008; color:white; cursor:pointer; padding:6px 8px; font:500 12px Inter,system-ui,sans-serif; }
+.seller-upload-enlarge { right:48px; display:flex; align-items:center; }
+.seller-upload-replace { right:10px; display:flex; align-items:center; }
+.account-upload-field{min-width:0;margin-bottom:16px}.account-upload-field .seller-upload-note{display:block;margin-top:4px;color:#8c7381;font-size:11px}
+body.role-account-page .account-main .seller-upload-box>input[type=file]{min-height:0;border:0;background:transparent;padding:0}
+body.role-account-page .account-main .seller-upload-box legend{font-size:12px;line-height:1.4;padding:0 5px}
+body.role-account-page #idSelfieGrid{--auth-primary:#bc387f;--auth-border:#eadfe6}
+body.role-account-page #idSelfieGrid .auth-label{display:block;color:#8c7381;font-size:12px;margin-bottom:7px}
+body.role-account-page #idSelfieGrid .upload-info{display:block;flex-basis:100%;color:#8c7381;font-size:10px;line-height:1.4}
+body.role-account-page #idSelfieGrid .enlarge-btn{position:absolute;top:6px;left:6px;background:#0008;color:white;border:0;border-radius:6px;padding:5px;cursor:pointer}
+body.role-account-page #idSelfieGrid button:disabled{opacity:.4;cursor:not-allowed}
+body.role-account-page #idSelfieGrid #selfieVideo{transform:scaleX(-1)}
+#accountIdPdfName{padding:38px 12px;overflow-wrap:anywhere;color:#8c7381;font-size:12px}
+.account-capture-preview{border:0;border-radius:12px;max-width:90vw;padding:36px 16px 16px;background:#fff;color:#593346}
+.account-capture-preview::backdrop{background:#251822b3}.account-capture-preview>button{position:absolute;top:4px;right:10px;border:0;background:transparent;color:#a52d6e;font-size:26px;cursor:pointer}
+.account-capture-preview>img{display:block;max-width:85vw;max-height:78vh;object-fit:contain}.account-capture-preview>iframe{width:80vw;height:78vh;border:0}
+@media(max-width:600px){body.role-account-page #idSelfieGrid{grid-template-columns:minmax(0,1fr)!important}}
+.account-photo-upload{min-width:200px}.account-photo-upload #chooseBuyerProfilePhoto{display:flex;align-items:center;gap:8px;width:100%;height:44px;padding:0 14px;border:0;border-radius:12px;background:transparent;color:#8c7381;font:500 12px Inter,system-ui,sans-serif;text-align:left;cursor:pointer}
+.account-photo-upload #chooseBuyerProfilePhoto:focus-visible{outline:2px solid #bc387f;outline-offset:-3px}
+body.role-account-page #idSelfieGrid [hidden]{display:none!important}
+
+/* Current registration capture surfaces. */
+.registration-upload-surface { position:relative; cursor:pointer; width:100%; aspect-ratio:4 / 3; height:auto !important; min-height:0 !important; max-height:none !important; padding:0 !important; box-sizing:border-box; }
+.registration-upload-surface:hover { border-color:var(--auth-primary) !important; }
+.registration-upload-surface:focus-visible { outline:3px solid #bf3c7d40; outline-offset:3px; }
+.registration-upload-surface [hidden] { display:none !important; }
+.registration-upload-surface [id$="Preview"], .registration-upload-surface #selfieCamera, .registration-upload-surface #idCamera, .registration-upload-surface .registration-upload-idle { position:absolute !important; inset:0; width:100%; height:100% !important; min-height:0; overflow:hidden; box-sizing:border-box; }
+.registration-upload-surface [id$="Preview"] img, .registration-upload-surface video { display:block; height:100% !important; max-height:100% !important; width:100%; object-fit:cover !important; border-radius:0 !important; }
+.registration-upload-surface .registration-upload-idle { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; height:100%; box-sizing:border-box; }
+.registration-upload-idle > svg { width:28px; height:28px; color:#999; flex:none; }
+.registration-upload-label { color:#888; font:500 12px var(--auth-font); line-height:1.4; }
+.registration-upload-note { color:var(--auth-muted); font:400 10px var(--auth-font); line-height:1.4; text-align:center; }
+.registration-upload-surface .pdf-card { width:100%; height:100%; min-height:0 !important; padding:40px 16px !important; box-sizing:border-box; gap:10px !important; }
+.registration-upload-surface .pdf-card > svg { width:34px; height:34px; flex:none; }
+.registration-upload-surface .pdf-card > span { max-width:100%; overflow-wrap:anywhere; }
+.registration-upload-surface > input.registration-upload-file { display:block !important; position:absolute; inset:0; z-index:2; width:100% !important; height:100% !important; padding:0; margin:0; opacity:0; cursor:pointer; }
+.registration-upload-surface [id$="Preview"] button { z-index:3; }
+.registration-upload-surface [id$="Preview"] button:not(.enlarge-btn) { display:inline-flex; align-items:center; justify-content:center; }
+body.role-account-page #idSelfieGrid .registration-upload-surface{border:1px solid #e1e1e7!important;border-radius:12px!important;background:#fff!important}
+body.role-account-page #idSelfieGrid .registration-upload-idle{padding:16px!important}
+body.role-account-page .seller-shop-photo-form{margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid #eee4eb}
+body.role-account-page .seller-shop-photo-form .form-row,body.role-account-page .seller-shop-photo-form .account-upload-field{margin:0}
+
+/* Align the upload surface and save action independently of the file hint. */
+body.role-account-page .seller-shop-photo-row{display:grid;grid-template-columns:72px minmax(0,1fr) auto;column-gap:16px;row-gap:6px;align-items:end}
+body.role-account-page .seller-shop-photo-row>div:first-child{grid-column:1;grid-row:1;align-self:center}
+body.role-account-page .account-main .seller-shop-photo-row .seller-shop-photo-upload,body.role-account-page .account-main .seller-shop-photo-row .seller-shop-photo-upload .account-upload-field{display:contents}
+body.role-account-page .seller-shop-photo-upload .seller-upload-box{grid-column:2;grid-row:1;height:64px}
+body.role-account-page .seller-shop-photo-upload .seller-upload-note{grid-column:2;grid-row:2;margin:0}
+body.role-account-page .seller-shop-photo-upload>p[role=alert]{grid-column:2/-1;grid-row:3;margin:0}
+body.role-account-page .seller-shop-photo-save{grid-column:3;grid-row:1;align-self:end;height:56px;min-height:56px;margin:0;padding:0 18px;white-space:nowrap}
+@media(max-width:600px){body.role-account-page .seller-shop-photo-row{grid-template-columns:56px minmax(0,1fr);column-gap:12px}body.role-account-page .seller-shop-photo-row>div:first-child{width:56px!important;height:56px!important}body.role-account-page .seller-shop-photo-save{grid-column:2;grid-row:4;justify-self:start;height:42px;min-height:42px;margin-top:6px}}

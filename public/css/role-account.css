@@ -1,0 +1,63 @@
+/* The Buyer account stylesheet is the source for every account workspace. */
+body.role-account-page {
+  --paper:#faf8fa;--surface:#fff;--ink:#593346;--text:#593346;--muted:#8c7381;
+  --pink:#bc387f;--pink-dark:#a52d6e;--pink-soft:#fcf1f7;--border:#eadfe6;
+  --font:Inter,system-ui,sans-serif;--font-body:Inter,system-ui,sans-serif;
+  font-family:Inter,system-ui,sans-serif;background:#fff;
+}
+body.role-account-page .content { width:calc(100% - 48px);max-width:1680px;margin-inline:auto;padding:20px 0 32px;box-sizing:border-box; }
+body.role-account-page .account-layout { margin-top:12px;height:calc(100dvh - 125px);min-height:480px; }
+body.role-account-page .account-main :is(.role-account-content,.account-grid,.dash-grid,.stack,.account-settings-grid,.account-settings-main,.account-settings-sidebar) { display:contents; }
+body.role-account-page .account-sidebar { top:88px;overflow-y:auto;scrollbar-width:none; }
+body.role-account-page .account-sidebar::-webkit-scrollbar { display:none; }
+body.role-account-page .account-main > .card,body.role-account-page .account-main .card { margin:0 0 20px;border:1px solid #eadfe6;border-radius:12px;background:#fff;box-shadow:none;min-width:0;overflow:visible; }
+body.role-account-page [data-account-panel][hidden] { display:none!important; }
+body.role-account-page .account-profile-fields { min-width:0;margin:0;padding:0;border:0; }
+body.role-account-page .account-profile-fields:disabled { opacity:.55; }
+body.role-account-page .card-head h2 { font:650 15px/1.4 Inter,system-ui,sans-serif;color:#593346; }
+body.role-account-page .form-grid-2 { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px; }
+body.role-account-page .profile-birthday-row { grid-template-columns:repeat(2,minmax(0,1fr)) auto; }
+body.role-account-page .account-main .form-row { display:block;min-width:0; }
+body.role-account-page .account-floating-field { box-sizing:border-box; }
+body.role-account-page .account-floating-field>:is(input,select) { min-height:50px;font:400 14px/1.4 Inter,system-ui,sans-serif;padding:14px;background:transparent; }
+body.role-account-page .account-floating-field.account-mobile-field>input { padding-left:58px; }
+body.role-account-page .account-floating-field>label { margin:0;font-size:13px; }
+body.role-account-page .account-floating-field:focus-within>label,
+body.role-account-page .account-floating-field.always-floating>label,
+body.role-account-page .account-floating-field>input:not(:placeholder-shown)~label { font-size:11px; }
+body.role-account-page .account-floating-field>fieldset { min-width:0; }
+body.role-account-page .account-floating-field legend { float:none;line-height:1;padding:0; }
+body.role-account-page .account-main .btn { font:600 12px/1.4 Inter,system-ui,sans-serif;min-height:40px;border-radius:8px;padding:10px 16px;letter-spacing:0;text-transform:none;box-shadow:none; }
+body.role-account-page .account-main .btn-primary { background:#bc387f;border:1px solid #bc387f;color:#fff; }
+body.role-account-page .account-main .btn-outline { background:#fff;border:1px solid #eadfe6;color:#876b7b; }
+body.role-account-page .account-main .btn-primary:hover { background:#a52d6e; }
+body.role-account-page .account-main textarea { width:100%;padding:13px 14px;border:1px solid #eadce4;border-radius:8px;box-sizing:border-box;color:#593346;background:#fff;font:400 13px/1.6 Inter,system-ui,sans-serif; }
+body.role-account-page .account-main .form-row input[type=file] { padding:12px;border:1px dashed #e6bcd3;min-height:48px;background:#fcfafb; }
+body.role-account-page .profile-account-details .account-detail-item { padding:0;border:0;background:transparent; }
+body.role-account-page .profile-account-details .field-label { display:block; }
+body.role-account-page .account-main :is(.auth-success,.auth-error) { padding:10px 14px;margin-bottom:16px;border-radius:8px;font-size:12px;line-height:1.5; }
+body.role-account-page .account-main .auth-success { background:#f0fdf5;color:#267548;border:1px solid #c7e9d3; }
+body.role-account-page .account-main .auth-error { background:#fff1f2;color:#a52d4b;border:1px solid #f3d2dd; }
+body.role-account-page .account-settings-overview { display:flex;flex-wrap:wrap;gap:12px 24px; }
+body.role-account-page .account-settings-overview-row { display:flex;gap:10px;font-size:12px; }
+body.role-account-page .account-settings-overview-value { color:#593346;overflow-wrap:anywhere; }
+body.role-account-page .account-photo-dialog.open { display:flex; }
+body.role-account-page .account-photo-dialog { position:fixed;inset:0;z-index:20000;display:none;align-items:center;justify-content:center;padding:24px;background:rgb(37 24 34 / 65%);box-sizing:border-box; }
+body.role-account-page .account-photo-dialog .profile-photo-crop-modal { background:#fff; }
+body.role-account-page .seller-workspace-tabs { display:none; }
+body.role-account-page #change-email > .card-pad { display:block;padding:20px; }
+body.role-account-page #change-email > .card-pad > form + form { padding:18px 0 0;margin-top:18px!important;border:0;border-top:1px solid #f0e8ed; }
+body.role-account-page #change-email .form-row { display:block;margin-bottom:15px; }
+body.role-account-page #change-email .account-floating-field>input { height:auto;min-height:50px;padding:14px;font:400 14px/1.4 Inter,system-ui,sans-serif; }
+@media(max-width:800px){body.role-account-page .account-layout{height:auto;min-height:0}body.role-account-page .account-sidebar{position:static}}
+@media(max-width:600px){body.role-account-page .content{width:calc(100% - 28px);padding-top:14px}body.role-account-page .form-grid-2{grid-template-columns:minmax(0,1fr)}body.role-account-page .profile-birthday-row{grid-template-columns:repeat(2,minmax(0,1fr))}body.role-account-page .profile-age-field{grid-column:1/-1}}
+
+/* Keep account fields neutral, including empty and focused fields. */
+body.role-account-page .account-main :is(input:not([type=checkbox]):not([type=radio]):not([type=file]),select,textarea),body.role-account-page .account-main .account-floating-field{background:#fff;box-shadow:none}
+body.role-account-page .account-main :is(input,select,textarea):focus,body.role-account-page .account-main .account-floating-field:focus-within{box-shadow:none;filter:none}
+body.role-account-page .account-main :is(input,textarea)::placeholder{color:#9a8a94;opacity:1;text-shadow:none}
+body.role-account-page [data-role-address-error]:empty{display:none}
+body.role-account-page #addressForm>[data-role-address-fields]{margin-bottom:16px;row-gap:0}
+body.role-account-page #addressForm>[data-role-address-fields]>.form-row{margin-bottom:0}
+body.role-account-page .account-main .account-floating-field>input:-webkit-autofill,body.role-account-page .account-main .account-floating-field>input:-webkit-autofill:hover,body.role-account-page .account-main .account-floating-field>input:-webkit-autofill:focus{-webkit-box-shadow:0 0 0 1000px #fff inset;box-shadow:0 0 0 1000px #fff inset}
+body.role-account-page .account-main .account-floating-field>fieldset{filter:none!important;box-shadow:none}

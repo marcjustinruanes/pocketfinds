@@ -21,8 +21,8 @@
         <span>Seller</span>
       </div>
     </div>
-    <button class="logout-btn" data-logout>
-      @include('seller.partials.icon', ['name' => 'logout', 'size' => 14]) Sign out
+    <button class="logout-btn" data-logout aria-label="Sign out" title="Sign out">
+      @include('seller.partials.icon', ['name' => 'logout', 'size' => 20])<span>Sign out</span>
     </button>
   </div>
 </nav>

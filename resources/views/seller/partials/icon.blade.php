@@ -1,6 +1,11 @@
 @props(['name', 'size' => 18, 'class' => ''])
 @php
 $icons = [
+  'nav-dashboard' => '<rect x="3" y="2" width="7" height="11" rx="1.5"/><rect x="14" y="2" width="7" height="5" rx="1.5"/><rect x="3" y="17" width="7" height="5" rx="1.5"/><rect x="14" y="11" width="7" height="11" rx="1.5"/>',
+  'nav-orders' => '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 9h6M9 13h6M9 17h3"/>',
+  'nav-inventory' => '<path d="m12 3 9 5v8l-9 5-9-5V8l9-5Z M3 8l9 5 9-5M12 13v8M7.5 5.5l9 5V14"/>',
+  'nav-tag' => '<path d="M4 5h16a1 1 0 0 1 1 1v4a2 2 0 0 0 0 4v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-4a2 2 0 0 0 0-4V6a1 1 0 0 1 1-1Z M10 15l4-6"/><circle cx="9.5" cy="9" r=".5"/><circle cx="14.5" cy="15" r=".5"/>',
+  'nav-chart' => '<path d="M4 3v16a2 2 0 0 0 2 2h15M8 16v-4M13 16V8M18 16V5"/>',
   'dashboard'   => '<path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>',
   'orders'      => '<path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>',
   'inventory'   => '<path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>',

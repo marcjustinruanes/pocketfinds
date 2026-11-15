@@ -5,7 +5,7 @@
 
 @section('content')
 <section class="pickup-requests-page">
-<nav class="pickup-queue-tabs" aria-label="Pickup queues"><a class="{{ ($queue??'review')==='review'?'active':'' }}" @if(($queue??'review')==='review') aria-current="page" @endif href="{{ route('logistics.requests') }}">Awaiting review</a><a class="{{ ($queue??'review')==='assignment'?'active':'' }}" @if(($queue??'review')==='assignment') aria-current="page" @endif href="{{ route('logistics.requests',['queue'=>'assignment']) }}">Awaiting pickup Rider</a></nav>
+@unless(auth()->user()->isLogisticsAdmin())<nav class="pickup-queue-tabs" aria-label="Pickup queues"><a class="{{ ($queue??'review')==='review'?'active':'' }}" @if(($queue??'review')==='review') aria-current="page" @endif href="{{ route('logistics.requests') }}">Awaiting review</a><a class="{{ ($queue??'review')==='assignment'?'active':'' }}" @if(($queue??'review')==='assignment') aria-current="page" @endif href="{{ route('logistics.requests',['queue'=>'assignment']) }}">Awaiting pickup Rider</a></nav>@endunless
 <div class="card pickup-requests-card">
   <div class="card-head"><h2>{{ ($queue??'review')==='assignment'?'Awaiting Pickup Rider':'Pending Requests' }}</h2><span class="stamp stamp-pending">{{ $shipments->total() }} pending</span></div>
   <div class="table-wrap">

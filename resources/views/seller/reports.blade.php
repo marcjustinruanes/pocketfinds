@@ -2,10 +2,11 @@
 @section('title', 'Reports')
 @section('page-title', 'Reports')
 @section('page-sub', 'Sales, verified payment activity and COD payouts')
+@push('head')<link rel="stylesheet" href="{{ asset('css/seller-finance.css') }}?v={{ filemtime(public_path('css/seller-finance.css')) }}">@endpush
 
 @section('content')
 <div class="seller-reports-page">
-<p class="reports-explainer">Sales use completed orders updated in the selected period. Payment activity uses its actual verification, collection or payment date. Shipping and discounts are already included in buyer order values; they are not deducted again. Eligible new transactions apply the snapshotted 10% product commission. Actual COD payouts show the net Seller transfer; separate GCash commissions appear in Commission Statements.</p>
+<p class="reports-explainer">Sales use completed orders updated in the selected period. Payment activity uses its verification, collection or payment date. Shipping and discounts are included in buyer order values. Eligible new transactions apply the snapshotted 10% product commission; actual COD payouts show the net seller transfer.</p>
 {{-- Date range picker --}}
 <div class="card reports-date-card">
   <form method="GET" action="{{ route('seller.reports') }}" class="card-pad reports-date-form">
@@ -40,7 +41,6 @@
 
 <div class="kpi-grid reports-kpis">
   <div class="kpi"><div class="label">Buyer order value</div><div class="value">₱{{ number_format($totalRevenue, 2) }}</div><div class="delta up">This period</div></div>
-  <div class="kpi"><div class="label">Item sales before discounts</div><div class="value">PHP {{ number_format($paymentReport['metrics']['item_sales']/100, 2) }}</div><div class="delta">Excludes shipping</div></div>
   <div class="kpi"><div class="label">Orders Completed</div><div class="value">{{ number_format($ordersCompleted) }}</div><div class="delta">This period</div></div>
   <div class="kpi"><div class="label">Avg. Order Value</div><div class="value">₱{{ number_format($avgOrderValue, 2) }}</div><div class="delta">Per order</div></div>
 </div>
@@ -52,7 +52,7 @@
   <div class="kpi"><div class="label">Pending COD payouts</div><div class="value">PHP {{ number_format($paymentReport['metrics']['pending_cod_payouts']/100, 2) }}</div><div class="delta">Current prepared and verified transfers</div></div>
   <div class="kpi"><div class="label">Released COD payouts</div><div class="value">PHP {{ number_format($paymentReport['metrics']['seller_cod_paid']/100, 2) }}</div><div class="delta">Actual payments during this period</div></div>
 </div>
-<p class="reports-explainer">Logistics receives the PHP 50 parcel fee and pays PHP 10 to the rider after successful delivery. These amounts are separate from seller earnings and the 10% product commission. GCash is received directly by sellers; its commission remains payable through Commission Statements. Seller-funded vouchers reduce actual transfers separately.</p>
+<p class="reports-explainer">Shipping and rider payments are separate from seller earnings. New GCash payments are received and verified by the platform; their commission does not require another seller payment. Older seller-received GCash balances remain payable through Commission Statements. Seller-funded vouchers reduce actual transfers separately.</p>
 
 <div class="dash-grid payment-report-layout reports-grid">
   <div class="stack">

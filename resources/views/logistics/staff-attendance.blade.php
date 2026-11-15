@@ -7,6 +7,9 @@
 @section('content')
 @php($pht=fn($v)=>$v ? \Carbon\CarbonImmutable::parse($v,config('app.timezone'))->setTimezone('Asia/Manila')->format('Y-m-d g:i A') : 'Not recorded')
 <div class="cash-desk staff-payroll attendance-workspace">
+@if($admin)
+@include('logistics.partials.personnel-tabs')
+@endif
 @include('commerce.messages')
 @if(!$admin)
 <section class="cash-card attendance-today-card"><h2 class="attendance-section-title"><span class="attendance-section-icon"><x-admin-icon name="clock" /></span>Today / {{ $flow->now()->toDateString() }}</h2>

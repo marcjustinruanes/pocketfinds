@@ -25,6 +25,7 @@
 </a>
 
 {{-- Shop hero --}}
+@if($shop['banner'] ?? null)<div class="sp-shop-banner"><img src="{{ $shop['banner'] }}" alt="{{ $shop['name'] }} banner"></div>@endif
 <div class="gs-hero">
   <div class="gs-avatar">@if(!empty($shop['photo']))<img src="{{ $shop['photo'] }}" alt="{{ $shop['name'] }}" style="width:100%;height:100%;object-fit:contain;background:#fff;border-radius:inherit">@else{{ $shop['initial'] }}@endif</div>
   <div class="gs-info">

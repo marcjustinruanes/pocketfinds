@@ -1,0 +1,74 @@
+/* Keep the compact Seller rail in the same palette as its workspace. */
+body.seller [data-sidebar-hover] { --sidebar-w:200px; }
+body.seller [data-sidebar-hover] .sidebar-brand { padding-left:14px;padding-right:12px;gap:8px; }
+body.seller .sidebar .nav-item { gap:10px;padding-left:12px;padding-right:12px; }
+body.seller .sidebar .nav-item .ic { width:24px;height:24px;flex:0 0 24px; }
+body.seller .sidebar .nav-item .ic svg { width:22px;height:22px;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round; }
+body.seller .sidebar-user .who { min-width:0; }
+body.seller .sidebar-user .who strong { display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+body.seller .sidebar .logout-btn svg { width:20px;height:20px;flex-shrink:0; }
+body.seller [data-sidebar-hover] > .sidebar {
+  background:#fff; color:#593346; border-right:1px solid #eadfe6;
+  box-shadow:5px 0 18px rgb(89 51 70 / 4%);
+}
+body.seller [data-sidebar-hover].collapsed > .sidebar { box-shadow:none; }
+body.seller .sidebar-brand { border-color:#eadfe6; }
+body.seller .sidebar-brand .name { color:#593346; font:800 16px/1.25 Inter,system-ui,sans-serif; letter-spacing:-.5px; }
+body.seller .sidebar-brand .name > span:last-child { color:#bc387f; }
+body.seller .sidebar-brand .tag { color:#8c7381; font:400 10px/1.4 Inter,system-ui,sans-serif; text-transform:none; letter-spacing:.03em; opacity:1; }
+body.seller .sidebar .nav-groups { padding:16px 8px; }
+body.seller .sidebar .nav-item { min-height:44px; margin:3px 0; border:0; border-radius:10px; color:#775565; font-weight:500; }
+body.seller .sidebar .nav-item .ic { color:#9c7a8d; opacity:1; }
+body.seller .sidebar .nav-item:hover { background:#fcf7fa; color:#a52d6e; }
+body.seller .sidebar .nav-item.active { background:#f9eaf2; color:#a52d6e; box-shadow:none; font-weight:650; }
+body.seller .sidebar .nav-item.active .ic { color:#bc387f; }
+body.seller .sidebar .nav-item.active::before { display:none; }
+body.seller .sidebar-foot { border-color:#eadfe6; background:#fff; }
+body.seller .sidebar-user .who strong { color:#593346; }
+body.seller .sidebar-user .who span { color:#8c7381; }
+body.seller .sidebar-user .avatar { background:#fcf1f7; color:#bc387f; border:1px solid #edc8dc; }
+body.seller .logout-btn { border-color:#eadfe6; background:#fff; color:#876b7b; }
+body.seller .logout-btn:hover { border-color:#edc8dc; background:#fcf1f7; color:#a52d6e; }
+body.seller [data-sidebar-hover] .topbar { height:73px; min-height:73px; }
+body.seller .topbar-search { margin-left:0;max-width:420px; }
+body.seller .topbar-actions { gap:14px; }
+body.seller .topbar .seller-account-link { display:flex;align-items:center;gap:9px;width:auto;height:40px;padding:0 10px 0 0;background:transparent;color:#775565;border-radius:999px;text-decoration:none; }
+body.seller .seller-account-initial { display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:#fcf1f7;color:#bc387f;border:1px solid #edc8dc;font-size:12px; }
+body.seller .seller-account-label { font-size:12px;font-weight:600;white-space:nowrap; }
+body.seller .seller-account-link:hover { background:#fcf7fa;color:#bc387f; }
+body.seller .seller-account-link:focus-visible { outline:2px solid #bc387f;outline-offset:3px; }
+@media(max-width:600px){body.seller .topbar .seller-account-link{padding:0}body.seller .seller-account-label{display:none}}
+/* Floating controls replace the full-width header surface. */
+body.seller .seller-utility-row{height:73px;min-height:73px;box-sizing:border-box;display:flex;align-items:center;gap:16px;padding:0 26px;position:sticky;top:0;z-index:30;pointer-events:none}
+body.seller .seller-utility-row>*{pointer-events:auto}
+body.seller .seller-utility-greeting{margin:0;color:#947b8a;font-size:12px}
+body.seller .seller-utility-greeting strong{color:#795769;font-weight:600}
+body.seller .seller-utility-row .topbar-actions{margin-left:auto}
+body.seller .seller-utility-row .seller-account-link{width:38px;height:38px;display:grid;place-items:center;padding:0;background:transparent;text-decoration:none}
+/* Keep avatar and sign-out icon at the same coordinates in both rail states. */
+body.seller [data-sidebar-hover] .sidebar-foot,body.seller [data-sidebar-hover].collapsed .sidebar-foot{padding:14px;flex-shrink:0}
+body.seller [data-sidebar-hover] .sidebar-user,body.seller [data-sidebar-hover].collapsed .sidebar-user{height:36px;justify-content:flex-start;gap:10px}
+body.seller [data-sidebar-hover] .logout-btn,body.seller [data-sidebar-hover].collapsed .logout-btn{height:42px;padding:0;display:grid;grid-template-columns:36px minmax(0,1fr);justify-content:start;align-items:center;gap:10px;margin-top:12px;font-size:12px;text-align:left;overflow:hidden}
+body.seller [data-sidebar-hover] .logout-btn svg{justify-self:center}
+body.seller [data-sidebar-hover] .logout-btn span{white-space:nowrap}
+body.seller [data-sidebar-hover].collapsed .logout-btn span{visibility:hidden}
+@media(max-width:600px){body.seller .seller-utility-row{padding:0 14px;gap:10px}body.seller .seller-utility-greeting{font-size:11px;max-width:calc(100% - 102px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+body.seller .seller-utility-row .notification-trigger{display:grid;place-items:center;box-sizing:border-box;width:38px;height:38px;border:1px solid #eadfe6;border-radius:9px;background:#fff;color:#8c7381;list-style:none}
+body.seller .seller-utility-row .notification-trigger svg{width:18px;height:18px}
+body.seller .seller-utility-row .notification-trigger:hover{background:#fcf1f7;color:#bc387f}
+body.seller .seller-utility-row .notification-trigger{border-radius:50%;width:38px;height:38px}
+body.seller .seller-page-name{min-width:0;margin:0;font:650 20px/1.3 Inter,system-ui,sans-serif;letter-spacing:-.4px;color:#593346;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.seller .seller-clock{display:flex;align-items:center;gap:10px;white-space:nowrap;padding:9px 13px;border:1px solid #eadfe6;border-radius:999px;background:#fffafd;color:#947b8a;font-size:10px;font-variant-numeric:tabular-nums}
+body.seller .seller-clock [data-clock-time]{color:#795469;font-weight:600;padding-right:10px;border-right:1px solid #eadfe6}
+body.seller .seller-utility-row .topbar-actions{flex-shrink:0;gap:10px}
+@media(max-width:750px){body.seller .seller-page-name{font-size:16px}body.seller .seller-clock{flex-direction:column;gap:3px;padding:6px 11px;font-size:9px}body.seller .seller-clock [data-clock-time]{border:0;padding:0;font-size:10px}}
+@media(max-width:420px){body.seller .seller-page-name{font-size:14px}body.seller .seller-utility-row .topbar-actions{gap:7px}body.seller .seller-clock{padding:6px 9px}}
+/* Keep page headings in normal flow so cards cannot slide beneath them. */
+body.seller .seller-utility-row{position:relative;flex-shrink:0}
+body.seller .seller-page-heading{min-width:0;display:flex;flex-direction:column;gap:4px}
+body.seller .seller-page-welcome{margin:0;color:#a18a98;font:400 11px/1.4 Inter,system-ui,sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:600px){body.seller .seller-page-welcome{font-size:10px}}
+
+body.seller .seller-page-heading{min-height:38px;display:flex;flex-direction:column;justify-content:center;gap:2px}
+body.seller .seller-page-welcome{margin:0;font-size:11px;line-height:14px}
+body.seller .seller-page-name{margin:0;font-size:20px;line-height:22px}

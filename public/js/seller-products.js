@@ -71,3 +71,14 @@
   }
  });
 })();
+document.addEventListener('change', event => {
+ const picker=event.target.closest('.category-product-picker');
+ if(!picker)return;
+ const count=picker.querySelector('[data-category-selection-count]');
+ if(count)count.textContent=picker.querySelectorAll('input[type="checkbox"]:checked').length+' selected';
+});
+document.addEventListener('input',event=>{
+ if(!event.target.matches('[data-category-product-search]'))return;
+ const query=event.target.value.trim().toLocaleLowerCase();
+ event.target.closest('.category-product-picker').querySelectorAll('.category-product-option').forEach(option=>{option.hidden=!option.textContent.toLocaleLowerCase().includes(query);});
+});

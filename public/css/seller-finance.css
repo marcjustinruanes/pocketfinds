@@ -1,0 +1,101 @@
+body.seller .commission-workspace{color:#593346;gap:24px;--commission-accent:#bc387f}
+body.seller .finance-section-links{display:flex;gap:20px;overflow:auto;scrollbar-width:none;border-bottom:1px solid #eadfe6;padding:0 0 12px}
+body.seller .finance-section-links a{font-size:12px;white-space:nowrap;text-decoration:none;color:#8c7381}
+body.seller .finance-section-links a:hover{color:#bc387f}
+body.seller .commission-policy{border:0;border-left:3px solid #bc387f;border-radius:0;background:transparent;padding:2px 0 2px 16px;align-items:flex-start}
+body.seller .commission-policy-icon{display:none}
+body.seller .commission-policy strong{font-size:16px;color:#593346}
+body.seller .commission-policy p{max-width:720px;line-height:1.7;color:#947b8a}
+body.seller .commission-metrics{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+body.seller .commission-metrics article{padding:18px;border-radius:14px;border:1px solid #eadfe6;background:#fff;box-shadow:none}
+body.seller .commission-metrics article:nth-child(2){border-top:1px solid #eadfe6}
+body.seller .commission-metrics article>span{font-size:11px;font-weight:500;color:#947b8a}
+body.seller .commission-metrics strong{font-size:24px;color:#593346;margin-top:10px}
+body.seller .commission-receipts{border:0;border-radius:0;background:transparent;border-top:1px solid #eadfe6;border-bottom:1px solid #eadfe6}
+body.seller .commission-receipts>div{padding:16px}
+body.seller .commission-receipts strong{color:#bc387f;font-size:18px}
+body.seller .commission-panel{border-color:#eadfe6;border-radius:16px;box-shadow:none;scroll-margin-top:90px}
+body.seller .commission-panel>.card-head{padding:20px 24px;border-color:#f0e5ec;background:transparent}
+body.seller .commission-panel>.card-head h2{font-size:15px;color:#593346}
+body.seller .commission-panel>.card-pad{padding:24px}
+body.seller .commission-workspace input,body.seller .commission-workspace select,body.seller .commission-workspace textarea{border-color:#eadfe6;border-radius:10px;color:#593346}
+body.seller .commission-workspace .btn{border-radius:9px;border-color:#eadfe6}
+body.seller .commission-scroll{border-color:#eadfe6;border-radius:12px;scrollbar-width:thin;scrollbar-color:#dbc5d3 transparent}
+body.seller .commission-scroll th{background:#fcf6fa;color:#947b8a;font-size:10px;letter-spacing:.05em}
+body.seller .commission-scroll td{border-color:#f0e5ec}
+body.seller .commission-record{border-color:#eadfe6;border-radius:12px}
+body.seller .commission-empty{padding:28px 16px}
+@media(max-width:1100px){body.seller .commission-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){body.seller .commission-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}body.seller .commission-metrics article{padding:14px}body.seller .commission-metrics strong{font-size:21px}body.seller .commission-panel>.card-head,body.seller .commission-panel>.card-pad{padding:16px}body.seller .commission-policy>.commission-badge{margin-left:0}}
+body.seller .seller-reports-page{display:grid;gap:20px;color:#593346}
+body.seller .seller-reports-page .reports-explainer{margin:0;font-size:12px;line-height:1.8;color:#947b8a}
+body.seller .seller-reports-page .card,body.seller .seller-reports-page .kpi{border:1px solid #eadfe6;border-radius:16px;box-shadow:none;background:#fff}
+body.seller .seller-reports-page .reports-kpis{margin:0;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+body.seller .seller-reports-page .kpi{padding:18px}
+body.seller .seller-reports-page .kpi .value{font-size:24px;color:#593346}
+body.seller .seller-reports-page .kpi .label{color:#947b8a;font-size:11px}
+body.seller .seller-reports-page .reports-date-form{display:flex;align-items:center;flex-wrap:wrap;gap:12px}
+body.seller .seller-reports-page .card-head{border-color:#f0e5ec;background:transparent}
+body.seller .seller-reports-page .card-head h2{font-size:15px;color:#593346}
+body.seller .seller-reports-page .reports-grid{margin:0;gap:20px}
+body.seller .seller-finance-workspace{gap:18px}
+.finance-heading{display:flex;align-items:center;justify-content:flex-end;gap:20px}
+.finance-heading h1{margin:0;font-size:24px;letter-spacing:-.6px;color:#593346}
+.finance-heading p{margin:6px 0 0!important;font-size:12px;color:#947b8a}
+.finance-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.finance-balances{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid #eadfe6;border-radius:16px;background:#fff;overflow:hidden}
+.finance-balances article{display:flex;flex-direction:column;gap:8px;padding:22px 26px;min-width:0}
+.finance-balances article+article{border-left:1px solid #f0e5ec}
+.finance-balances span{font-size:12px;color:#947b8a}
+.finance-balances strong{font-size:28px;line-height:1.25;color:#a93475;letter-spacing:-.6px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.finance-balances small{font-size:10px;color:#a18a98}
+.finance-context{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:11px;color:#a18a98}
+.finance-context button,.finance-recovery-link,.finance-detail-button{padding:4px 0;border:0;background:transparent;color:#b03578;font:600 11px Inter,system-ui,sans-serif;cursor:pointer;text-align:left}
+.finance-recovery-link{width:fit-content}
+.finance-statements{border:1px solid #eadfe6;border-radius:16px;background:#fff;min-width:0;overflow:hidden}
+.finance-statement-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 22px;border-bottom:1px solid #f0e5ec}
+.finance-statement-toolbar h2{margin:0;font-size:14px;color:#593346}
+.finance-statement-toolbar h2 span{font-size:11px;font-weight:400;color:#a18a98;margin-left:8px}
+.finance-table-scroll{max-width:100%;overflow:auto;scrollbar-width:thin;scrollbar-color:#dbc5d3 transparent}
+.finance-statement-table{width:100%;min-width:570px;border-collapse:collapse;font-size:12px}
+.finance-statement-table th{padding:12px 22px;background:#fdf9fc;font-size:10px;font-weight:500;text-align:left;color:#a18a98}
+.finance-statement-table td{padding:17px 22px;border-top:1px solid #f3eaf0;color:#795469;font-variant-numeric:tabular-nums;vertical-align:middle}
+.finance-statement-table td:first-child{max-width:280px;overflow-wrap:anywhere}
+.finance-statement-table td>strong{font-size:12px;font-weight:600}
+.finance-statement-table td>small{display:block;margin-top:5px;font-size:10px;color:#a18a98}
+.finance-statement-table td:last-child{text-align:right}
+.finance-statements>nav{padding:16px 22px}
+body.seller .seller-finance-workspace>.finance-footer-note{font-size:11px;margin:0;line-height:1.7}
+.finance-visually-hidden{position:absolute;left:0;top:0;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+.finance-modal[hidden]{display:none!important}
+body.seller:has([data-seller-finance]) .seller-confirm-overlay{z-index:140}
+.finance-modal{position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;padding:24px;background:#2d1c286e;backdrop-filter:blur(2px)}
+.finance-dialog{display:flex;flex-direction:column;width:min(760px,100%);max-height:calc(100dvh - 48px);min-width:0;border:1px solid #eadfe6;border-radius:20px;background:#fff;box-shadow:0 24px 65px #39253126;overflow:hidden}
+.finance-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex:none;padding:20px 24px;border-bottom:1px solid #f0e5ec}
+.finance-dialog-head h2{font-size:17px;margin:0;color:#593346}
+.finance-dialog-head button{display:grid;place-items:center;flex:none;width:34px;height:34px;border:1px solid #eadfe6;border-radius:50%;background:#fff;color:#a18a98;cursor:pointer}
+.finance-dialog-body{padding:24px;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:none}
+.finance-dialog-body::-webkit-scrollbar{display:none}
+body.seller .seller-finance-workspace .finance-dialog form{max-width:none;margin:0}
+body.seller .seller-finance-workspace .finance-dialog form.commission-filter{grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:20px}
+.finance-form-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;grid-column:1/-1}
+.finance-wide{grid-column:1/-1}
+.finance-history-totals{display:flex;gap:24px;padding-bottom:20px;margin-bottom:20px;border-bottom:1px solid #f0e5ec;flex-wrap:wrap}
+.finance-history-totals span{display:grid;gap:5px;font-size:11px;color:#a18a98}
+.finance-history-totals strong{font-size:18px;color:#795469}
+.finance-dialog-body>.commission-panel{border:0;border-radius:0;background:transparent}
+.finance-dialog-body>.commission-panel>.card-head{display:none}
+.finance-dialog-body>.commission-panel>.card-pad{padding:0}
+.finance-policy-copy h3,.finance-modal-subtitle{font-size:13px;color:#795469;margin:20px 0 8px}
+.finance-policy-copy h3:first-child{margin-top:0}
+.finance-policy-copy p{font-size:12px;line-height:1.8}
+.finance-calculation{margin:20px 0;border:1px solid #eadfe6;border-radius:12px;overflow:hidden}
+.finance-calculation>div{display:flex;justify-content:space-between;gap:16px;padding:11px 14px;border-bottom:1px solid #f3eaf0;font-size:12px}
+.finance-calculation>div:last-child{border:0;background:#fdf6fa}
+.finance-calculation dt{color:#947b8a}.finance-calculation dd{margin:0;color:#795469;font-weight:600;font-variant-numeric:tabular-nums}
+.finance-line-item{padding:12px 0;border-bottom:1px solid #f3eaf0;font-size:12px}.finance-line-item p{font-size:11px;margin:6px 0 0}
+.seller-finance-workspace :is(button,a):focus-visible{outline:2px solid #bc387f;outline-offset:3px}
+body.seller:has(.finance-modal:not([hidden])) :is(.seller-messages-launch,.pf-assistant-launch){visibility:hidden}
+@media(max-width:750px){.finance-heading{align-items:flex-start;flex-direction:column;gap:14px}.finance-statement-toolbar{align-items:flex-start;flex-direction:column;gap:12px}.finance-balances article{padding:18px}.finance-balances strong{font-size:24px}.finance-context{align-items:flex-start}.finance-modal{padding:12px}.finance-dialog{max-height:calc(100dvh - 24px);border-radius:16px}.finance-dialog-head,.finance-dialog-body{padding:18px}}
+@media(max-width:500px){body.seller .seller-finance-workspace .finance-dialog form,body.seller .seller-finance-workspace .finance-dialog form.commission-filter{grid-template-columns:minmax(0,1fr)}.finance-heading h1{font-size:22px}.finance-balances strong{font-size:22px}}
+#finance-shipping-rates .card{border:0;box-shadow:none;margin:0}#finance-shipping-rates .card-head{display:none}#finance-shipping-rates .card-pad{padding:0}#finance-shipping-rates .form-grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}#finance-shipping-rates form{display:grid;gap:12px}#finance-shipping-rates input,#finance-shipping-rates select{box-sizing:border-box;width:100%;min-width:0}#finance-shipping-rates .form-row{min-width:0}@media(max-width:600px){#finance-shipping-rates .form-grid-2{grid-template-columns:minmax(0,1fr)}}

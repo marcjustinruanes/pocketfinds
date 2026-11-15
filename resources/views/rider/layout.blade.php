@@ -13,8 +13,9 @@
 <link rel="stylesheet" href="{{ asset('css/navigation.css') }}?v={{ filemtime(public_path('css/navigation.css')) }}">
 @stack('head')
 @include('account.partials.notification-assets')
+@stack('account-head')
 </head>
-<body class="admin">
+<body class="admin @yield('body-class')">
 <div class="shell" id="riderShell" data-navigation-shell data-collapse-key="rider_sidebar_collapsed">
   @include('rider.partials.sidebar')
   <div style="display:flex;flex-direction:column;min-width:0">

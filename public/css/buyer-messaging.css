@@ -111,3 +111,11 @@ body.chat-embedded .chat-shell #chatForm .btn-primary{grid-column:3;grid-row:1;w
 .chat-shell #chatForm #chatInput{grid-column:2!important;grid-row:1!important;min-width:0;width:100%;height:40px;min-height:40px;box-sizing:border-box;padding:9px}
 .chat-shell #chatForm .btn-primary{grid-column:3!important;grid-row:1!important;width:40px!important;min-width:0;height:40px;min-height:40px;display:grid;place-items:center;padding:0}
 .chat-shell #chatForm .btn-primary:disabled{opacity:.55}
+
+/* Document attachments share one layout on initial render and live updates. */
+.chat-shell .chat-doc-bubble{box-sizing:border-box;display:flex;align-items:center;gap:10px;min-width:0;width:fit-content;max-width:min(320px,100%);padding:12px;border:1px solid #eadfe6;border-radius:12px;background:#fcf7fa;color:#593346;text-decoration:none;font:500 12px/1.5 Inter,system-ui,sans-serif}
+.chat-shell .chat-doc-bubble:hover{border-color:#d78ab5;background:#fff3f9}
+.chat-shell .chat-doc-bubble:focus-visible{outline:2px solid #bc387f;outline-offset:2px}
+.chat-doc-badge{display:grid;place-items:center;flex:0 0 34px;width:34px;height:40px;border:1px solid #efc5da;border-radius:7px;background:#f8e7f0;color:#a52f6b;font-size:9px;font-weight:700;letter-spacing:.04em}
+.chat-doc-name{min-width:0;flex:1;overflow-wrap:anywhere;white-space:normal;text-align:left}
+.chat-doc-open{flex:0 0 16px;width:16px;height:16px;color:#a17d90}

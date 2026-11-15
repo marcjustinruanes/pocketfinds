@@ -5,8 +5,21 @@
 
 @section('content')
 <section class="delivery-issues-page">
-@include('logistics.partials.recovery-custody')
+@php
+  $issueView = in_array(request('view'), ['recorded', 'history', 'deliveries'], true) ? request('view') : 'recorded';
+@endphp
+<div class="issues-columns"><div class="issues-results">
+<form method="GET" action="{{ route('logistics.issues') }}" class="issue-view-filter">
+  <label for="issue-view">Show</label>
+  <select name="view" id="issue-view" onchange="this.form.requestSubmit()">
+    <option value="recorded" @selected($issueView === 'recorded')>Recorded issues</option>
+    <option value="history" @selected($issueView === 'history')>Investigation history</option>
+    <option value="deliveries" @selected($issueView === 'deliveries')>Problem deliveries</option>
+  </select>
+  <noscript><button class="btn btn-outline">Show table</button></noscript>
+</form>
 @include('logistics.partials.issue-management')
+@if($issueView === 'deliveries')
 <div class="card issues-table-card">
   <div class="card-head"><h2 class="issue-card-title"><span class="issue-heading-icon"><x-admin-icon name="flag" /></span>Problem Deliveries</h2><span class="stamp stamp-rejected">{{ $shipments->count() }} issues</span></div>
   <div class="table-wrap">
@@ -66,6 +79,10 @@
     </table>
   </div>
 </div>
-<div class="logistics-pagination">{{ $shipments->links() }}</div>
+<div class="logistics-pagination">{{ $shipments->appends(['view' => 'deliveries'])->links() }}</div>
+@endif
+</div>
+@include('logistics.partials.issue-entry')
+</div>
 </section>
 @endsection

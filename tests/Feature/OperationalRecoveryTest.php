@@ -225,11 +225,28 @@ class OperationalRecoveryTest extends TestCase
 
     public function test_reassignment_pages_render_scoped_possession_and_decision_fields(): void
     {
-        $this->actingAs($this->admin)->get(route('logistics.assignments.review'))->assertOk()->assertSee('Replacement rider')->assertSee('Request possession review');
+        $response=$this->actingAs($this->admin)->get(route('logistics.assignments.review'))->assertOk()->assertSee('Replacement rider')->assertSee('Request possession review')->assertSee('aria-haspopup="dialog"',false)->assertSee('assignment-review-dialog')->assertSee('Recorded assignment decisions');
+        if(getenv('ASSIGNMENT_REVIEW_PREVIEW')==='1')file_put_contents(storage_path('framework/testing/assignment-review.html'),$response->getContent());
         $this->requestChange();
         $this->actingAs($this->seller)->get(route('seller.assignments.review'))->assertOk()->assertSee('I still physically hold this parcel')->assertSee('Cancellation reason');
         $this->actingAs($this->staff)->get(route('logistics.assignments.review'))->assertOk()->assertDontSee('I still physically hold this parcel');
         $foreign=$this->person('seller',null,'Other');$this->actingAs($foreign)->get(route('seller.assignments.review'))->assertOk()->assertDontSee($this->shipment->tracking_number);
+    }
+
+    public function test_assignment_review_groups_all_parcel_steps_in_one_modal(): void
+    {
+        foreach(['hub_transfer'=>'hub_transfer','delivery'=>'assigned_to_rider'] as $leg=>$status) DB::table('delivery_assignments')->insert(['id'=>(string)Str::uuid(),'shipment_id'=>$this->shipment->id,'courier_id'=>$this->rider->id,'leg'=>$leg,'status'=>$status,'accepted_at'=>now(),'revision'=>0]);
+        $response=$this->actingAs($this->admin)->get(route('logistics.assignments.review'))->assertOk()
+            ->assertViewHas('parcelPages',fn($pages)=>$pages->total()===1)
+            ->assertViewHas('assignments',fn($rows)=>$rows->count()===3);
+        $html=$response->getContent();
+        $this->assertSame(1,substr_count($html,'data-assignment-review="parcel-review-'));
+        $this->assertSame(3,substr_count($html,'class="assignment-step is-'));
+        $this->assertStringContainsString('aria-label="Parcel assignment steps"',$html);
+        $this->assertStringContainsString('Seller to origin hub',$html);
+        $this->assertStringContainsString('Between company hubs',$html);
+        $this->assertStringContainsString('Destination hub to buyer',$html);
+        if(getenv('ASSIGNMENT_REVIEW_PREVIEW')==='1')file_put_contents(storage_path('framework/testing/assignment-review.html'),$html);
     }
 
     public function test_historical_evidence_classification_never_rewrites_or_recognizes_earnings(): void

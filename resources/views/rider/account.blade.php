@@ -23,7 +23,10 @@
 </style>
 @endpush
 
+@include('account.partials.role-workspace-assets')
+
 @section('content')
+<x-account-workspace role="rider">
 @include('commerce.messages')
 @php($user = auth()->user())
 
@@ -39,69 +42,10 @@
 </div>
 @endif
 
-<div class="dash-grid rider-account-page">
+<div class="dash-grid role-account-content">
   <div class="stack">
 
-    {{-- Profile --}}
-    <div class="card">
-      <div class="card-head"><div><h2>Profile Information</h2><p>Your personal details on file</p></div></div>
-      <div class="card-pad">
-        <div style="display:flex;align-items:center;gap:16px;margin-bottom:22px">
-          @if($user->profile_picture)
-          <img src="{{ \Illuminate\Support\Facades\Storage::disk('profile_images')->url($user->profile_picture) }}" alt="Profile picture"
-               style="width:64px;height:64px;border-radius:50%;object-fit:cover;flex:none">
-          @else
-          <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(145deg,var(--pink),#7a2a56);display:grid;place-items:center;color:#fff;font-weight:700;font-size:22px;flex:none">
-            {{ strtoupper(substr($user->given_names, 0, 1)) }}
-          </div>
-          @endif
-          <div>
-            <div style="font-size:16px;font-weight:700">{{ $user->given_names }} {{ $user->last_name }}</div>
-            <div style="font-size:12px;color:var(--muted)">{{ $user->email }}</div>
-            <span class="stamp stamp-approved" style="margin-top:4px">Courier</span>
-          </div>
-        </div>
-        @if(session('profile_success'))
-        <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px">{{ session('profile_success') }}</div>
-        @endif
-        <form method="POST" action="{{ route('rider.account.update') }}" enctype="multipart/form-data" {{ $pendingRequest ? 'style=opacity:.5;pointer-events:none' : '' }}>
-          @csrf
-          <div class="form-row">
-            <label>Profile Picture</label>
-            <input type="file" name="profile_picture" accept="image/png,image/jpeg,image/webp" style="padding:6px">
-            <span style="font-size:11px;color:var(--muted)">JPG, PNG, or WEBP. Max 2MB.</span>
-            @error('profile_picture')<div style="color:var(--danger);font-size:12px;margin-top:4px">{{ $message }}</div>@enderror
-          </div>
-          <div class="form-grid-2">
-            <div class="form-row"><label>Given Names (First Name)</label><input type="text" name="given_names" value="{{ old('given_names', $user->given_names) }}" required></div>
-            <div class="form-row"><label>Last Name</label><input type="text" name="last_name" value="{{ old('last_name', $user->last_name) }}" required></div>
-          </div>
-          <div class="form-grid-2">
-            <div class="form-row">
-              <label>Middle Name <span style="color:var(--muted);font-weight:400">(optional)</span></label>
-              <input type="text" name="middle_name" value="{{ old('middle_name', $user->middle_name) }}" maxlength="1" pattern="[A-Za-z]" placeholder="e.g. D" style="text-transform:uppercase">
-              @error('middle_name')<div style="color:var(--danger);font-size:12px;margin-top:4px">{{ $message }}</div>@enderror
-            </div>
-            <div class="form-row">
-              <label>Contact No.</label>
-              <input type="tel" name="contact_no" value="{{ old('contact_no', $user->contact_no) }}" inputmode="numeric" maxlength="11" pattern="09[0-9]{9}" placeholder="09XXXXXXXXX">
-              @error('contact_no')<div style="color:var(--danger);font-size:12px;margin-top:4px">{{ $message }}</div>@enderror
-            </div>
-          </div>
-          <div class="form-row">
-            <label>Sex</label>
-            <select name="sex">
-              <option value="" {{ blank(old('sex', $user->sex)) ? 'selected' : '' }}>Select sex</option>
-              <option value="male" {{ old('sex', $user->sex) === 'male' ? 'selected' : '' }}>Male</option>
-              <option value="female" {{ old('sex', $user->sex) === 'female' ? 'selected' : '' }}>Female</option>
-              <option value="other" {{ old('sex', $user->sex) === 'other' ? 'selected' : '' }}>Other</option>
-            </select>
-          </div>
-          <div class="form-row"><label>Email Address</label><input type="email" value="{{ $user->email }}" disabled style="background:var(--paper);color:var(--muted);cursor:not-allowed"></div>
-          <button class="btn btn-primary" type="submit">Save Changes</button>
-        </form>
-      </div>
-    </div>
+    <x-account-profile-card role="rider" :action="route('rider.account.update')" :pending="$pendingRequest !== null" />
 
     {{-- Address --}}
     <div class="card">
@@ -172,25 +116,7 @@
   </div>
 
   <div class="stack">
-    <div class="card">
-      <div class="card-head"><h2>Account Overview</h2></div>
-      <div class="card-pad" style="display:flex;flex-direction:column">
-        @foreach([
-          ['Account Type', 'Courier'],
-          ['Logistics Company', $user->business_name ?: 'Not provided'],
-          ['Status',       filled($user->status) ? ucfirst($user->status) : 'Not provided'],
-          ['Member Since', $user->created_at?->format('M d, Y') ?? 'Not provided'],
-          ['Email',        $user->email ?: 'Not provided'],
-          ['Contact No.',  $user->contact_no ?: 'Not provided'],
-          ['Full Address', collect([$user->house_no, $user->street, $user->barangay, $user->municipality, $user->province])->filter()->implode(', ') ?: 'Not provided'],
-        ] as [$label, $val])
-        <div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border)">
-          <span style="color:var(--muted);flex:none">{{ $label }}</span>
-          <span style="font-weight:600;text-align:right;word-break:break-word">{{ $val }}</span>
-        </div>
-        @endforeach
-      </div>
-    </div>
+    
 
     <div class="card">
       <div class="card-head"><h2>Vehicle & Documents</h2><p style="font-size:11.5px;color:var(--muted)">On file from your registration</p></div>
@@ -226,6 +152,8 @@
   </div>
 </div>
 @include('account.partials.email-change')
+</x-account-workspace>
+@include('account.partials.profile-photo-manager')
 @endsection
 
 @push('scripts')

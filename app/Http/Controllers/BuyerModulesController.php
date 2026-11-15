@@ -24,7 +24,8 @@ class BuyerModulesController extends Controller
 
     public function photo(Request $r)
     {
-        $u=$this->actor($r);
+        $u=$r->user()->fresh();
+        abort_unless($u->status==='approved' && ($u->is_admin || in_array($u->account_type,['buyer','seller','rider','logistics','admin'],true)),403);
         $r->validate(['profile_picture'=>'required|image|mimes:jpg,jpeg,png,webp|max:5120|dimensions:max_width=6000,max_height=6000']);
         DB::transaction(function()use($u,$r){
             $locked=User::whereKey($u->id)->lockForUpdate()->firstOrFail(); $old=$locked->profile_picture;
@@ -75,7 +76,7 @@ class BuyerModulesController extends Controller
     {
         $u=$this->actor($r); abort_unless($u->account_type==='seller',403);
         $r->merge(['name'=>trim((string)$r->name)]);
-        $d=$r->validate(['id'=>'nullable|integer','name'=>'required|string|max:50','parent_id'=>'nullable|integer','is_visible'=>'nullable|boolean','sort_order'=>'nullable|integer|min:0|max:9999']);
+        $d=$r->validate(['id'=>'nullable|integer','name'=>'required|string|max:50','parent_id'=>'nullable|integer','is_visible'=>'nullable|boolean','sort_order'=>'nullable|integer|min:0|max:9999','sync_products'=>'nullable|boolean','product_ids'=>'nullable|array|max:1000','product_ids.*'=>'required|string|distinct']);
         DB::transaction(function()use($u,$d){
             $hasPresentationFields=Schema::hasColumn('shop_categories','is_visible') && Schema::hasColumn('shop_categories','sort_order');
             User::whereKey($u->id)->lockForUpdate()->firstOrFail();
@@ -91,7 +92,16 @@ class BuyerModulesController extends Controller
             if($id)DB::table('shop_categories')->where('id',$id)->update($values);
             else {
                 if ($hasPresentationFields) $values['sort_order'] = (int) (DB::table('shop_categories')->where('seller_id',$u->id)->max('sort_order') ?? -1) + 1;
-                DB::table('shop_categories')->insert($values+['seller_id'=>$u->id,'created_at'=>now()]);
+                $id=DB::table('shop_categories')->insertGetId($values+['seller_id'=>$u->id,'created_at'=>now()]);
+            }
+            if (!empty($d['sync_products'])) {
+                $productIds=$d['product_ids']??[];
+                $owned=Product::where('seller_id',$u->id)->whereIn('id',$productIds)->lockForUpdate()->pluck('id');
+                abort_unless($owned->count()===count($productIds),403);
+                $counts=DB::table('shop_category_products')->whereIn('product_id',$productIds)->where('shop_category_id','!=',$id)->select('product_id')->selectRaw('COUNT(*) AS total')->groupBy('product_id')->pluck('total');
+                if($counts->contains(fn($count)=>(int)$count>=3))throw ValidationException::withMessages(['product_ids'=>'A product can belong to up to three shop categories. Remove it from another category first.']);
+                DB::table('shop_category_products')->where('shop_category_id',$id)->delete();
+                foreach($productIds as $productId)DB::table('shop_category_products')->insert(['shop_category_id'=>$id,'product_id'=>$productId]);
             }
         });
         return back()->with('success','Shop category saved.');

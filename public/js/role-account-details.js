@@ -22,11 +22,14 @@
         });
         input.addEventListener('input',()=>input.setCustomValidity(''));
     });
-    document.querySelectorAll('input[name="contact_no"]').forEach(input=>{
+    document.querySelectorAll('input[name="contact_no"]:not([type="hidden"])').forEach(input=>{
         const clean=value=>value.replace(/\D/g,'').replace(/^(?:63|0)(?=9)/,'').slice(0,10);
         input.value=clean(input.value);input.type='tel';input.inputMode='numeric';input.removeAttribute('minlength');input.maxLength=10;input.minLength=10;input.pattern='9[0-9]{9}';input.placeholder='9XXXXXXXXX';
-        const wrapper=document.createElement('span');wrapper.style.cssText='display:flex;gap:8px;align-items:center';
-        const prefix=document.createElement('span');prefix.textContent='+63';input.replaceWith(wrapper);wrapper.append(prefix,input);
+        if(document.body.classList.contains('role-account-page'))input.dataset.nationalMobile='';
+        else {
+            const wrapper=document.createElement('span');wrapper.style.cssText='display:flex;gap:8px;align-items:center';
+            const prefix=document.createElement('span');prefix.textContent='+63';input.replaceWith(wrapper);wrapper.append(prefix,input);
+        }
         input.addEventListener('input',()=>{input.value=clean(input.value);input.setCustomValidity(input.value&&!/^9[0-9]{9}$/.test(input.value)?'Enter ten digits starting with 9.':'');});
         input.addEventListener('paste',event=>{event.preventDefault();input.value=clean(event.clipboardData.getData('text'));input.dispatchEvent(new Event('input'));});
     });

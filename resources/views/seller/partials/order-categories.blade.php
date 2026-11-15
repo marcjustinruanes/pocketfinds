@@ -19,10 +19,10 @@
 <aside class="seller-order-categories" aria-label="Order status filters">
   <nav class="seller-order-category-list">
     @foreach($statusTabs as [$key,$icon,$label])
-    <a href="{{ route('seller.orders', array_merge($orderFilters, $key === 'all' ? [] : ['status'=>$key])) }}" class="seller-order-category {{ $status === $key ? 'active' : '' }}" aria-label="{{ $label }} ({{ $tabCount($key) }})" title="{{ $label }}" @if($status === $key) aria-current="page" @endif>
-      <span class="seller-order-category-icon">@if($key === 'all') @include('guest.partials.category-filter-icon',['category'=>null]) @else @include('buyer.partials.icon',['name'=>$icon,'size'=>19]) @endif</span>
+    <a href="{{ route('seller.orders', array_merge($orderFilters, $key === 'all' || $status === $key ? [] : ['status'=>$key])) }}" class="seller-order-category {{ $status === $key ? 'active' : '' }}" aria-label="{{ $label }} ({{ $tabCount($key) }})" title="{{ $label }}" @if($status === $key) aria-current="page" @endif>
       <span class="seller-order-category-label">{{ $label }}</span>
       @if($tabCount($key))<span class="seller-order-category-count">{{ $tabCount($key) }}</span>@endif
+
     </a>
     @endforeach
   </nav>

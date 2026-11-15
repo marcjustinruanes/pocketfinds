@@ -835,4 +835,48 @@ class LogisticsAuthorizationTest extends TestCase
         $this->actingAs($this->user($hub))->get('/logistics/transfers?queue=awaiting')->assertForbidden();
     }
 
+    public function test_monitor_uses_compact_search_and_guarded_status_modal(): void
+    {
+        $hub = $this->hub();
+        $this->parcel($hub, $hub, 'monitor-ui', 'out_for_delivery');
+        $response = $this->actingAs($this->user($hub, 'logistics_admin'))->get('/logistics/monitor');
+        $response->assertOk()->assertSee('monitor-search-toolbar', false)
+            ->assertDontSee('Find a parcel')->assertDontSee('Shipment status alone')
+            ->assertSee('monitor-status-monitor-ui', false)->assertSee('data-modal-open', false)
+            ->assertSee('name="attempt_token"', false)->assertSee('minlength="10"', false)
+            ->assertSee('data-confirm', false)->assertSee('<th>Actions</th>', false);
+        if (getenv('MONITOR_UI_PREVIEW')) file_put_contents(storage_path('framework/testing/live-monitor.html'), $response->getContent());
+    }
+
+    public function test_issues_show_one_selected_table_without_recovery_panel(): void
+    {
+        $hub = $this->hub();
+        $this->actingAs($this->user($hub, 'logistics_admin'));
+        foreach (['recorded' => 'issue-recorded-card', 'history' => 'issue-history-card', 'deliveries' => 'issues-table-card'] as $view => $class) {
+            $response = $this->get('/logistics/issues?view='.$view)->assertOk()
+                ->assertSee('class="card '.$class.'"', false)
+                ->assertDontSee('Supervised parcel recovery');
+            foreach (['issue-recorded-card', 'issue-history-card', 'issues-table-card'] as $other) {
+                if ($other !== $class) $response->assertDontSee('class="card '.$other.'"', false);
+            }
+        }
+        $this->get('/logistics/issues?view=invalid')->assertOk()->assertSee('class="card issue-recorded-card"', false);
+    }
+
+    public function test_personnel_editor_groups_details_in_modals(): void
+    {
+        $hub = $this->hub();
+        $admin = $this->user($hub, 'logistics_admin');
+        $rider = $this->user($hub, 'rider');
+        $response = $this->actingAs($admin)->get('/logistics/accounts/'.$rider->id.'/edit')->assertOk();
+        $response->assertSee('data-modal-open="team-edit-account"', false)
+            ->assertSee('id="team-application-history"', false)->assertSee('id="team-assignments"', false)
+            ->assertDontSee('Assignment evidence &amp; reassignment', false)
+            ->assertSee('name="logistics_hub_id"', false)->assertSee('data-registration-form', false);
+        if (getenv('TEAM_UI_PREVIEW')) file_put_contents(storage_path('framework/testing/team-editor.html'), $response->getContent());
+        $staff = $this->user($hub);
+        $this->get('/logistics/accounts/'.$staff->id.'/edit')->assertOk()
+            ->assertSee('staff_id='.$staff->id, false)->assertDontSee('id="team-assignments"', false);
+    }
+
 }

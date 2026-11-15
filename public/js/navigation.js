@@ -16,7 +16,15 @@
         const brand=sidebar.querySelector('[data-sidebar-toggle]');
         const expand=value=>{shell.classList.toggle('collapsed',!value);sidebar.inert=false;brand?.setAttribute('aria-expanded',String(value));brand?.setAttribute('aria-controls','sidebar');};
         expand(false);
-        sidebar.addEventListener('pointerenter',event=>{if(event.pointerType!=='touch')expand(true);});
+        // A stationary pointer may still sit over the rail after navigation.
+        // Require actual movement before hover can open the new page's sidebar.
+        let pointerMoved=false;
+        document.addEventListener('pointermove',event=>{
+            if(event.pointerType==='touch'||(!event.movementX&&!event.movementY))return;
+            pointerMoved=true;
+            if(sidebar.contains(event.target))expand(true);
+        });
+        sidebar.addEventListener('pointerenter',event=>{if(pointerMoved&&event.pointerType!=='touch')expand(true);});
         sidebar.addEventListener('pointerleave',()=>{if(!sidebar.contains(document.activeElement))expand(false);});
         sidebar.addEventListener('focusin',event=>{if(event.target!==brand)expand(true);});
         sidebar.addEventListener('focusout',event=>{if(!sidebar.contains(event.relatedTarget)&&!sidebar.matches(':hover'))expand(false);});
@@ -24,6 +32,9 @@
         brand?.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();expand(shell.classList.contains('collapsed'));}});
         document.addEventListener('pointerdown',event=>{if(!sidebar.contains(event.target))expand(false);});
         sidebar.addEventListener('keydown',event=>{if(event.key==='Escape'){brand?.focus();expand(false);}});
+        sidebar.addEventListener('click',event=>{if(event.target.closest('a[href]'))expand(false);});
+        window.addEventListener('pagehide',()=>{pointerMoved=false;expand(false);});
+        window.addEventListener('pageshow',()=>{pointerMoved=false;expand(false);});
         return;
     }
     const key = shell.dataset.collapseKey;
@@ -150,3 +161,14 @@ document.addEventListener('submit', async event => {
         if (button) button.disabled = false;
     }
 });
+(() => {
+ const clock=document.querySelector('[data-seller-clock]');
+ if(!clock)return;
+ const timezone=clock.dataset.timeZone||'Asia/Manila';
+ const update=()=>{
+  const date=new Date();clock.dateTime=date.toISOString();
+  clock.querySelector('[data-clock-time]').textContent=new Intl.DateTimeFormat('en-PH',{timeZone:timezone,hour:'numeric',minute:'2-digit',hour12:true}).format(date);
+  clock.querySelector('[data-clock-date]').textContent=new Intl.DateTimeFormat('en-PH',{timeZone:timezone,month:'short',day:'numeric',year:'numeric'}).format(date);
+ };
+ update();setInterval(update,30000);
+})();

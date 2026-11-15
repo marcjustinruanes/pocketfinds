@@ -3,7 +3,7 @@
 @endphp
 <details class="pf-buyer-menu pf-notification-menu">
  <summary class="pf-acct-icon notification-trigger" aria-label="Notifications" title="Notifications">
-  @include('buyer.partials.icon',['name'=>'bell','size'=>18])
+  @include($notificationIconView ?? 'buyer.partials.icon',['name'=>'bell','size'=>$notificationIconSize ?? 18])
   @if($menuUnreadCount)<span class="pf-buyer-dot" aria-hidden="true"></span>@endif
  </summary>
  <div class="pf-buyer-dropdown pf-buyer-notifications pf-notification-panel">

@@ -40,13 +40,13 @@ class CommissionTest extends CodSellerPayoutTest
     private function receiving(User $admin): object { app(CommissionPayments::class)->account($admin, ['account_name' => 'Platform Treasury', 'account_number' => '09111111111']); return DB::table('commission_accounts')->first(); }
     private function submitData(object $account, object $ob, string $amount = '100', string $ref = 'COMM001'): array { return ['submission_key' => (string) Str::uuid(), 'receiving_account_id' => $account->id, 'amount' => $amount, 'reference' => $ref, 'sent' => '1', 'allocations' => [$ob->id => '100']]; }
     private function verifyReceipt(User $admin, string $id, string $amount = '100', string $ref = 'COMM001'): void { app(CommissionPayments::class)->review($admin, $id, ['revision' => DB::table('commission_payments')->find($id)->revision, 'decision' => 'verify', 'reason' => 'Actual account receipt checked', 'amount' => $amount, 'reference' => $ref, 'received' => '1']); }
-    private function gcash(): Order
+    private function gcash(bool $platformReceived = false): Order
     {
         $this->active();
         $method = DB::table('payment_methods')->insertGetId(['name' => 'GCash', 'type' => 'ewallet', 'is_active' => true]);
-        $p = GcashPurchase::create(['id' => (string) Str::uuid(), 'buyer_id' => $this->buyer->id, 'seller_id' => $this->seller->id, 'checkout_id' => (string) Str::uuid(), 'request_hash' => hash('sha256', 'test'), 'payment_method_id' => $method,
+        $p = GcashPurchase::create(($platformReceived ? ['review_flow' => 'admin'] : []) + ['id' => (string) Str::uuid(), 'buyer_id' => $this->buyer->id, 'seller_id' => $this->seller->id, 'checkout_id' => (string) Str::uuid(), 'request_hash' => hash('sha256', 'test'), 'payment_method_id' => $method,
             'snapshot' => ['items' => [['name' => 'Item A', 'qty' => 1, 'price' => 600], ['name' => 'Item B', 'qty' => 1, 'price' => 400]], 'subtotal' => '1000', 'discount_amount' => '0', 'shipping_amount' => '100', 'commerce' => ['vouchers' => []]],
-            'amount_due' => '1100', 'payment_state' => 'verified', 'reservation_state' => 'paid', 'verified_amount' => '1100', 'verified_by' => $this->seller->id, 'verified_at' => now(), 'payment_reference' => 'BUYER'.Str::random(10)]);
+            'amount_due' => '1100', 'payment_state' => 'verified', 'reservation_state' => 'paid', 'verified_amount' => '1100', 'verified_by' => $platformReceived ? $this->platform()->id : $this->seller->id, 'verified_at' => now(), 'payment_reference' => 'BUYER'.Str::random(10)]);
         $order = Order::create(['buyer_id' => $this->buyer->id, 'seller_id' => $this->seller->id, 'status' => 'placed', 'gcash_purchase_id' => $p->id, 'subtotal' => '1000', 'shipping_amount' => '100', 'discount_amount' => '0', 'total' => '1100', 'payment_method' => 'GCash', 'items' => $p->snapshot['items'], 'commerce_snapshot' => ['vouchers' => []]]);
         DB::table('orders')->where('id', $order->id)->update(['status' => 'completed', 'buyer_confirmed_at' => now()]);
         $order->logStatus('delivered', $this->rider->id); $order->refresh();
@@ -63,6 +63,43 @@ class CommissionTest extends CodSellerPayoutTest
         $this->assertSame(1, array_sum(array_column($small['lines'], 'commission_cents')));
         $this->assertSame([50000000000,50000000000],$this->ledger()->split(100000000000,[500000000000,500000000000]));
         $this->invalid(fn() => $this->ledger()->calculate(['items' => [['qty' => 1, 'price' => 10]], 'subtotal' => 10, 'discount_amount' => 1]));
+    }
+
+    public function test_platform_received_gcash_never_bills_the_seller_again(): void
+    {
+        (require database_path('migrations/2026_11_08_120000_add_admin_gcash_review_flow.php'))->up();
+        $order = $this->gcash(true);
+        $obligation = $this->obligation($order);
+        $this->assertNotNull($obligation->earned_at);
+        $this->assertSame(10000, (int) $obligation->commission_cents);
+        $this->assertSame(0, $this->ledger()->due($obligation));
+        $row = app(CommissionReporting::class)->query($this->seller)->where('order_id', $order->id)->first();
+        $this->assertSame(1, (int) $row->platform_received);
+        $this->assertSame(0, (int) $row->due_cents);
+        $this->assertSame(0, app(CommissionReporting::class)->totals(app(CommissionReporting::class)->query($this->seller))['seller_due']);
+        $metrics = app(PaymentReporting::class)->snapshot($this->seller->id)['metrics'];
+        $this->assertSame(110000, $metrics['platform_gcash_verified']);
+        $this->assertSame(0, $metrics['seller_gcash_verified']);
+        $this->actingAs($this->seller)->get(route('commissions.index'))->assertOk()
+            ->assertSee('Platform-received GCash')->assertSee('No separate commission payment due on this page')
+            ->assertDontSee('allocations['.$obligation->id.']', false);
+        $this->assertDatabaseMissing('notifications', ['user_id' => $this->seller->id, 'title' => 'Seller commission due']);
+        DB::transaction(fn () => $this->ledger()->reverse($order->id, 'test-platform-refund', null, 'Buyer refunded from platform funds'));
+        $this->assertSame(0, $this->ledger()->due($this->obligation($order)));
+        $this->assertDatabaseCount('commission_credits', 0);
+    }
+
+    public function test_platform_gcash_needs_exact_admin_verified_payment_before_earning(): void
+    {
+        (require database_path('migrations/2026_11_08_120000_add_admin_gcash_review_flow.php'))->up();
+        $order = $this->gcash(true);
+        DB::table('commission_obligations')->where('order_id', $order->id)->update(['earned_at' => null]);
+        DB::table('gcash_purchases')->where('id', $order->gcash_purchase_id)->update(['verified_by' => $this->seller->id]);
+        DB::transaction(fn () => $this->ledger()->earn($order));
+        $this->assertNull($this->obligation($order)->earned_at);
+        DB::table('gcash_purchases')->where('id', $order->gcash_purchase_id)->update(['verified_by' => $this->platform()->id, 'verified_amount' => '1.00']);
+        DB::transaction(fn () => $this->ledger()->earn($order));
+        $this->assertNull($this->obligation($order)->earned_at);
     }
 
     public function test_disabled_future_activation_and_historical_purchases_are_grandfathered(): void

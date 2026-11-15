@@ -55,8 +55,8 @@ class NavigationTest extends TestCase
     {
         $groups = ['admin' => ['Accounts & Recruitment', 'Marketplace & Resources', 'Compliance', 'Finance & Reports', 'Communications', 'System'],
             'buyer' => [], 'seller' => ['Products & Promotions', 'Customers & Updates', 'Finance & Reports', 'Store Settings'],
-            'logistics_admin' => ['Operations', 'Personnel & Resources', 'Tracking & Reports', 'Finance', 'Administration'],
-            'hub_staff' => ['Operations', 'Tracking', 'Staff & Finance'],
+            'logistics_admin' => [],
+            'hub_staff' => [],
             'rider' => ['Pickup Operations', 'Transfer Operations', 'Delivery Operations', 'Earnings & History', 'Communications']];
         foreach ($groups as $role => $expected) {
             $prefix = in_array($role, ['hub_staff', 'logistics_admin']) ? 'logistics' : $role;
@@ -101,21 +101,22 @@ class NavigationTest extends TestCase
             $this->assertSame(0, $xpath->query('//a[@href="'.route('logistics.'.$path).'"]')->length);
         }
         $this->assertSame(1, $xpath->query('//a[@href="'.route('logistics.hub.vehicles').'"]')->length);
-        $this->assertSame(1, $xpath->query('//span[@class="count" and text()="2"]')->length);
+        $this->assertSame(1, $xpath->query('//span[@class="logistics-nav-count" and text()="2"]')->length);
     }
 
     public function test_scanner_navigation_is_staff_only_and_admin_retains_monitor(): void
     {
         $admin=$this->renderNavigation('logistics_admin','logistics.monitor');
         $this->assertSame(0,$admin->query('//a[@href="'.route('logistics.scan').'"]')->length);
-        $this->assertSame(1,$admin->query('//a[@href="'.route('logistics.monitor').'"]')->length);
+        $adminTabs=$this->renderNavigation('logistics_admin','logistics.monitor','logistics.partials.workspace-tabs');
+        $this->assertSame(1,$adminTabs->query('//a[@href="'.route('logistics.monitor').'"]')->length);
         $staff=$this->renderNavigation('hub_staff','logistics.scan');
         $this->assertSame(1,$staff->query('//a[@href="'.route('logistics.scan').'"]')->length);
     }
 
     public function test_admin_finance_navigation_follows_workflow_without_duplicate_destinations(): void
     {
-        $xpath=$this->renderNavigation('logistics_admin','logistics.cash-desk');
+        $xpath=$this->renderNavigation('logistics_admin','logistics.cash-desk','logistics.partials.workspace-tabs');
         $expected=array_map(fn($name)=>route($name),['logistics.finance','logistics.cash-desk','logistics.finance.payouts','logistics.finance.riders','logistics.finance.reconciliation']);
         $actual=[];
         foreach($xpath->query('//a[@href]') as $link)if(in_array($link->getAttribute('href'),$expected,true))$actual[]=$link->getAttribute('href');
@@ -136,11 +137,11 @@ class NavigationTest extends TestCase
     public function test_contextual_pages_expand_their_parent_and_mark_the_parent_link(): void
     {
         foreach ([['admin', 'admin.ai.order', 'admin-system', 'admin.ai'], ['admin', 'admin.compliance', 'admin-compliance', 'admin.compliance'],
-            ['seller', 'seller.orders.waybill', null, 'seller.orders'], ['logistics_admin', 'logistics.accounts.edit', 'logistics-personnel-resources', 'logistics.riders'],
-            ['logistics_admin', 'logistics.finance.reconciliation.export', 'logistics-finance', 'logistics.finance.reconciliation'],
-            ['logistics_admin', 'logistics.finance.riders.action', 'logistics-finance', 'logistics.finance.riders'],
+            ['seller', 'seller.orders.waybill', null, 'seller.orders'], ['logistics_admin', 'logistics.accounts.edit', null, 'logistics.riders'],
+            ['logistics_admin', 'logistics.finance.reconciliation.export', null, 'logistics.finance'],
+            ['logistics_admin', 'logistics.finance.riders.action', null, 'logistics.finance'],
             ['rider', 'rider.earnings.acknowledge', 'rider-earnings-history', 'rider.profit'],
-            ['hub_staff', 'logistics.transfers.show', 'hub-staff-operations', 'logistics.transfers'], ['rider', 'rider.deliveries.show', 'rider-delivery-operations', 'rider.deliveries'],
+            ['hub_staff', 'logistics.transfers.show', null, 'logistics.scan'], ['rider', 'rider.deliveries.show', 'rider-delivery-operations', 'rider.deliveries'],
             ] as [$role, $route, $group, $parent]) {
             $xpath = $this->renderNavigation($role, $route);
             $this->assertSame(1, $xpath->query('//a[@aria-current="page"]')->length);

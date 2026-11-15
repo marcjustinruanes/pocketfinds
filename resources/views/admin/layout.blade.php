@@ -12,8 +12,9 @@
 @stack('head')
 @include('account.partials.notification-assets')
 <link rel="stylesheet" href="{{ asset('css/admin-ux.css') }}?v={{ filemtime(public_path('css/admin-ux.css')) }}">
+@stack('account-head')
 </head>
-<body class="admin">
+<body class="admin @yield('body-class')">
 <div class="shell" id="appShell" data-navigation-shell data-collapse-key="sidebar_collapsed">
   @include('admin.partials.sidebar')
   <div style="display:flex;flex-direction:column;min-width:0">

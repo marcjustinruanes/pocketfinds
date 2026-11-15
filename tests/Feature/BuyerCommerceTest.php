@@ -151,6 +151,24 @@ class BuyerCommerceTest extends TestCase
         $this->get(route('seller.vouchers'))->assertOk()->assertSee('Your first voucher starts here');
     }
 
+    public function test_voucher_can_start_now_or_be_scheduled_for_later(): void
+    {
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-15 12:00:00'));
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('commerce_vouchers','display_mode')) {
+            \Illuminate\Support\Facades\Schema::table('commerce_vouchers',function($table){$table->string('display_mode')->default('claimable');$table->json('product_ids')->nullable();});
+        }
+        $data=['code'=>'STARTNOW','kind'=>'store','discount_type'=>'fixed','amount'=>20,'minimum_spend'=>100,'usage_limit'=>10,'per_buyer_limit'=>1,'ends_at'=>now()->addDay()->toDateTimeString(),'start_mode'=>'now'];
+        $this->actingAs($this->seller)->post(route('seller.commerce.voucher'),$data)->assertSessionHasNoErrors()->assertSessionHas('success','Voucher created.');
+        $this->assertDatabaseHas('commerce_vouchers',['code'=>'STARTNOW','seller_id'=>$this->seller->id,'starts_at'=>now()->toDateTimeString()]);
+        $data=array_replace($data,['code'=>'STARTLATER','start_mode'=>'scheduled','starts_at'=>now()->addHour()->toDateTimeString()]);
+        $this->post(route('seller.commerce.voucher'),$data)->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('commerce_vouchers',['code'=>'STARTLATER','starts_at'=>now()->addHour()->toDateTimeString()]);
+        $this->post(route('seller.commerce.voucher'),array_replace($data,['code'=>'PASTSTART','starts_at'=>now()->subDay()->toDateTimeString()]))->assertSessionHasErrors('starts_at');
+        $this->post(route('seller.commerce.voucher'),array_replace($data,['code'=>'MISSINGDATE','starts_at'=>null]))->assertSessionHasErrors('starts_at');
+        $this->post(route('seller.commerce.voucher'),array_replace($data,['code'=>'INVALIDEND','start_mode'=>'now','ends_at'=>now()->subHour()->toDateTimeString()]))->assertSessionHasErrors('ends_at');
+        $this->assertDatabaseCount('commerce_vouchers',2);
+    }
+
     public function test_flash_sale_can_start_now_or_be_scheduled_for_later(): void
     {
         $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-11 12:00:00'));

@@ -3,7 +3,10 @@
 @section('page-title', 'My Account')
 @section('page-sub', 'Manage your admin profile')
 
+@include('account.partials.role-workspace-assets')
+
 @section('content')
+<x-account-workspace role="admin">
 @include('commerce.messages')
 @php($admin = auth()->user())
 @if(session('success'))
@@ -17,81 +20,9 @@
 </div>
 @endif
 
-<div class="account-grid admin-account-page">
-  <div class="card">
-    <div class="card-head"><div><h2>Account Information</h2><p>Your profile as shown to the platform</p></div></div>
-    <div class="card-pad">
-      <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
-        <x-user-avatar :user="$admin" size="72" />
-        <div>
-          <div style="font-weight:700;font-size:15px">{{ $admin->given_names }} {{ $admin->last_name }}</div>
-          <div style="font-size:12px;color:var(--muted)">{{ $admin->email }}</div>
-          <span class="stamp stamp-active" style="margin-top:4px">{{ ucfirst($admin->account_type) }}</span>
-        </div>
-      </div>
-      <form method="POST" action="{{ route('admin.account.update') }}" enctype="multipart/form-data">
-        @csrf
-        <div class="form-row">
-          <label>Profile Picture <span class="hint">JPG, PNG or WEBP · max 2MB</span></label>
-          <div class="profile-upload">
-            <input type="file" name="profile_picture" accept="image/png,image/jpeg,image/webp">
-          </div>
-          @error('profile_picture')<div class="hint" style="color:var(--danger);margin-top:5px">{{ $message }}</div>@enderror
-        </div>
-        <div class="form-row">
-          <label>Given Names</label>
-          <input type="text" name="given_names" value="{{ old('given_names', $admin->given_names) }}" required>
-          @error('given_names')<div class="hint" style="color:var(--danger);margin-top:5px">{{ $message }}</div>@enderror
-        </div>
-        <div class="form-row">
-          <label>Last Name</label>
-          <input type="text" name="last_name" value="{{ old('last_name', $admin->last_name) }}" required>
-          @error('last_name')<div class="hint" style="color:var(--danger);margin-top:5px">{{ $message }}</div>@enderror
-        </div>
-        <div class="form-row">
-          <label>Email</label>
-          <input type="email" name="email" value="{{ $admin->email }}" readonly required>
-          @error('email')<div class="hint" style="color:var(--danger);margin-top:5px">{{ $message }}</div>@enderror
-        </div>
-        <div class="form-row">
-          <label>Contact Number</label>
-          <input type="text" name="contact_no" value="{{ old('contact_no', $admin->contact_no) }}" maxlength="11" required>
-          @error('contact_no')<div class="hint" style="color:var(--danger);margin-top:5px">{{ $message }}</div>@enderror
-        </div>
-        @include('account.partials.address-region')
-        <div class="form-grid-2">
-          <div class="form-row">
-            <label>Province</label>
-            <input type="text" name="province" value="{{ old('province', $admin->province) }}" required>
-            @error('province')<div class="hint" style="color:var(--danger);margin-top:5px">{{ $message }}</div>@enderror
-          </div>
-          <div class="form-row">
-            <label>Municipality</label>
-            <input type="text" name="municipality" value="{{ old('municipality', $admin->municipality) }}" required>
-            @error('municipality')<div class="hint" style="color:var(--danger);margin-top:5px">{{ $message }}</div>@enderror
-          </div>
-        </div>
-        <div class="form-row">
-          <label>Barangay</label>
-          <input type="text" name="barangay" value="{{ old('barangay', $admin->barangay) }}" required>
-          @error('barangay')<div class="hint" style="color:var(--danger);margin-top:5px">{{ $message }}</div>@enderror
-        </div>
-        <div class="form-grid-2">
-          <div class="form-row">
-            <label>House No. <span class="hint">Optional</span></label>
-            <input type="text" name="house_no" value="{{ old('house_no', $admin->house_no) }}">
-            @error('house_no')<div class="hint" style="color:var(--danger);margin-top:5px">{{ $message }}</div>@enderror
-          </div>
-          <div class="form-row">
-            <label>Street <span class="hint">Optional</span></label>
-            <input type="text" name="street" value="{{ old('street', $admin->street) }}">
-            @error('street')<div class="hint" style="color:var(--danger);margin-top:5px">{{ $message }}</div>@enderror
-          </div>
-        </div>
-        <button class="btn btn-primary" type="submit">Save Changes</button>
-      </form>
-    </div>
-  </div>
+<div class="account-grid role-account-content">
+  <x-account-profile-card role="admin" :action="route('admin.account.update')" />
+  @include('account.partials.admin-address')
 
   <div class="stack">
     <div class="card">
@@ -120,30 +51,12 @@
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-head"><div><h2>Account Overview</h2><p>Role &amp; account details</p></div></div>
-      <div class="card-pad" style="display:flex;flex-direction:column;gap:12px">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <span style="font-size:12.5px;color:var(--muted)">Role</span>
-          <span class="stamp stamp-admin">Administrator</span>
-        </div>
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <span style="font-size:12.5px;color:var(--muted)">Account Status</span>
-          <span class="stamp stamp-{{ $admin->status }}">{{ ucfirst($admin->status) }}</span>
-        </div>
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <span style="font-size:12.5px;color:var(--muted)">Sign-in Method</span>
-          <span class="mono" style="font-size:12.5px">{{ ucfirst($admin->auth_method) }}</span>
-        </div>
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <span style="font-size:12.5px;color:var(--muted)">Member Since</span>
-          <span class="mono" style="font-size:12.5px">{{ $admin->created_at?->format('M d, Y') ?? '—' }}</span>
-        </div>
-      </div>
-    </div>
+    
   </div>
 </div>
 @include('account.partials.email-change')
+</x-account-workspace>
+@include('account.partials.profile-photo-manager')
 @endsection
 
 @push('scripts')<script src="{{ asset('js/role-account-details.js') }}?v={{ filemtime(public_path('js/role-account-details.js')) }}"></script>@endpush

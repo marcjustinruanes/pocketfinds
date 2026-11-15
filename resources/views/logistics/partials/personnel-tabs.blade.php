@@ -1,4 +1,6 @@
-<nav class="tabs" aria-label="Personnel" style="margin-bottom:16px">
-<a class="tab {{ request()->routeIs('logistics.riders') ? 'active' : '' }}" href="{{ route('logistics.riders') }}">Riders</a>
-<a class="tab {{ request()->routeIs('logistics.staff') ? 'active' : '' }}" href="{{ route('logistics.staff') }}">Hub staff</a>
+@if(request()->routeIs('logistics.staff', 'logistics.attendance*'))
+<nav class="team-staff-tabs" aria-label="Hub staff views">
+<a class="{{ request()->routeIs('logistics.staff') ? 'active' : '' }}" href="{{ route('logistics.staff') }}">Personnel</a>
+<a class="{{ request()->routeIs('logistics.attendance*') ? 'active' : '' }}" href="{{ route('logistics.attendance') }}">Attendance</a>
 </nav>
+@endif

@@ -112,10 +112,7 @@
               @elseif($attachmentType === 'video')
                 <button type="button" class="chat-media-button" data-media-type="video" data-media-url="{{ route('message.media', ['path' => $msg->attachment_path]) }}"><video src="{{ route('message.media', ['path' => $msg->attachment_path]) }}" class="chat-attach-preview-img" controls preload="metadata" playsinline></video></button>
               @else
-                <a href="{{ route('message.media', ['path' => $msg->attachment_path]) }}" target="_blank" class="chat-doc-bubble">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                  {{ $msg->attachment_name }}
-                </a>
+                @include('account.partials.message-document',['documentUrl'=>route('message.media',['path'=>$msg->attachment_path]),'documentName'=>$msg->attachment_name])
               @endif
             @endif
             @if($msg->body)
@@ -579,8 +576,12 @@ function appendMessage(msg, prodSnap, isMe = msg.sender_id === MY_ID, localMedia
       const vid = document.createElement('video'); vid.src = mediaUrl; vid.className = 'chat-attach-preview-img'; vid.controls = true; vid.preload = 'metadata'; vid.playsInline = true; button.appendChild(vid); content.appendChild(button);
     } else {
       const a = document.createElement('a');
-      a.href = msg.attachment_path; a.target = '_blank'; a.className = 'chat-doc-bubble';
-      a.textContent = msg.attachment_name;
+      a.href = msg.attachment_path; a.target = '_blank'; a.rel = 'noopener'; a.className = 'chat-doc-bubble';
+      a.title = msg.attachment_name || 'Document attachment';
+      const badge=document.createElement('span');badge.className='chat-doc-badge';badge.setAttribute('aria-hidden','true');badge.textContent=/\.pdf$/i.test(msg.attachment_name || '') ? 'PDF' : 'FILE';
+      const filename=document.createElement('span');filename.className='chat-doc-name';filename.textContent=msg.attachment_name || 'Document attachment';
+      const open=document.createElementNS('http://www.w3.org/2000/svg','svg');open.setAttribute('class','chat-doc-open');open.setAttribute('viewBox','0 0 24 24');open.setAttribute('fill','none');open.setAttribute('stroke','currentColor');open.setAttribute('stroke-width','1.7');open.setAttribute('aria-hidden','true');open.innerHTML='<path d="M14 3h7v7M21 3l-9 9M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/>';
+      a.append(badge,filename,open);
       content.appendChild(a);
     }
   }

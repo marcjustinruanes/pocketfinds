@@ -1,3 +1,6 @@
+@if((auth()->user()->isLogisticsAdmin() || auth()->user()->isHubStaff()))
+@include('logistics.partials.workspace-topbar')
+@else
 @php
 $storedUnread=\Illuminate\Support\Facades\DB::table('notifications')->where('user_id',auth()->id())->where('is_read',false)->count();
 @endphp
@@ -32,3 +35,5 @@ $storedUnread=\Illuminate\Support\Facades\DB::table('notifications')->where('use
     </a>
   </div>
 </header>
+
+@endif

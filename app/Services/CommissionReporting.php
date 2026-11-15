@@ -20,9 +20,12 @@ class CommissionReporting
             $cutoff = DB::getPdo()->quote(now()->subDays(3)->toDateTimeString());
             $hold .= " OR EXISTS (SELECT 1 FROM commerce_returns h WHERE h.order_id=commission_obligations.order_id AND h.status<>'refunded' AND (h.status<>'rejected' OR h.decided_at IS NULL OR h.decided_at>$cutoff))";
         }
-        $entitlement = "CASE WHEN earned_at IS NULL OR cancelled_at IS NOT NULL OR ($hold) THEN 0 WHEN method='gcash' THEN $net WHEN withheld_cents<$net THEN withheld_cents ELSE $net END";
+        $platformReceived = Schema::hasColumn('gcash_purchases', 'review_flow')
+            ? "(method='gcash' AND EXISTS (SELECT 1 FROM gcash_purchases g WHERE g.id=commission_obligations.purchase_id AND g.review_flow='admin'))"
+            : '1=0';
+        $entitlement = "CASE WHEN earned_at IS NULL OR cancelled_at IS NOT NULL OR ($hold) OR ($platformReceived) THEN 0 WHEN method='gcash' THEN $net WHEN withheld_cents<$net THEN withheld_cents ELSE $net END";
         $due = "CASE WHEN $entitlement>$collected THEN $entitlement-$collected ELSE 0 END";
-        return $q->select('commission_obligations.*')->selectRaw("$collected AS collected_cents, $reserved AS reserved_cents, $due AS due_cents, CASE WHEN ($hold) THEN 1 ELSE 0 END AS held, CASE WHEN earned_at IS NOT NULL THEN $net ELSE 0 END AS earned_cents");
+        return $q->select('commission_obligations.*')->selectRaw("$collected AS collected_cents, $reserved AS reserved_cents, $due AS due_cents, CASE WHEN ($platformReceived) THEN 1 ELSE 0 END AS platform_received, CASE WHEN ($hold) THEN 1 ELSE 0 END AS held, CASE WHEN earned_at IS NOT NULL THEN $net ELSE 0 END AS earned_cents");
     }
 
     public function totals($q): array

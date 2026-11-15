@@ -23,7 +23,8 @@
     @unless($report['available'])<p>Financial records are unavailable until the existing payment schemas are installed. No balances are inferred.</p>@endunless
     <div class="table-wrap"><table class="{{ $tableClass ?? 'tbl' }}"><thead><tr><th>Record</th><th>PHP</th></tr></thead><tbody>
     @foreach([
-      'buyer_gcash_verified'=>'Buyer GCash verified directly by Seller',
+      'platform_gcash_verified'=>'Buyer GCash received and verified by Platform',
+      'seller_gcash_verified'=>'Older buyer GCash received directly by Seller',
       'cod_collected'=>'COD recorded by Riders (not Seller payment)',
       'cod_verified'=>'COD physically verified by Hub Staff',
       'seller_cod_paid'=>'Actual recorded COD payouts to Sellers',
@@ -33,7 +34,7 @@
       <tr><td>{{ $label }}</td><td class="mono">{{ $report['available'] ? number_format($report['metrics'][$key]/100,2) : 'Unavailable' }}</td></tr>
     @endforeach
     </tbody></table></div>
-    <p>Direct GCash receipts and COD payouts are separate Seller payment paths. COD collection/count and payout ledger mirrors are not additional Seller receipts. Shipping is a logistics charge, not Seller profit. These are gross recorded events; later returns or refunds require separate review.</p>
+    <p>Platform-received GCash is not a recorded transfer to the seller. Older direct GCash receipts and actual COD payouts are shown separately. COD collection and verification are not additional seller receipts. These are gross recorded events; later returns or refunds require separate review.</p>
   </div>
 </section>
 <section class="card payment-report-summary">

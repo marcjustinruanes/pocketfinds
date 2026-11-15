@@ -28,3 +28,13 @@
 @media(max-width:800px){.promo-overview-filters button{padding:10px 8px;gap:8px}.promo-filter-heading{font-size:10px;gap:5px}.promo-filter-heading strong{font-size:11px}}
 .promo-schedule-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:22px 0 14px}.promo-dialog .modal-body .promo-schedule-heading h4{margin:0;font-size:12px;line-height:1.5;flex:0 0 auto}.promo-schedule-heading .promo-start-options{display:flex;align-items:center;gap:4px;flex-wrap:nowrap;margin:0;padding:3px;border-radius:8px;background:#f7f0f4}.promo-schedule-heading .promo-start-options label{position:relative;padding:5px 8px;border:1px solid transparent;border-radius:6px;background:transparent;font-size:10px;line-height:1.4;white-space:nowrap;color:#a08797;cursor:pointer}.promo-schedule-heading .promo-start-options label:has(input:checked){background:#fff;border-color:#ead5e2;color:#aa3975;box-shadow:0 1px 3px #59334608}.promo-schedule-heading .promo-start-options input{position:absolute;opacity:0;width:1px;height:1px;margin:0;overflow:hidden}.promo-schedule-heading .promo-start-options label:has(input:focus-visible){outline:2px solid #bc387f;outline-offset:2px}
 @media(max-width:400px){.promo-schedule-heading{gap:7px}.promo-schedule-heading .promo-start-options label{font-size:9px;padding:5px 6px}}
+.promo-review-columns .promo-offer.is-flash{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 20px}
+.promo-offer.is-flash>.promo-offer-top{grid-column:1/-1;grid-row:1}
+.promo-offer.is-flash>.promo-offer-value{grid-column:1;grid-row:2;margin:12px 0 2px;line-height:1.2}
+.promo-offer.is-flash>.promo-offer-sub{grid-column:1;grid-row:3;margin:0;line-height:1.4}
+.promo-offer.is-flash>.promo-dates{grid-column:2;grid-row:2/4;align-self:center;margin:12px 0 0;padding:0;text-align:right;font-size:10px}
+.promo-offer.is-flash .promo-dates>span{justify-content:flex-end;padding-left:0}
+.promo-offer.is-flash>.promo-usage{grid-column:1/-1;grid-row:4;margin-top:18px}
+.promo-offer.is-flash>footer{grid-column:1/-1;grid-row:5}
+@media(max-width:600px){.promo-review-columns .promo-offer.is-flash{column-gap:10px}.promo-offer.is-flash>.promo-dates{max-width:145px;font-size:9px}}
+@media(max-width:380px){.promo-offer.is-flash>.promo-dates{grid-column:1/-1;grid-row:4;text-align:left;margin-top:12px}.promo-offer.is-flash .promo-dates>span{justify-content:flex-start}.promo-offer.is-flash>.promo-usage{grid-row:5}.promo-offer.is-flash>footer{grid-row:6}}

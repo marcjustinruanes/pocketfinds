@@ -36,13 +36,13 @@ class PasswordResetController extends Controller
     public function edit(Request $request, string $token)
     {
         $pending = $request->session()->get('buyer_password_change_pending', []);
-        if ($request->user()?->account_type === 'buyer' &&
+        if (in_array($request->user()?->account_type, ['buyer','seller'], true) &&
             (string)($pending['user_id'] ?? '') === (string)$request->user()->id &&
             ($pending['expires_at'] ?? 0) > now()->timestamp &&
             strcasecmp((string)$request->query('email'), $request->user()->email) === 0 &&
             Password::tokenExists($request->user(), $token)) {
             $request->session()->put('buyer_password_change_token', $token);
-            return redirect()->route('buyer.account')->withFragment('account-security')->header('Cache-Control','private, no-store')->header('Referrer-Policy','no-referrer');
+            return redirect()->route($request->user()->account_type.'.account')->withFragment('account-security')->header('Cache-Control','private, no-store')->header('Referrer-Policy','no-referrer');
         }
         return response()->view('auth.password-reset', [
             'resetting' => true, 'token' => $token, 'email' => $request->query('email', ''),

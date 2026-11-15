@@ -302,6 +302,9 @@ Route::prefix('seller')->name('seller.')->middleware(['web', 'seller'])->group(f
     Route::delete('/vouchers/{voucher}', [SellerController::class, 'destroyVoucher'])->name('vouchers.destroy');
     Route::post('/account/documents', [SellerController::class, 'updateDocuments'])->name('account.documents');
     Route::post('/account/password', [SellerController::class, 'updatePassword'])->name('account.password');
+    Route::post('/account/password-link', [BuyerController::class, 'passwordResetLink'])->middleware('throttle:3,5')->name('account.password-link');
+    Route::post('/account/password-change', [BuyerController::class, 'completePasswordChange'])->middleware('throttle:6,1')->name('account.password-change');
+    Route::get('/account/google/email', [SocialAuthController::class, 'redirectAccountEmailVerification'])->middleware('throttle:10,1')->name('account.google.email');
     Route::post('/logout', [SellerController::class, 'logout'])->name('logout');
 });
 

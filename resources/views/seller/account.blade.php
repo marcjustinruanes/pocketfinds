@@ -2,8 +2,13 @@
 @section('title', 'My Account')
 @section('page-title', 'My Account')
 
+@include('account.partials.role-workspace-assets')
+@push('account-head')<link rel="stylesheet" href="{{ asset('css/account-verification.css') }}?v={{ filemtime(public_path('css/account-verification.css')) }}">@endpush
+@push('scripts')<script src="{{ asset('js/account-verification.js') }}?v={{ filemtime(public_path('js/account-verification.js')) }}" defer></script>@endpush
+
 @section('content')
-@include('account.partials.buyer-module-security')
+<x-account-workspace role="seller">
+
 @include('commerce.messages')
 @php $u = $seller; @endphp
 
@@ -25,51 +30,10 @@
 </div>
 @endif
 
-<div class="dash-grid seller-account-page">
+<div class="dash-grid role-account-content">
   <div class="stack">
 
-    {{-- Profile --}}
-    <div class="card">
-      <div class="card-head"><div><h2>Profile Information</h2></div></div>
-      <div class="card-pad">
-        <div style="display:flex;align-items:center;gap:16px;margin-bottom:22px">
-          <x-user-avatar :user="$u" size="64" />
-          <div>
-            <div style="font-size:16px;font-weight:700">{{ $u->given_names }} {{ $u->last_name }}</div>
-            <div style="font-size:12px;color:var(--muted)">{{ $u->email }}</div>
-            <span class="stamp stamp-active" style="margin-top:4px">{{ ucfirst($u->account_type ?: 'Account') }}</span>
-          </div>
-        </div>
-        @if(session('profile_success'))
-          <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px">{{ session('profile_success') }}</div>
-        @endif
-        <form method="POST" action="{{ route('seller.account.profile') }}" {{ $pendingRequest ? 'style=opacity:.5;pointer-events:none' : '' }}>
-          @csrf
-          <div class="form-grid-2">
-            <div class="form-row"><label>Given Names</label><input type="text" name="given_names" value="{{ old('given_names', $u->given_names) }}" required></div>
-            <div class="form-row"><label>Last Name</label><input type="text" name="last_name" value="{{ old('last_name', $u->last_name) }}" required></div>
-          </div>
-          <div class="form-grid-2">
-            <div class="form-row"><label>Middle Name</label><input type="text" name="middle_name" value="{{ old('middle_name', $u->middle_name) }}"></div>
-            <div class="form-row"><label>Phone Number</label><input type="tel" name="contact_no" value="{{ old('contact_no',$u->contact_no) }}" placeholder="9XXXXXXXXX" inputmode="numeric"></div>
-          </div>
-          <div class="form-grid-2">
-            <div class="form-row">
-              <label>Sex</label>
-              <select name="sex">
-                <option value="" {{ blank($u->sex) ? 'selected' : '' }}>Select sex</option>
-                @foreach($sexes as $sex)
-                  <option value="{{ $sex }}" {{ $u->sex === $sex ? 'selected' : '' }}>{{ ucfirst($sex) }}</option>
-                @endforeach
-              </select>
-            </div>
-            <div class="form-row"><label>Birthday</label><input type="date" name="birthday" value="{{ old('birthday', $u->birthday?->format('Y-m-d')) }}"></div>
-          </div>
-          <div class="form-row"><label>Email Address</label><input type="email" value="{{ $u->email }}" disabled style="background:var(--paper);color:var(--muted);cursor:not-allowed"></div>
-          <button type="submit" class="btn btn-primary">Save Changes</button>
-        </form>
-      </div>
-    </div>
+    <x-account-profile-card role="seller" :action="route('seller.account.profile')" :pending="$pendingRequest !== null" />
 
     {{-- Address --}}
     <div class="card">
@@ -122,19 +86,19 @@
       <div class="card-head"><div><h2>Shop Information</h2></div></div>
       <div class="card-pad">
         @if(session('shop_photo_success'))<p role="status" style="color:var(--success)">{{ session('shop_photo_success') }}</p>@endif
-        <form method="POST" action="{{ route('seller.account.shop-photo') }}" enctype="multipart/form-data" style="margin-bottom:24px">
+        <form method="POST" action="{{ route('seller.account.shop-photo') }}" enctype="multipart/form-data" class="seller-shop-photo-form">
           @csrf
-          <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div class="seller-shop-photo-row">
             <div style="width:72px;height:72px;border-radius:50%;background:var(--pink-soft);display:grid;place-items:center;overflow:hidden;color:var(--pink);font-size:24px;font-weight:700">
               @if($u->profile_picture)<img src="{{ $u->shopPhotoUrl() }}" alt="Your shop picture" style="width:100%;height:100%;object-fit:contain;background:#fff">@else{{ strtoupper(substr($u->business_name ?: $u->given_names, 0, 1)) }}@endif
             </div>
-            <div class="form-row" style="flex:1;min-width:180px">
-              <label for="shop-profile-picture">Shop picture</label>
-              <input id="shop-profile-picture" type="file" name="profile_picture" accept="image/jpeg,image/png" required>
-              <small style="color:var(--muted)">JPG or PNG, up to 5 MB. Appears on your public shop.</small>
+            <div class="form-row seller-shop-photo-upload">
+
+              <x-account-upload name="profile_picture" label="Shop picture" accept="image/jpeg,image/png" action-label="Choose photo" />
+
               @error('profile_picture')<p role="alert" style="color:var(--danger)">{{ $message }}</p>@enderror
             </div>
-            <button type="submit" class="btn btn-primary">Update Picture</button>
+            <button type="submit" class="btn btn-primary seller-shop-photo-save">Save picture</button>
           </div>
         </form>
         @if(session('shop_success'))
@@ -156,12 +120,12 @@
             </select>
           </div>
           <div class="form-row"><label>Store description</label><textarea name="store_description" maxlength="500" rows="4" placeholder="Tell buyers about your shop">{{ old('store_description', $u->store_description) }}</textarea></div>
-          <div class="form-row"><label>Store banner (optional)</label><input type="file" name="store_banner" accept="image/jpeg,image/png"><small style="color:var(--muted)">JPG or PNG, maximum 5 MB.</small></div>
+          <x-account-upload name="store_banner" label="Store banner (optional)" accept="image/jpeg,image/png" />
           @if(!\App\Services\BuyerCommerce::installed())<div class="form-row">
             <label>Shipping Fee (₱)</label>
             <input type="number" name="shipping_fee" readonly value="50.00">
             <span style="font-size:11px;color:var(--muted)">Charged once per order from your shop, shown to buyers at checkout.</span>
-          </div>@else<p>Checkout charges PHP 50 per parcel, payable in full to logistics. Regional settings continue to control delivery estimates and voucher eligibility.</p>@endif
+          </div>@endif
           <button type="submit" class="btn btn-primary">Update Shop</button>
         </form>
       </div>
@@ -177,7 +141,7 @@
           <div style="margin-bottom:16px;display:flex;flex-wrap:wrap;gap:8px">
             @if($idFile = $pendingRequest->requested_documents['id_file'] ?? null)
               <button type="button" class="doc-preview-btn btn btn-sm btn-outline"
-                data-src="{{ asset('storage/'.$idFile) }}"
+                data-src="{{ app(\App\Services\SensitiveDocuments::class)->url($idFile) }}"
                 data-type="{{ in_array(strtolower(pathinfo($idFile,PATHINFO_EXTENSION)),['jpg','jpeg','png']) ? 'image' : 'pdf' }}">
                 @include('seller.partials.icon',['name'=>'file','size'=>13]) Submitted ID (pending)
               </button>
@@ -202,7 +166,7 @@
           {{-- Valid ID --}}
           <div class="form-row">
             <label>ID Type</label>
-            <select name="id_type_id">
+            <select name="id_type_id" id="id_type_id">
               <option value="">— Select ID type —</option>
               @foreach($idTypes as $idType)
                 <option value="{{ $idType->id }}" {{ old('id_type_id', $u->id_type_id) == $idType->id ? 'selected' : '' }}>{{ $idType->name }}</option>
@@ -219,9 +183,10 @@
               </button>
             </div>
           @endif
-          <div class="form-row"><label>Replace ID File <span style="color:var(--muted);font-weight:400">(optional)</span></label><input type="file" name="id_file" accept="image/*,.pdf" style="padding:6px"></div>
+          @include('account.partials.id-selfie-capture')
 
           {{-- Business Permit --}}
+          <x-account-upload name="business_permit_file" label="Business permit (optional)" />
           @if($u->business_permit_file)
             @php $bext = strtolower(pathinfo($u->business_permit_file, PATHINFO_EXTENSION)); $bIsImg = in_array($bext, ['jpg','jpeg','png']); @endphp
             <div style="margin-bottom:12px">
@@ -232,12 +197,12 @@
               </button>
             </div>
           @endif
-          @foreach(\App\Support\SellerDocuments::required($u->seller_type) as $documentField)
+          @foreach((\App\Support\SellerDocuments::required($u->seller_type) ?: array_keys(\App\Support\SellerDocuments::LABELS)) as $documentField)
           @php($documentLabel = \App\Support\SellerDocuments::LABELS[$documentField])
           @if($u->{$documentField})
           <button type="button" class="doc-preview-btn" data-src="{{ app(\App\Services\SensitiveDocuments::class)->url($u->{$documentField}) }}" data-type="{{ str_ends_with(strtolower($u->{$documentField}), '.pdf') ? 'pdf' : 'image' }}">View {{ $documentLabel }}</button>
           @endif
-          <div class="form-row"><label>{{ $u->{$documentField} ? 'Replace' : 'Upload' }} {{ $documentLabel }}</label><input type="file" name="{{ $documentField }}" accept=".jpg,.jpeg,.png,.pdf" style="padding:6px"></div>
+          <x-account-upload :name="$documentField" :label="$documentLabel" />
           @endforeach
 
           <button type="submit" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:7px">
@@ -251,43 +216,11 @@
 
   <div class="stack">
 
-    {{-- Change password --}}
-    <div class="card">
-      <div class="card-head"><div><h2>Change Password</h2></div></div>
-      <div class="card-pad">
-        @if(session('password_success'))
-          <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px">{{ session('password_success') }}</div>
-        @endif
-        @error('current_password')
-          <div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px">{{ $message }}</div>
-        @enderror
-        <form method="POST" action="{{ route('seller.account.password') }}">
-          @csrf
-          <div class="form-row"><label>Current Password</label><input type="password" name="current_password" required></div>
-          <div class="form-row"><label>New Password</label><input type="password" name="password" required></div>
-          <div class="form-row"><label>Confirm New Password</label><input type="password" name="password_confirmation" required></div>
-          <button type="submit" class="btn btn-outline">Update Password</button>
-        </form>
-      </div>
-    </div>
+    @include('buyer.partials.email-change', ['emailRole'=>'seller'])
+    @include('account.partials.login-security', ['securityRole'=>'seller'])
 
     {{-- Account overview --}}
-    <div class="card">
-      <div class="card-head"><h2>Account Overview</h2></div>
-      <div class="card-pad" style="display:flex;flex-direction:column">
-        @foreach([
-          ['Account Type',   filled($u->account_type) ? ucfirst($u->account_type) : 'Not provided'],
-          ['Status',         filled($u->status) ? ucfirst($u->status) : 'Not provided'],
-          ['Auth Method',    filled($u->auth_method) ? ucfirst($u->auth_method) : 'Not provided'],
-          ['Member Since',   $u->created_at?->format('M d, Y') ?? 'Not provided'],
-        ] as [$label, $val])
-        <div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border)">
-          <span style="color:var(--muted)">{{ $label }}</span>
-          <span style="font-weight:600;text-align:right;max-width:60%;word-break:break-word">{!! $val !!}</span>
-        </div>
-        @endforeach
-      </div>
-    </div>
+
 
 
   </div>
@@ -334,10 +267,12 @@ document.querySelectorAll('.doc-preview-btn').forEach(btn => {
 <script src="{{ asset('js/role-account-details.js') }}?v={{ filemtime(public_path('js/role-account-details.js')) }}"></script>
 @if(\App\Services\BuyerCommerce::installed())
 @include('account.partials.commerce-vacation')
-@include('account.partials.commerce-shipping')
-<div class="seller-account-promotions" id="flash-sales"><a href="{{ route('seller.promotions.flash') }}">Manage flash sales</a><a href="{{ route('seller.vouchers') }}">Manage vouchers</a></div>
+
+
 @endif
-@include('account.partials.email-change')
+
+</x-account-workspace>
+@include('account.partials.profile-photo-manager')
 @endsection
 
 @push('scripts')<script src="{{ asset('js/commerce.js') }}?v={{ filemtime(public_path('js/commerce.js')) }}"></script>@endpush

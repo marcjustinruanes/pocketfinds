@@ -31,8 +31,27 @@ class SellerController extends Controller
 {
     use HandlesAccountUpdateRequests;
 
-    public function dashboard()
+    private function unresolvedRefundOrderIds(int $sellerId): \Illuminate\Support\Collection
     {
+        $ids=collect();
+        foreach (['commerce_returns'=>['pending','approved','escalated','received'], 'cancellation_refunds'=>['pending']] as $table=>$statuses) {
+            if (\Illuminate\Support\Facades\Schema::hasTable($table)) {
+                $ids=$ids->merge(DB::table($table)->where('seller_id',$sellerId)->whereIn('status',$statuses)->pluck('order_id'));
+            }
+        }
+        return $ids->unique()->values();
+    }
+
+    public function dashboard(Request $request)
+    {
+        $filters=$request->validate([
+            'month'=>'nullable|date_format:Y-m|before_or_equal:'.now()->format('Y-m'),
+            'period'=>'nullable|in:month,year',
+            'year'=>'nullable|integer|min:2000|max:'.now()->year,
+        ]);
+        $chartPeriod=$filters['period']??'month';
+        $chartYear=(int)($filters['year']??now()->year);
+        $chartMonth=Carbon::createFromFormat('!Y-m',$filters['month']??now()->format('Y-m'))->startOfMonth();
         $sellerId = auth()->id();
         $orders = Order::visibleToSeller()->where('seller_id', $sellerId);
         $totalSales = (clone $orders)->where('status', 'completed')->sum('total');
@@ -40,24 +59,59 @@ class SellerController extends Controller
         $productsListed = Product::where('seller_id', $sellerId)->where('status', 'active')->count();
         $avgRating = round((float) Review::where('seller_id', $sellerId)->avg('rating'), 1);
         $recentOrders = Order::visibleToSeller()->with('buyer')->where('seller_id', $sellerId)->latest()->limit(5)->get();
-        $pipelineCounts = [
-            'new' => (clone $orders)->where('status', 'placed')->count(),
-            'prepare' => (clone $orders)->whereIn('status', ['confirmed', 'preparing'])->count(),
-            'shipments' => (clone $orders)->whereIn('status', ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'hub_transfer', 'sorted', 'assigned_to_rider', 'out_for_delivery'])->count(),
-            'deliveries' => (clone $orders)->whereIn('status', ['delivered', 'completed'])->count(),
-        ];
-        $chartStart = now()->startOfDay()->subDays(6);
-        $salesByDay = (clone $orders)->where('status', 'completed')->where('created_at', '>=', $chartStart)
-            ->get(['total', 'created_at'])->groupBy(fn ($order) => $order->created_at->format('Y-m-d'));
-        $salesChart = collect(range(0, 6))->map(function ($days) use ($chartStart, $salesByDay) {
-            $date = $chartStart->copy()->addDays($days);
+        $salesByDay = (clone $orders)->where('status', 'completed')->whereBetween('updated_at',[$chartMonth,$chartMonth->copy()->endOfMonth()])
+            ->get(['total', 'updated_at'])->groupBy(fn ($order) => $order->updated_at->format('Y-m-d'));
+        $salesChart = collect(range(1, $chartMonth->daysInMonth))->map(function ($day) use ($chartMonth, $salesByDay) {
+            $date = $chartMonth->copy()->day($day);
 
-            return ['label' => $date->format('D'), 'amount' => (float) $salesByDay->get($date->format('Y-m-d'), collect())->sum('total')];
+            return ['label' => $date->format('j'), 'date'=>$date->format('M j, Y'), 'show_label'=>$day===1||$day%5===0||$day===$chartMonth->daysInMonth, 'amount' => (float) $salesByDay->get($date->format('Y-m-d'), collect())->sum('total')];
         });
+        $chartStart=$chartMonth->copy();
+        $chartEnd=$chartMonth->copy()->endOfMonth();
+        $chartLabel=$chartMonth->format('F Y');
+        if ($chartPeriod === 'year') {
+            $chartStart=Carbon::create($chartYear, 1, 1)->startOfDay();
+            $chartEnd=$chartStart->copy()->endOfYear();
+            $chartLabel=(string)$chartYear;
+            $salesByMonth=(clone $orders)->where('status','completed')->whereBetween('updated_at',[$chartStart,$chartEnd])
+                ->get(['total','updated_at'])->groupBy(fn ($order)=>$order->updated_at->format('m'));
+            $salesChart=collect(range(1,12))->map(function ($month) use ($chartStart,$salesByMonth) {
+                $date=$chartStart->copy()->month($month);
+                return ['label'=>$date->format('M'),'date'=>$date->format('F Y'),'show_label'=>true,
+                    'amount'=>(float)$salesByMonth->get($date->format('m'),collect())->sum('total')];
+            });
+        }
         $chartMax = max(1, $salesChart->max('amount'));
-        $lowStock = Product::where('seller_id', $sellerId)->where('status', 'active')->get()->filter(fn ($product) => $product->total_stock <= 5)->take(5);
+        $stockAlerts = Product::where('seller_id', $sellerId)->where('status', 'active')->get()->filter(fn ($product) => $product->total_stock <= 5);
+        $lowStock=$stockAlerts->take(5);
+        $stockAlertCount=$stockAlerts->count();
+        $unansweredReviews=Review::where('seller_id',$sellerId)->whereNull('seller_reply')->count();
+        $refundOrderCount = (clone $orders)->whereIn('id', $this->unresolvedRefundOrderIds($sellerId))->count();
+        $failedOrderCount = (clone $orders)->where('status', 'delivery_failed')->count();
+        $dashboardVouchers = collect();
+        $dashboardFlashSales = collect();
+        if (\Illuminate\Support\Facades\Schema::hasTable('commerce_allocations')) {
+            if (\Illuminate\Support\Facades\Schema::hasTable('commerce_vouchers')) {
+                $dashboardVouchers = DB::table('commerce_vouchers as v')->where('v.seller_id', $sellerId)
+                    ->where('v.is_active', true)->where('v.starts_at', '<=', now())->where('v.ends_at', '>', now())
+                    ->select('v.*')->selectSub(DB::table('commerce_allocations as a')->selectRaw('COUNT(*)')
+                        ->whereColumn('a.voucher_id', 'v.id')->whereIn('a.state', ['held', 'used']), 'allocated')
+                    ->orderBy('v.ends_at')->get()->filter(fn ($voucher) => $voucher->allocated + ($voucher->legacy_used_count ?? 0) < $voucher->usage_limit)->take(3);
+            }
+            if (\Illuminate\Support\Facades\Schema::hasTable('commerce_flash_sales')) {
+                $dashboardFlashSales = DB::table('commerce_flash_sales as f')->join('products as p', 'p.id', '=', 'f.product_id')
+                    ->where('f.seller_id', $sellerId)->where('p.seller_id', $sellerId)->where('p.status', 'active')
+                    ->where('f.is_active', true)->where('f.starts_at', '<=', now())->where('f.ends_at', '>', now())
+                    ->select('f.*', 'p.name as product_name', 'p.image as product_image', 'p.price as original_price')->selectSub(DB::table('commerce_allocations as a')->selectRaw('COALESCE(SUM(quantity), 0)')
+                        ->whereColumn('a.flash_sale_id', 'f.id')->whereIn('a.state', ['held', 'used']), 'allocated')
+                    ->orderBy('f.ends_at')->get()->map(function ($sale) {
+                        $sale->remaining = max(0, $sale->quantity - $sale->allocated);
+                        return $sale;
+                    })->filter(fn ($sale) => $sale->remaining > 0)->take(3);
+            }
+        }
 
-        return view('seller.dashboard', compact('totalSales', 'newOrders', 'productsListed', 'avgRating', 'recentOrders', 'pipelineCounts', 'salesChart', 'chartMax', 'lowStock'));
+        return view('seller.dashboard', compact('totalSales', 'newOrders', 'productsListed', 'avgRating', 'recentOrders', 'salesChart', 'chartMax', 'lowStock','chartMonth','stockAlertCount','unansweredReviews', 'refundOrderCount', 'failedOrderCount', 'dashboardVouchers', 'dashboardFlashSales', 'chartPeriod', 'chartYear', 'chartStart', 'chartEnd', 'chartLabel'));
     }
 
     public function orders(Request $request)
@@ -70,6 +124,7 @@ class SellerController extends Controller
         $returnRequests=\App\Services\BuyerCommerce::installed()?DB::table('commerce_returns')->where('seller_id',auth()->id())->get()->keyBy('order_id'):collect();
         $cancellationRefunds=\Illuminate\Support\Facades\Schema::hasTable('cancellation_refunds')?DB::table('cancellation_refunds')->where('seller_id',auth()->id())->get()->keyBy('order_id'):collect();
         $refundIds=$returnRequests->keys()->merge($cancellationRefunds->keys())->unique();
+        $unresolvedRefundIds=$request->query('refund_state')==='open' ? $this->unresolvedRefundOrderIds((int)auth()->id()) : null;
         $request->validate(['q'=>'nullable|string|max:100','from'=>'nullable|date','to'=>'nullable|date|after_or_equal:from','period'=>'nullable|in:all,30d,6m,year','payment'=>'nullable|in:all,cod,gcash']);
         $isGcashOrder = fn ($query) => $query->where('payment_method','GCash')->orWhereHas('paymentMethod',fn ($method) => $method->where('name','like','%GCash%'));
         $ordersQuery = Order::visibleToSeller()->with(['buyer', 'paymentMethod', 'shipment.courier', 'shipment.pickupRider','gcashPurchase'])
@@ -85,6 +140,7 @@ class SellerController extends Controller
         $orders = (clone $ordersQuery)
             ->when($status === 'in_transit', fn ($query) => $query->whereIn('status', Order::IN_TRANSIT_STATUSES))
             ->when($status==='refunds',fn($query)=>$query->where(fn($q)=>$q->where('status','returned')->orWhereIn('id',$refundIds)))
+            ->when($status==='refunds' && $unresolvedRefundIds!==null,fn($query)=>$query->whereIn('id',$unresolvedRefundIds))
             ->when($status==='gcash',fn($query)=>$query->where($isGcashOrder))
             ->when(!in_array($status,['all','in_transit','refunds','gcash']), fn ($query) => $query->where('status', $status))
             ->latestActivity()
@@ -1322,8 +1378,9 @@ class SellerController extends Controller
     public function updateDocuments(Request $request)
     {
         $request->validate([
-            'id_type_id' => 'nullable|integer|exists:id_types,id',
-            'id_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'id_type_id' => 'required_with:id_file|nullable|integer|exists:id_types,id',
+            'id_file' => 'required_with:selfie_file|nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'selfie_file' => 'required_with:id_file|nullable|image|mimes:jpg,jpeg,png|max:5120',
             'business_permit_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'dti_certificate_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'sec_certificate_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
@@ -1333,7 +1390,7 @@ class SellerController extends Controller
         return $this->submitAccountUpdateRequest(
             $request,
             ['id_type_id'],
-            ['id_file' => 'public', 'business_permit_file' => 'public', 'dti_certificate_file' => 'sensitive_documents', 'sec_certificate_file' => 'sensitive_documents', 'bir_certificate_file' => 'sensitive_documents'],
+            ['id_file' => 'sensitive_documents', 'selfie_file'=>'sensitive_documents', 'business_permit_file' => 'public', 'dti_certificate_file' => 'sensitive_documents', 'sec_certificate_file' => 'sensitive_documents', 'bir_certificate_file' => 'sensitive_documents'],
             'docs_success'
         );
     }

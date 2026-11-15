@@ -16,16 +16,22 @@
 @include('account.partials.notification-assets')
 <link rel="stylesheet" href="{{ asset('css/logistics-hub.css') }}?v={{ filemtime(public_path('css/logistics-hub.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/logistics-modern.css') }}?v={{ filemtime(public_path('css/logistics-modern.css')) }}">
+@if((auth()->user()->isLogisticsAdmin() || auth()->user()->isHubStaff()))<link rel="stylesheet" href="{{ asset('css/logistics-workspace.css') }}?v={{ filemtime(public_path('css/logistics-workspace.css')) }}">@endif
+@stack('account-head')
 </head>
-<body class="admin logistics-ui {{ auth()->user()->isHubStaff() ? 'hub-staff-ui' : '' }}">
-<div class="shell" id="logisticsShell" data-navigation-shell data-collapse-key="logistics_sidebar_collapsed">
+<body class="admin logistics-ui {{ (auth()->user()->isLogisticsAdmin() || auth()->user()->isHubStaff()) ? 'logistics-workspace' : '' }} {{ auth()->user()->isHubStaff() ? 'hub-staff-ui' : '' }} @yield('body-class')">
+<div class="shell {{ (auth()->user()->isLogisticsAdmin() || auth()->user()->isHubStaff()) ? 'collapsed' : '' }}" id="logisticsShell" data-navigation-shell @if((auth()->user()->isLogisticsAdmin() || auth()->user()->isHubStaff())) data-sidebar-hover @endif data-collapse-key="logistics_sidebar_collapsed">
   @include('logistics.partials.sidebar')
   <div style="display:flex;flex-direction:column;min-width:0">
     @include('logistics.partials.topbar')
-    <main class="content">
+    @php($operationsLayout=(auth()->user()->isLogisticsAdmin() || auth()->user()->isHubStaff()) && \App\Support\LogisticsWorkspace::current(request()->route()?->getName())==='operations')
+    <main class="content {{ $operationsLayout ? 'logistics-operations-layout' : '' }}">
+      @if((auth()->user()->isLogisticsAdmin() || auth()->user()->isHubStaff()))@include('logistics.partials.workspace-tabs')@endif
+      @if($operationsLayout)<div class="logistics-operations-content">@endif
       @if(session('success'))<div class="logistics-alert" role="status">{{ session('success') }}</div>@endif
       @if($errors->any())<div class="logistics-alert" role="alert"><strong>Please check the form.</strong><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
       @yield('content')
+      @if($operationsLayout)</div>@endif
     </main>
   </div>
 </div>
@@ -62,6 +68,11 @@
   </section>
 </div>
 
+@if((auth()->user()->isLogisticsAdmin() || auth()->user()->isHubStaff()))
+@include('account.partials.messages-widget',['messageWidgetId'=>'sellerMessagesWidget','messageWidgetBodyId'=>'sellerMessagesWidgetBody','messageWidgetTitleId'=>'sellerMessagesTitle','sellerMessageWidget'=>true,'messageWidgetAudience'=>'your contacts','messageWidgetPath'=>parse_url(route('logistics.messages'),PHP_URL_PATH)])
+@include('buyer.partials.assistant',['assistantGuest'=>true,'assistantLogistics'=>true])
+<script src="{{ asset('js/seller-messages-widget.js') }}?v={{ filemtime(public_path('js/seller-messages-widget.js')) }}"></script>
+@endif
 <div class="toast-stack" id="toastStack"></div>
 <script src="/js/admin.js"></script>
 <script src="{{ asset('js/logistics-personnel-address.js') }}?v={{ filemtime(public_path('js/logistics-personnel-address.js')) }}"></script>

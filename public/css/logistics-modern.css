@@ -1853,3 +1853,92 @@ body.logistics-ui { background-color: #faf7f7; }
   .logistics-ui .staff-salary-self-service > .cash-card { padding:13px; }
   .logistics-ui .staff-salary-self-service .salary-payment-history .cash-handover { padding:11px; }
 }
+
+/* Keep assignment headings and their values aligned. */
+.logistics-ui .delivery-assignment-card .dtable th,.logistics-ui .delivery-assignment-card .dtable td{text-align:center;vertical-align:middle}
+.logistics-ui .delivery-assignment-card .cell-user{justify-content:center;text-align:center}
+.logistics-ui .delivery-assignment-card td form{justify-content:center;flex-wrap:wrap}
+.logistics-ui .stamp-out_for_delivery::before{display:none;content:none}
+
+.logistics-ui .assignment-status-value::before{display:none;content:none}
+.logistics-ui .hub-transfer-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;min-width:0}
+.logistics-ui .hub-transfer-toolbar>.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0!important;min-width:0}
+.logistics-ui .hub-transfer-toolbar>.btn{flex:none;margin-left:auto;min-height:40px;padding:9px 14px;border-radius:9px;font-size:11px}
+.logistics-ui .hub-transfer-page .hub-transfer-filters{grid-template-columns:repeat(4,minmax(0,1fr))}
+.logistics-ui .logistics-table-status-filter{position:relative;display:inline-flex;align-items:center;max-width:100%;color:inherit}
+.logistics-ui .logistics-table-status-filter select{appearance:none;width:100%;max-width:160px;min-width:0;min-height:0;padding:5px 20px 5px 4px;border:0;border-radius:4px;background:transparent;color:inherit;font:600 10px Inter,system-ui,sans-serif;text-transform:uppercase;cursor:pointer;text-align:center}
+.logistics-table-status-filter>svg{position:absolute;right:3px;pointer-events:none}
+.logistics-ui .logistics-table-status-filter select:focus-visible{outline:2px solid #bc387f;outline-offset:2px}
+@media(max-width:760px){.logistics-ui .hub-transfer-page .hub-transfer-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.logistics-ui .hub-transfer-toolbar>.btn{font-size:10px;padding-inline:10px}}
+@media(max-width:420px){.logistics-ui .hub-transfer-page .hub-transfer-filters{grid-template-columns:minmax(0,1fr)}}
+
+/* Transfer toolbar and compact date range. */
+.logistics-ui .hub-transfer-toolbar{display:grid;grid-template-columns:auto minmax(180px,1fr) auto;align-items:center;gap:16px}
+.logistics-ui .hub-transfer-toolbar>.btn{margin-left:0;justify-self:end}
+.logistics-ui .hub-transfer-toolbar:not(:has(.hub-transfer-search)){grid-template-columns:1fr auto}
+.logistics-ui .hub-transfer-search{display:flex;align-items:center;gap:10px;box-sizing:border-box;min-width:0;height:40px;padding:0 12px;border:1px solid #eadfe6;border-radius:9px;background:#fff;color:#987f8d}
+.logistics-ui .hub-transfer-search svg{flex:none}.logistics-ui .hub-transfer-search input{box-sizing:border-box;width:100%;min-width:0;height:38px;min-height:0;padding:0;border:0;border-radius:0;background:transparent;color:#593346;font:12px Inter,system-ui,sans-serif;outline:0;box-shadow:none}
+.logistics-ui .hub-transfer-search:focus-within{border-color:#bc387f}
+.logistics-ui .hub-transfer-page>.hub-transfer-filters{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px}
+.logistics-ui .hub-transfer-hub-filter{flex:0 1 280px;min-width:180px;display:grid;gap:7px}
+.logistics-ui .hub-transfer-date-filter{display:grid;gap:7px;margin-left:auto;min-width:0;width:360px;max-width:100%}
+.logistics-ui .hub-transfer-date-filter>span{color:#593346;font-size:9.5px;font-weight:700}
+.logistics-ui .hub-transfer-date-range{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px}
+.logistics-ui .hub-transfer-date-range label{min-width:0;margin:0}.logistics-ui .hub-transfer-date-range input{box-sizing:border-box;width:100%;min-width:0}.logistics-ui .hub-transfer-date-range>span{color:#987f8d;font-size:14px}
+.hub-transfer-sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+/* Every header shares the same plain uppercase style. */
+.logistics-ui .hub-transfer-page .dtable th{color:#987f8d;text-transform:uppercase;font:600 10px/1.4 Inter,system-ui,sans-serif;letter-spacing:.04em;text-align:center;vertical-align:middle}
+.logistics-ui .hub-transfer-page .dtable td{text-align:center;vertical-align:middle}
+.logistics-ui .hub-transfer-records .logistics-table-status-filter{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:28px;padding:0;border:0;border-radius:0;background:transparent;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit}
+.logistics-ui .hub-transfer-records .logistics-table-status-filter select{position:absolute;inset:0;z-index:1;width:100%;height:100%;max-width:none;min-height:0;margin:0;padding:0;border:0;opacity:0;cursor:pointer}
+.logistics-ui .hub-transfer-records .logistics-table-status-filter>svg{position:static;flex:none;width:12px;height:12px}
+.logistics-ui .hub-transfer-records .logistics-table-status-filter:focus-within{outline:2px solid #bc387f;outline-offset:3px;border-radius:3px}
+@media(max-width:1000px){.logistics-ui .hub-transfer-toolbar{grid-template-columns:1fr auto}.logistics-ui .hub-transfer-toolbar>.tabs{grid-column:1/-1}}
+@media(max-width:600px){.logistics-ui .hub-transfer-toolbar{gap:10px}.logistics-ui .hub-transfer-search input{font-size:11px}.logistics-ui .hub-transfer-page>.hub-transfer-filters{flex-direction:column;align-items:stretch}.logistics-ui .hub-transfer-hub-filter{flex:auto;min-width:0}.logistics-ui .hub-transfer-date-filter{width:100%;margin-left:0}.logistics-ui .hub-transfer-date-range{gap:8px}}
+
+/* The search wrapper owns the border; keep the input inside it unboxed. */
+.logistics-ui .hub-transfer-toolbar .hub-transfer-search input[type=search],.logistics-ui .hub-transfer-toolbar .hub-transfer-search input[type=search]:focus,.logistics-ui .hub-transfer-toolbar .hub-transfer-search input[type=search]:focus-visible{appearance:none;-webkit-appearance:none;box-sizing:border-box;flex:1;width:100%;min-width:0;height:38px;min-height:0;margin:0;padding:0;border:0;border-radius:0;background:transparent;outline:0;box-shadow:none;color:#593346;font:12px Inter,system-ui,sans-serif}
+
+/* Queue tabs should size to their labels, without a full-width card. */
+.logistics-ui .hub-transfer-toolbar>.tabs{box-sizing:border-box;width:fit-content;max-width:100%;justify-self:start;align-self:center;align-items:center;min-width:0;margin:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;overflow:visible}
+.logistics-ui .hub-transfer-toolbar>.tabs .tab{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:auto;min-width:0;min-height:38px;padding:9px 12px;border:0;border-radius:8px;white-space:nowrap;line-height:1.5}
+
+/* Filters stay directly on the page without an extra white card. */
+.logistics-ui .hub-transfer-page>.hub-transfer-filters{padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
+/* Live monitor uses a compact search toolbar and the shared table format. */
+.logistics-ui .live-monitor-page .monitor-search-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0;scroll-margin-top:90px}
+.logistics-ui .monitor-search-field{box-sizing:border-box;display:flex;align-items:center;gap:10px;flex:1;min-width:180px;height:42px;padding:0 13px;border:1px solid #eadfe6;border-radius:9px;background:#fff;color:#987f8d}
+.logistics-ui .live-monitor-page .monitor-search-field input[type=search]{appearance:none;flex:1;box-sizing:border-box;width:100%;min-width:0;height:40px;min-height:0;margin:0;padding:0;border:0;border-radius:0;outline:0;box-shadow:none;background:transparent;font:12px Inter,system-ui,sans-serif;color:#593346}
+.logistics-ui .monitor-search-field:focus-within{border-color:#bc387f}.monitor-search-field>svg{flex:none}
+.logistics-ui .monitor-search-toolbar>.btn{min-height:42px;border-radius:9px;font-size:11px}.monitor-clear-search{color:#a52d6e;font-size:11px;text-decoration:none}
+.logistics-ui .live-monitor-page .monitor-table-heading{padding:18px 22px}.logistics-ui .live-monitor-page .monitor-table-heading h2{margin:0;font:600 14px Inter,system-ui,sans-serif}
+.logistics-ui .live-monitor-page .monitor-result-count{border:0;padding:0;border-radius:0;background:transparent;color:#987f8d;font-size:11px;font-weight:400}
+.logistics-ui .live-monitor-page .live-monitor-table .table-wrap{margin:0;border:0;border-radius:0}
+.logistics-ui .live-monitor-page .live-monitor-table .dtable th{padding:16px 14px;text-align:center;vertical-align:middle;background:#faf7f9;color:#987f8d;font:600 10px/1.4 Inter,system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase}
+.logistics-ui .live-monitor-page .live-monitor-table .dtable td{padding:18px 14px;text-align:center;vertical-align:middle;color:#775565;font:400 11px/1.6 Inter,system-ui,sans-serif}
+.logistics-ui .live-monitor-table .cell-user{justify-content:center}.logistics-ui .live-monitor-table .cell-user strong{font-size:11px;font-weight:500}
+.logistics-ui .live-monitor-table .dashboard-caption{display:block;margin-top:3px;font-size:10px;color:#987f8d}
+.logistics-ui .live-monitor-table .stamp::before{display:none}.logistics-ui .live-monitor-table .stamp{font-size:10px}
+.logistics-ui .monitor-update-action{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:36px;padding:8px 11px;border:1px solid #efc5da;border-radius:8px;background:#fff;color:#bc387f;font:600 10px Inter,system-ui,sans-serif;white-space:nowrap;cursor:pointer}
+.logistics-ui .monitor-update-action:hover{background:#fcf1f7}.logistics-ui .monitor-status-dialog{width:min(480px,calc(100vw - 32px));max-width:480px}
+.logistics-ui .monitor-status-dialog .monitor-status-form{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;min-width:0}
+.logistics-ui .monitor-status-dialog .monitor-status-form label{display:grid;gap:7px;font-size:11px;color:#775565}
+.logistics-ui .monitor-status-dialog .monitor-status-form :is(input,select){box-sizing:border-box;width:100%;min-width:0;max-width:none;min-height:42px;padding:10px 12px;border:1px solid #eadfe6;border-radius:9px;background:#fff;color:#593346;font:12px Inter,system-ui,sans-serif}
+.logistics-ui .monitor-status-dialog .monitor-status-form>.btn{justify-self:end;min-height:40px;margin-top:4px;font-size:11px}.monitor-current-state{display:flex;justify-content:space-between;gap:12px;margin:0 0 18px;color:#987f8d;font-size:11px}.monitor-current-state strong{color:#775565;font-weight:500}
+@media(max-width:600px){.logistics-ui .live-monitor-page .monitor-table-heading{padding:16px}.logistics-ui .live-monitor-page .monitor-table-heading h2{max-width:none;font-size:13px}}
+
+/* Issues show one selected table, with optional issue entry. */
+.logistics-ui .issue-view-filter{display:flex;align-items:center;gap:12px;margin:0 0 16px}.logistics-ui .issue-view-filter label{font-size:12px;color:#775565}.logistics-ui .issue-view-filter select{width:auto;min-width:210px;max-width:100%;background:#fff}.logistics-ui .issue-record-card>summary{cursor:pointer;color:#775565;font-size:13px;font-weight:600}.logistics-ui .issue-record-card[open]>form{margin-top:18px}
+
+/* Compact personnel overview and focused account dialogs. */
+.logistics-ui .team-staff-tabs{display:flex;gap:4px;padding:4px;margin-bottom:18px;width:fit-content;border:1px solid #eadfe6;border-radius:12px;background:#f3edf1}.team-staff-tabs a{padding:10px 20px;border-radius:8px;color:#775565;font-size:12px;text-decoration:none}.team-staff-tabs a.active{background:#bc387f;color:#fff}
+.logistics-ui .team-back-link{display:inline-block;margin-bottom:16px;color:#bc387f;font-size:12px;text-decoration:none}.logistics-ui .team-member-summary{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:24px;margin-bottom:18px}.team-member-role{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#987f8d}.logistics-ui .team-member-summary h2{margin:6px 0 10px;font-size:20px}.team-member-summary p{margin:5px 0;color:#987f8d;font-size:12px}.team-member-tools{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px}.logistics-ui .team-member-tools :is(a,button){display:inline-flex;align-items:center;gap:20px;padding:14px 18px;border:1px solid #eadfe6;border-radius:10px;background:#fff;color:#775565;text-decoration:none;font:500 12px Inter,system-ui,sans-serif;cursor:pointer}.team-member-tools span{color:#bc387f}
+.logistics-ui .team-detail-modal{width:min(860px,calc(100vw - 32px));max-width:860px;max-height:90vh}.team-detail-modal .modal-body{overflow:auto}.team-detail-modal .acf-section-num{display:none}.team-detail-modal .acf-section-head>div>span{display:none}.team-detail-modal .acf-section-head{margin-bottom:16px}.team-detail-modal .acf-section{padding:20px 0}.team-detail-modal .acf-section-first{padding-top:0}.team-history>p{font-size:12px;line-height:1.7;overflow-wrap:anywhere}.team-history>p:nth-of-type(2n){padding-bottom:16px;border-bottom:1px solid #eee3e9;color:#987f8d}.team-detail-modal .dtable :is(th,td){text-align:center}.team-detail-modal .dtable th{text-transform:uppercase;font-size:10px}
+@media(max-width:600px){.logistics-ui .team-member-summary{align-items:flex-start;flex-direction:column;padding:20px}.team-member-tools{display:grid}.team-member-tools :is(a,button){justify-content:space-between}.team-detail-modal .acf-grid{grid-template-columns:minmax(0,1fr)}}
+
+.logistics-ui .personnel-page>.card .dtable th{text-transform:uppercase;font:600 10px Inter,system-ui,sans-serif;text-align:center;letter-spacing:.04em}.logistics-ui .personnel-page>.card .dtable td{text-align:center;font-size:12px}.logistics-ui .personnel-page .cell-user{justify-content:center}.logistics-ui .personnel-page .logistics-toolbar{display:flex;align-items:center;gap:10px}.logistics-ui .personnel-page .logistics-toolbar>input:not([type=hidden]){flex:1;min-width:0}.logistics-ui .personnel-page .acf-create-summary-inner>span{display:none}
+
+/* Issue entry sits beside the selected investigation table. */
+.logistics-ui .issues-columns{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:22px;align-items:start}.issues-results{min-width:0}.logistics-ui .delivery-issues-page .issue-entry-panel{min-width:0;padding:22px;border:1px solid #eadfe6;border-radius:14px;background:#fff;box-shadow:none}.issue-entry-panel>header{margin-bottom:20px}.logistics-ui .issue-entry-panel h2{margin:0;font:600 14px/1.5 Inter,system-ui,sans-serif;color:#593346}.issue-entry-fields{display:grid;gap:16px}.logistics-ui .issue-entry-fields label{display:grid;gap:7px;font:500 11px/1.5 Inter,system-ui,sans-serif;color:#775565}.logistics-ui .issue-entry-panel .issue-entry-fields :is(input,select,textarea){box-sizing:border-box;width:100%;min-width:0;max-width:100%;min-height:42px;padding:10px 12px;border:1px solid #eadfe6;border-radius:8px;background:#fff;color:#593346;font:12px/1.5 Inter,system-ui,sans-serif;box-shadow:none}.issue-entry-fields textarea{resize:vertical}.issue-entry-fields small{font-size:10px;line-height:1.6;font-weight:400;color:#987f8d}.logistics-ui .issue-entry-panel input[type=file]{padding:10px;font-size:10px;border-style:dashed}.issue-entry-panel input[type=file]::file-selector-button{margin-right:8px;padding:7px 8px;border:0;border-radius:5px;background:#f8edf3;color:#a52d6e;font-size:10px;cursor:pointer}.logistics-ui .issue-entry-panel form>.btn{width:100%;margin-top:20px;min-height:42px;border-radius:8px;font-size:12px}.issue-entry-error{font-size:11px;color:#b42336;line-height:1.6}
+@media(max-width:1100px){.logistics-ui .issues-columns{grid-template-columns:minmax(0,1fr) 290px;gap:16px}.logistics-ui .delivery-issues-page .issue-entry-panel{padding:18px}}
+@media(max-width:850px){.logistics-ui .issues-columns{grid-template-columns:minmax(0,1fr)}.logistics-ui .delivery-issues-page .issue-entry-panel{width:100%;box-sizing:border-box}}

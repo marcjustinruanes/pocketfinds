@@ -22,7 +22,7 @@ class PaymentReporting
         $cents=fn($v)=>app(LogisticsCashDesk::class)->amount((string)$v);
         $m=['item_sales'=>(int)$orders->sum(fn($o)=>$cents($o->subtotal)),'quoted_shipping'=>(int)$orders->sum(fn($o)=>$cents($o->shipping_amount)),
             'discounts'=>(int)$orders->sum(fn($o)=>$cents($o->discount_amount)),'buyer_order_value'=>(int)$orders->sum(fn($o)=>$cents($o->total)),
-            'buyer_gcash_verified'=>0,'cod_collected'=>0,'cod_verified'=>0,'seller_cod_paid'=>0,'shipping_gcash_paid'=>0,'cod_shipping_retained'=>0,
+            'buyer_gcash_verified'=>0,'platform_gcash_verified'=>0,'seller_gcash_verified'=>0,'cod_collected'=>0,'cod_verified'=>0,'seller_cod_paid'=>0,'shipping_gcash_paid'=>0,'cod_shipping_retained'=>0,
             'pending_cod_payouts'=>0,'held_cod_payouts'=>0,'unverified_platform_claims'=>0];
         $tables=['gcash_purchases','logistics_financial_transactions','logistics_cash_allocations','logistics_cash_handovers','logistics_seller_payouts','logistics_shipping_obligations'];
         $available=collect($tables)->every(fn($t)=>Schema::hasTable($t));
@@ -30,6 +30,10 @@ class PaymentReporting
             $orderIds=$scope(DB::table('orders'))->select('id');
             // Verified receipt remains history even if a later cancellation requires manual resolution.
             $m['buyer_gcash_verified']=(int)$dated($scope(DB::table('gcash_purchases'))->whereNotNull('verified_at')->whereNotNull('payment_reference'),'verified_at')->get(['verified_amount'])->sum(fn($p)=>$cents($p->verified_amount));
+            if (Schema::hasColumn('gcash_purchases', 'review_flow')) {
+                $m['platform_gcash_verified']=(int)$dated($scope(DB::table('gcash_purchases'))->where('review_flow','admin')->whereNotNull('verified_at')->whereNotNull('payment_reference'),'verified_at')->get(['verified_amount'])->sum(fn($p)=>$cents($p->verified_amount));
+            }
+            $m['seller_gcash_verified']=$m['buyer_gcash_verified']-$m['platform_gcash_verified'];
             $transactions=$dated(DB::table('logistics_financial_transactions')->whereIn('order_id',$orderIds)->where('status','recorded'),'recorded_at')->get();
             $m['cod_collected']=(int)$transactions->where('kind','cod_collection')->sum('amount_cents');
             $m['shipping_gcash_paid']=(int)$transactions->where('kind','gcash_shipping')->where('verification_state','verified')->sum('amount_cents');

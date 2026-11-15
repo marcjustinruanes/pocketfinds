@@ -1,3 +1,6 @@
+@if((auth()->user()->isLogisticsAdmin() || auth()->user()->isHubStaff()))
+@include('logistics.partials.workspace-sidebar')
+@else
 <nav class="sidebar" id="sidebar">
   <div class="sidebar-brand">
     <div class="mark"><img src="{{ asset('images/logo.png') }}?v={{ filemtime(public_path('images/logo.png')) }}" alt="PocketFinds" class="brand-logo-img"></div>
@@ -11,62 +14,7 @@
 <a @if(request()->routeIs('logistics.dashboard')) aria-current="page" @endif href="{{ route('logistics.dashboard') }}" class="nav-item {{ request()->routeIs('logistics.dashboard') ? 'active' : '' }}">
       <span class="ic"><x-admin-icon name="dashboard" /></span> {{ auth()->user()->isHubStaff() ? 'My Hub' : 'Dashboard' }}
     </a>
-@if(auth()->user()->isLogisticsAdmin())
-<x-navigation-group id="logistics-operations" label="Operations" :active="request()->routeIs('logistics.transfers*', 'logistics.requests', 'logistics.hub-requests', 'logistics.assignments*')">
-<a @if(request()->routeIs('logistics.transfers*')) aria-current="page" @endif href="{{ route('logistics.transfers') }}" class="nav-item {{ request()->routeIs('logistics.transfers*') ? 'active' : '' }}"><span class="ic"><x-admin-icon name="edit" /></span> Hub Transfers @if(($pendingHubTransferRequests ?? 0) > 0)<span class="count">{{ $pendingHubTransferRequests }}</span>@endif</a>
-<a @if(request()->routeIs('logistics.requests')) aria-current="page" @endif href="{{ route('logistics.requests') }}" class="nav-item {{ request()->routeIs('logistics.requests') ? 'active' : '' }}">
-      <span class="ic"><x-admin-icon name="edit" /></span> Pickup Requests
-      @if(($pendingDeliveries ?? 0) > 0)<span class="count">{{ $pendingDeliveries }}</span>@endif
-    </a>
-
-<a @if(request()->routeIs('logistics.assignments*')) aria-current="page" @endif href="{{ route('logistics.assignments') }}" class="nav-item {{ request()->routeIs('logistics.assignments*') ? 'active' : '' }}">
-      <span class="ic"><x-admin-icon name="users" /></span> Delivery Assignments
-      @if(($unassigned ?? 0) > 0)<span class="count">{{ $unassigned }}</span>@endif
-    </a>
-
-</x-navigation-group>
-<x-navigation-group id="logistics-personnel-resources" label="Personnel & Resources" :active="request()->routeIs('logistics.riders', 'logistics.staff', 'logistics.accounts*', 'logistics.hubs*', 'logistics.vehicles*', 'logistics.attendance*')">
-<a href="{{ route('logistics.attendance') }}" class="nav-item {{ request()->routeIs('logistics.attendance*') ? 'active' : '' }}" @if(request()->routeIs('logistics.attendance*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="account" /></span> Hub Staff Attendance</a>
-<a href="{{ route('logistics.riders') }}" class="nav-item {{ request()->routeIs('logistics.riders', 'logistics.staff', 'logistics.accounts*') ? 'active' : '' }}" @if(request()->routeIs('logistics.riders', 'logistics.staff', 'logistics.accounts*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="users" /></span> Personnel @if(($pendingRiders ?? 0) + ($pendingStaff ?? 0) > 0)<span class="count">{{ ($pendingRiders ?? 0) + ($pendingStaff ?? 0) }}</span>@endif</a>
-<a @if(request()->routeIs('logistics.hubs*')) aria-current="page" @endif href="{{ route('logistics.hubs') }}" class="nav-item {{ request()->routeIs('logistics.hubs*') ? 'active' : '' }}">
-      <span class="ic"><x-admin-icon name="pin" /></span> Coverage Hubs
-    </a>
-<a @if(request()->routeIs('logistics.vehicles*')) aria-current="page" @endif href="{{ route('logistics.vehicles') }}" class="nav-item {{ request()->routeIs('logistics.vehicles*') ? 'active' : '' }}">
-      <span class="ic"><x-admin-icon name="shield" /></span> Vehicle Fleet
-      @if(($pendingVehicles ?? 0) > 0)<span class="count">{{ $pendingVehicles }}</span>@endif
-    </a>
-</x-navigation-group>
-<x-navigation-group id="logistics-tracking-reports" label="Tracking & Reports" :active="request()->routeIs('logistics.monitor', 'logistics.issues', 'logistics.history', 'logistics.reports')">
-<a @if(request()->routeIs('logistics.monitor')) aria-current="page" @endif href="{{ route('logistics.monitor') }}" class="nav-item {{ request()->routeIs('logistics.monitor') ? 'active' : '' }}">
-      <span class="ic"><x-admin-icon name="chart" /></span> Live Monitor
-      @if(($activeDeliveries ?? 0) > 0)<span class="count">{{ $activeDeliveries }}</span>@endif
-    </a>
-<a @if(request()->routeIs('logistics.issues')) aria-current="page" @endif href="{{ route('logistics.issues') }}" class="nav-item {{ request()->routeIs('logistics.issues') ? 'active' : '' }}">
-      <span class="ic"><x-admin-icon name="flag" /></span> Issues
-    </a>
-<a @if(request()->routeIs('logistics.history')) aria-current="page" @endif href="{{ route('logistics.history') }}" class="nav-item {{ request()->routeIs('logistics.history') ? 'active' : '' }}">
-      <span class="ic"><x-admin-icon name="shield" /></span> Delivery History
-    </a>
-<a @if(request()->routeIs('logistics.reports')) aria-current="page" @endif href="{{ route('logistics.reports') }}" class="nav-item {{ request()->routeIs('logistics.reports') ? 'active' : '' }}">
-      <span class="ic"><x-admin-icon name="chart" /></span> Reports
-    </a>
-</x-navigation-group>
-<x-navigation-group id="logistics-finance" label="Finance" :active="request()->routeIs('logistics.finance*', 'logistics.cash-desk*', 'commissions.*')">
-@if(app(\App\Services\CommissionLedger::class)->installed())<a href="{{ route('commissions.index') }}" class="nav-item {{ request()->routeIs('commissions.*') ? 'active' : '' }}" @if(request()->routeIs('commissions.*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="peso" /></span> Platform Commissions</a>@endif
-<a href="{{ route('logistics.finance') }}" class="nav-item {{ request()->routeIs('logistics.finance', 'logistics.finance.shipping.*') ? 'active' : '' }}" @if(request()->routeIs('logistics.finance', 'logistics.finance.shipping.*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="chart" /></span> Overview & Settings</a>
-<a href="{{ route('logistics.cash-desk') }}" class="nav-item {{ request()->routeIs('logistics.cash-desk*') ? 'active' : '' }}" @if(request()->routeIs('logistics.cash-desk*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="peso" /></span> Cash Desk</a>
-<a href="{{ route('logistics.finance.payouts') }}" class="nav-item {{ request()->routeIs('logistics.finance.payouts*', 'logistics.finance.treasury.*') ? 'active' : '' }}" @if(request()->routeIs('logistics.finance.payouts*', 'logistics.finance.treasury.*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="peso" /></span> Seller Settlements</a>
-<a href="{{ route('logistics.finance.riders') }}" class="nav-item {{ request()->routeIs('logistics.finance.riders*') ? 'active' : '' }}" @if(request()->routeIs('logistics.finance.riders*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="peso" /></span> Rider Earnings & Payouts</a>
-<a href="{{ route('logistics.finance.staff') }}" class="nav-item {{ request()->routeIs('logistics.finance.staff*') ? 'active' : '' }}" @if(request()->routeIs('logistics.finance.staff*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="peso" /></span> Hub Staff Salaries</a>
-<a href="{{ route('logistics.finance.reconciliation') }}" class="nav-item {{ request()->routeIs('logistics.finance.reconciliation*') ? 'active' : '' }}" @if(request()->routeIs('logistics.finance.reconciliation*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="chart" /></span> Reconciliation & Reports</a>
-</x-navigation-group>
-<x-navigation-group id="logistics-administration" label="Administration" :active="request()->routeIs('logistics.activity', 'logistics.messages*')">
-<a @if(request()->routeIs('logistics.activity')) aria-current="page" @endif href="{{ route('logistics.activity') }}" class="nav-item {{ request()->routeIs('logistics.activity') ? 'active' : '' }}"><span class="ic"><x-admin-icon name="shield" /></span> Activity Logs</a>
-<a @if(request()->routeIs('logistics.messages*')) aria-current="page" @endif href="{{ route('logistics.messages') }}" class="nav-item {{ request()->routeIs('logistics.messages*') ? 'active' : '' }}">
-      <span class="ic"><x-admin-icon name="mail" /></span> Messages
-    </a>
-</x-navigation-group>
-@elseif(auth()->user()->isHubStaff())
+@if(auth()->user()->isHubStaff())
 <x-navigation-group id="hub-staff-operations" label="Operations" :active="request()->routeIs('logistics.transfers*', 'logistics.assignments*', 'logistics.scan', 'logistics.hub.vehicles*')">
 <a @if(request()->routeIs('logistics.transfers*')) aria-current="page" @endif href="{{ route('logistics.transfers') }}" class="nav-item {{ request()->routeIs('logistics.transfers*') ? 'active' : '' }}"><span class="ic"><x-admin-icon name="edit" /></span> Hub Transfers</a>
 <a @if(request()->routeIs('logistics.assignments*')) aria-current="page" @endif href="{{ route('logistics.assignments') }}" class="nav-item {{ request()->routeIs('logistics.assignments*') ? 'active' : '' }}">
@@ -117,3 +65,5 @@
     <button class="logout-btn" data-logout><x-admin-icon name="logout" /> Sign out</button>
   </div>
 </nav>
+
+@endif

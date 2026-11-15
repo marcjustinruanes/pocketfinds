@@ -4,7 +4,6 @@
 @section('page-sub', 'Manage your profile, address, and password')
 
 @push('head')
-<link rel="stylesheet" href="{{ asset('css/logistics-account.css') }}?v={{ filemtime(public_path('css/logistics-account.css')) }}">
 <style>
   .addr-combo{position:relative}
   .addr-combo input{width:100%}
@@ -15,18 +14,14 @@
 </style>
 @endpush
 
+@include('account.partials.role-workspace-assets')
+
 @section('content')
-<div class="logistics-account">
+<x-account-workspace role="logistics" :salary-available="($salaryDestinations ?? null) !== null" :company-available="(bool) ($company ?? null)">
+<div class="role-account-content">
 @include('commerce.messages')
 @php($user = auth()->user())
-<header class="account-settings-intro">
-  <div><p class="account-settings-eyebrow">Your workspace</p><h1>Profile &amp; account</h1><p>Manage your personal information, contact details, and account security.</p></div>
-</header>
-<nav class="account-settings-nav" aria-label="Account settings sections">
-  <a href="#account-profile">Profile</a><a href="#account-address">Address</a><a href="#account-security">Password</a><a href="#change-email">Email</a>
-  @if($salaryDestinations !== null)<a href="#salary-receiving">Salary GCash</a>@endif
-  @if($company ?? null)<a href="#account-terms">Company terms</a>@endif
-</nav>
+
 
 
 @if($salaryDestinations !== null)
@@ -48,66 +43,7 @@
 <div class="account-settings-grid">
   <section class="account-settings-main" aria-label="Personal account settings">
 
-    {{-- Profile --}}
-    <div class="card" id="account-profile" role="region" aria-labelledby="account-profile-title">
-      <div class="card-head"><div><h2 id="account-profile-title">Profile Information</h2><p>Your personal details on file</p></div></div>
-      <div class="card-pad">
-        <div class="account-settings-identity">
-          @if($user->profile_picture)
-          <img src="{{ \Illuminate\Support\Facades\Storage::disk('profile_images')->url($user->profile_picture) }}" alt="Profile picture"
-               style="width:64px;height:64px;border-radius:50%;object-fit:cover;flex:none">
-          @else
-          <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(145deg,var(--pink),#7a2a56);display:grid;place-items:center;color:#fff;font-weight:700;font-size:22px;flex:none">
-            {{ strtoupper(substr($user->given_names, 0, 1)) }}
-          </div>
-          @endif
-          <div>
-            <div style="font-size:16px;font-weight:700">{{ $user->given_names }} {{ $user->last_name }}</div>
-            <div class="account-settings-help">{{ $user->email }}</div>
-            <span class="stamp stamp-approved" style="margin-top:4px">Logistics</span>
-          </div>
-        </div>
-        @if(session('profile_success'))
-        <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:14px;margin-bottom:14px">{{ session('profile_success') }}</div>
-        @endif
-        <form method="POST" action="{{ route('logistics.account.update') }}" enctype="multipart/form-data" {{ $pendingRequest ? 'style=opacity:.5;pointer-events:none' : '' }}>
-          @csrf
-          <div class="form-row">
-            <label for="account-profile-picture">Profile Picture</label>
-            <input type="file" id="account-profile-picture" name="profile_picture" aria-describedby="account-picture-help" accept="image/png,image/jpeg,image/webp" style="padding:6px">
-            <span id="account-picture-help" class="account-settings-help">JPG, PNG, or WEBP. Max 2MB.</span>
-            @error('profile_picture')<div style="color:var(--danger);font-size:14px;margin-top:4px">{{ $message }}</div>@enderror
-          </div>
-          <div class="form-grid-2">
-            <div class="form-row"><label for="account-given-names">Given Names (First Name)</label><input type="text" id="account-given-names" name="given_names" value="{{ old('given_names', $user->given_names) }}" required></div>
-            <div class="form-row"><label for="account-last-name">Last Name</label><input type="text" id="account-last-name" name="last_name" value="{{ old('last_name', $user->last_name) }}" required></div>
-          </div>
-          <div class="form-grid-2">
-            <div class="form-row">
-              <label for="account-middle-name">Middle Name <span style="color:var(--muted);font-weight:400">(optional)</span></label>
-              <input type="text" id="account-middle-name" name="middle_name" value="{{ old('middle_name', $user->middle_name) }}" maxlength="1" pattern="[A-Za-z]" placeholder="e.g. D" style="text-transform:uppercase">
-              @error('middle_name')<div style="color:var(--danger);font-size:14px;margin-top:4px">{{ $message }}</div>@enderror
-            </div>
-            <div class="form-row">
-              <label for="account-contact">Contact No.</label>
-              <input type="tel" id="account-contact" name="contact_no" value="{{ old('contact_no', $user->contact_no) }}" inputmode="numeric" maxlength="11" pattern="09[0-9]{9}" placeholder="09XXXXXXXXX">
-              @error('contact_no')<div style="color:var(--danger);font-size:14px;margin-top:4px">{{ $message }}</div>@enderror
-            </div>
-          </div>
-          <div class="form-row">
-            <label for="account-sex">Sex</label>
-            <select id="account-sex" name="sex">
-              <option value="" {{ blank(old('sex', $user->sex)) ? 'selected' : '' }}>Select sex</option>
-              <option value="male" {{ old('sex', $user->sex) === 'male' ? 'selected' : '' }}>Male</option>
-              <option value="female" {{ old('sex', $user->sex) === 'female' ? 'selected' : '' }}>Female</option>
-              <option value="other" {{ old('sex', $user->sex) === 'other' ? 'selected' : '' }}>Other</option>
-            </select>
-          </div>
-          <div class="form-row"><label for="account-email">Email Address</label><input id="account-email" type="email" value="{{ $user->email }}" disabled style="background:var(--paper);color:var(--muted);cursor:not-allowed"></div>
-          <button class="btn btn-primary" type="submit">Save Changes</button>
-        </form>
-      </div>
-    </div>
+    <x-account-profile-card role="logistics" :action="route('logistics.account.update')" :pending="$pendingRequest !== null" />
 
     {{-- Address --}}
     <div class="card" id="account-address" role="region" aria-labelledby="account-address-title">
@@ -178,24 +114,7 @@
   </section>
 
   <aside class="account-settings-sidebar" aria-label="Account overview and company terms">
-    <div class="card">
-      <div class="card-head"><h2>Account Overview</h2></div>
-      <div class="card-pad account-settings-overview">
-        @foreach([
-          ['Account Type', 'Logistics'],
-          ['Status',       filled($user->status) ? ucfirst($user->status) : 'Not provided'],
-          ['Member Since', $user->created_at?->format('M d, Y') ?? 'Not provided'],
-          ['Email',        $user->email ?: 'Not provided'],
-          ['Contact No.',  $user->contact_no ?: 'Not provided'],
-          ['Full Address', collect([$user->house_no, $user->street, $user->barangay, $user->municipality, $user->province])->filter()->implode(', ') ?: 'Not provided'],
-        ] as [$label, $val])
-        <div class="account-settings-overview-row">
-          <span style="color:var(--muted);flex:none">{{ $label }}</span>
-          <span class="account-settings-overview-value">{{ $val }}</span>
-        </div>
-        @endforeach
-      </div>
-    </div>
+    
 
     {{-- Company Terms & Conditions — separate from PocketFinds' own platform-wide
          T&C: this is what shows to new registrants choosing {{ $company ?? 'this company' }}
@@ -240,6 +159,8 @@
 </div>
 @include('account.partials.email-change')
 </div>
+</x-account-workspace>
+@include('account.partials.profile-photo-manager')
 @endsection
 
 @push('scripts')

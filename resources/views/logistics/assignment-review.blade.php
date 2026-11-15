@@ -1,45 +1,55 @@
 @extends($seller ? 'seller.layout' : 'logistics.layout')
-@section('title', 'Assignment Review')
-@section('page-title', 'Assignment Review')
-@section('page-sub', 'Completion evidence and safe pre-collection reassignment')
-@push('head')<link rel="stylesheet" href="{{ asset('css/logistics-cash-desk.css') }}">@endpush
+@section('title','Assignment Review')
+@section('page-title','Assignment Review')
+@push('head')<link rel="stylesheet" href="{{ asset('css/assignment-review.css') }}?v={{ filemtime(public_path('css/assignment-review.css')) }}">@endpush
+@push('scripts')<script src="{{ asset('js/assignment-review.js') }}?v={{ filemtime(public_path('js/assignment-review.js')) }}" defer></script>@endpush
 @section('content')
-<div class="cash-desk">
-<section class="cash-card"><h2>Assignment review</h2><p>Reassignment requires a fresh possession confirmation. Completed work, prior physical handovers and dispatched transfers cannot be reassigned here. Historical classifications do not change financial records.</p></section>
-@if($errors->any())<div class="cash-alert" role="alert">{{ $errors->first() }}</div>@endif
-@foreach($assignments as $a)
-<section class="cash-card"><div class="cash-header"><div><h2>{{ $a->shipment?->tracking_number ?? $a->shipment_id }}</h2><p>{{ ucfirst($a->leg) }} · {{ $a->status }} · {{ $a->work_class }} · revision {{ $a->revision }}</p></div></div>
-@if($a->work_class==='ambiguous')<p>Evidence is incomplete or inconsistent. Manual review is required; no work or earnings were invented.</p>@endif
-@if($a->work_class==='completed' && $a->status==='accepted')<p>Completion evidence is present. This historical assignment has not been rewritten.</p>@endif
-@if($p=$a->reassignment)
-<p>Requested change: rider #{{ $p['old_rider_id'] }} → rider #{{ $p['replacement_rider_id'] }}. {{ $p['reason'] }}</p>
-@if(($seller && $a->leg==='pickup') || (!$seller && $actor->isHubStaff() && $a->leg==='delivery'))
-<form method="POST" action="{{ route($seller?'seller.assignments.decide':'logistics.assignments.decide',$a->id) }}">@csrf
-<input type="hidden" name="key" value="{{ $p['key'] }}"><input type="hidden" name="revision" value="{{ $a->revision }}"><input type="hidden" name="action" value="confirm">
-<label class="cash-check" for="possession-{{ $a->id }}"><input id="possession-{{ $a->id }}" type="checkbox" name="confirmed" value="1" required><span>{{ $seller?'I still physically hold this parcel and have not handed it to the rider.':'I physically checked that this parcel remains at this destination hub and has not been released to the rider.' }}</span></label>
-<button class="btn btn-primary">Confirm possession and reassign</button></form>
-@else<p>{{ $a->leg==='pickup'?'Awaiting the seller’s possession confirmation.':'Awaiting destination Hub Staff’s physical no-release confirmation.' }}</p>@endif
-<details><summary>Cancel this request</summary><form method="POST" action="{{ route($seller?'seller.assignments.decide':'logistics.assignments.decide',$a->id) }}">@csrf
-<input type="hidden" name="key" value="{{ $p['key'] }}"><input type="hidden" name="revision" value="{{ $a->revision }}"><input type="hidden" name="action" value="cancel">
-<label for="cancel-{{ $a->id }}">Cancellation reason</label><textarea id="cancel-{{ $a->id }}" name="reason" minlength="3" maxlength="1000" required></textarea><button class="btn">Cancel request</button></form></details>
-@elseif(!$seller && in_array($a->leg,['pickup','delivery']) && in_array($a->status,['accepted','assigned_to_rider']) && $a->work_class==='active')
-<details><summary>Request pre-collection reassignment</summary><form method="POST" action="{{ route('logistics.assignments.reassign',$a->id) }}">@csrf
-<input type="hidden" name="key" value="{{ (string)\Illuminate\Support\Str::uuid() }}"><input type="hidden" name="revision" value="{{ $a->revision }}"><input type="hidden" name="old_rider_id" value="{{ $a->courier_id }}">
-<label for="replacement-{{ $a->id }}">Replacement rider</label><select id="replacement-{{ $a->id }}" name="replacement_rider_id" required><option value="">Select an eligible rider</option>@foreach($riders[$a->id] ?? [] as $r)<option value="{{ $r->id }}">{{ $r->username }}</option>@endforeach</select>
-@if(empty($riders[$a->id]) || $riders[$a->id]->isEmpty())<p>No eligible online rider covering this parcel's barangay is available at its hub with capacity for another pickup/delivery job.</p>@endif
-<label for="reason-{{ $a->id }}">Reason</label><textarea id="reason-{{ $a->id }}" name="reason" minlength="3" maxlength="1000" required></textarea><button class="btn btn-primary">Request possession review</button></form></details>
-@endif
-<details><summary>Recorded assignment decisions</summary>
-@forelse($events[$a->id] ?? [] as $e)
-@php($decision=json_decode($e->details,true) ?? [])
-<p>{{ $e->created_at ? \Illuminate\Support\Carbon::parse($e->created_at)->format('M j, Y g:i A') : '—' }} &middot; {{ ucfirst(str_replace('_',' ',$e->event)) }} &middot; actor #{{ $e->actor_id }}<br>{{ $decision['reason'] ?? '' }}
-@if(isset($decision['old_rider_id'],$decision['replacement_rider_id']))<br>Rider #{{ $decision['old_rider_id'] }} &rarr; rider #{{ $decision['replacement_rider_id'] }}@endif
-@if(isset($decision['attested_by']))<br>Possession confirmed by #{{ $decision['attested_by'] }} at {{ $decision['attested_at'] }}@endif
-@if(isset($decision['cancel_reason']))<br>{{ $decision['cancel_reason'] }}@endif</p>
-@empty<p>No recorded decisions.</p>@endforelse</details>
-</section>
-@endforeach
-@if($assignments->isEmpty())<section class="cash-card"><p>No assignments awaiting review.</p></section>@endif
-{{ $assignments->links() }}
+@php
+ $parcelGroups=$assignments->groupBy('shipment_id');
+ $reopenParcel=$assignments->firstWhere('id',old('_assignment_review'))?->shipment_id;
+@endphp
+<div class="assignment-review-page" @if($errors->any() && $reopenParcel) data-review-reopen="parcel-review-{{ $reopenParcel }}" data-review-assignment="{{ old('_assignment_review') }}" @endif>
+  <p class="assignment-review-intro">Open a parcel to review its pickup, hub transfer, and delivery steps.</p>
+  @if($seller && session('success'))<p class="assignment-review-notice" role="status">{{ session('success') }}</p>@endif
+  @foreach($parcelGroups as $shipmentId=>$parcelAssignments)
+  @php $parcel=$parcelAssignments->first()->shipment; @endphp
+  <section class="assignment-review-card assignment-parcel-card">
+    <div class="assignment-parcel-reference"><span class="assignment-review-label">{{ $parcel?->order?->order_number ?? 'Parcel' }}</span><h2>{{ $parcel?->tracking_number ?? $shipmentId }}</h2></div>
+    <span class="assignment-parcel-status">{{ ucwords(str_replace('_',' ',$parcel?->shipping_status ?? 'Not recorded')) }}</span>
+    <button type="button" class="assignment-review-open" data-assignment-review="parcel-review-{{ $shipmentId }}" aria-haspopup="dialog" aria-controls="parcel-review-{{ $shipmentId }}" aria-label="Order details for {{ $parcel?->tracking_number ?? $shipmentId }}">Order details <span aria-hidden="true">&nearr;</span></button>
+  </section>
+  @endforeach
+  @if($assignments->isEmpty())<section class="assignment-review-empty"><h2>No assignments awaiting review</h2><p>Parcels requiring review will appear here.</p></section>@endif
+  {{ $parcelPages->links() }}
 </div>
+@foreach($parcelGroups as $shipmentId=>$parcelAssignments)
+@php
+ $parcel=$parcelAssignments->first()->shipment;
+ $steps=$parcelAssignments->sortBy(fn($assignment)=>match($assignment->leg){'pickup'=>0,'hub_transfer'=>1,'delivery'=>2,default=>3});
+@endphp
+<dialog id="parcel-review-{{ $shipmentId }}" class="assignment-review-dialog assignment-parcel-dialog" aria-labelledby="parcel-review-title-{{ $shipmentId }}">
+  <header class="assignment-review-dialog-head"><div><span>Order details</span><h2 id="parcel-review-title-{{ $shipmentId }}">{{ $parcel?->tracking_number ?? $shipmentId }}</h2><p>{{ $parcel?->order?->order_number }} &middot; {{ ucwords(str_replace('_',' ',$parcel?->shipping_status ?? 'Not recorded')) }}</p></div><button type="button" data-assignment-close aria-label="Close order details">&times;</button></header>
+  <div class="assignment-review-dialog-body">
+    <ol class="assignment-steps" aria-label="Parcel assignment steps">
+    @foreach($steps as $a)
+      <li class="assignment-step is-{{ $a->work_class }}" data-assignment-id="{{ $a->id }}">
+        <span class="assignment-step-number" aria-hidden="true">{{ $loop->iteration }}</span>
+        <div class="assignment-step-content">
+          <div class="assignment-step-heading"><h3>{{ ucwords(str_replace('_',' ',$a->leg)) }}</h3><span class="assignment-review-state {{ $a->reassignment ? 'is-pending' : 'is-'.$a->work_class }}">{{ $a->reassignment ? 'Awaiting confirmation' : ($a->work_class==='ambiguous' ? 'Needs review' : ucfirst($a->work_class)) }}</span></div>
+          <p class="assignment-step-description">{{ match($a->leg){'pickup'=>'Seller to origin hub','hub_transfer'=>'Between company hubs','delivery'=>'Destination hub to buyer',default=>'Recorded transport assignment'} }}</p>
+          <p class="assignment-step-meta">Rider #{{ $a->courier_id }} <span aria-hidden="true">&middot;</span> {{ ucwords(str_replace('_',' ',$a->status)) }}</p>
+          <details class="assignment-step-review">
+            <summary>Review this step</summary>
+            @if($errors->any() && old('_assignment_review')===$a->id)<p class="assignment-review-error" role="alert">{{ $errors->first() }}</p>@endif
+            <p class="assignment-review-guidance">Reassignment requires fresh possession confirmation before collection. Completed work and recorded physical handovers cannot be reassigned here.</p>
+            @include('logistics.partials.assignment-review-details')
+          </details>
+        </div>
+      </li>
+    @endforeach
+    </ol>
+  </div>
+  <footer class="assignment-review-dialog-foot"><button type="button" data-assignment-close>Close</button></footer>
+</dialog>
+@endforeach
 @endsection

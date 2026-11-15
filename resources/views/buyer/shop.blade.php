@@ -16,6 +16,7 @@
 @endphp
 
 {{-- Shop hero --}}
+@if($shop['banner'] ?? null)<div class="sp-shop-banner"><img src="{{ $shop['banner'] }}" alt="{{ $shop['name'] }} banner"></div>@endif
 <div class="sp-hero">
   <div class="sp-avatar">@if($shop['photo'] ?? null)<img src="{{ $shop['photo'] }}" alt="{{ $shop['name'] }}">@else{{ $shop['initial'] }}@endif</div>
   <div class="sp-info">

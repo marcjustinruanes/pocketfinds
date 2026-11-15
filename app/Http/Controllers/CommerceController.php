@@ -210,9 +210,9 @@ class CommerceController extends Controller
         $u = $this->emailAccount($r);
         $r->merge(['email' => strtolower(trim((string) $r->input('email')))]);
         $rules = ['email' => ['required', 'email', 'regex:/@gmail\.com$/i', 'unique:users,email']];
-        if ($u->account_type !== 'buyer') $rules['current_password'] = 'required|string';
+        if (!in_array($u->account_type, ['buyer','seller'], true)) $rules['current_password'] = 'required|string';
         $d = $r->validate($rules);
-        if ($u->account_type !== 'buyer' && ! Hash::check($d['current_password'], $u->password)) {
+        if (!in_array($u->account_type, ['buyer','seller'], true) && ! Hash::check($d['current_password'], $u->password)) {
             $this->flow()->fail('Current password is incorrect.', 'current_password');
         }
         $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
@@ -374,6 +374,12 @@ class CommerceController extends Controller
     {
         $u = $this->manager($r);
         $r->merge(['code' => strtoupper(trim((string) $r->input('code')))]);
+        $r->validate(['start_mode'=>'nullable|in:now,scheduled']);
+        if ($r->input('start_mode') === 'now') {
+            $r->merge(['starts_at'=>now()->toDateTimeString()]);
+        } elseif ($r->input('start_mode') === 'scheduled') {
+            $r->validate(['starts_at'=>'required|date|after_or_equal:now']);
+        }
         $d = $r->validate(['code' => ['required', 'regex:/^[A-Za-z0-9]{4,12}$/D', 'unique:commerce_vouchers,code'], 'kind' => 'required|in:store,platform,shipping', 'discount_type' => 'required|in:fixed,percent', 'amount' => 'required|numeric|min:0.01|max:1000000', 'cap' => 'nullable|numeric|min:0.01', 'minimum_spend' => 'required|numeric|min:0', 'starts_at' => 'required|date', 'ends_at' => 'required|date|after:starts_at', 'usage_limit' => 'required|integer|min:1', 'per_buyer_limit' => 'required|integer|min:1', 'display_mode' => 'nullable|in:claimable,code_only', 'product_ids' => 'nullable|array|max:9', 'product_ids.*' => 'string']);
         abort_unless($u->is_admin || $d['kind'] === 'store', 403);
         if ($d['discount_type'] === 'percent' && $d['amount'] >= 100) {

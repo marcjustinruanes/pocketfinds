@@ -67,7 +67,6 @@
     <div class="pd-info-card">
       <div class="pd-crumb-row">
         <span class="pd-crumb">{{ $product['cat'] }}</span>
-        @include('partials.product-promotions')
         @if($product['badge'])<span class="pd-pill">{{ $product['badge'] }}</span>@endif
 
       </div>
@@ -222,7 +221,9 @@
       @include('partials.claimable-vouchers',['claimableVouchers'=>app(\App\Services\ShopCatalog::class)->vouchers((int)$product['seller_id'])])
     @endif
     <div class="pd-purchase">
-
+    @if(!empty($product['flash_sale']))
+      <div class="pd-purchase-flash">@include('partials.product-promotions')</div>
+    @endif
     <div class="pd-actions">
       <button class="pd-btn-cart" id="pdAddCartBtn" type="button" @if($buyerMode) onclick="directAddToCart(this)" data-product-id="{{ $product['id'] }}" data-product-name="{{ $product['name'] }}" data-product-img="{{ $product['img'] }}" @else data-protected @endif aria-label="{{ $product['stock'] <= 0 ? 'Out of Stock' : 'Add to Cart' }}" title="{{ $product['stock'] <= 0 ? 'Out of Stock' : 'Add to Cart' }}" {{ ($product['stock'] <= 0 || ($buyerMode && ($product['on_vacation'] ?? false))) ? 'disabled' : '' }}>
         {{ $product['stock'] <= 0 ? 'Out of Stock' : 'Add to Cart' }}

@@ -143,7 +143,8 @@ class BuyerController extends Controller
             'products' => count($items),
             'sales' => '0',
             'joined' => $seller->created_at->format('M Y'),
-            'desc' => '',
+            'desc' => $seller->store_description ?? '',
+            'banner' => $seller->store_banner ? \Illuminate\Support\Facades\Storage::disk('profile_images')->url($seller->store_banner) : null,
             'followers' => $seller->followers()->count(),
             'is_following' => ShopFollow::where('buyer_id', auth()->id())->where('seller_id', $seller->id)->exists(),
         ];

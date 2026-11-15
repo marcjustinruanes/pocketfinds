@@ -17,14 +17,16 @@
         // Keep resolved URLs as-is; relative upload paths use the profile disk.
         $picUrl = str_starts_with($user->profile_picture, 'http') || str_starts_with($user->profile_picture, '/storage/')
             ? $user->profile_picture
-            : \Illuminate\Support\Facades\Storage::disk('profile_images')->url($user->profile_picture);
+            : $user->shopPhotoUrl();
     @endphp
     <img
         {{ $attributes->except('style')->merge(['class' => 'user-avatar']) }}
         src="{{ $picUrl }}"
+        onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"
         alt="{{ $name ?: 'User profile picture' }}"
         style="{{ $baseStyle }};object-fit:cover;display:block;{{ $customStyle }}"
     >
+    <span aria-hidden="true" style="{{ $baseStyle }};display:none;place-items:center;background:#f5edf2;color:#a52d6e;font-weight:700;font-size:{{ round($size * 0.38) }}px">{{ $initials }}</span>
 @else
     <span
         {{ $attributes->except('style')->merge(['class' => 'user-avatar']) }}

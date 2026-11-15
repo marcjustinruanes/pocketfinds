@@ -40,6 +40,59 @@ class BuyerModulesTest extends TestCase
     {
         return BuyerAddress::create(['buyer_id'=>$owner->id,'recipient_name'=>'Ana Reyes','contact_no'=>'09171234567','region'=>'Region IV-A','province'=>'Laguna','municipality'=>'Pila','barangay'=>'A','postal_code'=>'4010','is_default'=>$default]);
     }
+    public function test_dashboard_shows_only_available_seller_promotions(): void
+    {
+        $product = Product::create(['seller_id'=>$this->seller->id,'name'=>'Dashboard sale product','price'=>100,'stock'=>10,'status'=>'active','image'=>'product_images/dashboard-sale.jpg']);
+        $voucher = ['code'=>'DASHLIVE','seller_id'=>$this->seller->id,'kind'=>'store','discount_type'=>'fixed','amount'=>20,'minimum_spend'=>50,'starts_at'=>now()->subDay(),'ends_at'=>now()->addDay(),'usage_limit'=>2,'per_buyer_limit'=>1,'is_active'=>true];
+        $id = DB::table('commerce_vouchers')->insertGetId($voucher);
+        DB::table('commerce_vouchers')->insert(array_replace($voucher,['code'=>'DASHFOREIGN','seller_id'=>$this->person('seller')->id]));
+        DB::table('commerce_vouchers')->insert(array_replace($voucher,['code'=>'DASHEXPIRED','ends_at'=>now()->subHour()]));
+        $saleId = DB::table('commerce_flash_sales')->insertGetId(['seller_id'=>$this->seller->id,'product_id'=>$product->id,'price'=>70,'quantity'=>3,'starts_at'=>now()->subDay(),'ends_at'=>now()->addDay(),'is_active'=>true]);
+        $otherSeller=$this->person('seller');
+        $foreignProduct=Product::create(['seller_id'=>$otherSeller->id,'name'=>'Foreign flash product','price'=>100,'stock'=>10,'status'=>'active']);
+        DB::table('commerce_flash_sales')->insert(['seller_id'=>$otherSeller->id,'product_id'=>$foreignProduct->id,'price'=>60,'quantity'=>3,'starts_at'=>now()->subDay(),'ends_at'=>now()->addDay(),'is_active'=>true]);
+        DB::table('commerce_flash_sales')->insert(['seller_id'=>$this->seller->id,'product_id'=>$foreignProduct->id,'price'=>60,'quantity'=>3,'starts_at'=>now()->subDay(),'ends_at'=>now()->addDay(),'is_active'=>true]);
+        DB::table('commerce_allocations')->insert(['subject_id'=>(string)Str::uuid(),'usage_key'=>(string)Str::uuid(),'buyer_id'=>$this->buyer->id,'flash_sale_id'=>$saleId,'quantity'=>2,'state'=>'held']);
+        $response = $this->actingAs($this->seller)->get(route('seller.dashboard'))->assertOk()
+            ->assertSee('DASHLIVE')->assertDontSee('DASHFOREIGN')->assertDontSee('DASHEXPIRED')->assertSee('Dashboard sale product')->assertSee('1 promo units left')
+            ->assertSee(route('seller.orders',['status'=>'refunds','refund_state'=>'open']))->assertSee(route('seller.orders',['status'=>'delivery_failed']),false);
+        $response->assertDontSee('Foreign flash product')->assertSee('product_images/dashboard-sale.jpg')->assertSee('data-dashboard-deal',false);
+        $this->assertSame(1,$response->viewData('dashboardFlashSales')->count());
+        if(getenv('SELLER_DASHBOARD_DEALS_PREVIEW')==='1')file_put_contents(storage_path('framework/testing/seller-dashboard-deals.html'),$response->getContent());
+        $this->assertSame(1, $response->viewData('dashboardVouchers')->count());
+        DB::table('commerce_allocations')->insert(['subject_id'=>(string)Str::uuid(),'usage_key'=>(string)Str::uuid(),'buyer_id'=>$this->buyer->id,'voucher_id'=>$id,'quantity'=>0,'state'=>'released']);
+        $this->get(route('seller.dashboard'))->assertSee('DASHLIVE');
+        DB::table('commerce_allocations')->where('voucher_id',$id)->update(['state'=>'used']);
+        DB::table('commerce_vouchers')->where('id',$id)->update(['usage_limit'=>1]);
+        DB::table('commerce_flash_sales')->where('id',$saleId)->update(['quantity'=>2]);
+        $this->get(route('seller.dashboard'))->assertOk()->assertDontSee('DASHLIVE')->assertDontSee('Dashboard sale product');
+    }
+
+    public function test_dashboard_refund_activity_counts_only_unresolved_cases(): void
+    {
+        $openIds=[];
+        foreach (['pending','approved','escalated','received','rejected','refunded'] as $status) {
+            $id='return-'.$status;
+            DB::table('orders')->insert(['id'=>$id,'order_number'=>$id,'seller_id'=>$this->seller->id,'buyer_id'=>$this->buyer->id,'status'=>'returned','items'=>'[]','total'=>100,'subtotal'=>100,'shipping_amount'=>0,'discount_amount'=>0,'created_at'=>now(),'updated_at'=>now()]);
+            DB::table('commerce_returns')->insert(['id'=>(string)Str::uuid(),'order_id'=>$id,'seller_id'=>$this->seller->id,'buyer_id'=>$this->buyer->id,'item_keys'=>'[]','reason'=>'Damaged','description'=>'Damaged product','photos'=>'[]','status'=>$status,'amount'=>100,'refund_destination'=>'GCash','created_at'=>now(),'updated_at'=>now()]);
+            if (!in_array($status,['rejected','refunded'])) $openIds[]=$id;
+        }
+        foreach (['pending','completed'] as $status) {
+            $id='cancel-'.$status;
+            DB::table('orders')->insert(['id'=>$id,'order_number'=>$id,'seller_id'=>$this->seller->id,'buyer_id'=>$this->buyer->id,'status'=>'cancelled','items'=>'[]','total'=>100,'subtotal'=>100,'shipping_amount'=>0,'discount_amount'=>0,'created_at'=>now(),'updated_at'=>now()]);
+            DB::table('cancellation_refunds')->insert(['order_id'=>$id,'seller_id'=>$this->seller->id,'buyer_id'=>$this->buyer->id,'amount'=>100,'status'=>$status]);
+            if ($status==='pending') $openIds[]=$id;
+        }
+        $dashboard=$this->actingAs($this->seller)->get(route('seller.dashboard'))->assertOk()->assertViewHas('refundOrderCount',5);
+        if(getenv('SELLER_DASHBOARD_ORDERS_PREVIEW')==='1')file_put_contents(storage_path('framework/testing/seller-dashboard-orders.html'),$dashboard->getContent());
+        $this->get(route('seller.orders',['status'=>'refunds','refund_state'=>'open']))->assertOk()
+            ->assertViewHas('orders',fn($orders)=>$orders->pluck('id')->sort()->values()->all()===collect($openIds)->sort()->values()->all())
+            ->assertSee('Showing unresolved return/refund cases.');
+        $this->get(route('seller.orders',['status'=>'refunds']))->assertOk()->assertViewHas('orders',fn($orders)=>$orders->count()===8);
+        DB::table('commerce_returns')->where('status','pending')->update(['status'=>'refunded']);
+        $this->get(route('seller.dashboard'))->assertOk()->assertViewHas('refundOrderCount',4);
+    }
+
     public function test_login_details_require_current_password_and_a_unique_username(): void
     {
         $payload=['username'=>'new.buyer','current_password'=>'Wrong@2026','password'=>'Updated@2026','password_confirmation'=>'Updated@2026'];
@@ -52,6 +105,44 @@ class BuyerModulesTest extends TestCase
         $this->post(route('buyer.account.password'),$payload)->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame('new.buyer',$this->buyer->fresh()->username);
         $this->assertTrue(\Illuminate\Support\Facades\Hash::check('Updated@2026',$this->buyer->fresh()->password));
+    }
+
+    public function test_category_creation_assigns_selected_products_and_edit_preserves_other_categories(): void
+    {
+        $first=Product::create(['seller_id'=>$this->seller->id,'name'=>'Selected basket','price'=>100,'stock'=>10,'status'=>'active']);
+        $second=Product::create(['seller_id'=>$this->seller->id,'name'=>'Other basket','price'=>200,'stock'=>10,'status'=>'active']);
+        $this->actingAs($this->seller)->post(route('seller.shop-categories.save'),['name'=>'Home','sync_products'=>1,'product_ids'=>[$first->id]])->assertRedirect()->assertSessionHasNoErrors();
+        $category=DB::table('shop_categories')->where('name','Home')->value('id');
+        $this->assertDatabaseHas('shop_category_products',['shop_category_id'=>$category,'product_id'=>$first->id]);
+        $other=DB::table('shop_categories')->insertGetId(['seller_id'=>$this->seller->id,'name'=>'Favorites']);
+        DB::table('shop_category_products')->insert(['shop_category_id'=>$other,'product_id'=>$first->id]);
+        $this->post(route('seller.shop-categories.save'),['id'=>$category,'name'=>'Home','sync_products'=>1,'product_ids'=>[$second->id]])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseMissing('shop_category_products',['shop_category_id'=>$category,'product_id'=>$first->id]);
+        $this->assertDatabaseHas('shop_category_products',['shop_category_id'=>$category,'product_id'=>$second->id]);
+        $this->assertDatabaseHas('shop_category_products',['shop_category_id'=>$other,'product_id'=>$first->id]);
+        $response=$this->get(route('seller.inventory'))->assertOk()->assertSee('Assign products')->assertSee('Other basket');
+        if(getenv('PRODUCT_MODAL_PREVIEW')==='1')file_put_contents(storage_path('framework/testing/product-modals.html'),$response->getContent());
+    }
+
+    public function test_category_selection_rejects_foreign_products_without_creating_category(): void
+    {
+        $product=Product::create(['seller_id'=>$this->person('seller')->id,'name'=>'Private product','price'=>100,'stock'=>1,'status'=>'active']);
+        $this->actingAs($this->seller)->postJson(route('seller.shop-categories.save'),['name'=>'Invalid category','sync_products'=>1,'product_ids'=>[$product->id]])->assertForbidden();
+        $this->assertDatabaseMissing('shop_categories',['seller_id'=>$this->seller->id,'name'=>'Invalid category']);
+    }
+
+    public function test_category_selection_keeps_three_category_limit_and_allows_clearing_membership(): void
+    {
+        $product=Product::create(['seller_id'=>$this->seller->id,'name'=>'Basket','price'=>100,'stock'=>1,'status'=>'active']);
+        foreach(['One','Two','Three'] as $name){
+            $id=DB::table('shop_categories')->insertGetId(['seller_id'=>$this->seller->id,'name'=>$name]);
+            DB::table('shop_category_products')->insert(['shop_category_id'=>$id,'product_id'=>$product->id]);
+        }
+        $this->actingAs($this->seller)->postJson(route('seller.shop-categories.save'),['name'=>'Four','sync_products'=>1,'product_ids'=>[$product->id]])->assertUnprocessable()->assertJsonValidationErrors('product_ids');
+        $this->assertDatabaseMissing('shop_categories',['name'=>'Four']);
+        $this->post(route('seller.shop-categories.save'),['id'=>$id,'name'=>'Three','sync_products'=>1])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseMissing('shop_category_products',['shop_category_id'=>$id,'product_id'=>$product->id]);
+        $this->assertDatabaseCount('products',1);
     }
     public function test_email_verification_in_place_is_bound_to_the_requested_email(): void
     {
@@ -84,6 +175,17 @@ class BuyerModulesTest extends TestCase
         $this->assertSame('new-google-buyer@gmail.com',$this->buyer->fresh()->email);
         $this->assertSame($username,$this->buyer->fresh()->username);
     }
+    public function test_seller_google_email_verification_returns_to_seller_account(): void
+    {
+        $username=$this->seller->username;
+        $this->mockAccountGoogleEmail('new-google-seller@gmail.com');
+        $this->actingAs($this->seller)->withSession(['oauth_intent'=>'account-email','oauth_account_email_owner'=>$this->seller->id,'oauth_account_email_expires'=>now()->addMinutes(10)->timestamp])
+            ->get(route('google.callback',['code'=>'test']))->assertRedirect(route('seller.account').'#account-security')->assertSessionHas('account_google_email','new-google-seller@gmail.com');
+        $this->assertAuthenticatedAs($this->seller);
+        $this->assertSame('new-google-seller@gmail.com',$this->seller->fresh()->email);
+        $this->assertSame($username,$this->seller->fresh()->username);
+    }
+
     public function test_google_account_email_cannot_take_an_email_registered_to_another_account(): void
     {
         $email=$this->buyer->email;$this->mockAccountGoogleEmail($this->seller->email);

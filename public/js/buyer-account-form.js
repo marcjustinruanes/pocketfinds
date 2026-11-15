@@ -16,7 +16,8 @@
       if(!label||!field)return;
       const text=(label.childNodes[0]?.textContent||label.textContent).trim().replace(/\s*\*$/,'');
       const wrapper=document.createElement('div');wrapper.className='account-floating-field';
-      field.before(wrapper);wrapper.append(field);
+      if(label!==row&&label.contains(field))label.before(wrapper);else field.before(wrapper);
+      wrapper.append(field);
       if(label===row){row.childNodes.forEach(node=>{if(node.nodeType===3)node.textContent='';});}
       else label.remove();
       field.placeholder=' ';field.id ||= `accountField${Math.random().toString(36).slice(2)}`;
@@ -24,7 +25,7 @@
       const outline=document.createElement('fieldset');outline.setAttribute('aria-hidden','true');
       const legend=document.createElement('legend'),span=document.createElement('span');span.textContent=text;legend.append(span);outline.append(legend);wrapper.append(caption,outline);
       if(field.tagName==='SELECT'||field.type==='date'||field.disabled||field.hasAttribute('data-national-mobile')||field.name==='postal_code')wrapper.classList.add('always-floating');
-      if(row.classList.contains('address-field-contact_no')&&field.name==='contact_no'){wrapper.classList.add('account-mobile-field');const prefix=document.createElement('span');prefix.className='account-mobile-prefix';prefix.textContent='+63';wrapper.append(prefix);}
+      if((row.classList.contains('address-field-contact_no')||document.body.classList.contains('role-account-page'))&&field.name==='contact_no'){wrapper.classList.add('account-mobile-field');const prefix=document.createElement('span');prefix.className='account-mobile-prefix';prefix.textContent='+63';wrapper.append(prefix);}
     });
     root.querySelectorAll('input[type=password]').forEach(field=>{
       const wrapper=field.closest('.account-floating-field');if(!wrapper||wrapper.querySelector('.account-password-toggle'))return;

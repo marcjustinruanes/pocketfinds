@@ -9,6 +9,6 @@
 @endphp
 @foreach($sellerWorkspaces as [$label, $icon, $route, $active])
 <a href="{{ route($route) }}" class="nav-item {{ $active ? 'active' : '' }}" aria-label="{{ $label }}" title="{{ $label }}" @if($active) aria-current="page" @endif>
-  <span class="ic">@include('seller.partials.icon', ['name' => $icon, 'size' => 18])</span>{{ $label }}
+  <span class="ic">@include('seller.partials.icon', ['name' => 'nav-'.$icon, 'size' => 22])</span>{{ $label }}
 </a>
 @endforeach

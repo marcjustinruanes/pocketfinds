@@ -40,10 +40,9 @@
      $used=$isVoucher?$offer->used_count:$offer->sold_count;
      $limit=$isVoucher?$offer->usage_limit:$offer->quantity;
     @endphp
-    <article class="promo-offer {{ $isVoucher ? 'is-voucher' : '' }}" data-promo-card data-status="{{ $status }}" data-timing="{{ $promotionTiming($offer) }}">
-     <div class="promo-offer-top">@if($isVoucher)<h3 class="promo-voucher-code">{{ $offer->code }}</h3>@else<span class="promo-kind">@include('seller.partials.icon',['name'=>'clock','size'=>14])Flash sale</span>@endif<span class="promo-status is-{{ $status }}">{{ ['active'=>'Live','scheduled'=>'Scheduled','ended'=>'Ended','expired'=>'Expired','exhausted'=>'Used up'][$status] }}</span></div>
+    <article class="promo-offer {{ $isVoucher ? 'is-voucher' : 'is-flash' }}" data-promo-card data-status="{{ $status }}" data-timing="{{ $promotionTiming($offer) }}">
+     <div class="promo-offer-top"><h3 class="promo-voucher-code">{{ $isVoucher ? $offer->code : ($offerProduct?->name ?? 'Product removed') }}</h3><span class="promo-status is-{{ $status }}">{{ ['active'=>'Live','scheduled'=>'Scheduled','ended'=>'Ended','expired'=>'Expired','exhausted'=>'Used up'][$status] }}</span></div>
      <div class="promo-offer-value">@if($isVoucher){{ $offer->discount_type==='percent'?number_format($offer->amount,0).'%':'₱'.number_format($offer->amount,2) }} <span>off</span>@else ₱{{ number_format($offer->price,2) }} <span>per unit</span>@endif</div>
-     @unless($isVoucher)<h3>{{ $offerProduct?->name ?? 'Product removed' }}</h3>@endunless
      <p class="promo-offer-sub">@if($isVoucher)Minimum spend ₱{{ number_format($offer->minimum_spend,2) }}@if($offer->cap) · Up to ₱{{ number_format($offer->cap,2) }} off @endif @else Limited to {{ $offer->quantity }} units @endif</p>
      <div class="promo-dates"><span><span>Starts {{ \Illuminate\Support\Carbon::parse($offer->starts_at)->format('M d, Y · g:i A') }}</span></span><span><span>Until {{ \Illuminate\Support\Carbon::parse($offer->ends_at)->format('M d, Y · g:i A') }}</span></span></div>
      <div class="promo-usage"><div><span>{{ $used }} / {{ $limit }} {{ $isVoucher?'redemptions':'units sold' }}</span><strong>{{ $limit?min(100,round($used/$limit*100)):0 }}%</strong></div><meter min="0" max="{{ max(1,$limit) }}" value="{{ $used }}" aria-label="{{ $used }} of {{ $limit }} used"></meter></div>
@@ -101,7 +100,7 @@
     <label class="promo-field">Sale quantity<input name="quantity" type="number" min="1" max="99999" step="1" value="{{ old('quantity') }}" required></label>
    @endif
    </div><div class="promo-schedule-heading"><h4>Schedule {{ $isVoucher?'& limits':'' }}</h4>
-   @unless($isVoucher)<div class="promo-start-options" role="group" aria-label="Flash sale start time"><label><input type="radio" name="start_mode" value="now" @checked(old('start_mode','now')==='now')>Start now</label><label><input type="radio" name="start_mode" value="scheduled" @checked(old('start_mode')==='scheduled')>Schedule for later</label></div>@endunless
+   <div class="promo-start-options" role="group" aria-label="{{ $isVoucher?'Voucher':'Flash sale' }} start time"><label><input type="radio" name="start_mode" value="now" @checked(old('start_mode','now')==='now')>Start now</label><label><input type="radio" name="start_mode" value="scheduled" @checked(old('start_mode')==='scheduled')>Schedule for later</label></div>
    </div>
    <div class="promo-form-grid">
     <label class="promo-field" data-promo-start-field>Starts<input name="starts_at" type="datetime-local" value="{{ old('starts_at') }}" required></label><label class="promo-field">Ends<input name="ends_at" type="datetime-local" value="{{ old('ends_at') }}" required></label>

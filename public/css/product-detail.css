@@ -184,3 +184,8 @@ body.marketplace.product-detail-page { --page: #fff; background: #fff; font-fami
 
 body.buyer-pages.product-detail-page { --paper:#fff; background:#fff; }
 .buyer-pages.product-detail-page .content, .buyer-pages.product-detail-page .content:has(.pd-page-grid) { width:100%; max-width:none; margin:0; padding:16px clamp(20px, 2.2vw, 42px) 32px; }
+
+/* Keep flash-sale details immediately above the purchase actions. */
+.pd-purchase-flash{width:100%;margin:0;text-align:center}
+.pd-purchase-flash .product-flash-timing{display:flex;justify-content:center;margin-left:0;gap:4px 9px;font-size:11px}
+.pd-purchase-flash .product-flash-timing small{font-size:11px}

@@ -11,9 +11,7 @@
 <div class="logistics-dashboard">
   <section class="dashboard-welcome" aria-labelledby="company-overview">
     <div>
-      <span class="dashboard-eyebrow">Logistics operations</span>
       <h2 id="company-overview">{{ auth()->user()->business_name }}</h2>
-      <p>Manage pickups, hub transfers and deliveries across your company.</p>
     </div>
     <div class="dashboard-actions">
       <a href="{{ route('logistics.monitor') . '#parcel-lookup' }}" class="btn btn-primary"><x-admin-icon name="scan" /> Find parcel</a>

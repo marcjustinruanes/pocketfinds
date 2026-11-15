@@ -59,8 +59,8 @@ class SocialAuthController extends Controller
 
     public function redirectAccountEmailVerification()
     {
-        abort_unless(Auth::check() && Auth::user()->account_type === 'buyer', 403);
-        if ($redirect = $this->googleStartRedirect('buyer.account.google.email')) return $redirect;
+        abort_unless(Auth::check() && in_array(Auth::user()->account_type, ['buyer','seller'], true), 403);
+        if ($redirect = $this->googleStartRedirect(Auth::user()->account_type.'.account.google.email')) return $redirect;
         session(['oauth_intent' => 'account-email', 'oauth_account_email_owner' => Auth::id(), 'oauth_account_email_expires' => now()->addMinutes(10)->timestamp]);
         return $this->googleProvider()->with(['prompt'=>'select_account'])->redirect();
     }
@@ -91,7 +91,7 @@ class SocialAuthController extends Controller
             $owner = session()->pull('oauth_account_email_owner');
             $expires = session()->pull('oauth_account_email_expires', 0);
             session()->forget('oauth_intent');
-            if (!Auth::check() || (string)Auth::id() !== (string)$owner || $expires < now()->timestamp || Auth::user()->account_type !== 'buyer') {
+            if (!Auth::check() || (string)Auth::id() !== (string)$owner || $expires < now()->timestamp || !in_array(Auth::user()->account_type, ['buyer','seller'], true)) {
                 return $this->googleFailureRedirect($intent, 'Email verification expired. Please try again.');
             }
             $email = strtolower((string)$googleUser->getEmail());
@@ -114,7 +114,7 @@ class SocialAuthController extends Controller
             }
             \Illuminate\Support\Facades\Cache::forget('buyer-email-change:'.$owner);
             request()->session()->forget(['buyer_password_change_pending','buyer_password_change_token']);
-            return redirect()->route('buyer.account')->withFragment('account-security')->with('account_google_email', $email)->with('success','Email verified with Google and updated.');
+            return redirect()->route(Auth::user()->account_type.'.account')->withFragment('account-security')->with('account_google_email', $email)->with('success','Email verified with Google and updated.');
         }
 
         if ($intent === 'verify-email') {
@@ -296,7 +296,7 @@ class SocialAuthController extends Controller
     {
         if ($intent === 'account-email') {
             session()->forget(['oauth_account_email_owner','oauth_account_email_expires','oauth_intent']);
-            return redirect()->route('buyer.account')->withFragment('account-security')->withErrors(['email'=>$message]);
+            return redirect()->route(Auth::user()?->account_type === 'seller' ? 'seller.account' : 'buyer.account')->withFragment('account-security')->withErrors(['email'=>$message]);
         }
         if ($intent === 'verify-email') {
             return $this->emailVerificationResult(null, $message);

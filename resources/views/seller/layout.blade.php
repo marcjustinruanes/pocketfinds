@@ -13,9 +13,11 @@
 @stack('head')
 @include('account.partials.notification-assets')
 <link rel="stylesheet" href="{{ asset('css/seller-modern.css') }}?v={{ filemtime(public_path('css/seller-modern.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/seller-navigation.css') }}?v={{ filemtime(public_path('css/seller-navigation.css')) }}">
+@stack('account-head')
 </head>
 <body class="seller @yield('body-class')">
-<div class="shell" id="appShell" data-navigation-shell data-sidebar-hover data-collapse-key="seller_sidebar_collapsed">
+<div class="shell collapsed" id="appShell" data-navigation-shell data-sidebar-hover data-collapse-key="seller_sidebar_collapsed">
   @include('seller.partials.sidebar')
   <div style="display:flex;flex-direction:column;min-width:0">
     @include('seller.partials.topbar')

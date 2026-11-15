@@ -2,7 +2,8 @@ document.addEventListener('submit', event => {
     if (event.defaultPrevented) return;
     const form = event.target;
     if (!form.closest('.commission-workspace') || !form.dataset.confirm) return;
-    if (form.dataset.busy || !window.confirm(form.dataset.confirm)) { event.preventDefault(); return; }
+    const usesSharedConfirmation = form.closest('[data-seller-finance]') && document.getElementById('sellerConfirmModal');
+    if (form.dataset.busy || (!usesSharedConfirmation && !window.confirm(form.dataset.confirm))) { event.preventDefault(); return; }
     form.dataset.busy = '1';
     form.querySelectorAll('button[type="submit"],button:not([type])').forEach(button => { button.disabled = true; });
 });

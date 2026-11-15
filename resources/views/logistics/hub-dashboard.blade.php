@@ -4,12 +4,9 @@
 @section('page-sub', $hub->is_regional_hub ? "{$hub->province}'s regional hub — also relays parcels for other municipality hubs in the province" : "Local hub for {$hub->municipality}, {$hub->province}")
 
 @section('content')
-@if(session('success'))<div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('success') }}</div>@endif
 @if(session('error'))<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('error') }}</div>@endif
-@if($errors->any())<div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ $errors->first() }}</div>@endif
 
 <div class="hub-dashboard-page">
-@if(app(\App\Services\AssignmentReassignment::class)->installed())<div class="card card-pad hub-dashboard-action"><div class="hub-dashboard-action-copy"><span class="hub-dashboard-action-icon"><x-admin-icon name="layers" /></span><div><strong>Assignment tools</strong><small>Review evidence and manage reassignment requests.</small></div></div><a class="btn btn-primary" href="{{ route('logistics.assignments.review') }}">Assignment evidence &amp; reassignment</a></div>@endif
 <div class="card hub-queue-card hub-queue-pickups" style="margin-bottom:16px">
   <div class="card-head">
     <h2><span class="hub-queue-icon"><x-admin-icon name="clock" /></span>Pickup Requests</h2>

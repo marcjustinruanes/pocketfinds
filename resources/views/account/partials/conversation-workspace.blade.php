@@ -1,0 +1,575 @@
+@php
+ $messageRole = $messageRole ?? 'seller';
+ $myId = auth()->id();
+@endphp
+
+<link rel="stylesheet" href="{{ asset('css/messaging.css') }}?v={{ filemtime(public_path('css/messaging.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/buyer-messaging.css') }}?v={{ filemtime(public_path('css/buyer-messaging.css')) }}">
+<div class="chat-shell" data-has-conversation="{{ $buyer ? 'true' : 'false' }}">
+  <div class="chat-list" id="chatList">
+    <div class="chat-list-head"><label class="chat-search"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7"/><path d="m16 16 5 5"/></svg><input type="search" id="conversationSearch" placeholder="Search conversations" aria-label="Search conversations" autocomplete="off"></label></div>
+    @if($messageRole==='logistics')
+      @foreach($messageContacts as $contact)
+      <a href="{{ route('logistics.messages.thread',['userId'=>$contact->id]) }}" class="chat-list-item {{ $buyer && $buyer->id===$contact->id ? 'active' : '' }} {{ $contact->unread_count ? 'chat-unread' : '' }}">
+        <x-user-avatar :user="$contact" size="36" class="cli-av" />
+        <div class="cli-body"><div class="cli-name">{{ $contact->given_names }} {{ $contact->last_name }}</div><div class="cli-preview">{{ $contact->last_message?->displayBody() ?: ($contact->is_admin ? 'PocketFinds Support' : ucfirst($contact->account_type)) }}</div></div>
+        @if($contact->unread_count)<span class="cli-unread">{{ $contact->unread_count }}</span>@endif
+      </a>
+      @endforeach
+    @else
+    @if($admin && !$conversations->has($admin->id))
+      <a href="{{ route($messageRole.'.messages', ['buyer' => $admin->id]) }}" class="chat-list-item {{ $buyer && $buyer->id === $admin->id ? 'active' : '' }}">
+        <x-user-avatar :user="$admin" size="36" class="cli-av" />
+        <div class="cli-body">
+          <div class="cli-name">PocketFinds Support</div>
+          <div class="cli-preview">Message the admin team</div>
+        </div>
+      </a>
+    @endif
+    @forelse($conversations as $otherId => $last)
+      @php
+        $other = $last->sender_id === $myId ? $last->receiver : $last->sender;
+        $otherName = $other->is_admin ? 'PocketFinds Support' : ($other->given_names . ' ' . $other->last_name);
+        $isActive = $buyer && $buyer->id === $other->id;
+      @endphp
+      @php $isUnread = $last->receiver_id === $myId && !$last->read; @endphp
+      <a href="{{ route($messageRole.'.messages', ['buyer' => $other->id]) }}" class="chat-list-item {{ $isActive ? 'active' : '' }} {{ $isUnread ? 'chat-unread' : '' }}">
+        <x-user-avatar :user="$other" size="36" class="cli-av" />
+        <div class="cli-body">
+          <div class="cli-name">{{ $otherName }}</div>
+          <div class="cli-preview">{{ $last->displayBody() ?: ($last->product_id ? '📦 Product' : '📎 Attachment') }} · {{ $last->created_at?->format('g:i A') ?? '—' }} {{ $last->sender_id === $myId ? ($last->read ? '✓✓' : '✓') : '' }}</div>
+        </div>
+      </a>
+    @empty
+      <div class="empty" style="padding:40px 20px">
+        <div class="ic">@include('seller.partials.icon', ['name' => 'mail', 'size' => 28])</div>
+        <h3>No messages</h3><p>Buyers will appear here when they message you.</p>
+      </div>
+    @endforelse
+    @endif
+  </div>
+
+  <div class="chat-main">
+    <div class="chat-head">
+      @if($buyer)<a class="chat-mobile-back" href="{{ route($messageRole.'.messages') }}" aria-label="Back to conversations">@include('buyer.partials.icon',['name'=>'arrow-right','size'=>18,'class'=>'chat-back-icon'])</a>@endif
+      @if($buyer)
+        @php $buyerName = $buyer->given_names . ' ' . $buyer->last_name; @endphp
+        <x-user-avatar :user="$buyer" size="34" class="chat-head-av" />
+        <div class="chat-head-info">
+          <div class="chat-head-name">{{ $buyer->is_admin ? 'PocketFinds Support' : $buyerName }}</div>
+          <div style="font-size:11px;color:var(--muted)">{{ $buyer->is_admin ? 'Admin' : ($messageRole==='logistics' ? ucfirst($buyer->account_type) : 'Customer') }}</div>
+        </div>
+      @else
+        <div style="color:var(--muted);font-size:13px">Select a conversation</div>
+      @endif
+    </div>
+
+    <div class="chat-body" id="chatBody" tabindex="0" role="region" aria-label="Conversation messages" style="{{ !$buyer ? 'align-items:center;justify-content:center' : '' }}">
+      @if(!$buyer)
+        <div style="text-align:center;color:var(--muted)">
+          @include('account.partials.chat-empty-icon')
+          <p style="font-size:13px">No conversation selected</p>
+        </div>
+      @else
+        @foreach($messages as $msg)
+          @php $isMe = $msg->sender_id === $myId; @endphp
+          <div class="chat-msg-wrap {{ $isMe ? '' : 'chat-msg-wrap-in' }}" data-message-id="{{ $msg->id }}">
+            <div class="chat-msg-content">
+            @if($msg->product_id && $msg->product)
+              <a href="{{ route($messageRole==='logistics' ? 'logistics.requests' : 'seller.inventory') }}" class="chat-product-card">
+                <div class="chat-product-img">
+                  @if($msg->product->image)
+                    <img src="{{ Storage::url($msg->product->image) }}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">
+                  @else
+                    @include('seller.partials.icon', ['name' => 'bag', 'size' => 20])
+                  @endif
+                </div>
+                <div class="chat-product-info">
+                  <div class="chat-product-name">{{ $msg->product->name }}</div>
+                  <div class="chat-product-price">₱{{ number_format($msg->product->price) }}</div>
+                </div>
+              </a>
+            @endif
+            @if($msg->order_id && $msg->order)
+              <a href="{{ route($messageRole==='logistics' ? 'logistics.history' : 'seller.orders') }}" class="chat-product-card">
+                <div class="chat-product-img">@include('seller.partials.icon', ['name' => 'orders', 'size' => 18])</div>
+                <div class="chat-product-info">
+                  <div class="chat-product-name">{{ $msg->order->order_number }}</div>
+                  <div class="chat-product-price">{{ str_replace('_', ' ', ucfirst($msg->order->status)) }} · ₱{{ number_format($msg->order->total, 2) }}</div>
+                </div>
+              </a>
+            @endif
+            @if($msg->attachment_path)
+              @php $attachmentType = $msg->attachment_type ?: (str_starts_with((string) $msg->attachment_mime, 'image/') ? 'image' : (str_starts_with((string) $msg->attachment_mime, 'video/') ? 'video' : 'document')); @endphp
+              @if($attachmentType === 'image')
+                <button type="button" class="chat-media-button" data-media-type="image" data-media-url="{{ route('message.media', ['path' => $msg->attachment_path]) }}"><img src="{{ route('message.media', ['path' => $msg->attachment_path]) }}" class="chat-attach-preview-img" alt="{{ $msg->attachment_name ?: 'Image attachment' }}"></button>
+              @elseif($attachmentType === 'video')
+                <button type="button" class="chat-media-button" data-media-type="video" data-media-url="{{ route('message.media', ['path' => $msg->attachment_path]) }}"><video src="{{ route('message.media', ['path' => $msg->attachment_path]) }}" class="chat-attach-preview-img" controls preload="metadata" playsinline></video></button>
+              @else
+                @include('account.partials.message-document',['documentUrl'=>route('message.media',['path'=>$msg->attachment_path]),'documentName'=>$msg->attachment_name])
+              @endif
+            @endif
+            @if($msg->body)
+              <div class="chat-bubble {{ $isMe ? 'chat-bubble-out' : 'chat-bubble-in' }}">{{ $msg->displayBody() }}</div>
+            @endif
+            <div class="chat-time">
+              <span>{{ $msg->created_at?->format('g:i A') ?? '' }}</span>
+              @if($isMe)
+                <span class="chat-status" title="{{ $msg->read ? 'Seen' : 'Delivered' }}" aria-label="{{ $msg->read ? 'Seen' : 'Delivered' }}">{{ $msg->read ? '✓✓' : '✓' }}</span>
+              @endif
+            <div class="chat-msg-actions">
+              <button type="button" class="chat-msg-action" title="React" onclick="toggleReaction(this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 8.7c0 5.2-8.8 10.3-8.8 10.3S3.2 13.9 3.2 8.7A4.7 4.7 0 0112 6.1a4.7 4.7 0 018.8 2.6z"/></svg></button>
+              <button type="button" class="chat-msg-action" title="Reply" onclick="replyToMessage(this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 17l-5-5 5-5M4 12h10a6 6 0 016 6v1"/></svg></button>
+              <button type="button" class="chat-msg-action" title="Report" onclick="reportMessage(this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4m0 1h10l-2 3 2 3H5"/></svg></button>
+            </div>
+            </div>
+            </div>
+          </div>
+        @endforeach
+      @endif
+    </div>
+
+    @if($buyer)
+      <div class="chat-attachments" id="chatAttachments" style="display:none">
+      <div id="filePreview" style="display:none"></div>
+      </div>
+
+      <div class="chat-picker" id="productPickerPanel">
+        <div id="productPicker" class="chat-picker-grid">
+          @forelse($sellerProducts as $shopProduct)
+            <div class="chat-picker-item">
+              @if($shopProduct->image)<img src="{{ Storage::url($shopProduct->image) }}" alt="{{ $shopProduct->name }}">@else <div class="chat-attach-img">@include('seller.partials.icon', ['name' => 'bag', 'size' => 18])</div>@endif
+              <div class="chat-picker-info"><div class="chat-picker-name">{{ $shopProduct->name }}</div><div class="chat-picker-price">₱{{ number_format($shopProduct->price) }}</div></div>
+              <button type="button" class="chat-picker-send" data-product-id="{{ $shopProduct->id }}" data-product-name="{{ $shopProduct->name }}" data-product-price="{{ $shopProduct->price }}" data-product-img="{{ $shopProduct->image ? Storage::url($shopProduct->image) : '' }}">Send</button>
+            </div>
+          @empty
+            <div class="chat-picker-empty">No active products in your shop.</div>
+          @endforelse
+        </div>
+      </div>
+      <div class="chat-picker" id="orderPickerPanel" style="display:none">
+        <div id="orderPicker" class="chat-picker-grid">
+          @forelse($buyerOrders as $buyerOrder)
+            <div class="chat-picker-item">
+              <div class="chat-attach-img">@include('seller.partials.icon', ['name' => 'orders', 'size' => 18])</div>
+              <div class="chat-picker-info">
+                <div class="chat-picker-name">{{ $buyerOrder->order_number }}</div>
+                <div class="chat-picker-price">{{ str_replace('_', ' ', ucfirst($buyerOrder->status)) }} · ₱{{ number_format($buyerOrder->total, 2) }}</div>
+              </div>
+              <button type="button" class="chat-picker-send" data-order-id="{{ $buyerOrder->id }}" data-order-number="{{ $buyerOrder->order_number }}" data-order-status="{{ str_replace('_', ' ', ucfirst($buyerOrder->status)) }}" data-order-total="{{ $buyerOrder->total }}">Send</button>
+            </div>
+          @empty
+            <div class="chat-picker-empty">This buyer has no orders with your shop yet.</div>
+          @endforelse
+        </div>
+      </div>
+
+      <div class="chat-reply-box" id="chatReplyBox">
+        <div class="chat-reply-copy"><div class="chat-reply-label">Replying to message</div><div class="chat-reply-text" id="chatReplyText"></div></div>
+        <button type="button" class="chat-reply-close" onclick="clearReply()" title="Cancel reply">×</button>
+      </div>
+
+      <button type="button" class="chat-new-messages" id="chatNewMessages" hidden onclick="document.getElementById('chatBody').scrollTop=document.getElementById('chatBody').scrollHeight;this.hidden=true">New messages &darr;</button>
+      <div class="chat-feedback" id="chatFeedback" role="status" aria-live="polite" tabindex="-1"></div>
+      <form class="chat-input" id="chatForm">
+        <input type="file" id="fileInput" style="display:none" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" multiple onchange="previewFile(this)">
+        <div class="chat-compose-tools">
+        <button class="icon-btn" type="button" onclick="document.getElementById('fileInput').click()" title="Attach file">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+        </button>
+        @if($messageRole!=='logistics')<button class="icon-btn" type="button" title="Products" onclick="togglePicker('products')">@include('buyer.partials.icon', ['name' => 'bag', 'size' => 16])</button>
+        <button class="icon-btn" type="button" title="Orders" onclick="togglePicker('orders')">@include('buyer.partials.icon', ['name' => 'package', 'size' => 16])</button>@endif
+        </div>
+        <textarea id="chatInput" rows="1" aria-label="Message" aria-describedby="chatComposeHint" placeholder="Write a message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();sendMessage()}"></textarea>
+        <button type="submit" class="btn btn-primary" aria-label="Send message" title="Send message">
+          @include('buyer.partials.icon', ['name' => 'send', 'size' => 18])
+        </button>
+      </form>
+      <p class="chat-compose-hint" id="chatComposeHint">Enter to send &middot; Shift+Enter for a new line.</p>
+    @endif
+  </div>
+</div>
+
+<script>
+(() => {
+ const search=document.getElementById('conversationSearch'),list=document.getElementById('chatList');
+ const empty=document.createElement('p');empty.className='chat-search-empty';empty.textContent='No matching conversations.';empty.hidden=true;empty.setAttribute('role','status');list.append(empty);
+ search.addEventListener('input',()=>{
+  const term=search.value.trim().toLocaleLowerCase();let visible=0;
+  list.querySelectorAll('.chat-list-item').forEach(item=>{const matches=item.querySelector('.cli-name').textContent.toLocaleLowerCase().includes(term);item.hidden=!matches;if(matches)visible++;});
+  empty.hidden=!term||visible>0;
+  list.querySelectorAll('.empty').forEach(item=>item.hidden=!!term);
+ });
+})();
+</script>
+<div class="modal-overlay" id="reportModal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-head"><div><h3>Report Message</h3><p>Send this report to the admin team.</p></div><button class="modal-close" type="button" onclick="closeReportModal()">×</button></div>
+    <form id="reportForm" enctype="multipart/form-data">
+      <div class="modal-body">
+        <input type="hidden" name="message_id" id="reportMessageId">
+        <div class="chat-report-context"><div class="field-label">Message from</div><div id="reportSender" class="field-value"></div><div class="field-label" style="margin-top:10px">Shop</div><div id="reportShop" class="field-value"></div><div class="field-label" style="margin-top:10px">Reported message</div><div id="reportPreview" class="chat-report-preview"></div></div>
+        <div class="form-row"><label for="reportReason">Why are you reporting this?</label><select id="reportReason" name="reason" required><option value="">Choose a reason</option><option>Harassment or abuse</option><option>Scam or fraud</option><option>Inappropriate content</option><option>Spam</option><option>Other</option></select></div>
+        <div class="form-row"><label for="reportDescription">More details</label><textarea id="reportDescription" name="description" rows="4" maxlength="3000" placeholder="Tell admin what happened..."></textarea></div>
+        <div class="form-row"><label for="reportEvidence">Image or video evidence (optional)</label><input id="reportEvidence" name="evidence" type="file" accept="image/*,video/*"><div id="reportEvidenceName" style="font-size:11px;color:var(--muted);margin-top:5px"></div></div>
+        <div id="reportError" style="display:none;color:var(--danger);font-size:12px;margin-top:8px"></div>
+      </div>
+      <div class="modal-foot"><button type="button" class="btn btn-outline" onclick="closeReportModal()">Cancel</button><button type="submit" class="btn btn-danger" id="reportSubmit">Send Report</button></div>
+    </form>
+  </div>
+</div>
+
+@php
+$autoAttachOrderPayload = $autoAttachOrder ? [
+    'id' => $autoAttachOrder->id,
+    'number' => $autoAttachOrder->order_number,
+    'status' => str_replace('_', ' ', ucfirst($autoAttachOrder->status)),
+    'total' => (float) $autoAttachOrder->total,
+] : null;
+@endphp
+@if($buyer)
+<script>
+const SEND_URL = '{{ route($messageRole.'.messages.send') }}';
+const POLL_URL = '{{ route($messageRole.'.messages.poll') }}';
+const CSRF     = '{{ csrf_token() }}';
+const MY_ID    = {{ $myId }};
+const RECEIVER = {{ $buyer->id }};
+const REPORT_URL = '{{ route($messageRole.'.messages.report') }}';
+let attachedProduct = null;
+let attachedOrder = null;
+const AUTO_ATTACH_ORDER = @json($autoAttachOrderPayload);
+
+function openMediaViewer(url, type) {
+  let viewer = document.getElementById('mediaViewer');
+  if (!viewer) {
+    viewer = document.createElement('div'); viewer.id = 'mediaViewer'; viewer.className = 'media-viewer';
+    viewer.innerHTML = '<button type="button" class="media-viewer-close" aria-label="Close">×</button><div class="media-viewer-content"></div>';
+    document.body.appendChild(viewer);
+    viewer.addEventListener('click', event => { if (event.target === viewer || event.target.classList.contains('media-viewer-close')) viewer.classList.remove('open'); });
+  }
+  const content = viewer.querySelector('.media-viewer-content');
+  content.replaceChildren();
+  const media = document.createElement(type === 'video' ? 'video' : 'img'); media.src = url;
+  if (type === 'video') { media.controls = true; media.autoplay = true; media.playsInline = true; }
+  content.appendChild(media); viewer.classList.add('open');
+}
+
+document.addEventListener('click', event => { const button = event.target.closest('.chat-media-button'); if (button) openMediaViewer(button.dataset.mediaUrl, button.dataset.mediaType); });
+document.querySelectorAll('#productPicker .chat-picker-send').forEach(button => button.addEventListener('click', () => {
+  attachedProduct = { id: button.dataset.productId, name: button.dataset.productName, price: button.dataset.productPrice, img: button.dataset.productImg };
+  document.getElementById('productPickerPanel').classList.remove('open'); sendMessage();
+}));
+document.querySelectorAll('#orderPicker .chat-picker-send').forEach(button => button.addEventListener('click', () => {
+  attachedOrder = { id: button.dataset.orderId, number: button.dataset.orderNumber, status: button.dataset.orderStatus, total: button.dataset.orderTotal };
+  document.getElementById('orderPickerPanel').classList.remove('open');
+  document.getElementById('orderPickerPanel').style.display = 'none';
+  sendMessage();
+}));
+
+// "Message Buyer" from order management arrives with the order already picked —
+// show it staged above the composer, same idea as the reply box, ready to send.
+function showAttachedOrderChip(order) {
+  attachedOrder = order;
+  let chip = document.getElementById('attachedOrderChip');
+  if (!chip) {
+    chip = document.createElement('div');
+    chip.id = 'attachedOrderChip';
+    chip.className = 'chat-reply-box open';
+    chip.innerHTML = '<div class="chat-reply-copy"><div class="chat-reply-label">Order attached</div><div class="chat-reply-text" id="attachedOrderChipText"></div></div><button type="button" class="chat-reply-close" title="Remove">×</button>';
+    document.getElementById('chatReplyBox').after(chip);
+    chip.querySelector('.chat-reply-close').addEventListener('click', () => { attachedOrder = null; chip.classList.remove('open'); });
+  }
+  chip.querySelector('#attachedOrderChipText').textContent = `${order.number} — ${order.status} · ₱${Number(order.total).toLocaleString()}`;
+  chip.classList.add('open');
+}
+if (AUTO_ATTACH_ORDER) showAttachedOrderChip(AUTO_ATTACH_ORDER);
+
+function togglePicker(type) {
+  const productPanel = document.getElementById('productPickerPanel');
+  const orderPanel = document.getElementById('orderPickerPanel');
+  const showProducts = type === 'products' && !productPanel.classList.contains('open');
+  productPanel.classList.toggle('open', showProducts);
+  orderPanel.style.display = type === 'orders' && !orderPanel.classList.contains('open') ? 'block' : 'none';
+  orderPanel.classList.toggle('open', type === 'orders' && orderPanel.style.display === 'block');
+}
+function toggleReaction(button) {
+  const wrap = button.closest('.chat-msg-wrap');
+  const badge = wrap.querySelector('.chat-reaction-badge');
+  if (badge) { badge.remove(); button.classList.remove('active'); return; }
+  button.classList.add('active');
+  const reaction = document.createElement('span'); reaction.className = 'chat-reaction-badge'; reaction.title = 'Liked';
+  reaction.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 8.7c0 5.2-8.8 10.3-8.8 10.3S3.2 13.9 3.2 8.7A4.7 4.7 0 0112 6.1a4.7 4.7 0 018.8 2.6z"/></svg>';
+  const target = wrap.querySelector('.chat-bubble, .chat-product-card, .chat-media-button, .chat-doc-bubble');
+  (target || wrap.querySelector('.chat-msg-content')).appendChild(reaction);
+}
+let replyMessageId = null;
+function replyToMessage(button) {
+  const wrap = button.closest('.chat-msg-wrap');
+  replyMessageId = wrap.dataset.messageId;
+  const bubble = wrap.querySelector('.chat-bubble');
+  const media = wrap.querySelector('.chat-media-button');
+  const product = wrap.querySelector('.chat-product-card');
+  const text = bubble?.textContent?.trim() || (media?.dataset.mediaType === 'video' ? 'Video' : media ? 'Image' : product ? 'Product' : 'Message');
+  document.getElementById('chatReplyText').textContent = text;
+  document.getElementById('chatReplyBox').classList.add('open');
+  document.getElementById('chatInput').focus();
+}
+function clearReply() { replyMessageId = null; document.getElementById('chatReplyBox').classList.remove('open'); document.getElementById('chatReplyText').textContent = ''; }
+function reportMessage(button) {
+  const wrap = button.closest('.chat-msg-wrap');
+  document.getElementById('reportMessageId').value = wrap.dataset.messageId || '';
+  document.getElementById('reportSender').textContent = '{{ $buyerName ?? ($buyer->given_names . " " . $buyer->last_name) }}';
+  document.getElementById('reportShop').textContent = '{{ auth()->user()->business_name ?? "Shop" }}';
+  document.getElementById('reportPreview').textContent = wrap.querySelector('.chat-bubble')?.textContent || (wrap.querySelector('video') ? 'Video attachment' : wrap.querySelector('img') ? 'Image attachment' : wrap.querySelector('.chat-product-card') ? 'Product attachment' : 'Attachment');
+  document.getElementById('reportModal').classList.add('open');
+}
+function closeReportModal() { document.getElementById('reportModal').classList.remove('open'); document.getElementById('reportForm').reset(); document.getElementById('reportError').style.display = 'none'; }
+document.getElementById('reportForm').addEventListener('submit', async event => {
+  event.preventDefault(); const button = document.getElementById('reportSubmit'); button.disabled = true; button.textContent = 'Sending...';
+  try { const response = await fetch(REPORT_URL, { method: 'POST', body: new FormData(event.target), headers: { Accept: 'application/json', 'X-CSRF-TOKEN': CSRF } }); const data = await response.json(); if (!response.ok || !data.ok) throw new Error(data.message || 'Report could not be sent.'); closeReportModal(); alert('Report sent to admin.'); } catch (error) { const errorBox = document.getElementById('reportError'); errorBox.textContent = error.message; errorBox.style.display = 'block'; } finally { button.disabled = false; button.textContent = 'Send Report'; }
+});
+let attachedFiles = [];
+
+function previewFile(input) {
+  attachedFiles.push(...Array.from(input.files));
+  input.value = '';
+  renderFileTabs();
+  document.getElementById('chatAttachments').style.display = attachedFiles.length ? 'flex' : 'none';
+}
+
+function renderFileTabs() {
+  const preview = document.getElementById('filePreview');
+  preview.replaceChildren();
+  preview.style.display = attachedFiles.length ? 'contents' : 'none';
+  attachedFiles.forEach((file, index) => {
+    const tab = document.createElement('div'); tab.className = 'chat-attachment';
+    const inner = document.createElement('div'); inner.className = 'chat-attach-inner';
+    const thumb = document.createElement('div'); thumb.className = 'chat-attach-img'; thumb.style.background = 'var(--paper)';
+    const mime = file.type;
+    const label = mime.startsWith('image/') ? 'Image' : mime.startsWith('video/') ? 'Video' : 'File';
+    if (mime.startsWith('image/')) {
+      const image = document.createElement('img'); image.src = URL.createObjectURL(file); image.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:6px'; thumb.appendChild(image);
+    } else if (mime.startsWith('video/')) {
+      const video = document.createElement('video'); video.src = URL.createObjectURL(file); video.muted = true; video.playsInline = true; video.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:6px'; thumb.appendChild(video);
+    } else {
+      thumb.innerHTML = '<span style="font-size:18px">📎</span>';
+    }
+    const info = document.createElement('div'); info.className = 'chat-attach-info';
+    info.innerHTML = `<div class="chat-attach-label">${label}</div><div class="chat-attach-name"></div><div class="chat-attach-price"></div>`;
+    info.querySelector('.chat-attach-name').textContent = file.name;
+    info.querySelector('.chat-attach-price').textContent = `${(file.size / 1024).toFixed(1)} KB`;
+    const remove = document.createElement('button'); remove.className = 'chat-attach-remove'; remove.type = 'button'; remove.title = 'Remove'; remove.textContent = '×'; remove.onclick = () => removeFile(index);
+    inner.append(thumb, info, remove); tab.appendChild(inner); preview.appendChild(tab);
+  });
+}
+
+function removeFile(index = null) {
+  if (index === null) attachedFiles = [];
+  else attachedFiles.splice(index, 1);
+  renderFileTabs();
+  document.getElementById('chatAttachments').style.display = attachedFiles.length ? 'flex' : 'none';
+}
+
+let messageSending = false;
+async function sendMessage(event) {
+  event?.preventDefault();
+  if (messageSending) return;
+  const input = document.getElementById('chatInput');
+  const text  = input.value.trim();
+  if (!text && !attachedFiles.length && !attachedProduct?.id && !attachedOrder?.id) return;
+
+  const fd = new FormData();
+  fd.append('_token', CSRF);
+  fd.append('receiver_id', RECEIVER);
+  if (@json($messageRole==='logistics') && replyMessageId) fd.append('reply_to_id',replyMessageId);
+  if (text)         fd.append('body', text);
+  if (attachedProduct?.id) fd.append('product_id', attachedProduct.id);
+  if (attachedOrder?.id) fd.append('order_id', attachedOrder.id);
+  attachedFiles.forEach(file => fd.append('attachments[]', file));
+
+  const sendButton = document.querySelector('.chat-input .btn-primary');
+  messageSending = true;
+  document.getElementById('chatFeedback').textContent = '';
+  document.getElementById('chatForm').setAttribute('aria-busy', 'true');
+  const draftControls = [...document.querySelectorAll('#chatForm input, #chatForm textarea, #chatForm button, .chat-picker-send, .chat-attach-remove')];
+  draftControls.forEach(control => control.disabled = true);
+  sendButton.disabled = true;
+  sendButton.setAttribute('aria-label', 'Sending message');
+  try {
+    const res = await fetch(SEND_URL, { method: 'POST', body: fd, headers: { Accept: 'application/json' } });
+    const raw = await res.text();
+    let data;
+    try { data = JSON.parse(raw); } catch (_) { throw new Error(`Message could not be sent (${res.status}).`); }
+    if (!res.ok || !data.ok) throw new Error(data.message || data.errors?.body?.[0] || 'Message was not saved.');
+    input.value = '';
+    const fileSnapshots = attachedFiles.map(file => ({ url: URL.createObjectURL(file), type: file.type.startsWith('video/') ? 'video' : file.type.startsWith('image/') ? 'image' : 'document' }));
+    removeFile();
+    const sentMessages = data.messages?.length ? data.messages : [data.message];
+    sentMessages.forEach((message, index) => appendMessage(message || {}, true, fileSnapshots[index]?.url, fileSnapshots[index]?.type));
+    attachedProduct = null;
+    attachedOrder = null;
+    document.getElementById('attachedOrderChip')?.classList.remove('open');
+  } catch (error) {
+    const feedback = document.getElementById('chatFeedback');
+    feedback.textContent = (error.message || 'Message could not be sent.') + ' Your draft is kept. Check the conversation before retrying if the result is uncertain.';
+    feedback.focus();
+  } finally {
+    messageSending = false;
+    document.getElementById('chatForm').removeAttribute('aria-busy');
+    draftControls.forEach(control => control.disabled = false);
+    sendButton.disabled = false;
+    sendButton.setAttribute('aria-label', 'Send message');
+    if (!document.getElementById('chatFeedback').textContent) input.focus();
+  }
+}
+
+document.getElementById('chatForm').addEventListener('submit', sendMessage);
+document.getElementById('chatBody').addEventListener('scroll', () => { const body = document.getElementById('chatBody'); if (body.scrollHeight - body.scrollTop - body.clientHeight < 100) document.getElementById('chatNewMessages').hidden = true; });
+
+function appendMessage(msg, isMe = msg.sender_id === MY_ID, localMediaUrl = null, localMediaType = null) {
+  const body = document.getElementById('chatBody');
+  const wrap = document.createElement('div');
+  wrap.className = `chat-msg-wrap ${isMe ? '' : 'chat-msg-wrap-in'}`;
+  wrap.dataset.messageId = msg.id;
+
+  const content = document.createElement('div');
+  content.className = 'chat-msg-content';
+
+  if (msg.product_id) {
+    const card = document.createElement('a');
+    card.href = msg.product_url || '{{ route($messageRole==='logistics' ? 'logistics.requests' : 'seller.inventory') }}';
+    card.className = 'chat-product-card';
+    const imageWrap = document.createElement('div');
+    imageWrap.className = 'chat-product-img';
+    if (msg.product_img) {
+      const image = document.createElement('img');
+      image.src = msg.product_img;
+      image.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:8px';
+      imageWrap.appendChild(image);
+    }
+    const info = document.createElement('div'); info.className = 'chat-product-info';
+    const name = document.createElement('div'); name.className = 'chat-product-name'; name.textContent = msg.product_name;
+    const price = document.createElement('div'); price.className = 'chat-product-price'; price.textContent = `PHP ${Number(msg.product_price).toLocaleString()}`;
+    info.append(name, price);
+    card.append(imageWrap, info);
+    content.appendChild(card);
+  }
+
+  if (msg.order_id) {
+    const card = document.createElement('a');
+    card.href = msg.order_url;
+    card.className = 'chat-product-card';
+    const imageWrap = document.createElement('div');
+    imageWrap.className = 'chat-product-img';
+    imageWrap.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12l3 6-9 13-9-13z"/><path d="M3 8h18M9 8v6"/></svg>';
+    const info = document.createElement('div'); info.className = 'chat-product-info';
+    const name = document.createElement('div'); name.className = 'chat-product-name'; name.textContent = msg.order_number;
+    const price = document.createElement('div'); price.className = 'chat-product-price'; price.textContent = `${msg.order_status} · PHP ${Number(msg.order_total).toLocaleString()}`;
+    info.append(name, price);
+    card.append(imageWrap, info);
+    content.appendChild(card);
+  }
+
+  if (localMediaUrl || msg.attachment_path) {
+    const attachmentType = msg.attachment_type || (msg.attachment_mime?.startsWith('image/') ? 'image' : msg.attachment_mime?.startsWith('video/') ? 'video' : 'document');
+    const mediaUrl = localMediaUrl || msg.attachment_path;
+    const mediaType = localMediaType || attachmentType;
+    if (mediaType === 'image') {
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'chat-media-button'; button.dataset.mediaType = 'image'; button.dataset.mediaUrl = mediaUrl;
+      const img = document.createElement('img'); img.src = mediaUrl; img.className = 'chat-attach-preview-img'; img.alt = msg.attachment_name || 'Image attachment'; button.appendChild(img); content.appendChild(button);
+    } else if (mediaType === 'video') {
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'chat-media-button'; button.dataset.mediaType = 'video'; button.dataset.mediaUrl = mediaUrl;
+      const vid = document.createElement('video'); vid.src = mediaUrl; vid.className = 'chat-attach-preview-img'; vid.controls = true; vid.preload = 'metadata'; vid.playsInline = true; button.appendChild(vid); content.appendChild(button);
+    } else {
+      const a = document.createElement('a');
+      a.href = msg.attachment_path; a.target = '_blank'; a.rel = 'noopener'; a.className = 'chat-doc-bubble';
+      a.title = msg.attachment_name || 'Document attachment';
+      const badge=document.createElement('span');badge.className='chat-doc-badge';badge.setAttribute('aria-hidden','true');badge.textContent=/\.pdf$/i.test(msg.attachment_name || '') ? 'PDF' : 'FILE';
+      const filename=document.createElement('span');filename.className='chat-doc-name';filename.textContent=msg.attachment_name || 'Document attachment';
+      const open=document.createElementNS('http://www.w3.org/2000/svg','svg');open.setAttribute('class','chat-doc-open');open.setAttribute('viewBox','0 0 24 24');open.setAttribute('fill','none');open.setAttribute('stroke','currentColor');open.setAttribute('stroke-width','1.7');open.setAttribute('aria-hidden','true');open.innerHTML='<path d="M14 3h7v7M21 3l-9 9M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/>';
+      a.append(badge,filename,open);
+      content.appendChild(a);
+    }
+  }
+
+  if (msg.body) {
+    const bubble = document.createElement('div');
+    bubble.className = `chat-bubble ${isMe ? 'chat-bubble-out' : 'chat-bubble-in'}`;
+    bubble.textContent = msg.body;
+    content.appendChild(bubble);
+  }
+
+  const time = document.createElement('div');
+  time.className = 'chat-time';
+  const timeText = document.createElement('span'); timeText.textContent = msg.created_at;
+  time.appendChild(timeText);
+  if (isMe) {
+    const status = document.createElement('span');
+    status.className = 'chat-status';
+    status.textContent = msg.read ? '✓✓' : '✓';
+    status.title = msg.read ? 'Seen' : 'Delivered';
+    status.setAttribute('aria-label', status.title);
+    time.appendChild(status);
+  }
+  content.appendChild(time);
+  wrap.appendChild(content);
+  const actions = document.createElement('div'); actions.className = 'chat-msg-actions';
+  actions.innerHTML = '<button type="button" class="chat-msg-action" title="React" onclick="toggleReaction(this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 8.7c0 5.2-8.8 10.3-8.8 10.3S3.2 13.9 3.2 8.7A4.7 4.7 0 0112 6.1a4.7 4.7 0 018.8 2.6z"/></svg></button><button type="button" class="chat-msg-action" title="Reply" onclick="replyToMessage(this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 17l-5-5 5-5M4 12h10a6 6 0 016 6v1"/></svg></button><button type="button" class="chat-msg-action" title="Report" onclick="reportMessage(this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4m0 1h10l-2 3 2 3H5"/></svg></button>';
+  time.appendChild(actions);
+
+  const nearBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 100;
+  body.appendChild(wrap);
+  if (isMe || nearBottom) body.scrollTop = body.scrollHeight;
+  else document.getElementById('chatNewMessages').hidden = false;
+}
+
+async function pollMessages() {
+  try {
+    const res = await fetch(`${POLL_URL}?receiver_id=${RECEIVER}`, { headers: { Accept: 'application/json' } });
+    if (!res.ok) return;
+    const data = await res.json();
+    data.messages?.forEach(msg => {
+      const existing = document.querySelector(`[data-message-id="${msg.id}"]`);
+      if (existing) {
+        if (msg.sender_id === MY_ID) {
+          const time = existing.querySelector('.chat-time');
+          const timeText = time.querySelector('span');
+          const status = time.querySelector('.chat-status');
+          if (timeText) timeText.textContent = msg.created_at;
+          if (status) { status.textContent = msg.read ? '✓✓' : '✓'; status.title = msg.read ? 'Seen' : 'Delivered'; status.setAttribute('aria-label',status.title); }
+          else {
+            const newStatus = document.createElement('span');
+            newStatus.className = 'chat-status';
+            newStatus.textContent = msg.read ? '✓✓' : '✓';
+            newStatus.title = msg.read ? 'Seen' : 'Delivered';
+            newStatus.setAttribute('aria-label',newStatus.title);
+            time.appendChild(newStatus);
+          }
+        }
+      } else {
+        appendMessage(msg, msg.sender_id === MY_ID);
+      }
+    });
+  } catch (_) {}
+}
+
+function fitConversationViewport() {
+  const form = document.getElementById('chatForm');
+  if (!form) return;
+  const shell = form.closest('.chat-shell');
+  if (!matchMedia('(max-width: 860px)').matches || shell.closest('.chat-widget')) {
+    shell.style.removeProperty('height'); shell.style.removeProperty('min-height'); return;
+  }
+  const navigation = document.querySelector('.mobile-nav');
+  const bottomInset = navigation && getComputedStyle(navigation).display !== 'none' ? navigation.getBoundingClientRect().height : 0;
+  const available = window.innerHeight - shell.getBoundingClientRect().top - bottomInset - 16;
+  shell.style.minHeight = '280px';
+  shell.style.height = Math.max(280, available) + 'px';
+}
+window.addEventListener('resize', fitConversationViewport);
+fitConversationViewport();
+setInterval(pollMessages, 3000);
+
+document.getElementById('chatBody').scrollTop = document.getElementById('chatBody').scrollHeight;
+</script>
+@endif

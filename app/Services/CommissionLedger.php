@@ -147,7 +147,17 @@ class CommissionLedger
     public function due(object $o): int
     {
         if (!$o->earned_at || $o->cancelled_at || $this->held($o)) return 0;
+        // Admin-reviewed checkout funds are already held by the platform.
+        // They must never become a second payment request to the seller.
+        if ($this->platformReceived($o)) return 0;
         return max(0, ($o->method === 'cod' ? min((int) $o->withheld_cents, $this->net($o)) : $this->net($o)) - $this->collected($o->id));
+    }
+
+    public function platformReceived(object $o): bool
+    {
+        return $o->method === 'gcash' && $o->purchase_id
+            && Schema::hasColumn('gcash_purchases', 'review_flow')
+            && DB::table('gcash_purchases')->where('id', $o->purchase_id)->where('review_flow', 'admin')->exists();
     }
 
     public function held(object $o): bool
@@ -182,9 +192,14 @@ class CommissionLedger
         $confirmed = $order->buyer_confirmed_at || DB::table('order_status_history')->where('order_id', $order->id)->where('status', 'completed')->where('changed_by', $order->buyer_id)->exists();
         if (!$delivered || (!$confirmed && CarbonImmutable::parse($delivered)->addHours(168)->isFuture())) return $o;
         if ($o->method === 'gcash' && !DB::table('gcash_purchases')->where('id', $o->purchase_id)->whereNotNull('verified_at')->whereNotNull('payment_reference')->exists()) return $o;
+        if ($this->platformReceived($o)) {
+            $purchase = GcashPurchase::find($o->purchase_id);
+            if (!$purchase || $this->cents($purchase->verified_amount) !== $this->cents($purchase->amount_due)
+                || !DB::table('users')->where('id', $purchase->verified_by)->where('is_admin', true)->where('status', 'approved')->exists()) return $o;
+        }
         DB::table('commission_obligations')->where('id', $o->id)->update(['earned_at' => now(), 'due_at' => now()->addDays(config('commission.due_days', 7)), 'updated_at' => now()]);
         $this->event($o->id, 'earned:'.$o->id, 'earned', $this->net($o));
-        if ($o->method === 'gcash') Order::notifyUser($o->seller_id, 'Seller commission due', 'Your product commission for '.$order->order_number.' is PHP '.LogisticsReconciliation::money($this->net($o)).'. Review Commission Statements; payment is due in seven days.', 'commission', $order->id);
+        if ($o->method === 'gcash' && !$this->platformReceived($o)) Order::notifyUser($o->seller_id, 'Seller commission due', 'Your product commission for '.$order->order_number.' is PHP '.LogisticsReconciliation::money($this->net($o)).'. Review Commission Statements; payment is due in seven days.', 'commission', $order->id);
         return DB::table('commission_obligations')->find($o->id);
     }
 
