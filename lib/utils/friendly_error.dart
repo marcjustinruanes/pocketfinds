@@ -1,16 +1,18 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:async';
+import 'dart:io';
 
-/// Turns an exception into a message safe to show a normal user.
-///
-/// `AuthException`/`PostgrestException` messages are shown as-is — Supabase
-/// Auth's own messages ("Invalid login credentials") and the messages our
-/// own RPC functions `RAISE EXCEPTION` with ("This delivery is no longer
-/// available.", "That username is already taken.") are already
-/// human-written and safe to display. Anything else (network failures,
-/// unexpected Dart errors) falls back to a generic message instead of
-/// exposing `e.toString()` internals.
+import 'package:http/http.dart' as http;
+
+import '../services/backend_service.dart';
+
 String friendlyError(Object error) {
+  if (error is SocketException || error is http.ClientException) {
+    return 'No connection. Check your internet and the local API, then retry. Your changes have not been confirmed.';
+  }
+  if (error is TimeoutException) {
+    return 'The connection timed out. Refresh to check whether it saved, then retry safely.';
+  }
   if (error is AuthException) return error.message;
-  if (error is PostgrestException) return error.message;
+  if (error is DatabaseException) return error.message;
   return 'Something went wrong. Please try again.';
 }

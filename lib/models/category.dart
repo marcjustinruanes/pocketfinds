@@ -1,4 +1,3 @@
-/// Mirrors the `categories` table (id, name) in Supabase.
 class Category {
   final int id;
   final String name;

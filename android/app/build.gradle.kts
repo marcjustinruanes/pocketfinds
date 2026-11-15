@@ -4,6 +4,9 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Activate native Firebase resources only when the project config is supplied.
+if (file("google-services.json").exists()) { apply(plugin = "com.google.gms.google-services") }
+
 android {
     namespace = "com.pocketfinds.pocketfinds"
     compileSdk = flutter.compileSdkVersion
@@ -31,6 +34,7 @@ android {
 
     buildTypes {
         release {
+            proguardFiles("proguard-rules.pro")
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")

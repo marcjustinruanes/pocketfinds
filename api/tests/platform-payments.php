@@ -1,0 +1,115 @@
+<?php
+declare(strict_types=1);
+if(PHP_SAPI!=='cli')exit;
+require dirname(__DIR__).'/bootstrap.php';
+require dirname(__DIR__).'/Support.php';
+require dirname(__DIR__).'/PlatformPayments.php';
+require dirname(__DIR__).'/Assignments.php';
+use Illuminate\Support\Facades\{DB,Schema,Storage};
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Str;
+use App\Models\{Order,User,Shipment};
+use App\Services\{PlatformPayments,RiderPayouts};
+
+// An isolated in-memory database: never connects to or migrates production MySQL.
+config(['database.default'=>'sqlite','database.connections.sqlite'=>['driver'=>'sqlite','database'=>':memory:','prefix'=>'','foreign_key_constraints'=>true], 'cache.default'=>'array']);
+DB::purge('sqlite');
+Schema::create('users',function(Blueprint $t){$t->id();$t->string('account_type');$t->string('status');$t->boolean('is_admin')->default(false);});
+Schema::create('orders',function(Blueprint $t){$t->uuid('id')->primary();$t->string('order_number');$t->integer('buyer_id');$t->integer('seller_id');$t->string('status');$t->json('items');$t->decimal('total',12,2);$t->boolean('inventory_reserved');$t->uuid('gcash_purchase_id')->nullable();$t->string('cancellation_reason')->nullable();$t->text('cancellation_note')->nullable();$t->timestamps();});
+Schema::create('payment_verifications',function(Blueprint $t){$t->uuid('id')->primary();$t->uuid('order_id')->unique();$t->integer('buyer_id');$t->text('reference_number');$t->text('proof_path');$t->string('status');$t->text('rejection_reason')->nullable();$t->timestamp('submitted_at');$t->timestamp('reviewed_at')->nullable();$t->timestamps();});
+Schema::create('order_status_history',function(Blueprint $t){$t->uuid('id')->primary();$t->uuid('order_id');$t->string('status');$t->integer('changed_by')->nullable();$t->text('notes')->nullable();$t->timestamp('created_at');});
+Schema::create('notifications',function(Blueprint $t){$t->uuid('id')->primary();$t->integer('user_id');$t->text('title');$t->text('message');$t->string('notification_type');$t->string('reference_id')->nullable();$t->boolean('is_read');$t->timestamp('created_at');});
+Schema::create('shipments',function(Blueprint $t){$t->uuid('id')->primary();$t->uuid('order_id');$t->integer('courier_id')->nullable();$t->string('shipping_status');$t->timestamps();});
+Schema::create('mobile_rider_pay',function(Blueprint $t){$t->uuid('shipment_id');$t->string('leg');$t->integer('rider_id');$t->decimal('amount',12,2);$t->decimal('cod_amount',12,2)->default(0);$t->timestamp('created_at');$t->primary(['shipment_id','leg']);});
+Schema::create('delivery_assignments',function(Blueprint $t){$t->uuid('id')->primary();$t->uuid('shipment_id');$t->integer('courier_id');$t->string('leg');$t->string('status');$t->timestamp('requested_at');$t->timestamp('accepted_at')->nullable();});
+Schema::create('delivery_verifications',function(Blueprint $t){$t->uuid('shipment_id')->primary();$t->timestamp('pickup_verified_at')->nullable();});
+Schema::create('delivery_events',function(Blueprint $t){$t->uuid('id')->primary();$t->uuid('shipment_id');$t->integer('actor_id');$t->string('action');$t->uuid('request_id');$t->string('payload_hash');$t->string('status');$t->timestamp('created_at');});
+Schema::create('mobile_request_journal',function(Blueprint $t){$t->string('scope');$t->uuid('request_id');$t->string('request_hash');$t->text('result')->nullable();$t->timestamp('created_at');$t->primary(['scope','request_id']);});
+$migration=require dirname(__DIR__,2).'/integration/laravel/database/migrations/2026_11_08_000001_platform_payment_workflow.php';$migration->up();
+$migration->up(); // Interrupted-install/re-run compatibility.
+$root=dirname(__DIR__,2).'/.tmp/payment-test-'.Str::uuid();
+config(['filesystems.disks.local.root'=>$root]);Storage::forgetDisk('local');
+config(['platform_payments.qr_disk'=>'local']);
+$image=base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aY1sAAAAASUVORK5CYII=');
+Storage::disk('local')->put('test-qr.png',$image);Storage::disk('local')->put('payment-proofs/1/receipt.png',$image);
+config(['platform_payments.enabled'=>true,'platform_payments.qr_path'=>'test-qr.png','platform_payments.account_name'=>'Isolated fixture','platform_payments.account_number'=>'09123456789','platform_payments.verification_hours'=>24]);
+foreach([1=>'buyer',2=>'buyer',3=>'seller',4=>'rider',5=>'admin'] as $id=>$role)DB::table('users')->insert(['id'=>$id,'account_type'=>$role==='admin'?'buyer':$role,'status'=>'approved','is_admin'=>$role==='admin']);
+$buyer=User::find(1);$other=User::find(2);$seller=User::find(3);$rider=User::find(4);$admin=User::find(5);$svc=app(PlatformPayments::class);$checks=0;
+function verify(bool $ok,string $label):void {global $checks;if(!$ok)throw new RuntimeException($label);echo 'PASS '.$label.PHP_EOL;$checks++;}
+function denied(Closure $fn,string $label):void {try{$fn();}catch(Illuminate\Validation\ValidationException|Symfony\Component\HttpKernel\Exception\HttpException|ApiError $e){verify(true,$label);return;}throw new RuntimeException('Expected rejection: '.$label);}
+function paymentOrder():Order {global $svc;return DB::transaction(function()use($svc){$o=new Order;$o->forceFill(['order_number'=>'TEST-'.Str::random(8),'buyer_id'=>1,'seller_id'=>3,'items'=>[],'total'=>125.50,'inventory_reserved'=>true,'status'=>'pending_payment','platform_payment'=>true])->save();$svc->initialize($o);return $o;});}
+try {
+    $o=paymentOrder();$id=$o->id;$submission=(string)Str::uuid();
+    verify($svc->detail($buyer,$id)['status']==='pending','checkout starts unpaid');
+    denied(fn()=>$svc->detail($other,$id),'another buyer cannot read payment');
+    denied(fn()=>$svc->detail($rider,$id),'rider cannot read payment');
+    denied(fn()=>Order::find($id)->update(['status'=>'preparing']),'unverified payment blocks seller fulfillment');
+    denied(fn()=>Shipment::create(['order_id'=>$id,'courier_id'=>4,'shipping_status'=>'assigned_to_rider']),'unverified payment blocks rider assignment');
+    denied(fn()=>$svc->submit($buyer,$id,$submission,'1234567890123','1/receipt.png','1.00'),'client cannot alter payable amount');
+    denied(fn()=>$svc->submit($other,$id,$submission,'1234567890123','1/receipt.png','125.50'),'another buyer cannot submit evidence');
+    Storage::disk('local')->put('payment-proofs/1/bad.png','not an image');
+    denied(fn()=>$svc->submit($buyer,$id,$submission,'1234567890123','1/bad.png','125.50'),'receipt MIME is validated');
+    $result=$svc->submit($buyer,$id,$submission,'1234567890123','1/receipt.png','125.50');
+    verify($result['status']==='pending_verification' && Order::find($id)->status==='pending_payment_verification','receipt never marks payment paid');
+    verify($result['submitted_at']!==null && $result['verification_deadline']!==null,'server timestamps and deadline are recorded');
+    verify($svc->submit($buyer,$id,$submission,'1234567890123','1/receipt.png','125.50')['status']==='pending_verification','lost response replays same submission');
+    verify(DB::table('notifications')->where('user_id',1)->where('title','Payment receipt submitted')->where('reference_id',$id)->count()===1,'submission replay does not duplicate buyer notification');
+    denied(fn()=>$svc->submit($buyer,$id,(string)Str::uuid(),'1234567890123','1/receipt.png','125.50'),'second submission while under review is blocked');
+    denied(fn()=>$svc->decide($buyer,$id,true,null),'buyer cannot approve own payment');
+    denied(fn()=>$svc->decide($seller,$id,true,null),'seller cannot approve platform payment');
+    $rejected=$svc->decide($admin,$id,false,'Reference does not match the transfer.',true);
+    verify($rejected['status']==='rejected' && $rejected['can_submit'],'admin rejection explicitly controls resubmission');
+    $svc->submit($buyer,$id,(string)Str::uuid(),'2234567890123','1/receipt.png','125.50');
+    verify($svc->decide($admin,$id,true,null)['status']==='paid','admin verification records paid');
+    verify(Order::find($id)->status==='placed','only verified order enters fulfillment');
+    denied(fn()=>$svc->decide($admin,$id,true,null),'duplicate approval is blocked');
+    denied(fn()=>Order::find($id)->update(['total'=>1]),'paid order amount cannot be changed');
+    denied(fn()=>Order::find($id)->forceFill(['platform_payment'=>false])->save(),'payment guard cannot be disabled');
+    $second=paymentOrder();
+    denied(fn()=>$svc->submit($buyer,$second->id,(string)Str::uuid(),'1234567890123','1/receipt.png','125.50'),'same reference cannot pay another seller order');
+    $shipment=Shipment::create(['order_id'=>$id,'courier_id'=>4,'shipping_status'=>'delivered']);
+    DB::table('mobile_rider_pay')->insert(['shipment_id'=>$shipment->id,'leg'=>'delivery','rider_id'=>4,'amount'=>100,'created_at'=>now()]);
+    $payouts=app(RiderPayouts::class);
+    verify($payouts->summary(4)['payout_totals']['pending']===100.0,'delivery credit remains pending before buyer completion');
+    $decision=['rider_id'=>4,'shipment_id'=>$shipment->id,'leg'=>'delivery','status'=>'approved'];
+    denied(fn()=>$payouts->record($admin,$decision),'admin cannot approve before completion policy');
+    denied(fn()=>$payouts->record($rider,$decision),'rider cannot edit earnings or release funds');
+    Order::find($id)->update(['status'=>'completed']);
+    $payouts->record($admin,$decision);
+    verify($payouts->summary(4)['payout_totals']['approved']===100.0,'admin approval uses backend job amount');
+    $payouts->record($admin,array_replace($decision,['status'=>'released','reference'=>'PAYOUT-TEST-REFERENCE']));
+    $summary=$payouts->summary(4);verify($summary['payout_totals']['released']===100.0 && $summary['payouts'][0]['released_at']!==null,'actual payout reference and server release time are visible');
+    denied(fn()=>$payouts->record($admin,array_replace($decision,['status'=>'released','reference'=>'PAYOUT-TEST-REFERENCE'])),'duplicate payout release is blocked');
+    Order::find($id)->update(['status'=>'cancelled']);
+    verify($svc->refund($admin,$id,'REFUND-TEST-REFERENCE')['status']==='refunded','only admin records actual refund');
+    verify(DB::table('platform_payment_audit')->count()>=8,'important actions retain audit records');
+    $expired=paymentOrder();$expired->forceFill(['created_at'=>now()->subHours(2)])->save();
+    verify($svc->expireUnsubmitted()===1 && $svc->detail($buyer,$expired->id)['status']==='expired','backend worker expires only unsubmitted payment windows');
+    denied(fn()=>$svc->submit($buyer,$expired->id,(string)Str::uuid(),'3234567890123','1/receipt.png','125.50'),'expired payment cannot be submitted as current');
+    $cancelled=paymentOrder();$svc->submit($buyer,$cancelled->id,(string)Str::uuid(),'4234567890123','1/receipt.png','125.50');
+    DB::transaction(fn()=>Order::lockFresh($cancelled->id)->cancelAndRestock('Buyer cancelled',null,1,['pending_payment_verification']));
+    $svc->decide($admin,$cancelled->id,true,null);
+    verify(Order::find($cancelled->id)->status==='cancelled','late verification of cancelled order never reopens fulfillment');
+    verify($svc->refund($admin,$cancelled->id,'CANCELLED-REFUND-TEST')['status']==='refunded','cancelled submitted payment can be reconciled and refunded by admin');
+    $deliveryOrder=new Order;$deliveryOrder->forceFill(['order_number'=>'ASSIGNMENT-TEST','buyer_id'=>1,'seller_id'=>3,'items'=>[],'total'=>125.50,'inventory_reserved'=>true,'status'=>'assigned_to_rider','platform_payment'=>false])->save();
+    $task=Shipment::create(['order_id'=>$deliveryOrder->id,'courier_id'=>4,'shipping_status'=>'assigned_to_rider']);
+    DB::table('delivery_assignments')->insert(['id'=>(string)Str::uuid(),'shipment_id'=>$task->id,'courier_id'=>4,'leg'=>'delivery','status'=>'requested','requested_at'=>now()]);
+    $assignments=new MobileAssignments(new Identity($rider));
+    $tasks=$assignments->handle('assigned-list',[]);
+    verify(collect($tasks)->firstWhere('id',$task->id)['section']==='new','assigned delivery appears in New Assignments');
+    $request=['shipment_id'=>$task->id,'request_id'=>(string)Str::uuid()];
+    denied(fn()=>(new MobileAssignments(new Identity($other)))->handle('assignment-accept',$request),'buyer cannot accept rider assignment');
+    $stranger=new User;$stranger->forceFill(['id'=>6,'account_type'=>'rider','status'=>'approved']);
+    denied(fn()=>(new MobileAssignments(new Identity($stranger)))->handle('assignment-accept',$request),'another rider cannot accept assigned parcel');
+    denied(fn()=>$assignments->handle('arrive',$request),'arrival requires accepted assignment');
+    $assignments->handle('assignment-accept',$request);
+    verify($assignments->handle('assignment-accept',$request)['ok'],'acceptance retries are idempotent');
+    denied(fn()=>$assignments->handle('assignment-reject',['shipment_id'=>$task->id,'request_id'=>(string)Str::uuid()]),'accepted assignment cannot be silently rejected');
+    $arrival=['shipment_id'=>$task->id,'request_id'=>(string)Str::uuid()];
+    $assignments->handle('arrive',$arrival);$assignments->handle('arrive',$arrival);
+    verify(DB::table('delivery_events')->where('shipment_id',$task->id)->where('action','arrive')->count()===1,'arrival retries preserve one backend event');
+    echo "{$checks} isolated checks passed. MySQL concurrency and live services are not tested.\n";
+} finally {
+    Storage::disk('local')->deleteDirectory('');
+    if(is_dir($root))rmdir($root);
+}

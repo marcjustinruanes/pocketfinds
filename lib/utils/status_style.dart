@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_colors.dart';
 
 /// Maps an order/delivery status string to a semantic color so a glance at
@@ -13,18 +14,41 @@ class StatusStyle {
   static StatusStyle forOrderStatus(String status) {
     switch (status) {
       case 'to_ship':
-        return const StatusStyle(Color(0xFFB45309), Color(0xFFFEF3C7)); // amber
+      case 'placed':
+      case 'preparing':
+      case 'ready_for_pickup':
+      case 'processing':
+      case 'pending_payment':
+      case 'pending_payment_verification':
+      case 'pending_verification':
+        return StatusStyle(AppColors.warning, AppColors.warningSoft);
       case 'in_transit':
+      case 'picked_up':
+      case 'at_sorting_center':
+      case 'hub_transfer':
+      case 'sorted':
+      case 'assigned_to_rider':
       case 'out_for_delivery':
-        return const StatusStyle(Color(0xFF1D4ED8), Color(0xFFDBEAFE)); // blue
+      case 'rescheduled':
+      case 'return_in_transit':
+        return StatusStyle(AppColors.info, AppColors.infoSoft);
       case 'completed':
       case 'delivered':
-        return StatusStyle(AppColors.success, const Color(0xFFDCFCE7)); // green
+      case 'approved': // also a rider/account verification status
+      case 'confirmed': // also a payment-verification status
+      case 'paid':
+      case 'payment_confirmed':
+      case 'refunded':
+        return StatusStyle(AppColors.success, AppColors.successSoft);
       case 'cancelled':
+      case 'delivery_failed':
+      case 'returned':
       case 'rejected':
-        return StatusStyle(AppColors.danger, AppColors.dangerSoft); // red
+      case 'expired':
+      case 'suspended': // rider/account verification status
+        return StatusStyle(AppColors.danger, AppColors.dangerSoft);
       default:
-        return const StatusStyle(AppColors.pinkDark, AppColors.pinkSoft);
+        return StatusStyle(AppColors.pinkDark, AppColors.pinkSoft);
     }
   }
 }

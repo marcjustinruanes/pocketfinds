@@ -1,0 +1,107 @@
+<?php
+declare(strict_types=1);
+if (PHP_SAPI!=='cli') exit;
+require dirname(__DIR__).'/bootstrap.php';
+foreach (['Support','Buyer','Commerce','Queries','Actions','Delivery'] as $file) require dirname(__DIR__)."/$file.php";
+use App\Models\{User,Order,Product,BuyerAddress,PaymentMethod};
+use Illuminate\Support\Facades\{DB,Hash};
+use Illuminate\Support\Str;
+$checks=0;
+function check(bool $ok,string $message): void { global $checks; if (!$ok) throw new RuntimeException($message); $checks++; echo "PASS $message\n"; }
+function denied(Closure $fn,string $message): void { try { $fn(); } catch(ApiError|Illuminate\Validation\ValidationException|Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) { check(true,$message); return; } throw new RuntimeException('Expected rejection: '.$message); }
+function buyerFixture(): User {
+    $tag=Str::lower(Str::random(12)); $u=new User(); $u->forceFill(['email'=>"buyer-$tag@example.invalid",'username'=>'buyer_'.$tag,'password'=>'Testing-password-123!',
+        'given_names'=>'Buyer','last_name'=>'Fixture','sex'=>'female','birthday'=>'1995-01-01','age'=>31,'contact_no'=>'09123456789','region'=>'Region IV-A','province'=>'Laguna','municipality'=>'Famy','barangay'=>'Test','house_no'=>'1','street'=>'Test Street','account_type'=>'buyer','status'=>'approved','email_verified_at'=>now()]); $u->save(); return $u;
+}
+DB::beginTransaction();
+try {
+    $buyer=buyerFixture(); $other=buyerFixture(); $service=new MobileBuyer(new Identity($buyer)); $outsider=new MobileBuyer(new Identity($other));
+    $addresses=$service->handle('addresses',[]);
+    check(count($addresses)===1 && $addresses[0]['is_default']===true,'profile address is seeded once as default');
+    check(count($service->handle('addresses',[]))===1,'address seeding is idempotent');
+    $data=['label'=>'Work','recipient_name'=>'Recipient Fixture','contact_no'=>'+639123456789','region'=>'Region IV-A','province'=>'Laguna','municipality'=>'Famy','barangay'=>'Test','street'=>'Work Street'];
+    $created=$service->handle('address-create',$data)['address'];
+    check($created['contact_no']==='09123456789' && !$created['is_default'],'website address validation normalizes phone');
+    denied(fn()=>$outsider->handle('address-update',['id'=>$created['id'],...$data]),'another buyer cannot edit saved address');
+    denied(fn()=>$outsider->handle('address-default',['id'=>$created['id']]),'another buyer cannot choose saved default');
+    denied(fn()=>$service->handle('address-delete',['id'=>$addresses[0]['id']]),'default address cannot be deleted');
+    $service->handle('address-default',['id'=>$created['id']]);
+    check(BuyerAddress::where('buyer_id',$buyer->id)->where('is_default',true)->count()===1,'choosing default retains exactly one default');
+    $service->handle('address-delete',['id'=>$addresses[0]['id']]);
+    check(count($service->handle('addresses',[]))===1,'non-default saved address can be removed');
+    denied(fn()=>$service->handle('address-create',[...$data,'contact_no'=>'123']),'invalid phone is rejected by native website validation');
+
+    $source=Product::where('status','active')->whereHas('seller',fn($q)=>$q->where('status','approved'))->firstOrFail();
+    $product=$source->replicate(); $product->id=(string)Str::uuid(); $product->name='Buyer workflow fixture'; $product->sku='AUD-'.Str::random(12); $product->creation_key=null;
+    $product->variations=[]; $product->variant_axes=[]; $product->variant_rows=[]; $product->stock=10; $product->price=50; $product->discount_price=null; $product->save();
+    $items=[['product_id'=>$product->id,'name'=>$product->name,'price'=>50,'qty'=>1,'variation_group'=>'','variation_value'=>'']];
+    $makeOrder=fn($status)=>Order::create(['buyer_id'=>$buyer->id,'seller_id'=>$product->seller_id,'order_number'=>'BUYER-'.Str::random(12),'payment_method'=>'COD','items'=>$items,'total'=>50,'status'=>$status,'inventory_reserved'=>false]);
+    $order=$makeOrder('placed');
+    check($service->handle('order',['order_id'=>$order->id])['can_cancel'],'placed order offers cancellation');
+    denied(fn()=>$outsider->handle('order',['order_id'=>$order->id]),'buyer cannot read another buyer order actions');
+    denied(fn()=>$service->handle('cancel',['order_id'=>$order->id,'cancellation_reason'=>'Invented']),'cancellation requires a website reason');
+    $service->handle('cancel',['order_id'=>$order->id,'cancellation_reason'=>'Ordered by mistake']);
+    $history=DB::table('order_status_history')->where('order_id',$order->id)->count();
+    $service->handle('cancel',['order_id'=>$order->id,'cancellation_reason'=>'Ordered by mistake']);
+    check($order->fresh()->status==='cancelled' && DB::table('order_status_history')->where('order_id',$order->id)->count()===$history,'cancellation retry does not duplicate stock/history actions');
+    $sent=$makeOrder('out_for_delivery');
+    denied(fn()=>$service->handle('cancel',['order_id'=>$sent->id,'cancellation_reason'=>'Changed my mind']),'buyer cannot cancel after pickup');
+    $delivered=$makeOrder('delivered');
+    denied(fn()=>$service->handle('review',['order_id'=>$delivered->id,'rating'=>5]),'delivered order cannot be rated before receipt confirmation');
+    $complete=$makeOrder('completed');
+    $service->handle('review',['order_id'=>$complete->id,'rating'=>4,'comment'=>'Native buyer review']);
+    check($complete->review()->count()===1 && !$service->handle('order',['order_id'=>$complete->id])['can_review'],'completed order accepts one website-style review');
+    denied(fn()=>$service->handle('review',['order_id'=>$complete->id,'rating'=>5]),'duplicate order review is rejected');
+    $request=['order_id'=>$complete->id,'request_id'=>(string)Str::uuid()];
+    $service->handle('buy-again',$request); $service->handle('buy-again',$request);
+    $cart=DB::table('cart_items')->where('buyer_id',$buyer->id)->where('product_id',$product->id)->first();
+    check($cart && $cart->qty===1 && (float)$cart->price===50.0,'Buy Again uses current price and retry does not duplicate quantity');
+    $queries=new MobileQueries(new Identity($buyer));
+    $completed=$queries->handle(['table'=>'orders','columns'=>'id,status','filters'=>[['column'=>'status','op'=>'=','value'=>'completed']]]);
+    check(count($completed)===1 && $completed[0]['id']===$complete->id,'Completed tab excludes Delivered orders');
+    $rows=$queries->handle(['table'=>'orders','columns'=>'id,status','filters'=>[['column'=>'status','op'=>'=','value'=>'delivered']]]);
+    check(count($rows)===1 && $rows[0]['status']==='delivered','Delivered tab retains separate handover state');
+    $method=PaymentMethod::forBuyerCheckout()->get()->first(fn($m)=>$m->buyerCheckoutKind()==='cod');
+    $payload=['cart_ids'=>[$cart->id],'payment_method_id'=>$method->id,'shipping_address'=>['house_no'=>'1','street'=>'Ignored Street','barangay'=>'Test','municipality'=>'Famy','province'=>'Laguna'],'checkout_id'=>(string)Str::uuid(),'delivery_address_id'=>$created['id'],'buyer_note'=>'Call on arrival'];
+    $orders=(new MobileCommerce(new Identity($buyer)))->checkout($payload);
+    $placed=Order::findOrFail($orders[0]['id']);
+    check($placed->shipping_address['street']==='Work Street' && $placed->shipping_address['recipient_name']==='Recipient Fixture' && $placed->buyer_note==='Call on arrival','checkout uses owned saved address and buyer note');
+    BuyerAddress::whereKey($created['id'])->update(['street'=>'Edited after checkout']);
+    $retry=(new MobileCommerce(new Identity($buyer)))->checkout($payload);
+    check($retry[0]['id']===$placed->id && $placed->fresh()->shipping_address['street']==='Work Street','checkout retry retains the committed address snapshot after an address edit');
+    $ownOther=$outsider->handle('addresses',[])[0];
+    denied(fn()=>(new MobileCommerce(new Identity($buyer)))->checkout([...$payload,'delivery_address_id'=>$ownOther['id'],'checkout_id'=>(string)Str::uuid()]),'checkout cannot select another buyer saved address');
+    DB::table('cart_items')->insert(array_replace((array)$cart,['id'=>$priceCart=(string)Str::uuid(),'price'=>1]));
+    $pricePayload=[...$payload,'cart_ids'=>[$priceCart],'checkout_id'=>(string)Str::uuid()];
+    $stock=$product->fresh()->stock;
+    denied(fn()=>(new MobileCommerce(new Identity($buyer)))->checkout($pricePayload),'changed prices block checkout until buyer reviews the cart');
+    check((float)DB::table('cart_items')->where('id',$priceCart)->value('price')===50.0 && $product->fresh()->stock===$stock,'price refresh persists without reserving stock or creating an order');
+    $hub=\App\Models\LogisticsHub::create(['company_name'=>'Buyer issue audit','municipality'=>'Famy','province'=>'Laguna','is_operational'=>true]);
+    $shipment=\App\Models\Shipment::create(['order_id'=>$delivered->id,'shipping_status'=>'delivered','logistics_company'=>'Buyer issue audit','destination_hub'=>'Famy','destination_province'=>'Laguna','delivered_at'=>now()]);
+    $report=['order_id'=>$delivered->id,'request_id'=>(string)Str::uuid(),'kind'=>'not_received','description'=>'The parcel was marked delivered but was not received.'];
+    denied(fn()=>$outsider->handle('report-issue',$report),'another buyer cannot report an issue on this order');
+    $issue=$service->handle('report-issue',$report); $repeat=$service->handle('report-issue',$report);
+    check($issue['issue_id']===$repeat['issue_id'] && \App\Models\LogisticsIssue::where('shipment_id',$shipment->id)->count()===1,'delivery issue is persistent and duplicate submission creates one case');
+    check($delivered->fresh()->status==='delivered' && !$service->handle('order',['order_id'=>$delivered->id])['can_confirm'],'reporting missing parcel does not confirm receipt and pauses confirmation');
+    denied(fn()=>(new MobileActions(new Identity($buyer)))->handle('confirm_order_received',['p_shipment_id'=>$shipment->id]),'direct confirmation cannot bypass an open delivery issue');
+    \App\Models\LogisticsIssue::whereKey($issue['issue_id'])->update(['status'=>'resolved','resolution'=>'Recipient located parcel.','resolved_at'=>now()]);
+    check($service->handle('order',['order_id'=>$delivered->id])['can_confirm'],'confirmation becomes available after staff resolves the issue');
+    (new MobileActions(new Identity($buyer)))->handle('confirm_order_received',['p_shipment_id'=>$shipment->id]);
+    check($delivered->fresh()->status==='completed','buyer still explicitly confirms receipt after resolution');
+    $service->handle('report-issue',['order_id'=>$delivered->id,'request_id'=>(string)Str::uuid(),'kind'=>'damaged','description'=>'The parcel contents were broken when opened.']);
+    check(\App\Models\LogisticsIssue::where('shipment_id',$shipment->id)->where('kind','damaged')->exists(),'damage reports use the existing logistics case workflow');
+    $stale=$makeOrder('placed');
+    \App\Models\Shipment::create(['order_id'=>$stale->id,'shipping_status'=>'picked_up','picked_up_at'=>now()]);
+    check(!$service->handle('order',['order_id'=>$stale->id])['can_cancel'],'pickup blocks cancellation even when the order status is stale');
+    denied(fn()=>$service->handle('cancel',['order_id'=>$stale->id,'cancellation_reason'=>'Changed my mind']),'server rejects cancellation when the parcel was already picked up');
+    $matrix=$product->replicate(); $matrix->id=(string)Str::uuid(); $matrix->sku='MATRIX-'.Str::random(12);
+    $matrix->variant_axes=[['name'=>'Color','options'=>[['id'=>'red','value'=>'Red']]]];
+    $matrix->variant_rows=[['id'=>'red-row','label'=>'Red','option_ids'=>['red'],'price'=>80,'stock'=>2]]; $matrix->stock=2; $matrix->save();
+    $matrixOrder=$makeOrder('completed'); $matrixOrder->items=[['product_id'=>$matrix->id,'name'=>'Old name','price'=>1,'qty'=>5,'variation_group'=>'variant:red-row','variation_value'=>'Red']]; $matrixOrder->save();
+    $service->handle('buy-again',['order_id'=>$matrixOrder->id,'request_id'=>(string)Str::uuid()]);
+    $matrixCart=DB::table('cart_items')->where('buyer_id',$buyer->id)->where('product_id',$matrix->id)->first();
+    check($matrixCart && (float)$matrixCart->price===80.0 && $matrixCart->qty===2 && $matrixCart->variation_group==='variant:red-row','Buy Again uses current matrix price and caps quantity to current stock');
+    $matrix->variant_rows=[]; $matrix->stock=0; $matrix->save();
+    denied(fn()=>$service->handle('buy-again',['order_id'=>$matrixOrder->id,'request_id'=>(string)Str::uuid()]),'Buy Again skips a removed matrix option instead of recreating it');
+    echo "$checks buyer checks passed.\n";
+} finally { DB::rollBack(); echo "Buyer fixtures rolled back; website source unchanged.\n"; }

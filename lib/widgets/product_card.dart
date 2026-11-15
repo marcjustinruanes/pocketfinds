@@ -1,20 +1,32 @@
 import 'package:flutter/material.dart';
+
 import '../models/product.dart';
 import '../theme/app_colors.dart';
-import '../theme/app_spacing.dart';
+
+import '../theme/app_typography.dart';
 import '../utils/formatters.dart';
 import 'pressable.dart';
+import 'product_badge.dart';
 import 'product_image.dart';
+import 'rating_stars.dart';
+import 'wishlist_button.dart';
 
 /// A single product tile, styled after the website's `.product` card —
 /// same 2-line name clamp with a reserved height (so cards in a row stay
 /// aligned regardless of name length), bold 18px price, and a matching
-/// pink-soft "Cart" / solid pink "Buy Now" button pair.
+/// pink-soft "Cart" / solid pink "Buy Now" button pair. Badges are real
+/// (derived from `discount_price`/`stock`/`created_at` — see `Product`);
+/// rating/wishlist are optional so guest/list contexts that haven't
+/// fetched them yet still render correctly.
 class ProductCard extends StatelessWidget {
   final Product product;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final VoidCallback onAddToCart;
   final VoidCallback onBuyNow;
+  final double? rating;
+  final int? reviewCount;
+  final bool? wishlisted;
+  final Future<void> Function(bool wishlisted)? onWishlistChanged;
 
   const ProductCard({
     super.key,
@@ -22,6 +34,10 @@ class ProductCard extends StatelessWidget {
     required this.onTap,
     required this.onAddToCart,
     required this.onBuyNow,
+    this.rating,
+    this.reviewCount,
+    this.wishlisted,
+    this.onWishlistChanged,
   });
 
   @override
@@ -30,93 +46,194 @@ class ProductCard extends StatelessWidget {
       onTap: onTap,
       child: Card(
         clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: AppColors.border),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AspectRatio(
-              aspectRatio: 1,
-              child: ProductImage(imageUrl: product.imageUrl),
+            Stack(
+              children: [
+                AspectRatio(
+                  aspectRatio: 1,
+                  child: Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: ProductImage(
+                      imageUrl: product.imageUrl,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+                if (!product.isOutOfStock &&
+                    (product.hasDiscount || product.isNew || product.isLowStock))
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: [
+                        if (product.hasDiscount)
+                          ProductBadge(
+                            type: ProductBadgeType.sale,
+                            discountPercent: product.discountPercent,
+                          ),
+                        if (product.isNew)
+                          const ProductBadge(type: ProductBadgeType.newArrival),
+                        if (product.isLowStock)
+                          const ProductBadge(type: ProductBadgeType.lowStock),
+                      ],
+                    ),
+                  ),
+                if (product.isOutOfStock)
+                  const Positioned(
+                    left: 8,
+                    bottom: 8,
+                    child: ProductBadge(type: ProductBadgeType.outOfStock),
+                  ),
+                if (wishlisted != null && onWishlistChanged != null)
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: WishlistButton(
+                      wishlisted: wishlisted!,
+                      onChanged: onWishlistChanged!,
+                      size: 15,
+                    ),
+                  ),
+              ],
             ),
             Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(
-                    height: 36,
+                    height: 38,
                     child: Text(
                       product.name,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: AppTypography.productTitle.copyWith(
                         fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        height: 1.35,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
                   const SizedBox(height: 6),
-                  if (product.sellerLocation != null)
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.location_on_outlined,
-                          size: 12,
-                          color: AppColors.textMuted,
-                        ),
-                        const SizedBox(width: 2),
-                        Expanded(
-                          child: Text(
-                            product.sellerLocation!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                  // Fixed-height reservations (rather than only rendering
+                  // when the optional data exists) — otherwise a card with
+                  // e.g. a location + low-stock line ends up taller than
+                  // one with neither, and since every card in a row shares
+                  // the same grid-enforced cell height, the shorter one
+                  // just gets rendered off-center/uneven and the taller
+                  // one can overflow it.
+                  SizedBox(
+                    height: 14,
+                    child: product.sellerLocation == null
+                        ? null
+                        : Row(
+                            children: [
+                              Icon(
+                                Icons.location_on_outlined,
+                                size: 12,
+                                color: AppColors.textMuted,
+                              ),
+                              const SizedBox(width: 2),
+                              Expanded(
+                                child: Text(
+                                  product.sellerLocation!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                  SizedBox(
+                    height: 14,
+                    child: rating != null
+                        ? RatingStars(
+                            rating: rating!,
+                            reviewCount: reviewCount,
+                            size: 11,
+                          )
+                        : product.isLowStock
+                        ? Text(
+                            'Only ${product.stock} left',
+                            style: TextStyle(
                               fontSize: 11,
-                              color: AppColors.textMuted,
+                              color: AppColors.warning,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          )
+                        : null,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            formatPeso(
+                              product.hasDiscount
+                                  ? product.discountPrice!
+                                  : product.price,
+                            ),
+                            style: AppTypography.price,
+                          ),
+                        ),
+                      ),
+                      if (product.hasDiscount) ...[
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 2),
+                            child: Text(
+                              formatPeso(product.price),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textMuted,
+                                decoration: TextDecoration.lineThrough,
+                              ),
                             ),
                           ),
                         ),
                       ],
-                    ),
-                  Row(
-                    children: [
-                      const Icon(Icons.star, size: 12, color: AppColors.star),
-                      const SizedBox(width: 3),
-                      const Text(
-                        'New',
-                        style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-                      ),
                     ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    formatPeso(product.price),
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.pinkDark,
-                      letterSpacing: -0.3,
-                    ),
                   ),
                   const SizedBox(height: 10),
                   Row(
                     children: [
                       Expanded(
                         child: _CardActionButton(
-                          onTap: onAddToCart,
-                          background: AppColors.pinkSoft,
+                          onTap: product.purchasable ? onAddToCart : null,
+                          background: AppColors.white,
                           foreground: AppColors.pinkDark,
-                          borderColor: AppColors.pink.withValues(alpha: 0.2),
+                          borderColor: AppColors.border,
                           icon: Icons.shopping_cart_outlined,
                         ),
                       ),
                       const SizedBox(width: 6),
                       Expanded(
                         child: _CardActionButton(
-                          onTap: onBuyNow,
-                          background: AppColors.pink,
-                          foreground: AppColors.white,
-                          label: 'Buy Now',
+                          onTap: product.purchasable ? onBuyNow : null,
+                          background: AppColors.pinkDark,
+                          foreground: Colors.white,
+                          label: product.onVacation
+                              ? 'On vacation'
+                              : product.purchasable
+                              ? 'Buy Now'
+                              : product.isOutOfStock
+                              ? 'Out of stock'
+                              : 'Unavailable',
                         ),
                       ),
                     ],
@@ -132,7 +249,7 @@ class ProductCard extends StatelessWidget {
 }
 
 class _CardActionButton extends StatelessWidget {
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final Color background;
   final Color foreground;
   final Color? borderColor;
@@ -157,17 +274,23 @@ class _CardActionButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: Container(
-          height: 32,
+          height: 44,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
-            border: borderColor != null ? Border.all(color: borderColor!) : null,
+            border: borderColor != null
+                ? Border.all(color: borderColor!)
+                : null,
           ),
           child: icon != null
               ? Icon(icon, size: 16, color: foreground)
               : Text(
                   label ?? '',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: foreground),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: foreground,
+                  ),
                 ),
         ),
       ),

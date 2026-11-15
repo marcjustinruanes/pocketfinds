@@ -25,3 +25,12 @@ class AppRadius {
   static const double xl = 20;
   static const double dialog = 24;
 }
+
+/// Shared minimums; controls may grow when accessibility text needs more room.
+class AppDimensions {
+  AppDimensions._();
+  static const double buttonHeight = 48;
+  static const double inputHeight = 52;
+  static const double pageInset = 20;
+  static const double navigationHeight = 72;
+}
