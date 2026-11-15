@@ -12,6 +12,16 @@ PocketFinds is a Laravel application using Eloquent with standalone MySQL and lo
 6. Run `php artisan storage:link` to expose public uploads. Message attachments remain private and are served through authenticated routes.
 7. Start the app with `php artisan serve`. Restart an existing server after changing `.env` or PHP configuration. If using background jobs, start `php artisan queue:work`.
 
+## Images after cloning or pulling
+
+Public storefront images live in `storage/app/public`. Git includes the allowed
+image folders; `public/storage` stays ignored because it is a machine-specific link.
+Run `php artisan storage:link` once on each installation (also included in
+`composer run setup`). The web server must serve Laravel's `public` directory.
+Images use the relative `/storage` URL, so they load from the current host.
+Product records must reference the same image filenames in that installation's database.
+GitHub stores these files; it does not run the Laravel application.
+
 ## MySQL Workbench
 
 Connect using Standard TCP/IP, host `127.0.0.1`, port `3307`, and your configured MySQL account. Refresh Schemas and expand `pocketfinds` to view the migrated tables. Do not rerun the CREATE TABLE script against the populated database.
@@ -22,7 +32,7 @@ The SQL schema is in `database/pocketfinds-mysql-schema.sql`; queue infrastructu
 
 ### Existing products on another laptop
 
-`git pull` downloads application files, not MySQL records or ignored uploaded files.
+`git pull` downloads application files and the public storefront images included in the repository, but not MySQL records or private uploads.
 The active migrations create the schema only. There are no product seeders or
 product records in the tracked SQL files. With `DB_HOST=127.0.0.1`, each laptop
 connects to its own MySQL server even when everyone uses the same `.env` values.
@@ -34,9 +44,10 @@ php database/backup_mysql.php
 ```
 
 Transfer `storage/app/private/mysql-migration/mysql-backup.sql` and its `.sha256`
-file privately. Also copy `storage/app/public` for product images and profiles;
-copy `storage/app/private/messages` if message attachments are needed. Do not
-commit these files to GitHub.
+file privately. Product images, hero banners, logistics logos, and shop photos/banners
+are included through `storage/app/public/.gitignore`. Other uploads, including personal
+profiles and message attachments, must be transferred privately if needed. Do not
+commit private uploads or database exports to GitHub.
 
 The backup includes schema and records. Restore it into an empty MySQL database,
 not over tables already created by `php artisan migrate`. For an existing local
@@ -53,3 +64,7 @@ The application no longer connects to Supabase. The old cloud project remains av
 ## Checks
 
 Run `php artisan test` for the automated tests. `database/verify_mysql_app.php` exercises the migrated app using transaction rollback and temporary upload files; `database/verify_local_assets.php` verifies copied files against their checksums.
+
+## Share images through the database
+
+Run `php artisan migrate`, then `php artisan images:share`. This stores eligible public storefront images in `public_image_assets` and writes `handoff/PocketFinds-images.sql`. Send that SQL file with the updated code. Import it into the recipient's existing MySQL database and run migrations. The `/storage/{path}` fallback serves database images when local files are absent. Product/shop records must reference the same paths; this export contains images only. Run `images:share` again after adding or replacing images. Private uploads are excluded.

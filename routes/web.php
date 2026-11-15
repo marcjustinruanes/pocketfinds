@@ -1,4 +1,9 @@
 <?php
+// Specific public image routes leave Laravel's signed private-storage route intact.
+foreach (['product_images','hero_banners','logistics_logos','profiles/shop-photos','profiles/shop-banners'] as $imageFolder) {
+    \Illuminate\Support\Facades\Route::get('/storage/'.$imageFolder.'/{image}', [\App\Http\Controllers\PublicImageController::class, 'show'])
+        ->defaults('folder', $imageFolder)->where('image', '[A-Za-z0-9_-]+\.(?i:jpg|jpeg|png|webp|gif|avif)');
+}
 require __DIR__.'/buyer-modules.php';
 
 \Illuminate\Support\Facades\Route::get('/private-documents/{token}', [\App\Http\Controllers\SensitiveDocumentController::class, 'show'])
