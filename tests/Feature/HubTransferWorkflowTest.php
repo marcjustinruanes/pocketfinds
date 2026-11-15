@@ -97,7 +97,7 @@ class HubTransferWorkflowTest extends TestCase
     private function dispatched(): HubTransferBatch
     {
         $batch = $this->approved();
-        $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertOk();
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertOk();
         foreach ($this->legs as $leg) {
             $this->actingAs($this->rider)->patch('/rider/hub-transfers/'.$leg->id.'/confirm')->assertRedirect();
         }
@@ -118,7 +118,7 @@ class HubTransferWorkflowTest extends TestCase
             $this->assertSame('pending', $leg->fresh()->status);
         }
         $this->assertSame(0, DB::table('delivery_assignments')->count());
-        $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertOk();
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertOk();
         foreach ($this->legs as $leg) {
             $this->actingAs($this->rider)->patch('/rider/hub-transfers/'.$leg->id.'/confirm')->assertRedirect();
         }
@@ -156,9 +156,9 @@ class HubTransferWorkflowTest extends TestCase
         DB::table('orders')->where('id', $orderId)->update(['buyer_id' => $buyer->id]);
 
         $batch = $this->approved();
-        $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertOk();
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertOk();
         $this->assertSame(1, DB::table('notifications')->where('user_id', $buyer->id)->where('reference_id', $orderId)->where('title', 'Hub Transfer Started')->count());
-        $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
         $this->assertSame(1, DB::table('notifications')->where('user_id', $buyer->id)->where('reference_id', $orderId)->where('title', 'Hub Transfer Started')->count());
 
         $leg = $this->legs[0];
@@ -174,17 +174,39 @@ class HubTransferWorkflowTest extends TestCase
         $this->assertSame(1, DB::table('notifications')->where('user_id', $buyer->id)->where('reference_id', $orderId)->where('title', 'Parcel Sorted')->count());
     }
 
-    public function test_staff_cannot_decide_or_dispatch_on_new_or_existing_routes(): void
+    public function test_origin_staff_can_dispatch_only_after_admin_approval_but_cannot_decide(): void
     {
         $batch = $this->approved();
         $this->actingAs($this->sender);
-        foreach (['approve', 'reject', 'dispatch'] as $action) {
+        foreach (['approve', 'reject'] as $action) {
             $this->patchJson('/logistics/transfers/'.$batch->id.'/'.$action, ['courier_id' => $this->rider->id, 'reason' => 'Forged'])->assertForbidden();
         }
-        $this->patchJson('/logistics/assignments/'.$this->parcels[0]->id.'/assign-hub-transfer', ['courier_id' => $this->rider->id])->assertForbidden();
-        $this->get('/logistics/transfers/'.$batch->id)->assertOk()->assertDontSee('Dispatch approved batch')->assertDontSee('Approve request')->assertDontSee('Reject request');
+        $this->actingAs($this->admin)->patchJson('/logistics/assignments/'.$this->parcels[0]->id.'/assign-hub-transfer', ['courier_id' => $this->rider->id])->assertForbidden();
+        $this->get('/logistics/transfers/'.$batch->id)->assertOk()->assertDontSee('Dispatch approved batch');
+        $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertForbidden();
+        $this->actingAs($this->sender);
+        $this->get('/logistics/transfers/'.$batch->id)->assertOk()->assertSee('Dispatch approved batch')->assertDontSee('Approve request')->assertDontSee('Reject request');
         $this->postJson('/logistics/scan/lookup', ['code' => $this->parcels[0]->tracking_number])->assertOk()->assertJsonPath('stage', 'none');
         $this->assertSame('approved', $batch->fresh()->status);
+        $this->actingAs($this->receiver)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertForbidden();
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertOk();
+        $this->assertSame($this->sender->id, $batch->fresh()->dispatched_by);
+    }
+
+    public function test_origin_staff_cannot_dispatch_a_pending_transfer(): void
+    {
+        $batch = $this->requestBatch();
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
+        $this->assertSame('pending', $batch->fresh()->status);
+    }
+
+    public function test_origin_hub_can_assign_approved_transfer_from_orders_action(): void
+    {
+        $batch = $this->approved();
+        $this->actingAs($this->sender)->get('/logistics/transfers')->assertOk()->assertSee('Assign four-wheel rider');
+        $this->patchJson('/logistics/assignments/'.$this->parcels[0]->id.'/assign-hub-transfer', ['courier_id' => $this->rider->id])->assertRedirect();
+        $this->assertSame('in_transit', $batch->fresh()->status);
+        $this->assertSame($this->sender->id, $batch->fresh()->dispatched_by);
     }
 
     public function test_hub_and_company_scope_cannot_be_changed_using_ids_or_filter_parameters(): void
@@ -211,7 +233,7 @@ class HubTransferWorkflowTest extends TestCase
         $this->assertSame('rejected', $batch->fresh()->status);
         $this->assertSame('Destination capacity unavailable', $batch->fresh()->rejection_reason);
         $this->assertCount(2, $batch->members);
-        $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
         $again = $this->requestBatch();
         $this->assertNotSame($batch->id, $again->id);
         $this->assertSame('pending', $again->status);
@@ -224,7 +246,7 @@ class HubTransferWorkflowTest extends TestCase
         $batch = $this->requestBatch();
         $this->patchJson('/logistics/transfers/'.$batch->id.'/cancel', ['reason' => 'Request error'])->assertOk();
         $this->assertSame('cancelled', $batch->fresh()->status);
-        $this->actingAs($this->admin)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
         $batch = $this->approved();
         $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/cancel', ['reason' => 'Too late'])->assertUnprocessable();
         $this->actingAs($this->admin)->patchJson('/logistics/transfers/'.$batch->id.'/cancel', ['reason' => 'Route unavailable'])->assertOk();
@@ -235,12 +257,12 @@ class HubTransferWorkflowTest extends TestCase
     public function test_invalid_transitions_replayed_dispatch_and_receipt_do_not_write_extra_history(): void
     {
         $batch = $this->requestBatch();
-        $this->actingAs($this->admin)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
         $this->actingAs($this->receiver)->patchJson('/logistics/transfers/'.$batch->id.'/receive', ['confirm_all' => 1])->assertUnprocessable();
         $this->actingAs($this->admin)->patchJson('/logistics/transfers/'.$batch->id.'/approve')->assertOk();
         $this->patchJson('/logistics/transfers/'.$batch->id.'/approve')->assertUnprocessable();
-        $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertOk();
-        $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertOk();
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
         $this->actingAs($this->receiver)->patchJson('/logistics/transfers/'.$batch->id.'/receive', ['confirm_all' => 1])->assertUnprocessable();
         $this->assertSame(0, $batch->members()->whereNotNull('received_at')->count());
         foreach ($this->legs as $leg) {
@@ -281,14 +303,14 @@ class HubTransferWorkflowTest extends TestCase
     {
         $batch = $this->approved();
         $this->destination->update(['is_operational' => false]);
-        $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
         $this->destination->update(['is_operational' => true]);
-        DB::table('users')->where('id', $this->admin->id)->update(['status' => 'suspended']);
+        DB::table('users')->where('id', $this->sender->id)->update(['status' => 'suspended']);
         // The guard still has the old approved object; the transaction must reload it.
         $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertForbidden();
-        DB::table('users')->where('id', $this->admin->id)->update(['status' => 'approved']);
+        DB::table('users')->where('id', $this->sender->id)->update(['status' => 'approved']);
         $this->parcels[0]->update(['shipping_status' => 'returned']);
-        $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
         $this->assertSame('approved', $batch->fresh()->status);
         $this->assertSame(0, DB::table('delivery_assignments')->count());
     }
@@ -297,25 +319,27 @@ class HubTransferWorkflowTest extends TestCase
     {
         $batch = $this->approved();
         foreach ([['status' => 'suspended'], ['vehicle_type' => 'two_wheels'], ['logistics_hub_id' => $this->destination->id]] as $change) {
+            $this->actingAs($this->admin);
             $this->rider->update($change+($change['status']??null?['status_reason'=>'Fixture suspension']:[]));
-            $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
+            $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
             $this->rider->hiringDecision=['reason'=>'Fixture reactivation'];
+            $this->actingAs($this->admin);
             $this->rider->update(['status' => 'approved', 'vehicle_type' => 'four_wheels', 'logistics_hub_id' => $this->origin->id]);
         }
         $this->rider->update(['vehicle_ownership' => 'company']);
         $vehicle = CompanyVehicle::create(['company_name' => 'Alpha', 'logistics_hub_id' => $this->origin->id, 'vehicle_type' => 'four_wheels', 'platform_status' => 'pending', 'is_available' => true]);
-        $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id, 'vehicle_id' => $vehicle->id])->assertUnprocessable();
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id, 'vehicle_id' => $vehicle->id])->assertUnprocessable();
         $vehicle->update(['platform_status' => 'approved', 'is_available' => false]);
-        $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id, 'vehicle_id' => $vehicle->id])->assertUnprocessable();
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id, 'vehicle_id' => $vehicle->id])->assertUnprocessable();
         $vehicle->update(['is_available' => true]);
-        $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id, 'vehicle_id' => $vehicle->id])->assertOk();
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id, 'vehicle_id' => $vehicle->id])->assertOk();
         [$s] = $this->parcel($this->origin, $this->destination);
         $next = app(HubTransferWorkflow::class)->request($this->sender, $this->origin->id, $this->destination->id, [$s->id]);
         app(HubTransferWorkflow::class)->decide($this->admin, $next->id, 'approved');
-        $this->patchJson('/logistics/transfers/'.$next->id.'/dispatch', ['courier_id' => $this->rider->id, 'vehicle_id' => $vehicle->id])->assertUnprocessable();
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$next->id.'/dispatch', ['courier_id' => $this->rider->id, 'vehicle_id' => $vehicle->id])->assertUnprocessable();
         $otherRider = $this->user('rider', $this->origin);
         $otherRider->update(['vehicle_ownership' => 'company']);
-        $this->patchJson('/logistics/transfers/'.$next->id.'/dispatch', ['courier_id' => $otherRider->id, 'vehicle_id' => $vehicle->id])->assertUnprocessable();
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$next->id.'/dispatch', ['courier_id' => $otherRider->id, 'vehicle_id' => $vehicle->id])->assertUnprocessable();
         $this->assertSame('approved', $next->fresh()->status);
     }
 
@@ -323,12 +347,12 @@ class HubTransferWorkflowTest extends TestCase
     {
         $batch = $this->approved();
         DB::unprepared("CREATE TRIGGER fail_transfer_event BEFORE INSERT ON hub_transfer_events BEGIN SELECT RAISE(ABORT, 'fixture failure'); END");
-        $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertStatus(500);
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertStatus(500);
         $this->assertSame('approved', $batch->fresh()->status);
         $this->assertSame(0, DB::table('delivery_assignments')->count());
         $this->assertSame('at_sorting_center', $this->parcels[0]->fresh()->shipping_status);
         DB::unprepared('DROP TRIGGER fail_transfer_event');
-        $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertOk();
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertOk();
         foreach ($this->legs as $leg) {
             $this->actingAs($this->rider)->patch('/rider/hub-transfers/'.$leg->id.'/confirm')->assertRedirect();
         }
@@ -400,30 +424,28 @@ class HubTransferWorkflowTest extends TestCase
         $flow->decide($this->admin, $batch->id, 'approved');
         $this->actingAs($this->receiver)->getJson('/logistics/transfers/'.$batch->id)->assertNotFound();
         $this->postJson('/logistics/scan/lookup', ['code' => $s->tracking_number])->assertOk()->assertJsonPath('shipment.current_leg', null)->assertJsonPath('stage', 'none');
-        $flow->dispatch($this->admin, $batch->id, $this->rider->id);
+        $flow->dispatch($this->sender, $batch->id, $this->rider->id);
         $flow->confirmPickup($this->rider, $first->id);
         $flow->receive($middleStaff, $batch->id);
         $this->assertSame('hub_transfer', $s->fresh()->shipping_status);
         $this->assertSame('pending', $second->fresh()->status);
         $this->assertSame('Received at Next Hub', app(\App\Services\ParcelCustody::class)->describe($s->fresh(), $middleStaff)['label']);
         $onward = $flow->request($middleStaff, $middle->id, $this->destination->id, [$s->id]);
-        $this->actingAs($this->admin)->patchJson('/logistics/transfers/'.$onward->id.'/dispatch', ['courier_id' => $middleRider->id])->assertUnprocessable();
+        $this->actingAs($middleStaff)->patchJson('/logistics/transfers/'.$onward->id.'/dispatch', ['courier_id' => $middleRider->id])->assertUnprocessable();
         $flow->decide($this->admin, $onward->id, 'approved');
-        $flow->dispatch($this->admin, $onward->id, $middleRider->id);
+        $flow->dispatch($middleStaff, $onward->id, $middleRider->id);
         $flow->confirmPickup($middleRider, $second->id);
         $flow->receive($this->receiver, $onward->id);
         $this->assertSame('sorted', $s->fresh()->shipping_status);
         $this->assertSame('completed', $onward->fresh()->status);
     }
-    public function test_financial_foundation_snapshots_a_multi_parcel_dispatch_once(): void
+    public function test_multi_parcel_transfer_does_not_earn_final_delivery_parcel_pay(): void
     {
         (require database_path('migrations/2026_10_28_000001_add_logistics_financial_foundation.php'))->up();
         $batch = $this->dispatched();
-        $this->assertDatabaseCount('logistics_compensations', 1);
-        $this->assertDatabaseHas('logistics_compensations', ['source_type' => 'transfer_batch', 'source_id' => $batch->id,
-            'rider_id' => $this->rider->id, 'amount_cents' => 15000, 'status' => 'pending']);
-        $this->actingAs($this->admin)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
-        $this->assertDatabaseCount('logistics_compensations', 1);
+        $this->assertDatabaseCount('logistics_compensations', 0);
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
+        $this->assertDatabaseCount('logistics_compensations', 0);
         $this->assertSame(2, $batch->members()->count());
     }
 
@@ -453,16 +475,17 @@ class HubTransferWorkflowTest extends TestCase
     public function test_dropdown_and_dispatch_share_online_ownership_and_exclusive_work_rules(): void
     {
         $batch = $this->approved();
+        $this->actingAs($this->sender);
         foreach ([['is_available' => false], ['vehicle_ownership' => null], ['is_logistics' => true], ['vehicle_type' => 'two_wheels'], ['logistics_hub_id' => $this->destination->id]] as $change) {
             DB::table('users')->where('id', $this->rider->id)->update($change);
             $this->get('/logistics/transfers/'.$batch->id)->assertOk()->assertViewHas('riders', fn ($rows) => ! $rows->contains('id', $this->rider->id));
-            $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
+            $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
             DB::table('users')->where('id', $this->rider->id)->update(['is_available' => true, 'vehicle_ownership' => 'own', 'is_logistics' => false, 'vehicle_type' => 'four_wheels', 'logistics_hub_id' => $this->origin->id]);
         }
         $this->get('/logistics/transfers/'.$batch->id)->assertViewHas('riders', fn ($rows) => $rows->contains('id', $this->rider->id));
         $assignment = \App\Models\DeliveryAssignment::create(['shipment_id' => $this->parcels[0]->id, 'courier_id' => $this->rider->id, 'status' => 'requested', 'leg' => 'delivery']);
         $this->get('/logistics/transfers/'.$batch->id)->assertViewHas('riders', fn ($rows) => $rows->isEmpty());
-        $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable();
         $assignment->delete();
         // A transfer batch may contain more than three parcels; local job capacity does not apply.
         for ($i = 0; $i < 2; $i++) {
@@ -470,7 +493,7 @@ class HubTransferWorkflowTest extends TestCase
             $leg->update(['transfer_batch_id' => $batch->id, 'requested_at' => now(), 'approved_at' => now(), 'approved_by' => $this->admin->id]);
             $batch->members()->create(['shipment_id' => $shipment->id, 'leg_id' => $leg->id, 'tracking_number' => $shipment->tracking_number]);
         }
-        $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertOk();
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertOk();
         $this->assertSame(4, $batch->members()->count());
     }
 
@@ -511,7 +534,7 @@ class HubTransferWorkflowTest extends TestCase
         $this->transferOriginReceipt($this->parcels[0], $this->sender);
         $this->patchJson('/logistics/transfers/'.$batch->id.'/approve')->assertOk();
         DB::table('order_status_history')->where('order_id', $this->parcels[0]->order_id)->where('status', 'at_sorting_center')->update(['changed_by' => null]);
-        $this->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable()->assertSee('Custody needs review');
+        $this->actingAs($this->sender)->patchJson('/logistics/transfers/'.$batch->id.'/dispatch', ['courier_id' => $this->rider->id])->assertUnprocessable()->assertSee('Custody needs review');
         $this->assertSame('approved', $batch->fresh()->status);
     }
 
@@ -570,7 +593,7 @@ class HubTransferWorkflowTest extends TestCase
         $flow = app(HubTransferWorkflow::class);
         $first = $flow->request($this->sender, $this->origin->id, $middle->id, array_map(fn ($s) => $s->id, $this->parcels));
         $flow->decide($this->admin, $first->id, 'approved');
-        $flow->dispatch($this->admin, $first->id, $this->rider->id);
+        $flow->dispatch($this->sender, $first->id, $this->rider->id);
         $flow->confirmPickup($this->rider, $this->legs[0]->id);
         $flow->receive($staff, $first->id, [$this->parcels[0]->id]);
         $this->assertSame('in_transit', $first->fresh()->status);
@@ -582,8 +605,8 @@ class HubTransferWorkflowTest extends TestCase
         $this->patchJson('/logistics/transfers/'.$next->id.'/approve')->assertOk();
         $pickup = $this->legs[0]->fresh()->rider_confirmed_pickup_at;
         $this->legs[0]->update(['rider_confirmed_pickup_at' => null]);
-        $this->patchJson('/logistics/transfers/'.$next->id.'/dispatch', ['courier_id' => $rider->id])->assertUnprocessable()->assertSee('Custody needs review');
+        $this->actingAs($staff)->patchJson('/logistics/transfers/'.$next->id.'/dispatch', ['courier_id' => $rider->id])->assertUnprocessable()->assertSee('Custody needs review');
         $this->legs[0]->update(['rider_confirmed_pickup_at' => $pickup]);
-        $this->patchJson('/logistics/transfers/'.$next->id.'/dispatch', ['courier_id' => $rider->id])->assertOk();
+        $this->actingAs($staff)->patchJson('/logistics/transfers/'.$next->id.'/dispatch', ['courier_id' => $rider->id])->assertOk();
     }
 }

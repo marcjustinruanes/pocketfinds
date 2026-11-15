@@ -92,7 +92,7 @@ class HubTransferWorkflow
         abort_unless($user->account_type === 'logistics' && $user->is_logistics && ! $user->is_admin && $user->status === 'approved'
             && filled($user->business_name) && ($user->isLogisticsAdmin() || $user->isHubStaff()), 403);
         if ($admin) {
-            abort_unless($user->isLogisticsAdmin(), 403, 'Only Logistics Admin can decide or dispatch hub transfers.');
+            abort_unless($user->isLogisticsAdmin(), 403, 'Only Logistics Admin can approve or reject hub transfers.');
         }
         if ($user->isHubStaff()) {
             app(LogisticsAccess::class)->hub($user);
@@ -267,8 +267,11 @@ class HubTransferWorkflow
         return DB::transaction(function () use ($user, $id, $riderId, $vehicleId) {
             $vehicleIds = CompanyVehicle::where('company_name', $user->business_name)->pluck('id')->all();
             $footprint = GcashLocks::operation([], [$id], [$user->id, $riderId], [], $vehicleIds);
-            $actor = $this->actor($user, true);
+            $actor = $this->actor($user);
             $batch = $this->scope($actor)->lockForUpdate()->findOrFail($id);
+            abort_unless($actor->isHubStaff()
+                && (int) $actor->logistics_hub_id === (int) $batch->origin_hub_id, 403,
+                'Only the origin hub can assign a rider and dispatch an approved transfer.');
             abort_unless($batch->status === 'approved' && $batch->approved_at && $batch->approved_by, 422, 'Only an approved, undispatched batch can be dispatched.');
             [$origin, $destination] = $this->hubs($actor, $batch->origin_hub_id, $batch->destination_hub_id);
             $rider = User::where('business_name', $actor->business_name)->whereKey($riderId)->lockForUpdate()->firstOrFail();

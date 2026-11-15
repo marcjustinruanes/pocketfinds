@@ -397,18 +397,18 @@ Route::prefix('logistics')->name('logistics.')->middleware(['logistics', 'logist
     Route::get('/transfers/{id}', [HubTransferController::class, 'show'])->name('transfers.show');
     Route::patch('/transfers/{id}/cancel', [HubTransferController::class, 'cancel'])->name('transfers.cancel');
     Route::patch('/transfers/{id}/receive', [HubTransferController::class, 'receive'])->name('transfers.receive');
+    Route::patch('/transfers/{id}/dispatch', [HubTransferController::class, 'dispatch'])->name('transfers.dispatch');
     Route::post('/transfers/{id}/discrepancy', [HubTransferController::class, 'discrepancy'])->name('transfers.discrepancy');
     Route::middleware('logistics.admin')->group(function () {
         Route::patch('/transfers/{id}/approve', [HubTransferController::class, 'approve'])->name('transfers.approve');
         Route::patch('/transfers/{id}/reject', [HubTransferController::class, 'reject'])->name('transfers.reject');
-        Route::patch('/transfers/{id}/dispatch', [HubTransferController::class, 'dispatch'])->name('transfers.dispatch');
     });
     Route::get('/assignments', [LogisticsController::class, 'assignments'])->name('assignments');
     Route::get('/assignments/review', [\App\Http\Controllers\LogisticsOperationsController::class,'index'])->name('assignments.review');
     Route::post('/assignments/{id}/reassignment', [\App\Http\Controllers\LogisticsOperationsController::class,'requestReassignment'])->middleware('throttle:20,1')->name('assignments.reassign');
     Route::post('/assignments/{id}/reassignment/decision', [\App\Http\Controllers\LogisticsOperationsController::class,'decideReassignment'])->middleware('throttle:20,1')->name('assignments.decide');
     Route::patch('/assignments/{id}/assign', [LogisticsController::class, 'assignCourier'])->name('assignments.assign');
-    Route::patch('/assignments/{id}/assign-hub-transfer', [LogisticsController::class, 'assignHubTransferRider'])->middleware('logistics.admin')->name('assignments.assign-hub-transfer');
+    Route::patch('/assignments/{id}/assign-hub-transfer', [LogisticsController::class, 'assignHubTransferRider'])->name('assignments.assign-hub-transfer');
     Route::get('/scan', [LogisticsController::class, 'scan'])->name('scan');
     Route::post('/scan/lookup', [LogisticsController::class, 'scanLookup'])->name('scan.lookup');
     // Short-lived phone relay: lookup input only, never shipment/status writes.

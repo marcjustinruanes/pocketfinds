@@ -23,9 +23,9 @@
 <div class="card card-pad"><form method="POST" action="{{ route('logistics.transfers.approve',$batch->id) }}">@csrf @method('PATCH')<button class="btn btn-success" @disabled(count($custodyProblems) > 0)>Approve request</button></form>
 <form method="POST" action="{{ route('logistics.transfers.reject',$batch->id) }}">@csrf @method('PATCH')<label>Rejection reason<textarea name="reason" maxlength="1000" required></textarea></label><button class="btn btn-outline">Reject request</button></form></div>
 @endif
-@if(auth()->user()->isLogisticsAdmin() && $batch->status === 'approved')
+@if($canDispatch && $batch->status === 'approved')
 <form class="card card-pad logistics-form-grid" method="POST" action="{{ route('logistics.transfers.dispatch',$batch->id) }}">@csrf @method('PATCH')
-@if($riders->isEmpty())<p role="status">No eligible online four-wheel transfer rider is available at the origin hub.</p>@endif
+@if($riders->isEmpty())<p role="status">No eligible online four-wheel transfer rider is available at the origin hub. The rider must be approved, assigned to this hub, and online in the rider app before dispatch.</p>@endif
 <label>Transfer rider<select name="courier_id" required><option value="">Choose rider</option>@foreach($riders as $rider)<option value="{{ $rider->id }}">{{ $rider->username }} ({{ $rider->vehicle_ownership }})</option>@endforeach</select></label>
 <label>Company vehicle<select name="vehicle_id"><option value="">Auto-select for company rider; leave blank for personal vehicle</option>@foreach($vehicles as $vehicle)<option value="{{ $vehicle->id }}">{{ $vehicle->plate_number }}</option>@endforeach</select></label>
 <button class="btn btn-primary" @disabled(count($custodyProblems) > 0 || $riders->isEmpty())>Dispatch approved batch</button></form>

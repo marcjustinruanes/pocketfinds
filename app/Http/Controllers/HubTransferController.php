@@ -43,13 +43,15 @@ class HubTransferController extends LogisticsController
         $batch = $flow->scope($request->user())->with(['requester', 'approver', 'dispatcher', 'receiver', 'rider', 'vehicle', 'origin', 'destination'])->findOrFail($id);
         $members = $batch->members()->with(['leg', 'receiver', 'shipment.hubLegs.transferBatch.members', 'shipment.courier', 'shipment.pickupRider', 'shipment.deliveryAssignment'])->orderBy('id')->paginate(30)->withQueryString();
         $events = $batch->events()->with('actor')->reorder()->orderByDesc('id')->paginate(30, ['*'], 'event_page')->withQueryString();
-        $riders = $request->user()->isLogisticsAdmin() && $batch->status === 'approved' && $batch->origin
+        $canDispatch = $request->user()->isHubStaff()
+            && (int) $request->user()->logistics_hub_id === (int) $batch->origin_hub_id;
+        $riders = $canDispatch && $batch->status === 'approved' && $batch->origin
             ? app(\App\Services\TransferRiderEligibility::class)->available($batch->origin) : collect();
-        $vehicles = $request->user()->isLogisticsAdmin() && $batch->status === 'approved'
+        $vehicles = $canDispatch && $batch->status === 'approved'
             ? CompanyVehicle::where('company_name', $batch->company_name)->where('logistics_hub_id', $batch->origin_hub_id)->where('vehicle_type', 'four_wheels')->riderVisible()->get() : collect();
 
         $custodyProblems = app(\App\Services\TransferCustodyEvidence::class)->review($batch);
-        return view('logistics.transfer-show', array_merge($this->sidebarCounts(), compact('batch', 'members', 'events', 'riders', 'vehicles', 'custodyProblems')));
+        return view('logistics.transfer-show', array_merge($this->sidebarCounts(), compact('batch', 'members', 'events', 'riders', 'vehicles', 'custodyProblems', 'canDispatch')));
     }
 
     public function create(Request $request)

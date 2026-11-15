@@ -33,7 +33,7 @@
 <td>{{ $batch->approver?->username ?? '—' }}<br>{{ $batch->approved_at?->format('Y-m-d g:i A') }}</td>
 <td>{{ $batch->dispatcher?->username ?? '—' }}<br>{{ $batch->dispatched_at?->format('Y-m-d g:i A') }}</td>
 <td>{{ $batch->receiver?->username ?? '—' }}<br>{{ $batch->received_at?->format('Y-m-d g:i A') }}</td>
-<td><a class="btn btn-sm btn-outline" href="{{ route('logistics.transfers.show',$batch->id) }}" data-modal-open="transferDetailsModal" data-transfer-details-url="{{ route('logistics.transfers.show',$batch->id) }}" aria-haspopup="dialog">Details</a></td>
+<td><a class="btn btn-sm btn-outline" href="{{ route('logistics.transfers.show',$batch->id) }}" data-modal-open="transferDetailsModal" data-transfer-details-url="{{ route('logistics.transfers.show',$batch->id) }}" aria-haspopup="dialog">{{ auth()->user()->isHubStaff() && auth()->user()->logistics_hub_id == $batch->origin_hub_id && $batch->status === 'approved' ? 'Assign four-wheel rider' : (auth()->user()->isLogisticsAdmin() && $batch->status === 'pending' ? 'Approve / Reject' : 'Details') }}</a></td>
 </tr>@empty<tr><td colspan="10"><div class="hub-transfer-empty"><span aria-hidden="true">—</span><strong>No transfers match these filters</strong><small>Adjust the search, status, or date range and try again.</small></div></td></tr>@endforelse</tbody></table></div></div>
 {{ $batches->links() }}
 @endif

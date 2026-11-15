@@ -372,7 +372,7 @@ class LogisticsController extends Controller
      */
     public function assignHubTransferRider(Request $request, $id)
     {
-        abort_unless(auth()->user()->isLogisticsAdmin(), 403, 'Only Logistics Admin can dispatch hub transfers.');
+        abort_unless(auth()->user()->isHubStaff(), 403, 'Only the origin hub can assign transfer riders.');
         $data = $request->validate(['courier_id' => 'required|integer', 'vehicle_id' => 'nullable|integer']);
         GcashLocks::operation([(string) $id], [], [auth()->id(), $data['courier_id']], [], CompanyVehicle::where('company_name', auth()->user()->business_name)->pluck('id')->all());
         $shipment = $this->companyScope()->findOrFail($id);

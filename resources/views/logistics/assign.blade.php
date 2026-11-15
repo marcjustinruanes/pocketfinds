@@ -1,7 +1,7 @@
 @extends('logistics.layout')
 @section('title', 'Delivery Assignments')
 @section('page-title', 'Delivery Assignments')
-@section('page-sub', 'Send personal offers to eligible riders at the parcel hub. Riders must confirm within 60 seconds.')
+@section('page-sub', auth()->user()->isHubStaff() ? 'Send personal offers to eligible riders at your hub. Riders must confirm within 60 seconds.' : 'Monitor company assignments. Pickup and delivery rider offers are managed by the responsible hub.')
 
 @section('content')
 <section class="delivery-assignment-page">
@@ -41,7 +41,7 @@
                   <div style="font-size:11px;color:var(--muted)">{{ $courier->email }}</div>
                 </div>
               </div>
-            @elseif($s->shipping_status === 'sorted' && (!auth()->user()->isHubStaff() || app(\App\Services\LogisticsAccess::class)->matches(auth()->user()->logisticsHub, $s->destination_hub, $s->destination_province)))
+            @elseif($s->shipping_status === 'sorted' && auth()->user()->isHubStaff() && app(\App\Services\LogisticsAccess::class)->matches(auth()->user()->logisticsHub, $s->destination_hub, $s->destination_province))
               @if($s->assignment)<p>{{ $s->assignment->status === 'offered' && $s->assignment->expires_at?->isFuture() ? 'Awaiting rider confirmation: ' : 'Previous offer: ' }}{{ $courier->given_names }} - {{ $s->assignment->status === 'offered' && ! $s->assignment->expires_at?->isFuture() ? 'expired' : $s->assignment->status }}</p>@endif
               <form method="POST" action="{{ route('logistics.assignments.assign', $s->id) }}" style="display:flex;gap:6px">
                 @csrf @method('PATCH')
@@ -57,7 +57,8 @@
             @elseif($s->shipping_status === 'sorted')
               <span>Awaiting a rider offer from the destination hub.</span>
             @elseif($s->shipping_status === 'at_sorting_center' && $s->needsHubTransfer())
-              <span style="color:var(--muted);font-size:12.5px">At {{ $s->origin_hub }} — awaiting Logistics Admin dispatch of the approved batch</span>
+              <span style="color:var(--muted);font-size:12.5px">Awaiting origin hub rider assignment after admin approval.</span>
+              @if(auth()->user()->isHubStaff())<a class="btn btn-sm btn-primary" href="{{ route('logistics.transfers', ['direction'=>'outgoing']) }}">Assign transfer rider</a>@endif
             @elseif($s->shipping_status === 'hub_transfer')
               @php($activeLeg = $s->activeHubLeg())
               <span style="color:var(--muted);font-size:12.5px">{{ optional($s->hubTransferRider)->given_names ?? 'A rider' }} en route {{ $activeLeg->from_hub ?? $s->origin_hub }} → {{ $activeLeg->to_hub ?? $s->destination_hub }}</span>
