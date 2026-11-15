@@ -1,39 +1,45 @@
 @extends('logistics.layout')
 @section('title', 'Rider Management')
 @section('page-title', 'Rider Management')
-@section('page-sub', "Approve/disapprove courier applications, activate or suspend riders")
+@section('page-sub', 'Review courier applications, manage rider access and coverage')
+
+@section('workspace-actions')
+<div class="rider-workspace-actions">
+  <form method="GET" class="rider-search-form" role="search">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg>
+    <input name="search" value="{{ request('search') }}" placeholder="Search name, username, or email" aria-label="Search riders" oninput="clearTimeout(this._riderSearchTimer); this._riderSearchTimer = setTimeout(() => this.form.requestSubmit(), 350)">
+    <input type="hidden" name="status" value="{{ $status }}">
+  </form>
+  <button type="button" class="btn btn-primary rider-create-button" data-modal-open="createRiderModal"><span aria-hidden="true">+</span>Create rider account</button>
+</div>
+@endsection
 
 @section('content')
 <section class="personnel-page rider-management-page">
-@include('logistics.partials.personnel-tabs')
+@if(session('success'))<div class="rider-success-alert" role="status"><x-admin-icon name="check-circle" />{{ session('success') }}</div>@endif
 
-<details class="card card-pad acf-create-card" style="margin-bottom:20px" @if($errors->any()) open @endif>
-  <summary class="acf-create-summary">
-    <span class="acf-create-summary-inner">
-      <strong>+ Create rider account</strong>
-      <span>Add a new courier directly</span>
-    </span>
-  </summary>
-  <div class="acf-create-body">
-    @if($errors->any())
-      <div class="acf-alert" role="alert">{{ $errors->first() }}</div>
-    @endif
-    <form data-registration-form data-registration-dirty="{{ $errors->any() ? 'true' : 'false' }}" method="POST" enctype="multipart/form-data" action="{{ route('logistics.riders.accounts.store') }}">@csrf
-      @include('logistics.partials.account-form', ['account' => null, 'creationRole' => 'rider'])
-    </form>
+<div class="modal-overlay {{ $errors->any() ? 'open' : '' }}" id="createRiderModal" aria-hidden="{{ $errors->any() ? 'false' : 'true' }}">
+  <section class="modal modal-xl rider-create-modal" role="dialog" aria-modal="true" aria-labelledby="createRiderTitle">
+    <header class="modal-head">
+      <div class="modal-head-main"><span class="modal-icon"><x-admin-icon name="account" /></span><div class="modal-head-copy"><h3 id="createRiderTitle">Create rider account</h3><p>Add a courier and assign their hub, coverage, and application details.</p></div></div>
+      <button type="button" class="modal-close" data-modal-close aria-label="Close"><x-admin-icon name="close" /></button>
+    </header>
+    <div class="modal-body rider-create-body">
+      @if($errors->any())<div class="acf-alert" role="alert">{{ $errors->first() }}</div>@endif
+      <form data-registration-form data-registration-dirty="{{ $errors->any() ? 'true' : 'false' }}" method="POST" enctype="multipart/form-data" action="{{ route('logistics.riders.accounts.store') }}">@csrf
+        @include('logistics.partials.account-form', ['account' => null, 'creationRole' => 'rider'])
+      </form>
+    </div>
+  </section>
+</div>
+
+<div class="card rider-applications-card">
+  <div class="card-head rider-applications-heading">
+    <div class="rider-applications-title"><span class="rider-heading-icon"><x-admin-icon name="users" /></span><div><h2>Courier Applications</h2><p>Review rider applications and manage their status.</p></div></div>
+    <span class="rider-total-count">{{ $riders->total() }} in this view</span>
   </div>
-</details>
-
-<form method="GET" class="logistics-toolbar"><input name="search" value="{{ request('search') }}" placeholder="Search name, username or email" aria-label="Search personnel"><input type="hidden" name="status" value="{{ $status }}"><button class="btn btn-outline">Search</button></form>
-
-@if(session('success'))<div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('success') }}</div>@endif
-
-<div class="card">
-  <div class="card-head">
-    <div><h2>Courier Applications</h2><p>{{ $riders->total() }} in this view</p></div>
-  </div>
-  <div class="card-pad">
-    <div data-tabs id="riderTabs">
+  <div class="card-pad rider-applications-body">
+    <div data-tabs id="riderTabs" class="rider-status-tabs" aria-label="Filter riders by status">
       <a class="tab {{ $status === 'all' ? 'active' : '' }}" href="{{ route('logistics.riders', ['search'=>request('search'), 'status'=>'all']) }}">All <span class="tab-count">{{ $statusCounts->sum() }}</span></a>
       <a class="tab {{ $status === 'pending' ? 'active' : '' }}" href="{{ route('logistics.riders', ['search' => request('search'), 'status' => 'pending']) }}">Pending <span class="tab-count">{{ $statusCounts['pending'] ?? 0 }}</span></a>
       <a class="tab {{ $status === 'approved' ? 'active' : '' }}" href="{{ route('logistics.riders', ['search' => request('search'), 'status' => 'approved']) }}">Approved <span class="tab-count">{{ $statusCounts['approved'] ?? 0 }}</span></a>

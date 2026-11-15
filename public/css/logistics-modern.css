@@ -657,12 +657,63 @@ body.logistics-ui { background-color: #faf7f7; }
 .logistics-ui .rider-application-modal .modal-foot { flex-wrap: wrap; gap: 7px; padding: 11px 17px; border-top: 1px solid var(--border); background: #fff; }
 .logistics-ui .rider-application-modal .modal-foot .btn { min-height: 35px; padding: 7px 11px; border-radius: 8px; font-size: 9.5px; }
 .logistics-ui .rider-application-modal .modal-foot form { display: inline-flex; margin: 0; }
+.logistics-ui .rider-management-page > .rider-page-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin:0; padding:0; border:0; background:transparent; box-shadow:none; }
+.logistics-ui .rider-management-page .rider-search-form { position:relative; display:flex; align-items:center; flex:1 1 220px; min-width:170px; max-width:none; margin:0; padding:0; border:0; background:transparent; }
+.logistics-ui .rider-management-page .rider-search-form > svg { position:absolute; left:12px; width:16px; height:16px; fill:none; stroke:var(--muted); stroke-width:1.8; pointer-events:none; }
+.logistics-ui .rider-management-page .rider-search-form > input[name=search] { box-sizing:border-box; width:100%; min-width:0; min-height:42px; padding:9px 12px 9px 38px; border-color:var(--border); border-radius:9px; background:#fff; font-size:11px; }
+.logistics-ui .rider-management-page .rider-create-button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:41px; padding:9px 14px; border-radius:9px; font-size:10.5px; white-space:nowrap; }
+.logistics-ui .rider-management-page .rider-create-button > span { display:grid; place-items:center; width:18px; height:18px; border:1px solid rgba(255,255,255,.6); border-radius:6px; font-size:17px; line-height:1; }
+.logistics-ui .rider-management-page .rider-success-alert { display:flex; align-items:center; gap:9px; margin:0; padding:11px 14px; border:1px solid var(--success-line); border-radius:10px; background:var(--success-soft); color:var(--success); font-size:11px; }
+.logistics-ui .rider-management-page .rider-success-alert svg { flex:none; width:16px; height:16px; }
+.logistics-ui .rider-management-page > .rider-applications-card { border-color:var(--border); border-radius:13px; box-shadow:0 2px 9px rgba(42,28,40,.035); }
+.logistics-ui .rider-management-page .rider-applications-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:68px; padding:13px 16px; border-bottom:1px solid #efe8ed; }
+.logistics-ui .rider-management-page .rider-applications-title { display:flex; align-items:center; gap:10px; }
+.logistics-ui .rider-management-page .rider-heading-icon { display:grid; place-items:center; flex:0 0 36px; width:36px; height:36px; border:1px solid #f0e4ec; border-radius:11px; background:#fff7fb; color:#bd347b; }
+.logistics-ui .rider-management-page .rider-heading-icon svg { width:17px; height:17px; }
+.logistics-ui .rider-management-page .rider-applications-heading h2 { margin:0; color:var(--text); font-size:14px; }
+.logistics-ui .rider-management-page .rider-applications-heading p { margin:4px 0 0; color:var(--muted); font-size:10.5px; }
+.logistics-ui .rider-management-page .rider-total-count { flex:none; padding:6px 10px; border:1px solid #f0e4ec; border-radius:999px; background:#fffafd; color:#8e426b; font-size:10px; font-weight:700; }
+.logistics-ui .rider-management-page > .rider-applications-card > .rider-applications-body { display:grid; gap:14px; padding:14px; }
+.logistics-ui .rider-management-page .rider-status-tabs { display:flex; flex-wrap:nowrap; gap:5px; width:fit-content; max-width:100%; margin:0; padding:4px; overflow-x:auto; border:1px solid var(--border); border-radius:10px; background:#faf7f9; scrollbar-width:thin; }
+.logistics-ui .rider-management-page .rider-status-tabs .tab { display:inline-flex; align-items:center; gap:7px; flex:none; min-height:35px; padding:7px 11px; border:1px solid transparent; border-radius:7px; color:var(--muted); font-size:10px; font-weight:650; text-decoration:none; white-space:nowrap; }
+.logistics-ui .rider-management-page .rider-status-tabs .tab.active { border-color:var(--pink-line); background:#fff; color:var(--pink-dark); box-shadow:0 1px 3px rgba(42,28,40,.06); }
+.logistics-ui .rider-management-page .rider-status-tabs .tab-count { display:inline-grid; place-items:center; min-width:20px; height:19px; padding:0 5px; border-radius:999px; background:#f2edf1; color:#755a6a; font-size:9px; font-weight:700; }
+.logistics-ui .rider-management-page .rider-status-tabs .tab.active .tab-count { background:var(--pink-soft); color:var(--pink-dark); }
+.logistics-ui .rider-management-page .rider-applications-card .table-wrap { margin:0; border:1px solid var(--border); border-radius:10px; }
+.logistics-ui .rider-management-page .rider-applications-card .dtable th { padding:12px 13px; font-size:10px; letter-spacing:.04em; }
+.logistics-ui .rider-management-page .rider-applications-card .dtable td { padding:13px; font-size:11px; }
+.logistics-ui .rider-management-page .rider-applications-card .cell-user strong { font-size:11px; }
+.logistics-ui .rider-management-page .rider-applications-card .cell-user span { margin-top:3px; font-size:10px; }
+.logistics-ui .rider-management-page .rider-applications-card .dtable tbody tr:hover { background:#fffafd; }
+.logistics-ui .rider-management-page .rider-applications-card td > a:not(.btn) { display:inline-flex; margin-top:4px; color:var(--pink-dark); font-size:10px; font-weight:650; text-decoration:none; }
+.logistics-ui .rider-management-page .rider-applications-card td > a:not(.btn):hover { text-decoration:underline; }
+.logistics-ui .rider-management-page .rider-create-modal { width:min(980px,100%); max-height:min(92dvh,940px); overflow:hidden; border:1px solid var(--border); border-radius:15px; box-shadow:0 24px 70px rgba(58,35,50,.2); }
+.logistics-ui .rider-management-page .rider-create-modal .modal-head { min-height:68px; padding:15px 19px; background:linear-gradient(110deg,#fff,#fff8fb); }
+.logistics-ui .rider-management-page .rider-create-modal .modal-icon { width:38px; height:38px; border:1px solid var(--pink-line); border-radius:11px; background:var(--pink-soft); color:var(--pink-dark); }
+.logistics-ui .rider-management-page .rider-create-modal .modal-head h3 { color:var(--text); font-size:14px; }
+.logistics-ui .rider-management-page .rider-create-modal .modal-head p { margin-top:3px; color:var(--muted); font-size:10px; }
+.logistics-ui .rider-management-page .rider-create-body { max-height:calc(92dvh - 70px); overflow:auto; padding:17px; background:#fffafd; }
+.logistics-ui .rider-management-page .rider-create-body .acf-alert { margin-bottom:12px; }
+.logistics-ui .rider-management-page .rider-create-body .acf-section { border-color:var(--border); border-radius:10px; background:#fff; }
+.logistics-ui .rider-management-page .rider-create-body .acf-footer { position:sticky; bottom:-17px; z-index:2; margin:12px -17px -17px; padding:12px 17px; border-top:1px solid var(--border); background:rgba(255,255,255,.96); }
 @media (max-width: 700px) {
+  .logistics-ui .rider-management-page > .rider-page-toolbar { gap:9px; }
+  .logistics-ui .rider-management-page .rider-search-form { max-width:none; }
+  .logistics-ui .rider-management-page .rider-search-form { order:3; flex:1 1 100%; }
+  .logistics-ui .rider-management-page .rider-create-button { flex:0 0 auto; width:auto; }
+  .logistics-ui .rider-management-page .rider-applications-heading { align-items:flex-start; padding:12px; }
+  .logistics-ui .rider-management-page .rider-applications-heading p { max-width:230px; line-height:1.45; }
+  .logistics-ui .rider-management-page > .rider-applications-card > .rider-applications-body { gap:11px; padding:10px; }
+  .logistics-ui .rider-management-page .rider-status-tabs { width:100%; }
   .logistics-ui .rider-management-page .row-actions { flex-wrap: wrap; }
   .logistics-ui .rider-management-page .row-actions .btn { white-space: normal; }
   .logistics-ui .rider-application-modal { width: 100%; max-height: min(92dvh,900px); border-radius: 14px 14px 10px 10px; }
   .logistics-ui .rider-application-modal .modal-head { padding: 13px 15px; }
   .logistics-ui .rider-application-modal .modal-body { padding: 12px; }
+  .logistics-ui .rider-management-page .rider-create-modal { width:100%; max-height:92dvh; border-radius:14px 14px 10px 10px; }
+  .logistics-ui .rider-management-page .rider-create-modal .modal-head { padding:13px 15px; }
+  .logistics-ui .rider-management-page .rider-create-body { max-height:calc(92dvh - 64px); padding:12px; }
+  .logistics-ui .rider-management-page .rider-create-body .acf-footer { bottom:-12px; margin:12px -12px -12px; padding:11px 12px; }
   .logistics-ui .rider-application-modal .modal-foot .btn,
   .logistics-ui .rider-application-modal .modal-foot form { flex: 1 1 100px; justify-content: center; }
   .logistics-ui .rider-application-modal .modal-foot form .btn { width: 100%; }
@@ -1946,6 +1997,8 @@ body.logistics-ui { background-color: #faf7f7; }
 
 /* Compact personnel overview and focused account dialogs. */
 .logistics-ui .team-staff-tabs{display:flex;gap:4px;padding:4px;margin-bottom:18px;width:fit-content;border:1px solid #eadfe6;border-radius:12px;background:#f3edf1}.team-staff-tabs a{padding:10px 20px;border-radius:8px;color:#775565;font-size:12px;text-decoration:none}.team-staff-tabs a.active{background:#bc387f;color:#fff}
+
+/* Personnel switch uses the light active-tab style shared by Seller workspace tabs. */
 .logistics-ui .team-back-link{display:inline-block;margin-bottom:16px;color:#bc387f;font-size:12px;text-decoration:none}.logistics-ui .team-member-summary{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:24px;margin-bottom:18px}.team-member-role{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#987f8d}.logistics-ui .team-member-summary h2{margin:6px 0 10px;font-size:20px}.team-member-summary p{margin:5px 0;color:#987f8d;font-size:12px}.team-member-tools{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px}.logistics-ui .team-member-tools :is(a,button){display:inline-flex;align-items:center;gap:20px;padding:14px 18px;border:1px solid #eadfe6;border-radius:10px;background:#fff;color:#775565;text-decoration:none;font:500 12px Inter,system-ui,sans-serif;cursor:pointer}.team-member-tools span{color:#bc387f}
 .logistics-ui .team-detail-modal{width:min(860px,calc(100vw - 32px));max-width:860px;max-height:90vh}.team-detail-modal .modal-body{overflow:auto}.team-detail-modal .acf-section-num{display:none}.team-detail-modal .acf-section-head>div>span{display:none}.team-detail-modal .acf-section-head{margin-bottom:16px}.team-detail-modal .acf-section{padding:20px 0}.team-detail-modal .acf-section-first{padding-top:0}.team-history>p{font-size:12px;line-height:1.7;overflow-wrap:anywhere}.team-history>p:nth-of-type(2n){padding-bottom:16px;border-bottom:1px solid #eee3e9;color:#987f8d}.team-detail-modal .dtable :is(th,td){text-align:center}.team-detail-modal .dtable th{text-transform:uppercase;font-size:10px}
 @media(max-width:600px){.logistics-ui .team-member-summary{align-items:flex-start;flex-direction:column;padding:20px}.team-member-tools{display:grid}.team-member-tools :is(a,button){justify-content:space-between}.team-detail-modal .acf-grid{grid-template-columns:minmax(0,1fr)}}

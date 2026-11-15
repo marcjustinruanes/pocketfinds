@@ -37,7 +37,14 @@ body.logistics-workspace .logistics-utility-icon,body.logistics-workspace .notif
 .logistics-utility-icon svg{width:18px;height:18px}
 .logistics-profile-link{display:flex;align-items:center;text-decoration:none;flex:none}
 body.logistics-workspace .content{box-sizing:border-box;width:calc(100% - 48px);max-width:1680px;margin:0 auto;padding:14px 0 32px;min-width:0;background:transparent}
-.logistics-workspace-tabs{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-bottom:22px}
+.logistics-workspace-tabs-row{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+.logistics-workspace-tabs{display:flex;flex:0 0 auto;flex-wrap:wrap;align-items:center;gap:7px;margin:0}
+.rider-workspace-actions{display:flex;align-items:center;gap:10px;flex:1 1 auto;min-width:0}
+.rider-workspace-actions .rider-search-form{position:relative;display:flex;align-items:center;flex:1 1 220px;min-width:150px;margin:0;padding:0;border:0;background:transparent}
+.rider-workspace-actions .rider-search-form>svg{position:absolute;left:12px;width:16px;height:16px;fill:none;stroke:#8c7381;stroke-width:1.8;pointer-events:none}
+.rider-workspace-actions .rider-search-form>input[name=search]{box-sizing:border-box;width:100%;min-width:0;min-height:42px;padding:9px 12px 9px 38px;border:1px solid #eadfe6;border-radius:9px;background:#fff;color:#593346;font:11px/1.45 Inter,system-ui,sans-serif}
+.rider-workspace-actions .rider-create-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:none;min-height:41px;padding:9px 14px;border-radius:9px;font-size:10.5px;white-space:nowrap}
+.rider-workspace-actions .rider-create-button>span{display:grid;place-items:center;width:18px;height:18px;border:1px solid rgba(255,255,255,.6);border-radius:6px;font-size:17px;line-height:1}
 .logistics-workspace-tabs a{display:block;padding:9px 13px;border:1px solid transparent;border-radius:8px;background:transparent;color:#8c7381;font:500 12px/1.4 Inter,system-ui,sans-serif;text-decoration:none}
 .logistics-workspace-tabs a:hover{background:#fcf7fa;color:#a52d6e}
 .logistics-workspace-tabs a[aria-current=page]{background:#f7e3ee;color:#b22e76;font-weight:650}
@@ -58,7 +65,7 @@ body.logistics-workspace .dashboard-summary .dashboard-metric,body.logistics-wor
 body.logistics-workspace .dashboard-summary .dashboard-metric-icon,body.logistics-workspace .dashboard-summary .dashboard-metric>p{display:none}
 @media(max-width:700px){body.logistics-workspace .dashboard-summary{grid-template-columns:repeat(2,minmax(0,1fr))}body.logistics-workspace .dashboard-summary .dashboard-metric:nth-child(2){border-right:0}body.logistics-workspace .dashboard-summary .dashboard-metric:nth-child(-n+2){border-bottom:1px solid #f0e5ec}body.logistics-workspace .dashboard-welcome{flex-direction:column;align-items:flex-start;padding:8px 0;gap:12px}.logistics-workspace .dashboard-actions .btn{font-size:11px}}
 body.logistics-workspace .logistics-local-personnel-tabs,body.logistics-workspace .logistics-local-commission-link{display:none}
-@media(max-width:760px){body.logistics-workspace .logistics-utility-row{padding:0 14px;gap:10px}.logistics-page-heading h1{font-size:16px}.logistics-clock{flex-direction:column;gap:3px;padding:6px 9px;font-size:9px}.logistics-clock [data-clock-time]{padding:0;border:0}.logistics-utility-actions{gap:7px}.logistics-clock{display:none}body.logistics-workspace .content{width:calc(100% - 28px)}.logistics-workspace-tabs{gap:3px}.logistics-workspace-tabs a{padding:8px 10px;font-size:11px}}
+@media(max-width:760px){body.logistics-workspace .logistics-utility-row{padding:0 14px;gap:10px}.logistics-page-heading h1{font-size:16px}.logistics-clock{flex-direction:column;gap:3px;padding:6px 9px;font-size:9px}.logistics-clock [data-clock-time]{padding:0;border:0}.logistics-utility-actions{gap:7px}.logistics-clock{display:none}body.logistics-workspace .content{width:calc(100% - 28px)}.logistics-workspace-tabs{gap:3px}.logistics-workspace-tabs a{padding:8px 10px;font-size:11px}.logistics-workspace-tabs-row{flex-wrap:wrap;gap:8px}.rider-workspace-actions{flex:1 1 100%;width:100%}}
 @media(prefers-reduced-motion:reduce){body.logistics-workspace [data-sidebar-hover]>.sidebar{transition:none}}
 body.logistics-workspace .sidebar .nav-item .ic{position:relative}
 .logistics-nav-count{position:absolute;top:-6px;right:-7px;display:grid;place-items:center;min-width:16px;height:16px;padding:0 3px;box-sizing:border-box;border:2px solid #fff;border-radius:999px;background:#bc387f;color:#fff;font-size:8px;font-weight:600}

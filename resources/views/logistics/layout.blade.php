@@ -15,7 +15,7 @@
 <link rel="stylesheet" href="{{ asset('css/logistics-ui.css') }}?v={{ filemtime(public_path('css/logistics-ui.css')) }}">
 @include('account.partials.notification-assets')
 <link rel="stylesheet" href="{{ asset('css/logistics-hub.css') }}?v={{ filemtime(public_path('css/logistics-hub.css')) }}">
-<link rel="stylesheet" href="{{ asset('css/logistics-modern.css') }}?v={{ filemtime(public_path('css/logistics-modern.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/logistics-modern.css') }}?v={{ filemtime(public_path('css/logistics-modern.css')) }}-personnel-tabs-soft">
 @if((auth()->user()->isLogisticsAdmin() || auth()->user()->isHubStaff()))<link rel="stylesheet" href="{{ asset('css/logistics-workspace.css') }}?v={{ filemtime(public_path('css/logistics-workspace.css')) }}">@endif
 @stack('account-head')
 </head>
