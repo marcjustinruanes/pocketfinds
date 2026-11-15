@@ -22,7 +22,7 @@ class ApplicationRejection
             $fresh = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
             abort_unless($fresh->status===$user->status && $fresh->business_name===$user->business_name,409,'This application changed. Refresh before deciding.');
             $actor=User::whereKey(auth()->id())->firstOrFail();
-            abort_unless($actor->status==='approved' && (($actor->is_admin && !$role) || ($role && $actor->isLogisticsAdmin() && $actor->is_logistics && !$actor->is_admin && $actor->business_name===$user->business_name)),403);
+            abort_unless($actor->status==='approved' && (($actor->is_admin && (!$role || $role === 'hub_staff')) || ($role && $actor->isLogisticsAdmin() && $actor->is_logistics && !$actor->is_admin && $actor->business_name===$user->business_name)),403);
             if ($role) $user->hiringDecision = ['action'=>'reject','reason'=>$reason,'can_resubmit'=>$allow];
             $user->forceFill(['status'=>'rejected','status_reason'=>$reason,'can_resubmit'=>$allow])->save();
             if (!$role && Schema::hasTable('hiring_application_history')) {

@@ -19,8 +19,10 @@ class MobileScannerController extends Controller
 {
     public function login(Request $request)
     {
-        $data = $request->validate(['email' => 'required|email|max:255', 'password' => 'required|string|max:255']);
-        $user = User::where('email', $data['email'])->first();
+        $data = $request->validate(['email' => 'required|string|max:255', 'password' => 'required|string|max:255']);
+        $user = filter_var($data['email'], FILTER_VALIDATE_EMAIL)
+            ? User::where('email', $data['email'])->first()
+            : User::where('username', $data['email'])->first();
         abort_unless(Hash::check($data['password'], $user?->password ?? '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi') && $user, 401, 'Invalid credentials.');
         MobileScannerAccess::check($user);
         $expires = now()->addHours(8);

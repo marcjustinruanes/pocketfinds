@@ -138,6 +138,17 @@ class HubHiring
         });
     }
 
+    public function companyInterviewComplete(User $user): bool
+    {
+        if ($this->role($user) !== 'hub_staff' || $user->status !== 'interview') return false;
+        $event = DB::table('hiring_application_history')->where('user_id', $user->id)->orderByDesc('id')->first();
+        $details = json_decode($event?->review_details ?? '{}', true);
+        return $event && (int) $event->hub_id === (int) $user->logistics_hub_id
+            && $event->company_name === $user->business_name
+            && ($details['action'] ?? null) === 'company_interview_completed'
+            && ($details['interview_completed'] ?? false) === true;
+    }
+
     private function validateTransition(User $user, string $role, string $from): void
     {
         if ($role === 'rider' && $user->status === 'approved' && app(RiderActivation::class)->pending($user)) {
@@ -152,6 +163,14 @@ class HubHiring
             : ['pending' => $role === 'hub_staff' ? ['interview', 'rejected'] : ['approved', 'rejected'],
                 'interview' => $role === 'hub_staff' ? ['approved', 'rejected'] : [],
                 'approved' => ['suspended'], 'suspended' => ['approved']];
+        if ($role === 'hub_staff') {
+            if ($platform) {
+                $allowed['pending'] = ['rejected'];
+                $allowed['interview'] = ['approved', 'rejected'];
+            } else {
+                $allowed['interview'] = ['rejected'];
+            }
+        }
         if (! in_array($user->status, $allowed[$from] ?? [], true)) {
             throw ValidationException::withMessages(['status' => 'This recruitment status transition is not permitted.']);
         }
@@ -163,6 +182,13 @@ class HubHiring
             validator($user->getAttributes(), ['interview_scheduled_at' => 'required|date', 'interview_location' => 'required|string|max:255'])->validate();
         }
         if ($user->status === 'approved' && $from !== 'suspended') {
+            if ($role === 'hub_staff') {
+                $application = clone $user;
+                $application->status = $from;
+                if (! $platform || ! $this->companyInterviewComplete($application)) {
+                    throw ValidationException::withMessages(['status' => 'Company interview confirmation is required before Platform Admin approval.']);
+                }
+            }
             $rules = ['id_file' => 'required|string', 'id_type_id' => 'required|exists:id_types,id', 'selfie_file' => 'required|string'];
             if ($role === 'hub_staff') {
                 $rules += ['interview_scheduled_at' => 'required|date', 'interview_location' => 'required|string|max:255'];

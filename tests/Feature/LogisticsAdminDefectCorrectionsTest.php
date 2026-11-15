@@ -65,7 +65,7 @@ class LogisticsAdminDefectCorrectionsTest extends OperationalRecoveryTest
             'capacity' => $this->jobs(3),
         };
         if ($stage === 'request') {
-            $this->actingAs($this->admin)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$this->requestData())->assertUnprocessable();
+            $this->actingAs($this->staff)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$this->requestData())->assertUnprocessable();
         } else {
             $this->actingAs($leg==='pickup'?$this->seller:$this->staff)
                 ->postJson(route($leg==='pickup'?'seller.assignments.decide':'logistics.assignments.decide',$this->assignment->id),$this->confirmData())->assertUnprocessable();

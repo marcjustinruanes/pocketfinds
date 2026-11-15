@@ -109,18 +109,6 @@ class RiderDeliveryOffers
         $query = $this->candidates((string) $shipment->logistics_company)
             ->whereRaw('LOWER(eligible_hub.municipality) = ?', [mb_strtolower(trim((string) $town))])->whereRaw('LOWER(eligible_hub.province) = ?', [mb_strtolower(trim((string) $province))])
             ->whereNotIn('users.id', $exclude);
-        $coverage = app(RiderBarangayCoverage::class);
-        if ($coverage->installed()) {
-            $barangay = $coverage->barangay($shipment, $leg);
-            $query->join('rider_barangay_routes as coverage', function ($join) use ($coverage, $barangay) {
-                $join->on('coverage.rider_id', '=', 'users.id')->on('coverage.hub_id', '=', 'users.logistics_hub_id')
-                    ->where('coverage.barangay_key', '=', $coverage->key($barangay));
-            });
-            if ($barangay === '') {
-                $query->whereRaw('1 = 0');
-            }
-        }
-
         return $query;
     }
 
@@ -151,12 +139,12 @@ class RiderDeliveryOffers
         return DB::transaction(function () use ($staff, $shipmentId, $riderId, $leg) {
             $shipment = $this->lock($shipmentId, [$staff->id, $riderId]);
             $actor = User::whereKey($staff->id)->lockForUpdate()->firstOrFail();
-            abort_unless($actor->account_type === 'logistics' && ! $actor->is_admin && ($actor->isHubStaff() || $actor->isLogisticsAdmin()) && $actor->status === 'approved', 403);
+            abort_unless($actor->account_type === 'logistics' && ! $actor->is_admin && $actor->isHubStaff() && $actor->status === 'approved', 403, 'Only the responsible hub staff may send pickup or delivery rider offers.');
             abort_unless($actor->business_name === $shipment->logistics_company, 404);
             app(LogisticsAccess::class)->requireLocation($actor, $leg === 'pickup' ? $shipment->origin_hub : $shipment->destination_hub, $leg === 'pickup' ? $shipment->origin_province : $shipment->destination_province);
             $this->assertOpen($shipment, $leg);
             app(AssignmentReassignment::class)->assertNoPending($shipment->id);
-            abort_unless($this->canAssign($shipment, $leg, $riderId), 422, 'Choose an approved online rider covering the parcel barangay at its hub, with an available two-wheel vehicle and fewer than three active pickup/delivery jobs.');
+            abort_unless($this->canAssign($shipment, $leg, $riderId), 422, 'Choose an approved online rider at the hub, with an available two-wheel vehicle and fewer than three active pickup/delivery jobs.');
             if ($shipment->order) {
                 app(GcashWorkflow::class)->assertOrderOperation($shipment->order, $leg === 'pickup');
             }
@@ -220,7 +208,7 @@ class RiderDeliveryOffers
         abort_if($this->retryExhausted($shipment), 422, 'Return custody review is required for refused or exhausted deliveries.');
         app(AssignmentReassignment::class)->assertNoPending($shipment->id);
         abort_unless($shipment->courier_id && $this->canAssign($shipment, 'delivery', (int) $shipment->courier_id), 422,
-            'The assigned rider must be online, approved, cover the destination barangay and have hub, vehicle and capacity eligibility.');
+            'The assigned rider must be online, approved, at the destination hub, with vehicle and capacity eligibility.');
     }
 
     public function retryExhausted(Shipment $shipment): bool

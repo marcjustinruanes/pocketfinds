@@ -5,6 +5,8 @@
 <p>Hello {{ $riderName }},</p>
 <p>{{ $companyName }} has created a rider account for you. Set your password to activate your account.</p>
 <p><a href="{{ $activationUrl }}" style="display:inline-block;padding:12px 20px;background:#bf3c7d;color:white;text-decoration:none;border-radius:6px">Set password and activate</a></p>
+<p>If the button does not open, copy this link into your browser:</p>
+<p style="overflow-wrap:anywhere"><a href="{{ $activationUrl }}">{{ $activationUrl }}</a></p>
 <p>This link expires in 24 hours and works once. If it expires, ask your logistics admin to resend the activation email.</p>
 <p>If your application was rejected, this link opens the correction screen first.</p>
 <p>If you did not expect this invitation, contact the logistics company before proceeding.</p>

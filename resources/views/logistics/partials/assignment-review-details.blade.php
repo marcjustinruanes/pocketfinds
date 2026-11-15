@@ -13,7 +13,7 @@
 <input type="hidden" name="_assignment_review" value="{{ $a->id }}">
 <input type="hidden" name="key" value="{{ $p['key'] }}"><input type="hidden" name="revision" value="{{ $a->revision }}"><input type="hidden" name="action" value="cancel">
 <label for="cancel-{{ $a->id }}">Cancellation reason</label><textarea id="cancel-{{ $a->id }}" name="reason" minlength="3" maxlength="1000" required>{{ old('_assignment_review')===$a->id ? old('reason') : '' }}</textarea><button class="btn">Cancel request</button></form></details>
-@elseif(!$seller && in_array($a->leg,['pickup','delivery']) && in_array($a->status,['accepted','assigned_to_rider']) && $a->work_class==='active')
+@elseif(!$seller && $actor->isHubStaff() && in_array($a->leg,['pickup','delivery']) && in_array($a->status,['accepted','assigned_to_rider']) && $a->work_class==='active')
 <section class="assignment-review-action"><h3>Request pre-collection reassignment</h3><form method="POST" action="{{ route('logistics.assignments.reassign',$a->id) }}">@csrf
 <input type="hidden" name="_assignment_review" value="{{ $a->id }}">
 <input type="hidden" name="key" value="{{ (string)\Illuminate\Support\Str::uuid() }}"><input type="hidden" name="revision" value="{{ $a->revision }}"><input type="hidden" name="old_rider_id" value="{{ $a->courier_id }}">

@@ -6,6 +6,26 @@ use App\Services\{CommissionLedger, FinancialPolicy};
 
 class OfficialFinancialPolicyTest extends LogisticsShippingTest
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        (require database_path('migrations/2026_11_15_000001_allow_fixed_fee_shipping_without_regional_rate.php'))->up();
+    }
+
+    public function test_fixed_fee_handoff_does_not_require_a_regional_rate(): void
+    {
+        \Illuminate\Support\Facades\DB::table('logistics_shipping_rates')->delete();
+        foreach ([['financial_policy' => FinancialPolicy::VERSION, 'vouchers' => []], ['vouchers' => []]] as $snapshot) {
+            $order = $this->order(['shipping_amount' => '50.00', 'total' => '1050.00', 'commerce_snapshot' => $snapshot]);
+            $ob = $this->obligation($order);
+            $this->assertNull($ob->rate_id);
+            $this->assertSame(5000, (int) $ob->amount_cents);
+            $this->assertSame('1050.00', number_format($order->fresh()->total, 2, '.', ''));
+        }
+        $this->invalid(fn () => $this->obligation($this->order(['shipping_amount' => '60.00'])));
+        $this->assertDatabaseCount('logistics_financial_transactions', 0);
+    }
+
     public function test_official_parcel_fee_survives_weight_based_carrier_rates(): void
     {
         $order = $this->order([

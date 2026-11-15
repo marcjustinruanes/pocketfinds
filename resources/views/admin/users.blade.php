@@ -73,7 +73,12 @@
               </div>
               <div class="modal-foot">
                 @if(app(\App\Services\HubHiring::class)->role($user) !== null && in_array($user->status, ['pending', 'interview', 'rejected'], true))
+                @if($user->isHubStaff())
+                <p>Company interview review is followed by Platform Admin approval.</p>
+                <a class="btn btn-outline" href="{{ route('admin.registrations') }}">Review registration</a>
+                @else
                 <p>Application decisions are handled by the company Logistics Admin.</p>
+                @endif
                 @endif
                 @php($personnel = app(\App\Services\HubHiring::class)->role($user) !== null)
                 @if($user->status !== 'suspended' && (!$personnel || $user->status === 'approved'))

@@ -5,6 +5,7 @@
 
 @section('content')
 <section class="personnel-page">
+@if($errors->has('interview_completed'))<div class="acf-alert" role="alert">{{ $errors->first('interview_completed') }}</div>@endif
 @include('logistics.partials.personnel-tabs')
 
 <details class="card card-pad acf-create-card" style="margin-bottom:20px" @if($errors->any()) open @endif>
@@ -133,7 +134,7 @@
                     <div><div class="field-label">Time</div><div class="field-value">{{ $member->interview_scheduled_at?->format('g:i A') ?? '—' }}</div></div>
                     <div class="full"><div class="field-label">Location</div><div class="field-value">{{ $member->interview_location ?: '—' }}</div></div>
                   </div>
-                  <p style="margin:8px 0 0;font-size:12.5px;color:var(--info)">This applicant was emailed the details above and cannot log in yet. Once the interview has actually happened, click <strong>Approve</strong> below to enable their account.</p>
+                  <p style="margin:8px 0 0;font-size:12.5px;color:var(--info)">This applicant cannot log in yet. Confirm the completed company interview below, then Platform Admin must approve platform access.</p>
                 </div>
                 @endif
 
@@ -151,7 +152,11 @@
                 <button type="button" class="btn btn-success" onclick="openStaffFollowupModal('interviewModal-{{ $member->id }}')">Interview</button>
                 @elseif($member->status === 'interview')
                 <button type="button" class="btn btn-outline-danger" onclick="openReasonModal('reject', '{{ route('logistics.staff.reject', $member->id) }}')">Reject</button>
-                <button type="button" class="btn btn-success" onclick="openStaffFollowupModal('confirmInterviewModal-{{ $member->id }}')">Approve</button>
+                @if(app(\App\Services\HubHiring::class)->companyInterviewComplete($member))
+                <span role="status">Awaiting Platform Admin approval</span>
+                @else
+                <button type="button" class="btn btn-success" onclick="openStaffFollowupModal('confirmInterviewModal-{{ $member->id }}')">Confirm company interview</button>
+                @endif
                 @elseif($member->status === 'rejected')
                 <span>{{ $member->can_resubmit ? 'Resubmission allowed' : 'Final rejection' }}</span>
                 <button type="button" class="btn btn-outline" onclick="openReasonModal('reject', '{{ route('logistics.staff.reject', $member->id) }}')">Update rejection decision</button>
@@ -227,13 +232,13 @@
                   <div><div class="field-label">Time</div><div class="field-value">{{ $member->interview_scheduled_at?->format('g:i A') ?? '—' }}</div></div>
                   <div class="full"><div class="field-label">Location</div><div class="field-value">{{ $member->interview_location ?: '—' }}</div></div>
                 </div>
-                <p style="margin:12px 0 0;font-size:12px;color:var(--muted)">This immediately enables their account — they'll be able to log in right after.</p>
+                <p style="margin:12px 0 0;font-size:12px;color:var(--muted)">This submits the company review for Platform Admin approval. The account remains blocked until platform approval.</p>
               </div>
               <form method="POST" enctype="multipart/form-data" id="staff-approval-{{ $member->id }}" action="{{ route('logistics.staff.confirm', $member->id) }}">
                 @csrf @method('PATCH')
                 <div class="modal-foot">
                   <button type="button" class="btn btn-outline" data-modal-close>Cancel</button>
-                  <button type="submit" class="btn btn-success">Confirm Approval</button>
+                  <button type="submit" class="btn btn-success">Submit for platform approval</button>
                 </div>
               </form>
             </div>

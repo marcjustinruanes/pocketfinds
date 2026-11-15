@@ -164,6 +164,7 @@ Route::middleware('web')->group(function () {
     Route::post('/register/send-otp', [RegisterController::class, 'sendOtp'])->name('register.send-otp');
     Route::post('/register/verify-otp', [RegisterController::class, 'verifyOtp'])->name('register.verify-otp');
     Route::get('/register/check-username', [RegisterController::class, 'checkUsername'])->name('register.check-username');
+    Route::get('/register/check-phone', [RegisterController::class, 'checkPhone'])->middleware('throttle:60,1')->name('register.check-phone');
     Route::post('/register/check-identity', [RegisterController::class, 'checkIdentity'])->middleware('throttle:30,1')->name('register.check-identity');
     Route::get('/register/check-business-name', [RegisterController::class, 'checkBusinessName'])->name('register.check-business-name');
     Route::get('/register/check-business-number', [RegisterController::class, 'checkBusinessNumber'])->middleware('throttle:60,1')->name('register.check-business-number');
@@ -403,6 +404,7 @@ Route::prefix('logistics')->name('logistics.')->middleware(['logistics', 'logist
         Route::patch('/transfers/{id}/reject', [HubTransferController::class, 'reject'])->name('transfers.reject');
         Route::patch('/transfers/{id}/dispatch', [HubTransferController::class, 'dispatch'])->name('transfers.dispatch');
     });
+    Route::get('/requests', [LogisticsController::class, 'requests'])->name('requests');
     Route::get('/assignments', [LogisticsController::class, 'assignments'])->name('assignments');
     Route::get('/assignments/review', [\App\Http\Controllers\LogisticsOperationsController::class,'index'])->name('assignments.review');
     Route::post('/assignments/{id}/reassignment', [\App\Http\Controllers\LogisticsOperationsController::class,'requestReassignment'])->middleware('throttle:20,1')->name('assignments.reassign');
@@ -445,7 +447,6 @@ Route::prefix('logistics')->name('logistics.')->middleware(['logistics', 'logist
 
     // Company-wide oversight — the admin account only, never hub staff (see LogisticsAdminMiddleware).
     Route::middleware('logistics.admin')->group(function () {
-        Route::get('/requests', [LogisticsController::class, 'requests'])->name('requests');
         Route::patch('/requests/{id}/approve', [LogisticsController::class, 'approveRequest'])->name('requests.approve');
         Route::patch('/requests/{id}/reject', [LogisticsController::class, 'rejectRequest'])->name('requests.reject');
         Route::get('/hub-requests', [LogisticsController::class, 'hubRequests'])->name('hub-requests');

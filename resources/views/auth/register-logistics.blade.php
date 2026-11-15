@@ -1402,7 +1402,7 @@ validateStep = function (step) {
 };
 </script>
 <script src="{{ asset('js/logistics-service-regions.js') }}?v={{ @filemtime(public_path('js/logistics-service-regions.js')) ?: 1 }}"></script>
-<script src="{{ asset('js/registration-flow.js') }}?v={{ filemtime(public_path('js/registration-flow.js')) }}"></script>
+<script src="{{ asset('js/registration-flow.js') }}?v={{ hash_file('sha256', public_path('js/registration-flow.js')) }}" onerror="this.onerror=null;const retry=document.createElement('script');retry.src=this.src+'&amp;retry=1';this.after(retry);"></script>
 <script src="{{ asset('js/logistics-registration.js') }}?v={{ filemtime(public_path('js/logistics-registration.js')) }}"></script>
 </body>
 </html>

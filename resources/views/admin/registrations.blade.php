@@ -6,6 +6,9 @@
 
 @section('content')
 <div class="admin-registrations-page">
+@if($errors->any())
+<div class="acf-alert" role="alert">{{ $errors->first() }}</div>
+@endif
 @include('admin.partials.ai-link', ['aiMode' => 'seller', 'aiLabel' => 'AI seller review'])
 @if(session('success'))
 <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px">
@@ -27,6 +30,7 @@
         <option value="buyer">Buyer</option>
         <option value="seller">Seller</option>
         <option value="logistics">Logistics</option>
+        <option value="hub_staff">Hub Staff</option>
       </select>
     </div>
 
@@ -38,6 +42,7 @@
     <div data-tabs id="regTabs">
       <a class="tab active" data-tab="all">All <span class="tab-count">{{ $users->count() }}</span></a>
       <a class="tab" data-tab="pending">Pending <span class="tab-count">{{ $regByStatus->get('pending', 0) }}</span></a>
+      <a class="tab" data-tab="interview">Company review / platform approval <span class="tab-count">{{ $regByStatus->get('interview', 0) }}</span></a>
       <a class="tab" data-tab="rejected">Rejected <span class="tab-count">{{ $regByStatus->get('rejected', 0) }}</span></a>
     </div>
 
@@ -48,14 +53,14 @@
         </thead>
         <tbody>
           @forelse($users as $user)
-          <tr class="rail-row rail-{{ $user->status }}" data-type="{{ $user->status }}" data-account-type="{{ $user->account_type }}">
+          <tr class="rail-row rail-{{ $user->status }}" data-type="{{ $user->status }}" data-account-type="{{ $user->isHubStaff() ? 'hub_staff' : $user->account_type }}">
             <td>
               <div class="cell-user">
                 <x-user-avatar :user="$user" size="30" class="avatar-sm" />
                 <div><strong>{{ $user->given_names }} {{ $user->last_name }}</strong><span>{{ $user->email }}</span></div>
               </div>
             </td>
-            <td><span class="stamp stamp-{{ $user->account_type }}">{{ ucfirst($user->account_type) }}</span></td>
+            <td><span class="stamp stamp-{{ $user->account_type }}">{{ $user->isHubStaff() ? 'Hub Staff' : ucfirst($user->account_type) }}</span></td>
             <td class="mono">{{ $user->created_at?->format('M d, Y') ?? '—' }}</td>
             <td><span class="stamp stamp-{{ $user->status }}">{{ ucfirst($user->status) }}</span></td>
             <td>
@@ -228,7 +233,9 @@
                 @if($user->status !== 'approved')
                 <form method="POST" action="{{ route('admin.registrations.approve', $user->id) }}" style="display:inline" data-confirm data-confirm-title="Approve this application?" data-confirm-message="This will activate the account and complete its initial review." data-confirm-action="Approve account" data-confirm-tone="success">
                   @csrf @method('PATCH')
-                  <button class="btn btn-success" type="submit">Approve</button>
+                  @php($awaitingCompany = $user->isHubStaff() && !app(\App\Services\HubHiring::class)->companyInterviewComplete($user))
+                  @if($awaitingCompany)<p>Awaiting the company Logistics Admin's completed-interview confirmation.</p>@endif
+                  <button class="btn btn-success" type="submit" @disabled($awaitingCompany)>{{ $user->isHubStaff() ? 'Approve platform access' : 'Approve' }}</button>
                 </form>
                 @endif
               </div>

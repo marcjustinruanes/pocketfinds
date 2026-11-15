@@ -10,6 +10,6 @@ class RiderActivationMail extends Mailable
 
     public function build()
     {
-        return $this->subject('PocketFinds — Set your rider password')->view('emails.rider-activation');
+        return $this->subject('PocketFinds — Set your rider password')->view('emails.rider-activation')->text('emails.rider-activation-text');
     }
 }
