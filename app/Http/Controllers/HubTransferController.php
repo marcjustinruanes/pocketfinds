@@ -50,8 +50,13 @@ class HubTransferController extends LogisticsController
         $vehicles = $canDispatch && $batch->status === 'approved'
             ? CompanyVehicle::where('company_name', $batch->company_name)->where('logistics_hub_id', $batch->origin_hub_id)->where('vehicle_type', 'four_wheels')->riderVisible()->get() : collect();
 
+        $riderAvailability=collect();
+        if($batch->status==='approved' && $batch->origin) {
+            $riderAvailability=\App\Models\User::where('business_name',$batch->company_name)->where('account_type','rider')->where('vehicle_type','four_wheels')->orderBy('username')->get()
+                ->map(fn($rider)=>['name'=>trim($rider->given_names.' '.$rider->last_name),'problem'=>app(\App\Services\TransferRiderEligibility::class)->problem($rider,$batch->origin)]);
+        }
         $custodyProblems = app(\App\Services\TransferCustodyEvidence::class)->review($batch);
-        return view('logistics.transfer-show', array_merge($this->sidebarCounts(), compact('batch', 'members', 'events', 'riders', 'vehicles', 'custodyProblems', 'canDispatch')));
+        return view('logistics.transfer-show', array_merge($this->sidebarCounts(), compact('batch', 'members', 'events', 'riders', 'vehicles', 'custodyProblems', 'canDispatch', 'riderAvailability')));
     }
 
     public function create(Request $request)

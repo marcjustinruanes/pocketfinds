@@ -1,89 +1,25 @@
 @extends('logistics.layout')
-@section('title', 'Delivery Assignments')
-@section('page-title', 'Delivery Assignments')
-@section('page-sub', auth()->user()->isHubStaff() ? 'Send personal offers to eligible riders at your hub. Riders must confirm within 60 seconds.' : 'Monitor company assignments. Pickup and delivery rider offers are managed by the responsible hub.')
-
+@section('title','Assignments')
+@section('page-title','Assignments')
+@push('head')<link rel="stylesheet" href="{{ asset('css/assignment-review.css') }}"><link rel="stylesheet" href="{{ asset('css/assignment-workspace.css') }}?v={{ filemtime(public_path('css/assignment-workspace.css')) }}">@endpush
 @section('content')
-<section class="delivery-assignment-page">
-@if(!auth()->user()->isLogisticsAdmin() && app(\App\Services\AssignmentReassignment::class)->installed())<div class="card card-pad delivery-assignment-action"><div class="delivery-assignment-action-copy"><span class="delivery-assignment-action-icon"><x-admin-icon name="layers" /></span><div><strong>Assignment tools</strong><small>Review evidence and manage reassignment requests.</small></div></div><a class="btn btn-primary" href="{{ route('logistics.assignments.review') }}">Assignment evidence &amp; reassignment</a></div>@endif
-<div class="card delivery-assignment-card">
-  <div class="card-head">
-    <h2><span class="delivery-assignment-heading-icon"><x-admin-icon name="truck" /></span>Delivery Assignments</h2>
-    <div style="display:flex;gap:8px">
-      <span class="stamp stamp-pending">{{ $assignmentCounts['sorted'] ?? 0 }} awaiting courier</span>
-      <span class="stamp stamp-active">{{ ($assignmentCounts['assigned_to_rider'] ?? 0) + ($assignmentCounts['out_for_delivery'] ?? 0) }} in progress</span>
-    </div>
-  </div>
-  <div class="table-wrap">
-    <table class="dtable">
-      <thead>
-        <tr>
-          <th>Tracking #</th>
-          <th>Buyer</th>
-          <th>Delivery Status</th>
-          <th>Rider / Offer</th>
-          <th>Assignment Status</th>
-          <th>Accepted At</th>
-        </tr>
-      </thead>
-      <tbody>
-        @forelse($shipments as $s)
-        @php $courier = optional(optional($s->assignment)->courier) @endphp
-        <tr>
-          <td class="mono"><a href="{{ route('logistics.monitor', ['search'=>$s->tracking_number ?? $s->order?->order_number]) }}">{{ $s->tracking_number ?? substr($s->id, 0, 8) }}</a>@include('logistics.partials.parcel-custody',['parcel'=>$s])</td>
-          <td>{{ optional(optional($s->order)->buyer)->given_names }} {{ optional(optional($s->order)->buyer)->last_name }}</td>
-          <td><span class="stamp stamp-{{ $s->shipping_status }}">{{ ucfirst(str_replace('_',' ',$s->shipping_status)) }}</span></td>
-          <td>
-            @if($s->courier_id && $courier->given_names)
-              <div class="cell-user">
-                <div>
-                  <strong>{{ $courier->given_names }} {{ $courier->last_name }}</strong>
-                  <div style="font-size:11px;color:var(--muted)">{{ $courier->email }}</div>
-                </div>
-              </div>
-            @elseif($s->shipping_status === 'sorted' && auth()->user()->isHubStaff() && app(\App\Services\LogisticsAccess::class)->matches(auth()->user()->logisticsHub, $s->destination_hub, $s->destination_province))
-              @if($s->assignment)<p>{{ $s->assignment->status === 'offered' && $s->assignment->expires_at?->isFuture() ? 'Awaiting rider confirmation: ' : 'Previous offer: ' }}{{ $courier->given_names }} - {{ $s->assignment->status === 'offered' && ! $s->assignment->expires_at?->isFuture() ? 'expired' : $s->assignment->status }}</p>@endif
-              <form method="POST" action="{{ route('logistics.assignments.assign', $s->id) }}" style="display:flex;gap:6px">
-                @csrf @method('PATCH')
-                <select name="courier_id" class="select" aria-label="Delivery Rider for {{ $s->tracking_number ?? $s->id }}" style="min-height:44px" required>
-                  <option value="" selected disabled>Select courier…</option>
-                  @foreach(($couriersByShipment[$s->id] ?? collect()) as $rider)
-                  <option value="{{ $rider->id }}">{{ $rider->given_names }} {{ $rider->last_name }}</option>
-                  @endforeach
-                </select>
-                <button class="btn btn-sm btn-primary" @disabled(($couriersByShipment[$s->id] ?? collect())->isEmpty())>Send offer</button>
-              </form>
-              @if(($couriersByShipment[$s->id] ?? collect())->isEmpty())<p role="status">No eligible rider is available for the destination barangay {{ app(\App\Services\RiderBarangayCoverage::class)->barangay($s, 'delivery') ?: '(missing address)' }}. Ask your logistics admin to review rider coverage and availability.</p>@endif
-            @elseif($s->shipping_status === 'sorted')
-              <span>Awaiting a rider offer from the destination hub.</span>
-            @elseif($s->shipping_status === 'at_sorting_center' && $s->needsHubTransfer())
-              <span style="color:var(--muted);font-size:12.5px">Awaiting origin hub rider assignment after admin approval.</span>
-              @if(auth()->user()->isHubStaff())<a class="btn btn-sm btn-primary" href="{{ route('logistics.transfers', ['direction'=>'outgoing']) }}">Assign transfer rider</a>@endif
-            @elseif($s->shipping_status === 'hub_transfer')
-              @php($activeLeg = $s->activeHubLeg())
-              <span style="color:var(--muted);font-size:12.5px">{{ optional($s->hubTransferRider)->given_names ?? 'A rider' }} en route {{ $activeLeg->from_hub ?? $s->origin_hub }} → {{ $activeLeg->to_hub ?? $s->destination_hub }}</span>
-            @else
-              <span style="color:var(--muted);font-size:12.5px">Waiting for courier…</span>
-            @endif
-          </td>
-          <td>
-            @if($s->assignment)
-              <span class="stamp assignment-status-value stamp-{{ $s->assignment->status }}">{{ $s->assignment->status === 'offered' ? ($s->assignment->expires_at?->isFuture() ? 'Awaiting rider confirmation' : 'Offer expired') : ucfirst($s->assignment->status) }}</span>
-            @else
-              <span class="stamp stamp-pending">Unassigned</span>
-            @endif
-          </td>
-          <td style="font-size:12px;color:var(--muted)">
-            {{ $s->assignment?->accepted_at ? \Carbon\Carbon::parse($s->assignment->accepted_at)->format('M d, g:i A') : '—' }}
-          </td>
-        </tr>
-        @empty
-        <tr><td colspan="6"><div class="empty delivery-assignment-empty"><span aria-hidden="true">—</span><h3>No active assignments</h3><p>Approved deliveries will appear here once available.</p></div></td></tr>
-        @endforelse
-      </tbody>
-    </table>
-  </div>
-</div>
-{{ $shipments->links() }}
+<section class="assignment-workspace">
+<div class="assignment-workspace-toolbar"><div><h2>Assignments &amp; tracking</h2><span>{{ $assignmentRows->total() }} records</span></div><a class="btn btn-primary" href="{{ route('logistics.transfers.create',[],false) }}">Request a transfer</a></div>
+<div class="card assignment-workspace-table"><div class="table-wrap"><table class="dtable"><thead><tr><th>Reference</th><th>Type</th><th>Buyer / Route</th><th>Rider</th><th>Status</th><th>Last update</th><th>Details</th></tr></thead><tbody>
+@forelse($assignmentRows as $row)
+@php $item=$row->item; @endphp
+@if($row->assignment_type==='transfer')
+<tr><td class="mono">{{ substr($item->id,0,8) }}<small>{{ $item->members_count }} parcels</small></td><td>Hub transfer</td><td>{{ $item->from_hub }}<small>&rarr; {{ $item->to_hub }}</small></td><td>{{ $item->rider?->given_names ?? 'Unassigned' }} {{ $item->rider?->last_name }}</td><td><span class="stamp stamp-{{ $item->status }}">{{ $item->label() }}</span></td><td>{{ $item->updated_at?->format('M d, Y g:i A') }}</td><td><a class="assignment-details-link" href="{{ route('logistics.transfers.show',$item->id,false) }}" data-assignment-details-url="{{ route('logistics.transfers.show',$item->id,false) }}" aria-label="Details for transfer {{ substr($item->id,0,8) }}">&nearr;</a></td></tr>
+@else
+@php
+$currentRider=match($item->shipping_status){'ready_for_pickup','picked_up'=>$item->pickupRider,'hub_transfer'=>$item->hubTransferRider,default=>$item->courier};
+$leg=match($item->shipping_status){'ready_for_pickup','picked_up'=>'Pickup','at_sorting_center'=>'At hub','hub_transfer'=>'Hub transfer',default=>'Delivery'};
+@endphp
+<tr><td class="mono">{{ $item->tracking_number ?? substr($item->id,0,8) }}<small>{{ $item->order?->order_number }}</small></td><td>{{ $leg }}</td><td>{{ $item->order?->buyer?->given_names }} {{ $item->order?->buyer?->last_name }}<small>{{ $item->destination_hub }}</small></td><td>{{ $currentRider?->given_names ?? 'Unassigned' }} {{ $currentRider?->last_name }}</td><td><span class="stamp stamp-{{ $item->shipping_status }}">{{ ucwords(str_replace('_',' ',$item->shipping_status)) }}</span></td><td>{{ $item->updated_at?->format('M d, Y g:i A') }}</td><td><a class="assignment-details-link" href="{{ route('logistics.assignments.parcel',$item->id,false) }}" data-assignment-details-url="{{ route('logistics.assignments.parcel',$item->id,false) }}" aria-label="Details for {{ $item->tracking_number ?? $item->id }}">&nearr;</a></td></tr>
+@endif
+@empty<tr><td colspan="7"><div class="empty"><h3>No assignments yet</h3><p>Parcels and transfer requests will appear here.</p></div></td></tr>@endforelse
+</tbody></table></div></div>{{ $assignmentRows->links() }}
 </section>
+<div class="modal-overlay" id="assignmentDetailsModal" data-reopen="{{ $errors->any() ? 'true' : 'false' }}"><section class="modal assignment-details-dialog" role="dialog" aria-modal="true" aria-labelledby="assignmentDetailsTitle"><header class="modal-head"><div><span class="assignment-detail-kicker">Assignment details</span><h3 id="assignmentDetailsTitle">Parcel &amp; transfer details</h3></div><button type="button" class="modal-close" data-modal-close aria-label="Close assignment details">&times;</button></header><div class="modal-body" id="assignmentDetailsContent" aria-live="polite"></div><footer class="modal-foot"><button type="button" class="btn btn-outline" data-assignment-details-back hidden>Back</button><button type="button" class="btn btn-primary" data-modal-close>Close</button></footer></section></div>
 @endsection
+@push('scripts')<script src="{{ asset('js/assignment-workspace.js') }}?v={{ filemtime(public_path('js/assignment-workspace.js')) }}" defer></script>@endpush

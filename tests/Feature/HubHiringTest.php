@@ -471,4 +471,26 @@ class HubHiringTest extends TestCase
         $this->actingAs($this->admin)->get('/logistics/hubs?search=Town')->assertOk()->assertSee('Town00')->assertDontSee('Town20')->assertDontSee('Town99');
         $this->get('/logistics/hubs?search=Town&page=2')->assertOk()->assertSee('Town20')->assertDontSee('Town00')->assertDontSee('Town99');
     }
+    public function test_rejected_buyer_can_resubmit_with_legacy_empty_company_value(): void
+    {
+        $data=$this->application('hub_staff');$data['account_type']='buyer';
+        $this->postJson('/register',$data)->assertOk();
+        $buyer=User::where('username',$data['username'])->firstOrFail();
+        $buyer->forceFill(['status'=>'rejected','status_reason'=>'Please correct the documents','can_resubmit'=>true,'business_name'=>''])->save();
+        $this->postJson('/register',$data)->assertOk()->assertJsonPath('success',true);
+        $this->assertSame($buyer->id,User::where('username',$data['username'])->value('id'));
+    }
+
+    public function test_duplicate_buyer_credentials_report_the_conflicting_field(): void
+    {
+        $data=$this->application('hub_staff');$data['account_type']='buyer';
+        $this->postJson('/register',$data)->assertOk();
+        $buyer=User::where('username',$data['username'])->firstOrFail();
+        $retry=$buyer->getAttributes();unset($retry['contact_no']);
+        $retry['given_names']='Different';$retry['username']='different_username';
+        try{app(HubHiring::class)->register($retry,null);$this->fail('Duplicate email accepted.');}
+        catch(ValidationException $e){$this->assertArrayHasKey('email',$e->errors());$this->assertStringContainsString('already registered',$e->errors()['email'][0]);}
+        $this->assertSame(1,User::where('email',$data['email'])->count());
+    }
+
 }

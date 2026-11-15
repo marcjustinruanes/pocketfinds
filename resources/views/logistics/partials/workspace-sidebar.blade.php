@@ -10,7 +10,7 @@
   </div>
   <div class="nav-groups">
     @foreach(\App\Support\LogisticsWorkspace::sections() as $key=>$section)
-    <a href="{{ route($section['links'][0][1]) }}" class="nav-item {{ $currentWorkspace===$key?'active':'' }}" title="{{ $section['label'] }}" aria-label="{{ $section['label'] }}" @if($currentWorkspace===$key) aria-current="page" @endif>
+    <a href="{{ route($section['links'][0][1], [], false) }}" class="nav-item {{ $currentWorkspace===$key?'active':'' }}" title="{{ $section['label'] }}" aria-label="{{ $section['label'] }}" @if($currentWorkspace===$key) aria-current="page" @endif>
       <span class="ic">@if($key==='overview')@include('seller.partials.icon',['name'=>'nav-dashboard','size'=>22])
       @else
       <x-admin-icon :name="$section['icon']" />

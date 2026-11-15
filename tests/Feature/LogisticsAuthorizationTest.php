@@ -283,19 +283,17 @@ class LogisticsAuthorizationTest extends TestCase
         $admin = $this->user($hub, 'logistics_admin');
         $this->actingAs($admin)->get('/logistics/accounts?role=rider')->assertRedirect(route('logistics.riders'));
         $this->get('/logistics/riders')->assertOk()
-            ->assertSee('name="role" value="rider"', false)->assertSee('/logistics/riders/accounts', false)
-            ->assertSee('name="vehicle_type"', false);
+            ->assertSee('/logistics/personnel/create/rider', false);
         $this->get('/logistics/accounts?role=hub_staff')->assertRedirect(route('logistics.staff'));
         $this->get('/logistics/staff')->assertOk()
-            ->assertSee('name="role" value="hub_staff"', false)->assertSee('/logistics/staff/accounts', false)
-            ->assertDontSee('name="vehicle_type"', false);
+            ->assertSee('/logistics/personnel/create/hub_staff', false)->assertSee('form="staff-search"',false)->assertDontSee('id="staffTabs"',false);
         $data = ['role' => 'hub_staff', 'username' => 'specific_staff', 'email' => 'specific_staff@gmail.com',
             'given_names' => 'Specific', 'last_name' => 'Staff', 'sex' => 'female', 'birthday' => '2000-01-01',
             'contact_no' => '09123456789', 'barangay' => 'Test', 'password' => 'SpecificPassword!123',
             'password_confirmation' => 'SpecificPassword!123', 'status' => 'pending', 'logistics_hub_id' => $hub->id];
         $this->postJson('/logistics/riders/accounts', $data)->assertUnprocessable()->assertJsonValidationErrors('role');
         $this->assertDatabaseMissing('users', ['username' => 'specific_staff']);
-        $this->post('/logistics/staff/accounts', array_merge($this->applicationEvidence('hub_staff'),$data))->assertRedirect();
+        $this->postJson('/logistics/staff/accounts', array_merge($this->applicationEvidence('hub_staff'),$data,['_managed_registration'=>1]))->assertOk()->assertJsonPath('success',true);
         $this->assertTrue(User::where('username', 'specific_staff')->firstOrFail()->isHubStaff());
         $data = array_merge($data, ['given_names'=>'Courier','role' => 'rider', 'username' => 'specific_rider', 'email' => 'specific_rider@gmail.com',
             'vehicle_type' => 'four_wheels', 'vehicle_ownership' => 'own', 'license_expiry' => '2030-01-01', 'contact_no' => '09123456780']);
@@ -876,7 +874,46 @@ class LogisticsAuthorizationTest extends TestCase
         if (getenv('TEAM_UI_PREVIEW')) file_put_contents(storage_path('framework/testing/team-editor.html'), $response->getContent());
         $staff = $this->user($hub);
         $this->get('/logistics/accounts/'.$staff->id.'/edit')->assertOk()
-            ->assertSee('staff_id='.$staff->id, false)->assertDontSee('id="team-assignments"', false);
+            ->assertDontSee('>Attendance</a>', false)->assertDontSee('id="team-assignments"', false);
+    }
+
+    public function test_team_navigation_keeps_current_host_and_authenticated_session(): void
+    {
+        $hub=$this->hub();
+        $admin=$this->user($hub,'logistics_admin');
+        \Illuminate\Support\Facades\URL::forceRootUrl('http://different-host.example');
+        try {
+            $response=$this->actingAs($admin)->get('/logistics/riders')->assertOk();
+            $response->assertSee('href="/logistics/riders"',false)->assertDontSee('href="http://different-host.example/logistics/riders"',false);
+            $this->assertAuthenticatedAs($admin);
+            $this->get('/logistics/staff')->assertOk();
+            $this->assertAuthenticatedAs($admin);
+        } finally { \Illuminate\Support\Facades\URL::forceRootUrl(null); }
+    }
+
+    public function test_managed_creation_reuses_the_role_registration_views(): void
+    {
+        Schema::create('policies', function (Blueprint $t) { $t->id(); $t->string('type'); $t->string('account_type')->nullable(); $t->string('company_name')->nullable(); $t->string('title')->nullable(); $t->text('content')->nullable(); });
+        Schema::table('users', function (Blueprint $t) { $t->string('company_logo')->nullable(); });
+        $hub=$this->hub();
+        $this->actingAs($this->user($hub,'logistics_admin'));
+        foreach(['rider'=>'auth.register-rider','hub_staff'=>'auth.register-logistics-staff'] as $role=>$view) {
+            $response=$this->get('/logistics/personnel/create/'.$role)->assertOk()->assertViewIs($view)
+                ->assertSee('data-managed-registration',false)->assertSee('name="role" value="'.$role.'"',false)
+                ->assertSee('registration-flow.js',false)->assertSee('selfie',false)->assertDontSee('id="registrationGoogleEmail"',false);
+            $this->assertCount(1,$response->viewData('companyHubs'));
+            if(getenv('TEAM_REGISTRATION_PREVIEW'))file_put_contents(storage_path('framework/testing/managed-'.$role.'.html'),$response->getContent());
+        }
+        $this->actingAs($this->user($hub))->get('/logistics/personnel/create/rider')->assertForbidden();
+    }
+
+    public function test_delivery_riders_list_excludes_hub_transfer_work(): void
+    {
+        $hub=$this->hub();
+        foreach(['at_sorting_center','hub_transfer','assigned_to_rider','out_for_delivery'] as $status) $this->parcel($hub,$hub,'assignment-'.$status,$status);
+        $response=$this->actingAs($this->user($hub,'logistics_admin'))->get('/logistics/assignments')->assertOk();
+        $this->assertEqualsCanonicalizing(['assigned_to_rider','out_for_delivery'],$response->viewData('shipments')->pluck('shipping_status')->all());
+        $response->assertDontSee('Assign transfer rider')->assertDontSee('Assignment tools');
     }
 
 }

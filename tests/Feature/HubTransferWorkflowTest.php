@@ -609,4 +609,49 @@ class HubTransferWorkflowTest extends TestCase
         $this->legs[0]->update(['rider_confirmed_pickup_at' => $pickup]);
         $this->actingAs($staff)->patchJson('/logistics/transfers/'.$next->id.'/dispatch', ['courier_id' => $rider->id])->assertOk();
     }
+    public function test_assignments_combines_delivery_and_transfer_views(): void
+    {
+        foreach ([$this->admin,$this->sender] as $actor) {
+            $this->actingAs($actor)->get('/logistics/assignments')->assertOk()->assertViewIs('logistics.assign')->assertDontSee('id="assignment-view"',false);
+            $this->get('/logistics/assignments?view=transfers')->assertOk()->assertViewIs('logistics.assign')->assertSee('Assignments &amp; tracking',false);
+        }
+        $this->actingAs($this->admin)->get('/logistics/assignments?view=transfers')->assertOk()->assertSee('Assignments &amp; tracking',false);
+    }
+
+    public function test_mixed_assignment_rows_share_one_paginated_table(): void
+    {
+        $batch=$this->requestBatch();
+        [$delivery]=$this->parcel($this->origin,$this->destination);
+        $delivery->update(['shipping_status'=>'assigned_to_rider']);
+        $response=$this->actingAs($this->admin)->get('/logistics/assignments')->assertOk();
+        $this->assertSame(2,$response->viewData('assignmentRows')->total());
+        $this->assertEqualsCanonicalizing(['delivery','transfer'],$response->viewData('assignmentRows')->pluck('assignment_type')->all());
+        $this->assertSame(1,substr_count($response->getContent(),'<table class="dtable">'));
+        $response->assertSee('data-assignment-details-url',false)->assertSee($delivery->tracking_number);
+        $this->get('/logistics/assignments?view=delivery')->assertOk()->assertViewHas('assignmentRows',fn($rows)=>$rows->total()===2);
+        $this->get('/logistics/assignments?view=transfers')->assertOk()->assertViewHas('assignmentRows',fn($rows)=>$rows->total()===2);
+        if(getenv('COMBINED_ASSIGNMENTS_PREVIEW'))file_put_contents(storage_path('framework/testing/combined-assignments.html'),$response->getContent());
+    }
+
+    public function test_transfer_details_explain_offline_rider_blocker(): void
+    {
+        $batch=$this->approved();
+        $this->rider->forceFill(['is_available'=>false])->save();
+        $this->actingAs($this->sender)->get('/logistics/transfers/'.$batch->id)->assertOk()
+            ->assertSee('The rider is offline. Go online in the rider app before assignment.')->assertSee('Refresh rider availability');
+        $this->actingAs($this->admin)->get('/logistics/transfers/'.$batch->id)->assertOk()->assertSee('Assign from the origin hub');
+        $this->rider->forceFill(['is_available'=>true])->save();
+        $this->actingAs($this->sender)->get('/logistics/transfers/'.$batch->id)->assertOk()->assertViewHas('riders',fn($riders)=>$riders->contains('id',$this->rider->id));
+    }
+
+    public function test_parcel_details_include_monitor_actions_and_enforce_company_scope(): void
+    {
+        $this->parcels[0]->update(['shipping_status'=>'out_for_delivery']);
+        $this->actingAs($this->admin)->get('/logistics/assignments/parcels/'.$this->parcels[0]->id)->assertOk()
+            ->assertSee('assignment-parcel-details')->assertSee('Assignment timeline')->assertSee('attempt_token')->assertSee('minlength="10"',false);
+        $other=$this->hub('Beta','Pila','Laguna');
+        [$foreign]=$this->parcel($other,$other);
+        $this->get('/logistics/assignments/parcels/'.$foreign->id)->assertNotFound();
+    }
+
 }

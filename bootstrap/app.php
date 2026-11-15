@@ -27,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // from what the server stored (the actual cause of the 419s).
         $middleware->trustProxies(at: '*');
         $middleware->append(\App\Http\Middleware\ProductionHttps::class);
+        $middleware->append(\App\Http\Middleware\AttendanceFeature::class);
         $middleware->appendToGroup('web', MediaConsistency::class);
         // Keep the GCash number literal: surrounding spaces must be rejected.
         $middleware->trimStrings(except: [fn (Request $request) => $request->is('gcash-purchases/*/instructions')]);

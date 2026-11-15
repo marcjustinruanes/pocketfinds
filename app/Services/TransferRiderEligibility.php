@@ -11,13 +11,13 @@ class TransferRiderEligibility
 {
     public function problem(User $rider, LogisticsHub $origin): ?string
     {
-        if (! $origin->is_operational || $rider->business_name !== $origin->company_name
-            || $rider->account_type !== 'rider' || $rider->is_admin || $rider->is_logistics
-            || $rider->status !== 'approved' || ! $rider->is_available
-            || (int) $rider->logistics_hub_id !== (int) $origin->id
-            || $rider->vehicle_type !== 'four_wheels' || ! in_array($rider->vehicle_ownership, ['own', 'company'], true)) {
-            return 'Choose an online, approved four-wheel transfer rider assigned to the origin hub.';
-        }
+        if(!$origin->is_operational) return 'The origin hub is not operational.';
+        if($rider->business_name!==$origin->company_name || $rider->account_type!=='rider' || $rider->is_admin || $rider->is_logistics) return 'The rider must belong to this logistics company.';
+        if($rider->status!=='approved') return 'The rider account is not approved.';
+        if((int)$rider->logistics_hub_id!==(int)$origin->id) return 'The rider is assigned to a different hub.';
+        if($rider->vehicle_type!=='four_wheels') return 'The rider must use a four-wheel vehicle.';
+        if(!in_array($rider->vehicle_ownership,['own','company'],true)) return 'Vehicle ownership is not configured.';
+        if(!$rider->is_available) return 'The rider is offline. Go online in the rider app before assignment.';
         if (HubTransferBatch::where('rider_id', $rider->id)->where('status', 'in_transit')->when(DB::transactionLevel() > 0, fn ($q) => $q->lockForUpdate())->exists()
             || app(AssignmentWork::class)->blocksRider($rider->id)) {
             return 'The rider has active or ambiguous work requiring review.';

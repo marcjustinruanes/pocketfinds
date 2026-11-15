@@ -75,7 +75,7 @@
             <details><summary>Attendance review</summary><p>{{ $att['workdays'] }} recorded shift dates / {{ $att['absence'] }} confirmed absences / {{ $att['leave'] }} approved leave days / {{ $att['no_record'] }} elapsed calendar days with no record / {{ $att['open'] }} open shifts / {{ $att['missing_timeout'] }} flagged missing Time Out / {{ $att['pending'] }} pending corrections.</p>
             <p>Calendar gaps are not confirmed absences or scheduled days. Open intervals are not payable-hour evidence. Salary amounts and payment eligibility remain independent.</p>
             @if($att['open'] || $att['missing_timeout'] || $att['pending'])<span class="payroll-attention">Attendance requires review; salary is not blocked.</span>@endif
-            <a class="btn" href="{{ route('logistics.attendance',['staff_id'=>$member->id,'from'=>$periodStart->toDateString(),'to'=>$periodEnd->toDateString()]) }}">Review attendance</a></details>
+            @if(config('features.attendance')) <a class="btn" href="{{ route('logistics.attendance',['staff_id'=>$member->id,'from'=>$periodStart->toDateString(),'to'=>$periodEnd->toDateString()]) }}">Review attendance</a> @endif</details>
             @endif
             <details><summary>Salary settings &amp; history</summary>
               @if($member->staff_status==='approved')

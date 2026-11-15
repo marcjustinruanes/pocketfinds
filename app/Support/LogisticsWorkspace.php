@@ -14,9 +14,7 @@ final class LogisticsWorkspace
             ]],
             'operations'=>['label'=>'Operations','icon'=>'box','links'=>[
                 ['Scan parcels','logistics.scan',['logistics.scan']],
-                ['Hub transfers','logistics.transfers',['logistics.transfers*']],
-                ['Delivery riders','logistics.assignments',['logistics.assignments*']],
-                ['Live monitor','logistics.monitor',['logistics.monitor']],
+                ['Assignments','logistics.assignments',['logistics.assignments*','logistics.transfers*','logistics.monitor']],
                 ['Issues','logistics.issues',['logistics.issues*']],
                 ['Delivery history','logistics.history',['logistics.history']],
             ]],
@@ -25,7 +23,7 @@ final class LogisticsWorkspace
             ]],
             'finance'=>['label'=>'Staff & finance','icon'=>'peso','links'=>[
                 ['Cash desk','logistics.cash-desk',['logistics.cash-desk*']],
-                ['My attendance','logistics.my-attendance',['logistics.my-attendance*']],
+                ... (config('features.attendance') ? [['My attendance','logistics.my-attendance',['logistics.my-attendance*']]] : []),
                 ['My salary','logistics.my-salary',['logistics.my-salary*']],
             ]],
         ];
@@ -35,7 +33,7 @@ final class LogisticsWorkspace
             ]],
             'operations'=>['label'=>'Operations','icon'=>'box','links'=>[
                 ['Pickup requests','logistics.requests',['logistics.requests*','logistics.hub-requests*']],
-                ['Assignments','logistics.assignments',['logistics.assignments*']],
+                ['Assignments','logistics.assignments',['logistics.assignments*','logistics.transfers*']],
                 ['Hub transfers','logistics.transfers',['logistics.transfers*']],
                 ['Live monitor','logistics.monitor',['logistics.monitor']],
                 ['Issues','logistics.issues',['logistics.issues*']],

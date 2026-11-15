@@ -55,12 +55,9 @@ class RegisterController extends Controller
     private function identityExists(Request $request): bool
     {
         if (!$request->filled('given_names') || !$request->filled('last_name') || !$request->filled('birthday') || !$request->filled('sex')) return false;
-        return User::whereRaw('LOWER(given_names) = ?', [mb_strtolower(trim($request->given_names))])
-            ->whereRaw('LOWER(last_name) = ?', [mb_strtolower(trim($request->last_name))])
-            ->whereRaw('LOWER(COALESCE(middle_name, \'\')) = ?', [$request->boolean('no_middle_name') ? '' : mb_strtolower(trim((string)$request->middle_name))])
-            ->whereRaw('LOWER(COALESCE(suffix, \'\')) = ?', [mb_strtolower(trim((string)$request->suffix))])
-            ->where('birthday', $request->birthday)->where('sex', $request->sex)
-            ->where('status', '!=', 'rejected')->exists();
+        $identity=$request->all();
+        if($request->boolean('no_middle_name')) $identity['middle_name']=null;
+        return app(HubHiring::class)->identityQuery($identity)->exists();
     }
 
     public function sendOtp(Request $request)

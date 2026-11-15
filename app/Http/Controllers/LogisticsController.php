@@ -338,16 +338,49 @@ class LogisticsController extends Controller
     /** Delivery-leg assignment: sorted parcels waiting for a rider to take them from the sorting center to the buyer. */
     public function assignments(Request $request)
     {
-        $counts = $this->sidebarCounts();
-        $stage=$request->validate(['stage'=>'nullable|in:sorted'])['stage']??null;
-        $shipments = $this->companyScope()->when($stage==='sorted',fn($q)=>$q->where('shipping_status','sorted'))->with(['order.buyer', 'deliveryAssignment.courier', 'courier', 'hubTransferAssignment.courier', 'hubTransferRider', 'hubLegs.transferBatch.members'])
-            ->whereIn('shipping_status', ['at_sorting_center', 'hub_transfer', 'sorted', 'assigned_to_rider', 'out_for_delivery'])
-            ->latest('created_at')->orderByDesc('id')->paginate(20)->withQueryString();
-        $assignmentCounts = $this->companyScope()->selectRaw('shipping_status, COUNT(*) as total')->groupBy('shipping_status')->pluck('total', 'shipping_status');
-        // Only this company's own riders, and only ones whose vehicle actually fits a delivery leg (two-wheeler).
+        $counts=$this->sidebarCounts();
+        $deliveryQuery=$this->companyScope()->whereNotExists(function($q){
+            $q->selectRaw('1')->from('hub_transfer_members as assignment_members')->join('hub_transfer_batches as assignment_batches','assignment_batches.id','=','assignment_members.batch_id')
+                ->whereColumn('assignment_members.shipment_id','shipments.id')->whereIn('assignment_batches.status',['pending','approved','in_transit']);
+        });
+        $transferQuery=app(\App\Services\HubTransferWorkflow::class)->scope($request->user());
+        $deliveryIndex=(clone $deliveryQuery)->selectRaw("'delivery' as assignment_type, id, created_at")->toBase();
+        $transferIndex=(clone $transferQuery)->selectRaw("'transfer' as assignment_type, id, created_at")->toBase();
+        $assignmentRows=\Illuminate\Support\Facades\DB::query()->fromSub($deliveryIndex->unionAll($transferIndex),'assignment_rows')
+            ->orderByDesc('created_at')->orderBy('assignment_type')->orderBy('id')->paginate(20)->withQueryString();
+        $shipments=(clone $deliveryQuery)->with(['order.buyer','deliveryAssignment.courier','courier','pickupRider','hubTransferRider'])
+            ->whereIn('id',$assignmentRows->getCollection()->where('assignment_type','delivery')->pluck('id'))->get();
+        $transfers=(clone $transferQuery)->with('rider')->withCount('members')
+            ->whereIn('id',$assignmentRows->getCollection()->where('assignment_type','transfer')->pluck('id'))->get()->keyBy('id');
+        $byId=$shipments->keyBy('id');
+        $assignmentRows->setCollection($assignmentRows->getCollection()->map(function($row)use($byId,$transfers){
+            $row->item=$row->assignment_type==='delivery'?$byId->get($row->id):$transfers->get($row->id);return $row;
+        }));
+        return view('logistics.assign',array_merge($counts,compact('shipments','assignmentRows')));
+    }
 
-        $couriersByShipment = $shipments->getCollection()->where('shipping_status', 'sorted')->mapWithKeys(fn ($parcel) => [$parcel->id => app(\App\Services\RiderDeliveryOffers::class)->eligible($parcel, 'delivery')->get()]);
-        return view('logistics.assign', array_merge($counts, compact('shipments', 'assignmentCounts', 'couriersByShipment')));
+    public function assignmentParcelDetails(Request $request, string $id)
+    {
+        $s=$this->companyScope()->with(['order.buyer','deliveryAssignment.courier','courier','pickupRider','hubTransferRider'])->findOrFail($id);
+        $actor=$request->user();$seller=false;
+        $assignments=\App\Models\DeliveryAssignment::where('shipment_id',$s->id)->orderBy('accepted_at')->orderBy('id')->get();
+        $riders=[];$events=collect();
+        if(app(\App\Services\AssignmentReassignment::class)->installed()) {
+            foreach($assignments as $assignment){
+                $assignment->work_class=app(\App\Services\AssignmentWork::class)->classify($assignment);
+                if(in_array($assignment->leg,['pickup','delivery'],true)&&!$assignment->reassignment&&$assignment->work_class==='active'){
+                    $riders[$assignment->id]=app(\App\Services\RiderDeliveryOffers::class)->eligible($s,$assignment->leg,[(int)$assignment->courier_id])
+                        ->when($actor->isHubStaff(),fn($q)=>$q->where('users.logistics_hub_id',$actor->logistics_hub_id))->get();
+                }
+            }
+            $events=\Illuminate\Support\Facades\DB::table('logistics_financial_events')->where('subject_type','assignment')->whereIn('subject_id',$assignments->pluck('id'))->orderByDesc('id')->get()->groupBy('subject_id');
+        }
+        $mayUpdate=$actor->isLogisticsAdmin()||app(\App\Services\LogisticsAccess::class)->matches($actor->logisticsHub,$s->destination_hub,$s->destination_province);
+        $allowedNext=$mayUpdate?array_values(array_diff(self::STATUS_TRANSITIONS[$s->shipping_status]??[],['returned','out_for_delivery'])):[];
+        if($s->shipping_status==='delivery_failed'&&app(\App\Services\RiderDeliveryOffers::class)->retryExhausted($s))$allowedNext=[];
+        $canOffer=$s->shipping_status==='sorted'&&$actor->isHubStaff()&&app(\App\Services\LogisticsAccess::class)->matches($actor->logisticsHub,$s->destination_hub,$s->destination_province);
+        $eligibleRiders=$canOffer?app(\App\Services\RiderDeliveryOffers::class)->eligible($s,'delivery')->get():collect();
+        return response()->view('logistics.partials.assignment-parcel-details',compact('s','actor','seller','assignments','riders','events','allowedNext','canOffer','eligibleRiders'))->header('Cache-Control','private, no-store');
     }
 
     public function assignCourier(Request $request, $id)

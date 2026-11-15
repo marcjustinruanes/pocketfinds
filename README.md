@@ -68,3 +68,7 @@ Run `php artisan test` for the automated tests. `database/verify_mysql_app.php` 
 ## Share images through the database
 
 Run `php artisan migrate`, then `php artisan images:share`. This stores eligible public storefront images in `public_image_assets` and writes `handoff/PocketFinds-images.sql`. Send that SQL file with the updated code. Import it into the recipient's existing MySQL database and run migrations. The `/storage/{path}` fallback serves database images when local files are absent. Product/shop records must reference the same paths; this export contains images only. Run `images:share` again after adding or replacing images. Private uploads are excluded.
+
+## Attendance feature switch
+
+Attendance is disabled for every user by default, including direct page URLs, exports, and submission endpoints. Existing code and records remain intact. To restore it, set `ATTENDANCE_ENABLED=true` in your environment and run `php artisan config:clear`. Staff navigation and attendance review links will return automatically.

@@ -331,12 +331,12 @@ body.auth-page.registration-flow .registration-floating-native > .auth-label { t
 .registration-floating-native > .auth-field-outline legend { max-width:100%; padding:0 4px; }
 body.auth-page.registration-flow .registration-floating-field:focus-within > .auth-label { color:var(--auth-primary); }
 .registration-floating-field > .auth-input:hover ~ .auth-field-outline { border-color:#cbd5e1; }
-.registration-floating-field > .auth-input:focus ~ .auth-field-outline { border-color:var(--auth-primary); filter:drop-shadow(0 0 2px #bc387f30); }
+.registration-floating-field > .auth-input:focus ~ .auth-field-outline { border-color:var(--auth-primary); filter:none; }
 .registration-floating-field > .auth-input.error ~ .auth-field-outline { border-color:var(--auth-danger); }
-body.auth-page.registration-flow .registration-floating-field > .auth-input:autofill { background-color:#fdf2f8; color:var(--auth-text); }
+body.auth-page.registration-flow .registration-floating-field > .auth-input:autofill { background-color:#fff; color:var(--auth-text); }
 body.auth-page.registration-flow .registration-floating-field > .auth-input:-webkit-autofill,
 body.auth-page.registration-flow .registration-floating-field > .auth-input:-webkit-autofill:hover,
-body.auth-page.registration-flow .registration-floating-field > .auth-input:-webkit-autofill:focus { -webkit-box-shadow:0 0 0 1000px #fdf2f8 inset; box-shadow:0 0 0 1000px #fdf2f8 inset; -webkit-text-fill-color:var(--auth-text); caret-color:var(--auth-text); }
+body.auth-page.registration-flow .registration-floating-field > .auth-input:-webkit-autofill:focus { -webkit-box-shadow:0 0 0 1000px #fff inset; box-shadow:0 0 0 1000px #fff inset; -webkit-text-fill-color:var(--auth-text); caret-color:var(--auth-text); }
 .registration-personal-grid .registration-age-field { padding-top:0; }
 .registration-mobile .registration-floating-field > .auth-field-outline { border-radius:0 8px 8px 0; }
 .registration-floating-field:has(textarea) > .auth-label { top:24px; }
@@ -639,3 +639,13 @@ body.auth-page.registration-flow .registration-compact-upload { gap:0; margin-to
 @media(max-width:600px) { .registration-region-row:has(> .registration-postal-field) { grid-template-columns:repeat(2,minmax(0,1fr)); } .registration-postal-field { justify-self:start; } }
 @media(max-width:1000px) { .registration-category-picker .category-box-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:760px) { body.auth-page.registration-flow .auth-form-panel { min-height:0; padding-top:28px; padding-bottom:28px; } }
+
+/* Identity controls stay aligned and readable inside registration dialogs. */
+body.auth-page.registration-flow .registration-id-type{width:100%;min-width:0;margin-bottom:20px!important}body.auth-page.registration-flow .registration-id-type .auth-input-wrap{width:100%;min-width:0}body.auth-page.registration-flow .registration-id-type select{box-sizing:border-box;width:100%;min-width:0;height:50px;padding:12px 38px 12px 14px;font-size:13px;line-height:1.5;text-overflow:ellipsis;white-space:nowrap;background-color:#fff}body.auth-page.registration-flow .registration-id-type option{font:13px/1.5 Inter,system-ui,sans-serif;color:#593346;background:#fff}
+body.auth-page.registration-flow .registration-identity-uploads{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:18px!important;align-items:start}body.auth-page.registration-flow .registration-identity-uploads>div{min-width:0;display:grid;gap:9px}body.auth-page.registration-flow .registration-identity-uploads>div>.auth-label{display:block;margin:0;font-size:12px;font-weight:500;color:#775565}body.auth-page.registration-flow .registration-identity-uploads .registration-upload-surface{border:1px solid #e1d8df!important;border-radius:12px!important;background:#fff!important}body.auth-page.registration-flow .registration-identity-uploads .registration-upload-idle{padding:16px!important;gap:10px}body.auth-page.registration-flow .registration-identity-uploads .registration-upload-note{max-width:180px;line-height:1.6}body.auth-page.registration-flow .registration-identity-uploads .registration-upload-label{color:#775565}
+@media(max-width:480px){body.auth-page.registration-flow .registration-identity-uploads{grid-template-columns:minmax(0,1fr)!important;gap:20px!important}body.auth-page.registration-flow .registration-identity-uploads .registration-upload-surface{aspect-ratio:16/9}}
+
+/* Neutral registration fields, including focused and browser-filled values. */
+body.auth-page.auth-register :is(.auth-input,.auth-select):not([type=checkbox]):not([type=radio]){background-color:#fff;box-shadow:none;filter:none}
+body.auth-page.auth-register :is(.auth-input,.auth-select):focus{background-color:#fff;box-shadow:none;filter:none}
+body.auth-page.auth-register :is(.auth-input,.auth-select)::placeholder{color:var(--auth-muted);opacity:1;text-shadow:none}

@@ -30,7 +30,7 @@ class PersonnelApplication
     public function rules(string $role, ?string $ownership, ?User $account=null): array
     {
         $file=fn(string $field,string $mimes='jpg,jpeg,png,pdf')=>[($account && $this->readable($account->{$field}))?'nullable':'required','file','mimes:'.$mimes,'max:5120'];
-        $rules=['selfie_file'=>$file('selfie_file','jpg,jpeg,png')];
+        $rules=['selfie_file'=>$file('selfie_file','jpg,jpeg,png'),'resume_file'=>'nullable|file|mimes:pdf|max:5120'];
         if($role==='hub_staff') return $rules+['id_file'=>$file('id_file'),'id_type_id'=>'required|integer|exists:id_types,id'];
         $unique=fn(string $field)=>function($attribute,$value,$fail)use($field,$account){
             if($field==='license_number'){
@@ -47,8 +47,8 @@ class PersonnelApplication
 
     public function files(string $role, ?string $ownership): array
     {
-        return $role==='hub_staff'?['id_file'=>'id_files','selfie_file'=>'selfie_files']:
-            (['license_file'=>'license_files','selfie_file'=>'selfie_files','nbi_clearance_file'=>'nbi_clearances']+($ownership==='own'?['or_file'=>'vehicle_docs','cr_file'=>'vehicle_docs']:[]));
+        return $role==='hub_staff'?['id_file'=>'id_files','selfie_file'=>'selfie_files','resume_file'=>'resume_files']:
+            (['license_file'=>'license_files','selfie_file'=>'selfie_files','nbi_clearance_file'=>'nbi_clearances','resume_file'=>'resume_files']+($ownership==='own'?['or_file'=>'vehicle_docs','cr_file'=>'vehicle_docs']:[]));
     }
 
     public function store(Request $request,string $role,array $data,?User $account=null): array
@@ -67,7 +67,7 @@ class PersonnelApplication
 
     public function assertReadable(User $user,string $role): void
     {
-        foreach(array_keys($this->files($role,$user->vehicle_ownership)) as $field) if(!$this->readable($user->{$field})) throw ValidationException::withMessages([$field=>'A readable private document is required before approval. Submit a genuine replacement.']);
+        foreach(array_diff(array_keys($this->files($role,$user->vehicle_ownership)), ['resume_file']) as $field) if(!$this->readable($user->{$field})) throw ValidationException::withMessages([$field=>'A readable private document is required before approval. Submit a genuine replacement.']);
         if($role==='rider' && $user->id_file!==$user->license_file) throw ValidationException::withMessages(['license_file'=>'The rider licence must also be the recorded identity document.']);
     }
 }

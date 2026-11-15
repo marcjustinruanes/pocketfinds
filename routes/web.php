@@ -404,6 +404,7 @@ Route::prefix('logistics')->name('logistics.')->middleware(['logistics', 'logist
         Route::patch('/transfers/{id}/reject', [HubTransferController::class, 'reject'])->name('transfers.reject');
     });
     Route::get('/assignments', [LogisticsController::class, 'assignments'])->name('assignments');
+    Route::get('/assignments/parcels/{id}', [LogisticsController::class, 'assignmentParcelDetails'])->name('assignments.parcel');
     Route::get('/assignments/review', [\App\Http\Controllers\LogisticsOperationsController::class,'index'])->name('assignments.review');
     Route::post('/assignments/{id}/reassignment', [\App\Http\Controllers\LogisticsOperationsController::class,'requestReassignment'])->middleware('throttle:20,1')->name('assignments.reassign');
     Route::post('/assignments/{id}/reassignment/decision', [\App\Http\Controllers\LogisticsOperationsController::class,'decideReassignment'])->middleware('throttle:20,1')->name('assignments.decide');
@@ -456,6 +457,13 @@ Route::prefix('logistics')->name('logistics.')->middleware(['logistics', 'logist
         Route::get('/reports/export', [LogisticsController::class, 'exportReport'])->name('reports.export');
         Route::get('/accounts', [LogisticsManagementController::class, 'accounts'])->name('accounts');
         Route::post('/accounts', [LogisticsManagementController::class, 'storeAccount'])->name('accounts.store');
+        Route::get('/personnel/create/{role}', [LogisticsManagementController::class,'createPersonnel'])->whereIn('role',['rider','hub_staff'])->name('personnel.create');
+        Route::post('/registration/check-identity', [RegisterController::class,'checkIdentity'])->middleware('throttle:30,1');
+        Route::get('/registration/check-username', [RegisterController::class, 'checkUsername'])->middleware('throttle:60,1');
+        Route::get('/registration/check-business-name', [RegisterController::class, 'checkBusinessName'])->middleware('throttle:60,1');
+        Route::get('/registration/check-business-number', [RegisterController::class, 'checkBusinessNumber'])->middleware('throttle:60,1');
+        Route::get('/registration/check-license', [RegisterController::class, 'checkLicenseNumber'])->middleware('throttle:60,1');
+        Route::get('/registration/check-plate', [RegisterController::class, 'checkPlateNumber'])->middleware('throttle:60,1');
         Route::post('/riders/accounts', [LogisticsManagementController::class, 'storeRiderAccount'])->name('riders.accounts.store');
         Route::post('/staff/accounts', [LogisticsManagementController::class, 'storeStaffAccount'])->name('staff.accounts.store');
         Route::get('/accounts/{id}/edit', [LogisticsManagementController::class, 'editAccount'])->name('accounts.edit');

@@ -1521,7 +1521,7 @@ function validateStep(step) {
     }
 
     // Contact step: require email verification on manual form only
-    if (step === contactStep && !isGoogleForm && !emailVerified) {
+    if (step === contactStep && !isGoogleForm && !emailVerified && !document.getElementById('buyerForm')?.hasAttribute('data-managed-registration')) {
         showError(document.getElementById('email'), 'Please verify your email address first.');
         return false;
     }
@@ -1637,9 +1637,10 @@ function prevStep(current) {
 if (document.getElementById('buyerForm')) {
     document.getElementById('buyerForm').addEventListener('submit', function (e) {
         e.preventDefault();
-        if (!validateStep(accountStep)) return;
         const form = this;
         const btn = form.querySelector('.btn-submit');
+        if (btn.disabled) return;
+        if (!validateStep(accountStep)) return;
         btn.disabled = true; btn.textContent = 'Submitting…';
         const fd = new FormData(form);
         if (selfieBlob) fd.set('selfie_file', selfieBlob, 'selfie.jpg');
@@ -1654,10 +1655,11 @@ if (document.getElementById('buyerForm')) {
         if (docBlobs.or)      fd.set('or_file',      docBlobs.or,      docBlobs.or.type === 'application/pdf'      ? 'or.pdf'      : 'or.jpg');
         if (docBlobs.cr)      fd.set('cr_file',      docBlobs.cr,      docBlobs.cr.type === 'application/pdf'      ? 'cr.pdf'      : 'cr.jpg');
         if (docBlobs.license) fd.set('license_file', docBlobs.license, docBlobs.license.type === 'application/pdf' ? 'license.pdf' : 'license.jpg');
-        fetch('/register', { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        fetch(form.hasAttribute('data-managed-registration') ? form.action : '/register', { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
+                    if(form.hasAttribute('data-managed-registration') && data.redirect){form.dispatchEvent(new Event('registration:saved'));window.parent.postMessage({type:'personnel-created',redirect:data.redirect},location.origin);return;}
                     form.dispatchEvent(new Event('registration:saved'));
                     form.style.display = 'none';
                     document.getElementById('stepIndicator').style.display = 'none';
@@ -1666,6 +1668,11 @@ if (document.getElementById('buyerForm')) {
                 } else {
                     btn.disabled = false; btn.textContent = 'Submit Registration';
                     const errMsg = data.errors ? Object.values(data.errors).map(v => Array.isArray(v) ? v[0] : v).join('\n') : (data.message ?? 'Something went wrong.');
+                    if(data.errors){
+                        let firstField=null;
+                        Object.entries(data.errors).forEach(([name,messages])=>{const field=form.querySelector('[name="'+CSS.escape(name)+'"]');if(!field||field.type==='hidden')return;showError(field,Array.isArray(messages)?messages[0]:messages);firstField ||= field;});
+                        const panel=firstField?.closest('.step-panel');if(panel)window.registrationFlow?.showPanel(Number(panel.id.replace('panel-','')));
+                    }
                     showRegisterErrorModal(errMsg);
                 }
             })

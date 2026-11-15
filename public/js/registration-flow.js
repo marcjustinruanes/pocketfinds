@@ -384,6 +384,12 @@
         box.addEventListener('click',event=>{ if(!event.target.closest('button,a,input,label,video')) activate(); });
         box.addEventListener('keydown',event=>{ if(event.target===box && ['Enter',' '].includes(event.key)){ event.preventDefault(); activate(); } });
     });
+    // Remove template indentation from native option labels.
+    const identitySelect=document.getElementById('id_type_id');
+    if(identitySelect){
+        identitySelect.closest('.auth-field')?.classList.add('registration-id-type');
+        Array.from(identitySelect.options).forEach(option=>{option.textContent=option.textContent.replace(/\s+/g,' ').trim();});
+    }
     // Use the same input + floating label + notched fieldset as the sign-in form.
     form.querySelectorAll('input.auth-input, select.auth-input, textarea.auth-input').forEach((input,index)=>{
         if (['hidden','file','checkbox','radio','button','submit'].includes(input.type) || input.closest('.registration-floating-field')) return;

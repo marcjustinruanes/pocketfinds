@@ -18,6 +18,28 @@ use Illuminate\Validation\Rule;
 
 class LogisticsManagementController extends LogisticsController
 {
+    public function createPersonnel(Request $request, string $role)
+    {
+        abort_unless(in_array($role, ['rider','hub_staff'], true), 404);
+        $company = $request->user()->business_name;
+        $hubs = $this->companyHubs()->where('is_operational',true)->withCount([
+            'riders as approved_rider_count'=>fn($q)=>$q->where('status','approved')->where('business_name',$company),
+            'staff as approved_staff_count'=>fn($q)=>$q->where('status','approved')->where('business_name',$company),
+        ])->get();
+        foreach ($hubs as $hub) {
+            $state=app(HubHiring::class)->availability($hub,$role,$role==='rider'?$hub->approved_rider_count:$hub->approved_staff_count);
+            $hub->is_hiring=$state['eligible']; $hub->hiring_status=$state['status'];
+            $hub->available_vehicle_types=CompanyVehicle::where('logistics_hub_id',$hub->id)->riderVisible()->pluck('vehicle_type')->unique()->values()->all();
+        }
+        return view($role==='rider'?'auth.register-rider':'auth.register-logistics-staff',[
+            'managedRegistration'=>true,'managedRole'=>$role,'isGoogleSignup'=>false,'googleId'=>null,'googleEmail'=>null,
+            'terms'=>\App\Models\Policy::where('type','terms_and_conditions')->where('account_type',$role==='rider'?'rider':'logistics-staff')->first(),
+            'logisticsCompanies'=>\App\Models\LogisticsCompany::approved()->where('business_name',$company)->values(),
+            'companyPolicies'=>\App\Models\Policy::where('type','logistics_company_terms')->where('company_name',$company)->get()->keyBy('company_name'),
+            'companyHubs'=>$hubs->groupBy('company_name'),
+        ]);
+    }
+
     private function managedUsers()
     {
         return User::where('business_name', auth()->user()->business_name)->where(function ($q) {
@@ -72,6 +94,7 @@ class LogisticsManagementController extends LogisticsController
             }],
             'license_expiry' => $role === 'rider' ? ['required', 'date', 'after_or_equal:'.today()->addMonthNoOverflow()->toDateString()] : ['prohibited'],
             'barangay' => 'required|string|max:255',
+            'house_no'=>'nullable|string|max:255', 'street'=>'nullable|string|max:255', 'postal_code'=>'nullable|string|max:20',
             'password' => $emailActivation ? ['prohibited'] : [$account ? 'nullable' : 'required', 'string', 'min:12', 'max:128', \Illuminate\Validation\Rules\Password::min(8)->mixedCase()->numbers()->symbols(), 'confirmed'],
             'status' => $account ? 'prohibited' : 'sometimes|in:pending',
             'logistics_hub_id' => ['required', 'integer', Rule::exists('logistics_hubs', 'id')->where('company_name', auth()->user()->business_name)->where('is_operational', true)],
@@ -141,6 +164,7 @@ class LogisticsManagementController extends LogisticsController
         },3);
         $request->attributes->set('logistics_record_id', $account->id);
 
+        if ($request->boolean('_managed_registration') && $request->expectsJson()) return response()->json(['success'=>true,'redirect'=>route('logistics.accounts.edit',$account->id,false)]);
         return redirect()->route('logistics.accounts.edit', $account->id)->with('success', $request->boolean('send_activation') && $account->account_type === 'rider'
             ? 'Rider added. An activation email will be sent so the rider can set a password and activate the account.'
             : 'Complete application created as Pending. Rider approval or the Hub Staff interview and approval are still required before login.');

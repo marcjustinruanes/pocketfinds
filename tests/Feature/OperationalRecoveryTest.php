@@ -322,4 +322,17 @@ class OperationalRecoveryTest extends TestCase
         $this->assertSame('completed',$this->assignment->fresh()->status);
         $this->assertDatabaseHas('logistics_compensations',['source_id'=>$this->assignment->id,'rider_id'=>$this->rider->id,'status'=>'earned','amount_cents'=>3000]);
     }
+    public function test_assignment_review_is_available_inside_assignments(): void
+    {
+        $response=$this->actingAs($this->admin)->get('/logistics/assignments')->assertOk()
+            ->assertSee('id="assignmentDetailsModal"',false)->assertDontSee('id="assignment-view"',false);
+        $details=$this->get('/logistics/assignments/parcels/'.$this->shipment->id)->assertOk()
+            ->assertSee('Assignment timeline &amp; review',false)->assertSee('Recorded assignment decisions');
+        $this->assertSame(1,substr_count($response->getContent(),'<table class="dtable">'));
+        if(getenv('COMBINED_REVIEW_PREVIEW')){
+            file_put_contents(storage_path('framework/testing/combined-review.html'),$response->getContent());
+            file_put_contents(storage_path('framework/testing/combined-parcel-details.html'),$details->getContent());
+        }
+    }
+
 }

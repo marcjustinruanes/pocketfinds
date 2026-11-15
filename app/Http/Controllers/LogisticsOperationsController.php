@@ -11,6 +11,12 @@ class LogisticsOperationsController extends LogisticsController
 {
     public function index(Request $request, AssignmentReassignment $workflow, AssignmentWork $work)
     {
+        $data=$this->reviewData($request,$workflow,$work);
+        return response()->view('logistics.assignment-review',array_merge($data['seller']?[]:$this->sidebarCounts(),$data))->header('Cache-Control','private, no-store');
+    }
+
+    public function reviewData(Request $request, AssignmentReassignment $workflow, AssignmentWork $work): array
+    {
         abort_unless($workflow->installed(),503,'Install the operational recovery migration.');
         $actor=$request->user()->fresh();$seller=$actor->account_type==='seller' && ! $actor->is_admin && ! $actor->is_logistics;
         abort_unless($actor->status==='approved',403);
@@ -19,7 +25,7 @@ class LogisticsOperationsController extends LogisticsController
         $assignmentSource=DeliveryAssignment::whereIn('shipment_id',$source->select('shipments.id'))
             ->when($seller,fn($q)=>$q->where('leg','pickup')->whereNotNull('reassignment'));
         $parcelPages=(clone $assignmentSource)->select('shipment_id')->selectRaw('MAX(accepted_at) AS latest_accepted_at')
-            ->groupBy('shipment_id')->orderByDesc('latest_accepted_at')->orderBy('shipment_id')->paginate(15)->withQueryString();
+            ->groupBy('shipment_id')->orderByDesc('latest_accepted_at')->orderBy('shipment_id')->paginate(15, ['*'], $request->routeIs('logistics.assignments') ? 'review_page' : 'page')->withQueryString();
         $assignments=(clone $assignmentSource)->with('shipment.order')->whereIn('shipment_id',$parcelPages->pluck('shipment_id'))
             ->orderBy('id')->get();
         foreach($assignments as $a)$a->work_class=$work->classify($a);
@@ -31,7 +37,7 @@ class LogisticsOperationsController extends LogisticsController
             }
         }
         $events=DB::table('logistics_financial_events')->where('subject_type','assignment')->whereIn('subject_id',$assignments->pluck('id'))->orderByDesc('id')->get()->groupBy('subject_id');
-        return response()->view('logistics.assignment-review',array_merge($seller?[]:$this->sidebarCounts(),compact('actor','seller','assignments','parcelPages','riders','events')))->header('Cache-Control','private, no-store');
+        return compact('actor','seller','assignments','parcelPages','riders','events');
     }
 
     public function requestReassignment(Request $request,string $id,AssignmentReassignment $workflow)

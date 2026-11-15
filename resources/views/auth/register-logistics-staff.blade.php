@@ -771,6 +771,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Allura&family=DM+Serif+Display&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+@if($managedRegistration ?? false)
+<style>body.auth-page{background:#fff;padding:0}body.auth-page .auth-shell{padding:0;min-height:100vh}body.auth-page .auth-card{border:0;box-shadow:none;border-radius:0;min-height:100vh}.registration-google-email,#sendOtpBtn,#verifiedBadge,#signinLink,.auth-footer{display:none!important}</style>
+<script src="{{ asset('js/managed-registration.js') }}" defer></script>
+@endif
 </head>
 <body class="auth-page auth-register registration-steps-page">
 <div class="auth-shell">
@@ -808,7 +812,9 @@
 
         <section class="auth-form-panel">
             <div class="auth-form-wrap">
-                @include('auth.partials.registration-back')
+                @unless($managedRegistration ?? false)
+@include('auth.partials.registration-back')
+@endunless
 
                 {{-- Step indicator (6 Steps: Address -> Company & Hub -> ID & Selfie -> Personal -> Contact -> Account) --}}
                 @php
@@ -817,8 +823,9 @@
                 @endphp
 
 
-                <form id="buyerForm" method="POST" action="{{ route('register.store') }}" enctype="multipart/form-data" novalidate>
+                <form id="buyerForm" method="POST" action="{{ ($managedRegistration ?? false) ? route('logistics.staff.accounts.store', [], false) : route('register.store') }}" @if($managedRegistration ?? false) data-managed-registration @endif enctype="multipart/form-data" novalidate>
                     @csrf
+@if($managedRegistration ?? false)<input type="hidden" name="role" value="hub_staff"><input type="hidden" name="_managed_registration" value="1">@endif
                     <input type="hidden" name="account_type" value="logistics">
                     <input type="hidden" name="logistics_mode" value="join">
                     <input type="hidden" name="auth_method" value="{{ ($isGoogleSignup ?? false) ? 'google' : 'manual' }}">
@@ -945,18 +952,18 @@
                         </div>
 
                         {{-- ID Type --}}
-                        <div class="auth-field" style="margin-bottom:12px">
+                        <div class="auth-field registration-id-type" style="margin-bottom:12px">
                             <label class="auth-label" for="id_type_id">ID Type <span class="auth-required">*</span></label>
                             <select class="auth-input auth-select" id="id_type_id" name="id_type_id" required>
-                                <option value="" disabled selected>Select ID type</option>
+                                <option value="" disabled @selected(!old('id_type_id'))>Select ID type</option>
                                 @foreach(DB::table('id_types')->orderBy('name')->get() as $idType)
-                                    <option value="{{ $idType->id }}">{{ $idType->name }}</option>
+                                    <option value="{{ $idType->id }}" @selected((string)old('id_type_id') === (string)$idType->id)>{{ trim($idType->name) }}</option>
                                 @endforeach
                             </select>
                         </div>
 
                         {{-- ID Photo + Selfie side by side --}}
-                        <div class="id-selfie-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px" id="idSelfieGrid">
+                        <div class="id-selfie-grid registration-identity-uploads" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px" id="idSelfieGrid">
                             {{-- ID Photo --}}
                             <div>
                                 <label class="auth-label">ID Photo <span class="auth-required">*</span></label>
@@ -1157,7 +1164,9 @@
                                     <button type="button" class="btn-send-otp" id="sendOtpBtn" onclick="sendOtp()" @if($isGoogleSignup ?? false) style="display:none" @endif>Send Code</button>
                                 </div>
                                 <span class="field-hint" id="emailHint">{{ ($isGoogleSignup ?? false) ? 'Prefilled from your Google account.' : '' }}</span>
-                                @include('auth.partials.google-email-verification')
+                                @unless($managedRegistration ?? false)
+@include('auth.partials.google-email-verification')
+@endunless
                             </div>
                             <div class="auth-field full" id="otpField" style="display:none">
                                 <label class="auth-label" for="otp_code">Verification code <span class="auth-required">*</span></label>
@@ -1216,7 +1225,7 @@
 
                             <div class="auth-field full">
                                 <label class="auth-label" for="password">Password <span class="auth-required">*</span></label>
-                                <input class="auth-input" id="password" name="password" type="password" placeholder="Min. 8 characters" required minlength="8">
+                                <input class="auth-input" id="password" name="password" type="password" placeholder="{{ ($managedRegistration ?? false) ? 'Min. 12 characters' : 'Min. 8 characters' }}" required minlength="{{ ($managedRegistration ?? false) ? 12 : 8 }}">
                             </div>
                             <div class="auth-field full">
                                 <label class="auth-label" for="password_confirmation">Confirm password <span class="auth-required">*</span></label>

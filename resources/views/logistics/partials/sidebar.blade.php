@@ -41,7 +41,7 @@
     </a>
 </x-navigation-group>
 <x-navigation-group id="hub-staff-staff-finance" label="Staff & Finance" :active="request()->routeIs('logistics.my-attendance*', 'logistics.cash-desk*', 'logistics.my-salary*')">
-<a href="{{ route('logistics.my-attendance') }}" class="nav-item {{ request()->routeIs('logistics.my-attendance*') ? 'active' : '' }}" @if(request()->routeIs('logistics.my-attendance*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="account" /></span> My Attendance</a>
+@if(config('features.attendance')) <a href="{{ route('logistics.my-attendance') }}" class="nav-item {{ request()->routeIs('logistics.my-attendance*') ? 'active' : '' }}" @if(request()->routeIs('logistics.my-attendance*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="account" /></span> My Attendance</a> @endif
 <a href="{{ route('logistics.cash-desk') }}" class="nav-item {{ request()->routeIs('logistics.cash-desk*') ? 'active' : '' }}" @if(request()->routeIs('logistics.cash-desk*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="peso" /></span> Cash Desk</a>
 <a href="{{ route('logistics.my-salary') }}" class="nav-item {{ request()->routeIs('logistics.my-salary*') ? 'active' : '' }}" @if(request()->routeIs('logistics.my-salary*')) aria-current="page" @endif><span class="ic"><x-admin-icon name="peso" /></span> My Salary</a>
 </x-navigation-group>

@@ -257,11 +257,24 @@ class HubHiring
             if ($matches->isNotEmpty() && $preliminary->firstWhere('id', $matches->first()->id)?->logistics_hub_id != $matches->first()->logistics_hub_id) {
                 throw ValidationException::withMessages(['email' => 'This application changed. Refresh before reapplying.']);
             }
-            $same = $this->identityQuery($data);
-            if ($same->lockForUpdate()->first() || $matches->count() > 1 || ($matches->isNotEmpty() && ($matches->first()->status !== 'rejected'
-                || strcasecmp($matches->first()->email, $data['email']) !== 0 || strcasecmp($matches->first()->username, $data['username']) !== 0
-                || $this->role($matches->first()) !== $role || $matches->first()->account_type !== $data['account_type'] || $matches->first()->business_name !== $data['business_name']))) {
-                throw ValidationException::withMessages(['email' => 'An account already exists or the previous application does not match.']);
+            if($this->identityQuery($data)->lockForUpdate()->first()) {
+                throw ValidationException::withMessages(['given_names'=>'An account with these personal details is already registered. Sign in or recover the existing account.']);
+            }
+            $conflicts=[];
+            foreach($matches as $existing) {
+                if($existing->status==='rejected') continue;
+                if(strcasecmp($existing->email,$data['email'])===0) $conflicts['email']='This email is already registered. Sign in or recover the existing account.';
+                if(strcasecmp($existing->username,$data['username'])===0) $conflicts['username']='This username is already taken. Choose a different username.';
+            }
+            if($conflicts) throw ValidationException::withMessages($conflicts);
+            if($matches->count()>1) throw ValidationException::withMessages(['email'=>'The email and username belong to different previous applications. Use the matching details from your own application.']);
+            $previous=$matches->first();
+            if($previous && (strcasecmp($previous->email,$data['email'])!==0 || strcasecmp($previous->username,$data['username'])!==0)) {
+                throw ValidationException::withMessages(['email'=>'These details do not match the previous rejected application. Use its original email and username, or request a correction link.']);
+            }
+            if($previous && ($this->role($previous)!==$role || $previous->account_type!==$data['account_type']
+                || ($data['account_type']!=='buyer' && $previous->business_name!==$data['business_name']))) {
+                throw ValidationException::withMessages(['email'=>'This previous application was registered for a different account type or company. Use its correction link to continue.']);
             }
             $account = $matches->first() ?? new User;
             if ($account->exists) {

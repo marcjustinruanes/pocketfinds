@@ -1,14 +1,14 @@
 @extends('logistics.layout')
-@section('title', 'Hub Transfers')
-@section('page-title', 'Hub Transfers')
+@section('title', 'Assignments')
+@section('page-title', 'Assignments')
 @section('page-sub', auth()->user()->isHubStaff() ? 'Outgoing and incoming transfers for your assigned hub' : 'Company transfer requests, decisions, dispatches and arrivals')
 @section('content')
 <section class="hub-transfer-page">
 @if($errors->any())<div class="card card-pad">{{ $errors->first() }}</div>@endif
 <div class="hub-transfer-toolbar">
 <nav class="tabs" aria-label="Transfer queues">
-@if(auth()->user()->isLogisticsAdmin())<a class="tab {{ request('queue')==='awaiting' ? 'active' : '' }}" href="{{ route('logistics.transfers',['queue'=>'awaiting']) }}">Awaiting request</a>@endif
-<a class="tab {{ !request('queue') ? 'active' : '' }}" href="{{ route('logistics.transfers',request()->except(['queue','page'])) }}">All transfers</a>
+@if(auth()->user()->isLogisticsAdmin())<a class="tab {{ request('queue')==='awaiting' ? 'active' : '' }}" href="{{ route('logistics.assignments',['view'=>'transfers','queue'=>'awaiting'],false) }}">Awaiting request</a>@endif
+<a class="tab {{ !request('queue') ? 'active' : '' }}" href="{{ route('logistics.assignments',array_merge(request()->except(['queue','page']),['view'=>'transfers']),false) }}">All transfers</a>
 </nav>
 @if(request('queue')!=='awaiting')<label class="hub-transfer-search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" name="search" form="hubTransferFilters" value="{{ request('search') }}" placeholder="Search transfers" aria-label="Search tracking, batch, or municipality"></label>@endif
 <a href="{{ route('logistics.transfers.create') }}" class="btn btn-primary">Request a transfer</a>
@@ -16,7 +16,8 @@
 @if(request('queue') === 'awaiting')
 @include('logistics.partials.transfer-queue')
 @else
-<form method="GET" id="hubTransferFilters" class="logistics-form-grid hub-transfer-filters" aria-label="Filter hub transfers">
+<form method="GET" action="{{ route('logistics.assignments', [], false) }}" id="hubTransferFilters" class="logistics-form-grid hub-transfer-filters" aria-label="Filter hub transfers">
+  <input type="hidden" name="view" value="transfers">
   @if(auth()->user()->isHubStaff())
   <label class="hub-transfer-hub-filter">Direction<select name="direction"><option value="">Both</option><option value="outgoing" @selected(request('direction') === 'outgoing')>Outgoing</option><option value="incoming" @selected(request('direction') === 'incoming')>Incoming</option></select></label>
   @else

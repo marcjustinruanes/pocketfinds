@@ -4,45 +4,27 @@
 @section('page-sub', "Approve/disapprove hub staff applications, activate or suspend accounts")
 
 @section('content')
-<section class="personnel-page">
+<section class="personnel-page hub-staff-page">
 @include('logistics.partials.personnel-tabs')
 
-<details class="card card-pad acf-create-card" style="margin-bottom:20px" @if($errors->any()) open @endif>
-  <summary class="acf-create-summary">
-    <span class="acf-create-summary-inner">
-      <strong>+ Create hub staff account</strong>
-      <span>Add a new hub staff member directly</span>
-    </span>
-  </summary>
-  <div class="acf-create-body">
-    @if($errors->any())
-      <div class="acf-alert" role="alert">{{ $errors->first() }}</div>
-    @endif
-    <form data-registration-form data-registration-dirty="{{ $errors->any() ? 'true' : 'false' }}" method="POST" enctype="multipart/form-data" action="{{ route('logistics.staff.accounts.store') }}">@csrf
-      @include('logistics.partials.account-form', ['account' => null, 'creationRole' => 'hub_staff'])
-    </form>
-  </div>
-</details>
+<div class="personnel-create-toolbar"><button type="button" class="btn btn-primary" data-modal-open="create-personnel">Create hub staff account</button></div>
+@include('logistics.partials.personnel-create-modal', ['creationRole'=>'hub_staff'])
 
-<form method="GET" class="logistics-toolbar"><input name="search" value="{{ request('search') }}" placeholder="Search name, username or email" aria-label="Search personnel"><input type="hidden" name="status" value="{{ $status }}"><button class="btn btn-outline">Search</button></form>
 
-@if(session('success'))<div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:16px">{{ session('success') }}</div>@endif
+<form method="GET" id="staff-search" class="logistics-toolbar"><input name="search" value="{{ request('search') }}" placeholder="Search name, username or email" aria-label="Search personnel"><button class="btn btn-outline">Search</button></form>
+
 
 <div class="card">
   <div class="card-head">
-    <div><h2>Hub Staff Applications</h2><p>{{ $staff->total() }} total</p></div>
+    <h2>Hub staff</h2><span class="personnel-record-count">{{ $staff->total() }} {{ \Illuminate\Support\Str::plural('member', $staff->total()) }}</span>
   </div>
   <div class="card-pad">
-    <div class="tabs" id="staffTabs">
-      @foreach(['all' => 'All', 'pending' => 'Pending', 'interview' => 'Interview', 'approved' => 'Approved', 'rejected' => 'Rejected', 'suspended' => 'Suspended'] as $key => $label)
-      <a class="tab {{ $status === $key ? 'active' : '' }}" href="{{ route('logistics.staff', ['search' => request('search'), 'status' => $key]) }}">{{ $label }} <span class="tab-count">{{ $key === 'all' ? $statusCounts->sum() : ($statusCounts[$key] ?? 0) }}</span></a>
-      @endforeach
-    </div>
+
 
     <div class="table-wrap">
       <table class="dtable">
         <thead>
-          <tr><th>Applicant</th><th>Hub</th><th>Submitted</th><th>Status</th><th></th></tr>
+          <tr><th>Applicant</th><th>Hub</th><th>Submitted</th><th><label class="staff-status-heading"><span>Status</span><select aria-label="Filter hub staff by status" name="status" form="staff-search" onchange="this.form.requestSubmit()">@foreach(['all'=>'All statuses','pending'=>'Pending','interview'=>'Interview','approved'=>'Approved','rejected'=>'Rejected','suspended'=>'Suspended'] as $key=>$label)<option value="{{ $key }}" @selected($status === $key)>{{ $label }} ({{ $key === 'all' ? $statusCounts->sum() : ($statusCounts[$key] ?? 0) }})</option>@endforeach</select><span aria-hidden="true">?</span></label></th><th>Actions</th></tr>
         </thead>
         <tbody>
           @forelse($staff as $member)
@@ -65,12 +47,13 @@
             <td><span class="stamp stamp-{{ $member->status }}">{{ ucfirst($member->status) }}</span></td>
             <td>
               <div class="row-actions">
-                <a class="btn btn-sm btn-outline" href="{{ route('logistics.accounts.edit', $member->id) }}">Edit / hub assignment</a>
-                <button class="btn btn-sm btn-outline" data-modal-open="staffModal-{{ $member->id }}">Review</button>
+                <a class="btn btn-sm btn-outline" href="{{ route('logistics.accounts.edit', $member->id) }}">Manage &nearr;</a>
+                <button type="button" class="btn btn-sm btn-outline" data-modal-open="staffModal-{{ $member->id }}">Review</button>
               </div>
             </td>
           </tr>
 
+          @push('staff-review-modals')
           <div class="modal-overlay" id="staffModal-{{ $member->id }}">
             <div class="modal modal-lg">
               <div class="modal-head">
@@ -239,6 +222,7 @@
             </div>
           </div>
           @endif
+          @endpush
           @empty
           <tr><td colspan="5"><div class="empty"><div class="ic"><x-admin-icon name="account" /></div><h3>No hub staff applications yet</h3></div></td></tr>
           @endforelse
@@ -248,6 +232,7 @@
   </div>
 </div>
 
+@stack('staff-review-modals')
 @include('admin.partials.doc-lightbox')
 @include('admin.partials.reason-modals')
 {{ $staff->links() }}

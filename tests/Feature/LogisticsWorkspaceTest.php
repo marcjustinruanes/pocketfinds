@@ -28,7 +28,7 @@ class LogisticsWorkspaceTest extends TestCase
         $this->assertStringNotContainsString('My Account',$sidebar);
         $this->assertSame(1,substr_count($sidebar,'aria-current="page"'));
         $tabs=view('logistics.partials.workspace-tabs')->render();
-        foreach(['logistics.requests','logistics.assignments','logistics.transfers','logistics.monitor','logistics.issues','logistics.history'] as $route) $this->assertStringContainsString(route($route),$tabs);
+        foreach(['logistics.requests','logistics.assignments','logistics.issues','logistics.history'] as $route) $this->assertStringContainsString(route($route, [], false),$tabs);
         $this->assertSame('operations',LogisticsWorkspace::current('logistics.transfers.show'));
         $this->assertSame('team',LogisticsWorkspace::current('logistics.accounts.edit'));
         $this->assertSame('resources',LogisticsWorkspace::current('logistics.vehicles.review'));
