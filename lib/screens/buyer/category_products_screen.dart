@@ -1,23 +1,17 @@
 import 'package:flutter/material.dart';
-
 import '../../models/app_user.dart';
 import '../../models/category.dart';
 import '../../models/product.dart';
 import '../../services/cart_service.dart';
 import '../../services/product_service.dart';
 import '../../utils/friendly_error.dart';
-import '../../widgets/app_snackbar.dart';
-import '../../widgets/guest_sign_in_sheet.dart';
 import '../../widgets/product_grid.dart';
 import 'product_detail_screen.dart';
-import 'search_results_screen.dart';
 
 /// "Category → Products belonging to that category" — a buyer taps a
-/// category chip on Home and lands here. `user` is nullable — also reached
-/// from Guest Home's Categories "See All", where Add to Cart prompts
-/// sign-in instead (same gate `ProductDetailScreen`/`ShopScreen` use).
+/// category chip on Home and lands here.
 class CategoryProductsScreen extends StatefulWidget {
-  final AppUser? user;
+  final AppUser user;
   final Category category;
 
   const CategoryProductsScreen({
@@ -27,7 +21,8 @@ class CategoryProductsScreen extends StatefulWidget {
   });
 
   @override
-  State<CategoryProductsScreen> createState() => _CategoryProductsScreenState();
+  State<CategoryProductsScreen> createState() =>
+      _CategoryProductsScreenState();
 }
 
 class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
@@ -56,22 +51,21 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
   }
 
   Future<void> _addToCart(Product product) async {
-    if (widget.user == null) {
-      showGuestSignInSheet(context);
-      return;
-    }
     try {
       await _cartService.addToCart(
-        buyerId: widget.user!.id,
-        product: product,
+        buyerId: widget.user.id,
+        productId: product.id,
         quantity: 1,
       );
       if (!mounted) return;
-      AppSnackBar.success(context, '${product.name} added to cart');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('${product.name} added to cart')));
     } catch (e) {
-      debugPrint('addToCart failed: $e');
       if (!mounted) return;
-      AppSnackBar.error(context, 'Could not add to cart: ${friendlyError(e)}');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not add to cart: ${friendlyError(e)}')));
     }
   }
 
@@ -86,13 +80,6 @@ class _CategoryProductsScreenState extends State<CategoryProductsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.user != null) {
-      return SearchResultsScreen(
-        user: widget.user!,
-        query: '',
-        initialCategory: widget.category.id,
-      );
-    }
     return Scaffold(
       appBar: AppBar(title: Text(widget.category.name)),
       body: ProductGrid(

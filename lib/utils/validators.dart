@@ -18,9 +18,7 @@ class Validators {
 
   /// Laravel requires `09XXXXXXXXX` (11 digits, PH mobile format).
   static String? contactNo(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Contact number is required.';
-    }
+    if (value == null || value.trim().isEmpty) return 'Contact number is required.';
     final pattern = RegExp(r'^09\d{9}$');
     if (!pattern.hasMatch(value.trim())) {
       return 'Enter a valid PH mobile number (e.g. 09171234567).';
@@ -50,16 +48,6 @@ class Validators {
   static String? confirmPassword(String? value, String original) {
     if (value == null || value.isEmpty) return 'Please confirm your password.';
     if (value != original) return 'Passwords do not match.';
-    return null;
-  }
-
-  static String? otpCode(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Enter the verification code.';
-    }
-    if (!RegExp(r'^\d{6}$').hasMatch(value.trim())) {
-      return 'Enter the 6-digit code from your email.';
-    }
     return null;
   }
 }

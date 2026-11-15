@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_motion.dart';
-
 /// Wraps a widget with a subtle scale-down-on-press effect — the mobile
 /// equivalent of the website's `.product:hover { transform: translateY(-2px) }`
 /// card lift, since touch devices don't have hover. Used for product cards
@@ -34,8 +32,8 @@ class _PressableState extends State<Pressable> {
       onTapUp: (_) => _setPressed(false),
       child: AnimatedScale(
         scale: _pressed ? 0.97 : 1,
-        duration: AppMotion.fast,
-        curve: AppMotion.curve,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
         child: widget.child,
       ),
     );

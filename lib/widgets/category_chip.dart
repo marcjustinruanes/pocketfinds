@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-
 import '../theme/app_colors.dart';
-import '../theme/app_motion.dart';
 
 /// A tappable pill — used for the "Browse Categories" row (with [icon]) and
 /// for product variant selection on Product Details (Color/Size, no icon).
@@ -27,8 +25,8 @@ class CategoryChip extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: AnimatedContainer(
-        duration: AppMotion.fast,
-        curve: AppMotion.curve,
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: selected ? AppColors.pink : AppColors.white,

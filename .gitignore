@@ -21,13 +21,3 @@ ephemeral/
 /.vscode
 /.zed
 Thumbs.db
-
-# Local audit/reference scratch files
-/.tmp/
-
-# Isolated embedded-browser sessions; never source or payment configuration.
-/api/storage/web-sessions/
-/api/storage/buyer-website/
-/api/storage/rider-payout-migration-compat.php
-/database-export/
-/api/storage/database-maintenance.flag

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-
 import '../theme/app_colors.dart';
-import '../theme/app_typography.dart';
 
 /// A titled card of label/value rows — used by Buyer and Rider profile
 /// screens (was duplicated between the two before being pulled out here).
@@ -28,18 +26,11 @@ class ProfileInfoCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: AppTypography.sectionTitle.copyWith(fontSize: 15),
-                  ),
-                ),
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
                 ?trailing,
               ],
             ),
-            const SizedBox(height: 12),
-            Divider(height: 1, color: AppColors.border),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             ...rows,
           ],
         ),
@@ -63,9 +54,9 @@ class ProfileInfoRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 120,
-            child: Text(label, style: AppTypography.caption),
+            child: Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
           ),
-          Expanded(child: Text(value, style: AppTypography.body)),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 13))),
         ],
       ),
     );
