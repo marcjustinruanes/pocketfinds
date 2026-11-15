@@ -46,16 +46,13 @@ class RiderActivation
                 'sent_at' => null, 'delivery_status' => 'pending', 'created_at' => $previous?->created_at ?? now(), 'updated_at' => now(),
             ]);
         });
-        // Emails must use the public site, even when the admin works on localhost.
-        $url = rtrim(config('app.url'), '/').route('rider.activation.show', $token, false);
+        $url = route('rider.activation.show', $token);
         DB::afterCommit(function () use ($rider, $url, $hash) {
             if (! DB::table('rider_account_activations')->where('user_id', $rider->id)->where('token_hash', $hash)->exists()) return;
             try {
                 $current = $rider->fresh();
                 if (!$current || !in_array($current->status,['pending','rejected'],true) || ($current->status==='rejected' && !$current->can_resubmit)) return;
-                $invitation = $this->invitation($current);
-                if (!$invitation || $invitation->email !== $current->email) throw new \RuntimeException('Activation recipient changed. Issue a new invitation.');
-                Mail::to($current->email)->send($current->status==='rejected' ? new \App\Mail\ApplicationRejectedMail($current,$url) : new RiderActivationMail($current->given_names, $current->business_name, $url));
+                Mail::to($rider->email)->send($current->status==='rejected' ? new \App\Mail\ApplicationRejectedMail($current,$url) : new RiderActivationMail($rider->given_names, $rider->business_name, $url));
                 DB::table('rider_account_activations')->where('user_id', $rider->id)->where('token_hash', $hash)->update(['sent_at' => now(), 'delivery_status' => 'sent']);
             } catch (\Throwable $error) {
                 DB::table('rider_account_activations')->where('user_id', $rider->id)->where('token_hash', $hash)->update(['delivery_status' => 'failed']);

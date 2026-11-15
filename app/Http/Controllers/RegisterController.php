@@ -146,27 +146,6 @@ class RegisterController extends Controller
         return response()->json(['available' => ! $exists, 'suggestions' => $suggestions]);
     }
 
-    public function checkPhone(Request $request)
-    {
-        $data = $request->validate([
-            'contact_no' => ['required', 'string', 'max:20'],
-            'email' => ['nullable', 'string', 'max:255'],
-            'username' => ['nullable', 'string', 'max:255'],
-        ]);
-        $number = PhilippineMobile::normalize($data['contact_no']);
-        if (!preg_match('/^09\d{9}$/D', $number)) {
-            return response()->json(['available' => false, 'valid' => false]);
-        }
-        // Match the final submission's exception for the same rejected applicant.
-        $exists = User::whereIn('contact_no', PhilippineMobile::variants($number))
-            ->whereNot(fn ($q) => $q->where('status', 'rejected')
-                ->where('email', $data['email'] ?? '')
-                ->where('username', $data['username'] ?? ''))->exists();
-
-        return response()->json(['available' => ! $exists, 'valid' => true])
-            ->header('Cache-Control', 'no-store');
-    }
-
     public function checkBusinessName(Request $request)
     {
         $businessName = trim($request->input('business_name', ''));

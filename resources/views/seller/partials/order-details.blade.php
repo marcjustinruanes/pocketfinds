@@ -9,7 +9,7 @@
       <section class="order-tracking order-tracking-horizontal" aria-label="Delivery progress"><ol class="tracking-steps">
         @foreach($timeline['rows'] as $step)
         <li class="tracking-step is-{{ $step['state'] }}" @if($step['state']==='current') aria-current="step" @endif>
-          <span class="tracking-dot" aria-hidden="true">@include('buyer.partials.icon',['name'=>$step['icon'],'size'=>21])</span>
+          <span class="tracking-dot" aria-hidden="true">@include('buyer.partials.icon',['name'=>['bag','clipboard-check','package','map','rider-delivery',$order->status==='completed'?'shield':'package-received'][$loop->index],'size'=>21])</span>
           <div><strong>{{ $step['title'] }}</strong>@if($step['timestamp'])<time datetime="{{ $step['timestamp']->toIso8601String() }}">{{ $step['timestamp']->format('M j, Y g:i A') }}</time>@endif</div>
         </li>
         @endforeach

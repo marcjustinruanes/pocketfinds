@@ -141,11 +141,9 @@ class LogisticsManagementController extends LogisticsController
         },3);
         $request->attributes->set('logistics_record_id', $account->id);
 
-        if ($request->boolean('send_activation') && $account->account_type === 'rider') {
-            return $this->activationResponse($account, redirect()->route('logistics.accounts.edit', $account->id));
-        }
-
-        return redirect()->route('logistics.accounts.edit', $account->id)->with('success', 'Complete application created as Pending. Rider approval or the Hub Staff interview and approval are still required before login.');
+        return redirect()->route('logistics.accounts.edit', $account->id)->with('success', $request->boolean('send_activation') && $account->account_type === 'rider'
+            ? 'Rider added. An activation email will be sent so the rider can set a password and activate the account.'
+            : 'Complete application created as Pending. Rider approval or the Hub Staff interview and approval are still required before login.');
     }
 
     public function resendRiderActivation(Request $request, $id)
@@ -153,22 +151,7 @@ class LogisticsManagementController extends LogisticsController
         $this->requireCurrentPersonnelAdmin();
         $rider = $this->managedUsers()->where('account_type', 'rider')->findOrFail($id);
         app(\App\Services\RiderActivation::class)->issue($rider, User::findOrFail(auth()->id()));
-        return $this->activationResponse($rider, back());
-    }
-
-    private function activationResponse(User $rider, \Illuminate\Http\RedirectResponse $response): \Illuminate\Http\RedirectResponse
-    {
-        // Activity middleware commits after the controller returns. Mail sends after
-        // that commit too; inspect its result only once the send callback has run.
-        DB::afterCommit(function () use ($rider, $response) {
-            $invitation = app(\App\Services\RiderActivation::class)->invitation($rider);
-            if ($invitation?->delivery_status !== 'sent') {
-                $response->withErrors(['activation_email' => 'The rider is saved, but the activation email could not be sent. Check the email address and mail settings, then resend.']);
-                return;
-            }
-            $response->with('success', 'The mail server accepted an activation email for '.$rider->email.'. Check Inbox and Spam. Use the newest email; the previous link is no longer valid.');
-        });
-        return $response;
+        return back()->with('success', 'A new activation email will be sent. The previous activation link is no longer valid.');
     }
 
     public function storeRiderAccount(Request $request)

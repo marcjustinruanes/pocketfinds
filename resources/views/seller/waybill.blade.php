@@ -14,8 +14,6 @@
   .label-head span { font-size: 11px; color: #79737f; }
   .tracking { padding: 16px 20px; text-align: center; border-bottom: 1px solid #e9e4ea; }
   .tracking .code { font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; letter-spacing: 2px; }
-  .tracking .barcode { display: block; width: 100%; height: 80px; margin: 12px auto 0; }
-  .tracking { break-inside: avoid; }
   .tracking .qrcode { margin-top: 10px; display: flex; justify-content: center; }
   .tracking .qrcode img, .tracking .qrcode canvas { image-rendering: pixelated; }
   .section { padding: 14px 20px; border-bottom: 1px solid #e9e4ea; }
@@ -39,7 +37,6 @@
     <div class="tracking">
       <div class="label-title" style="color:#79737f;font-size:10px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px">{{ $order->shipment?->tracking_number ? 'Tracking number' : 'Order reference' }}</div>
       <div class="code">{{ $order->shipment?->tracking_number ?: $order->order_number }}</div>
-      <svg class="barcode" id="waybillBarcode" role="img" aria-label="Barcode for {{ $order->shipment?->tracking_number ?: $order->order_number }}"></svg>
       <div class="qrcode" id="waybillQr"></div>
     </div>
     <div class="section">
@@ -75,24 +72,6 @@
       <button onclick="window.print()">Print Waybill</button>
     </div>
   @endunless
-  <script src="{{ asset('js/vendor/JsBarcode.code128.min.js') }}"></script>
-  <script>
-    JsBarcode('#waybillBarcode', @json($order->shipment?->tracking_number ?: $order->order_number), {
-      format: 'CODE128',
-      width: 2,
-      height: 72,
-      margin: 10,
-      displayValue: false,
-      lineColor: '#000000',
-      background: '#ffffff',
-    });
-    const barcode = document.getElementById('waybillBarcode');
-    const w = barcode.getAttribute('width');
-    const h = barcode.getAttribute('height');
-    barcode.setAttribute('viewBox', `0 0 ${parseFloat(w)} ${parseFloat(h)}`);
-    barcode.setAttribute('width', '100%');
-    barcode.removeAttribute('height');
-  </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
     new QRCode(document.getElementById('waybillQr'), {

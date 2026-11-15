@@ -5,6 +5,7 @@
 
 @section('content')
 <section class="pickup-requests-page">
+@unless(auth()->user()->isLogisticsAdmin())<nav class="pickup-queue-tabs" aria-label="Pickup queues"><a class="{{ ($queue??'review')==='review'?'active':'' }}" @if(($queue??'review')==='review') aria-current="page" @endif href="{{ route('logistics.requests') }}">Awaiting review</a><a class="{{ ($queue??'review')==='assignment'?'active':'' }}" @if(($queue??'review')==='assignment') aria-current="page" @endif href="{{ route('logistics.requests',['queue'=>'assignment']) }}">Awaiting pickup Rider</a></nav>@endunless
 <div class="card pickup-requests-card">
   <div class="card-head"><h2>{{ ($queue??'review')==='assignment'?'Awaiting Pickup Rider':'Pending Requests' }}</h2><span class="stamp stamp-pending">{{ $shipments->total() }} pending</span></div>
   <div class="table-wrap">
@@ -40,10 +41,7 @@
           <td>
             @php($shippingObligation = $shippingObligations[$s->id] ?? null)
             @php($shippingBlocked = (int)$s->shipping_finance_version === 1 && (!$shippingObligation || ($shippingObligation->collection_mode === 'gcash' && !in_array($shippingObligation->status, ['verified','not_required']))))
-            @if($shippingObligation)
-              @if(auth()->user()->isLogisticsAdmin())<a href="{{ route('logistics.finance.shipping.show', $shippingObligation->id) }}">Shipping: {{ str_replace('_',' ',$shippingObligation->status) }}</a>
-              @else<span>Shipping: {{ str_replace('_',' ',$shippingObligation->status) }}</span>@endif
-            @endif
+            @if($shippingObligation)<a href="{{ route('logistics.finance.shipping.show', $shippingObligation->id) }}">Shipping: {{ str_replace('_',' ',$shippingObligation->status) }}</a>@endif
             @if(($queue??'review')==='assignment')
             @if($s->pickupAssignment)<p>{{ $s->pickupAssignment->status === 'offered' && $s->pickupAssignment->expires_at?->isFuture() ? 'Awaiting rider confirmation' : 'Previous offer expired or declined' }}: {{ $s->pickupAssignment->courier?->given_names }}</p>@endif
             <form method="POST" action="{{ route('logistics.requests.assign-pickup',$s->id) }}">@csrf @method('PATCH')

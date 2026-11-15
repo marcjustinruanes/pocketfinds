@@ -16,8 +16,6 @@
 
 @section('content')
 <section class="personnel-page rider-management-page">
-@if($errors->has('activation_email'))<div class="acf-alert" role="alert">{{ $errors->first('activation_email') }}</div>@endif
-@include('logistics.partials.personnel-tabs')
 @if(session('success'))<div class="rider-success-alert" role="status"><x-admin-icon name="check-circle" />{{ session('success') }}</div>@endif
 
 <div class="modal-overlay {{ $errors->any() ? 'open' : '' }}" id="createRiderModal" aria-hidden="{{ $errors->any() ? 'false' : 'true' }}">
@@ -56,8 +54,7 @@
         </thead>
         <tbody>
           @forelse($riders as $rider)
-          @php($activationInvitation = app(\App\Services\RiderActivation::class)->invitation($rider))
-          @php($activationPending = $activationInvitation && !$activationInvitation->activated_at)
+          @php($activationPending = app(\App\Services\RiderActivation::class)->pending($rider))
           <tr>
             <td>
               <div class="cell-user">
@@ -155,7 +152,6 @@
                 @if($rider->status === 'pending')
                   <button type="button" class="btn btn-outline-danger" onclick="openReasonModal('reject', '{{ route('logistics.riders.reject', $rider->id) }}')">Reject</button>
                   @if($activationPending)
-                  <div role="status"><p>Activation recipient: {{ $rider->email }}</p><p>{{ $activationInvitation->delivery_status === 'sent' ? 'Accepted by the mail server. Check Inbox and Spam; use the newest email.' : ($activationInvitation->delivery_status === 'failed' ? 'Email sending failed. Verify the address and resend.' : 'Email has not been sent yet.') }}</p></div>
                   <form method="POST" action="{{ route('logistics.riders.activation.resend', $rider->id) }}">@csrf<button class="btn btn-primary" type="submit">Resend activation email</button></form>
                   @else
                   <form method="POST" enctype="multipart/form-data" action="{{ route('logistics.riders.approve', $rider->id) }}" style="display:inline" data-confirm data-confirm-title="Approve this Rider?" data-confirm-message="This will approve the Rider account and enable the next activation step." data-confirm-action="Approve Rider" data-confirm-tone="success">

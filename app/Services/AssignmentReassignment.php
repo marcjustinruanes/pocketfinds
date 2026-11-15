@@ -87,9 +87,7 @@ class AssignmentReassignment
     {
         $d = Validator::make($input, ['key'=>'required|uuid','revision'=>'required|integer|min:0','old_rider_id'=>'required|integer','replacement_rider_id'=>'required|integer|different:old_rider_id','reason'=>'required|string|min:3|max:1000'])->validate();
         DB::transaction(function () use ($user, $id, $d) {
-            [$a, $s] = $this->source($user, $id, [$d['replacement_rider_id']]); $actor = $this->actor($user);
-            abort_unless($actor->isHubStaff(), 403, 'Only the responsible hub staff may request rider reassignment.');
-            $this->scope($actor, $s, $a->leg);
+            [$a, $s] = $this->source($user, $id, [$d['replacement_rider_id']]); $actor = $this->actor($user); $this->scope($actor, $s, $a->leg);
             $this->assertUncollected($a, $s);
             if ($a->reassignment && $a->reassignment['key'] === $d['key']) {
                 abort_unless($a->reassignment['requested_by'] === $actor->id && $a->reassignment['replacement_rider_id'] === (int)$d['replacement_rider_id'] && $a->reassignment['reason'] === $d['reason'], 409); return;

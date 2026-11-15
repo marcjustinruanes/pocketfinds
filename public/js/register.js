@@ -1265,55 +1265,6 @@ mobileField?.addEventListener('paste', function (event) {
     this.dispatchEvent(new Event('input', { bubbles: true }));
 });
 
-// Check on the contact step, before the user reaches final submission.
-let phoneAvailable = null;
-let phoneCheckedValue = '';
-let phoneTimer;
-if (mobileField) {
-    const status = document.createElement('span');
-    status.id = 'phoneAvailability';
-    status.className = 'field-hint';
-    status.setAttribute('role', 'status');
-    status.setAttribute('aria-live', 'polite');
-    mobileField.closest('.auth-field').append(status);
-    let revision = 0;
-    const checkPhone = () => {
-        const current = ++revision;
-        clearTimeout(phoneTimer);
-        phoneAvailable = null;
-        phoneCheckedValue = '';
-        status.textContent = '';
-        clearError(mobileField);
-        const value = mobileNationalDigits(mobileField.value);
-        if (!/^9\d{9}$/.test(value)) return;
-        status.textContent = 'Checking mobile number...';
-        status.style.color = '#64748b';
-        phoneTimer = setTimeout(async () => {
-            try {
-                const params = new URLSearchParams({contact_no: value,
-                    email: document.getElementById('email')?.value.trim() || '',
-                    username: document.getElementById('username')?.value.trim() || ''});
-                const response = await fetch('/register/check-phone?' + params, {cache: 'no-store', signal: AbortSignal.timeout(10000)});
-                if (!response.ok) throw new Error('Check failed');
-                const data = await response.json();
-                if (current !== revision) return;
-                phoneAvailable = data.valid === true && data.available === true;
-                phoneCheckedValue = value;
-                status.textContent = phoneAvailable ? 'Mobile number is available.' : 'This mobile number is already registered. Use another number.';
-                status.style.color = phoneAvailable ? '#16a34a' : '#dc2626';
-            } catch (_) {
-                if (current !== revision) return;
-                status.textContent = 'Unable to check this number. Edit it or leave the field to retry.';
-                status.style.color = '#dc2626';
-            }
-        }, 500);
-    };
-    mobileField.addEventListener('input', checkPhone);
-    mobileField.addEventListener('blur', () => { if (phoneAvailable === null) checkPhone(); });
-    ['email', 'username'].forEach(id => document.getElementById(id)?.addEventListener('input', checkPhone));
-    checkPhone();
-}
-
 // Name fields accept Unicode letters, hyphens, and single spaces between words.
 ['last_name', 'given_names', 'middle_name'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', function () {
@@ -1586,13 +1537,6 @@ function validateStep(step) {
         if (rules[el.id]) { const msg = rules[el.id](val); if (msg) { showError(el, msg); valid = false; return; } }
         if (el.hasAttribute('required') && !val) { showError(el, 'This field is required.'); valid = false; }
     });
-
-    if (mobileField && panel.contains(mobileField) && /^9\d{9}$/.test(mobileNationalDigits(mobileField.value))) {
-        if (phoneAvailable !== true || phoneCheckedValue !== mobileNationalDigits(mobileField.value)) {
-            showError(mobileField, phoneAvailable === false ? 'This mobile number is already registered. Use another number.' : 'Please wait for the mobile number availability check, or retry if it failed.');
-            valid = false;
-        }
-    }
 
     // ID/Selfie step checks
     if (step === idSelfieStep) {

@@ -163,8 +163,10 @@ class AdminController extends Controller
     private function sidebarCounts(): array
     {
         return [
-            // Hub staff need final platform approval after their company interview.
-            'pendingRegistrations' => User::where(fn ($q) => $q->where('status', 'pending')->orWhere(fn ($q) => $q->where('status', 'interview')->where('logistics_role', 'hub_staff')))->where('is_admin', false)->where('account_type', '!=', 'rider')
+            // Riders and hub staff wait on their own logistics company's approval, not Admin's —
+            // see LogisticsController::riders()/staff().
+            'pendingRegistrations' => User::where('status', 'pending')->where('is_admin', false)->where('account_type', '!=', 'rider')
+                ->where(fn ($q) => $q->where('logistics_role', '!=', 'hub_staff')->orWhereNull('logistics_role'))
                 ->count(),
             'openDisputes' => Complaint::whereIn('status', ['open', 'escalated'])->count(),
             'unreadMessages' => Message::where('receiver_id', auth()->id())->where('read', false)->count(),
@@ -196,16 +198,7 @@ class AdminController extends Controller
                 abort_unless($path && (\Illuminate\Support\Facades\Storage::disk('sensitive_documents')->exists($path) || \Illuminate\Support\Facades\Storage::disk('public')->exists($path)), 422, \App\Support\SellerDocuments::LABELS[$field].' is required before approval.');
             }
         }
-        $personnelRole = app(HubHiring::class)->role($user);
-        abort_if($personnelRole === 'rider', 403, 'Rider recruitment belongs to the company Logistics Admin.');
-        if ($personnelRole === 'hub_staff') {
-            if (! app(HubHiring::class)->companyInterviewComplete($user)) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'status' => 'The company Logistics Admin must confirm the completed interview before platform approval.',
-                ]);
-            }
-            $user->hiringDecision = ['action' => 'platform_approval', 'interview_completed' => true];
-        }
+        abort_if(app(HubHiring::class)->role($user) !== null, 403, 'Personnel recruitment belongs to the company Logistics Admin.');
         if (\App\Services\CompanyOwnership::founder($user)) {
             foreach (\App\Support\LogisticsDocuments::LABELS as $field => $label) {
                 abort_unless(app(\App\Services\PersonnelApplication::class)->readable($user->{$field}), 422, $label.' is required before approval.');
@@ -219,7 +212,7 @@ class AdminController extends Controller
 
     public function rejectUser(Request $request, User $user)
     {
-        abort_if(app(HubHiring::class)->role($user) === 'rider', 403, 'Rider recruitment belongs to the company Logistics Admin.');
+        abort_if(app(HubHiring::class)->role($user) !== null, 403, 'Personnel recruitment belongs to the company Logistics Admin.');
         $reason = $this->resolveReason($request);
         // Founder names remain reserved; hubs/personnel and operational history are preserved.
         app(\App\Services\ApplicationRejection::class)->reject($user, $reason, $request);
@@ -259,7 +252,7 @@ class AdminController extends Controller
             return;
         }
         $name = trim($user->given_names.' '.$user->last_name);
-        $role = $user->isHubStaff() ? 'Hub Staff' : ucfirst($user->account_type ?: 'account');
+        $role = ucfirst($user->account_type ?: 'account');
         $subject = match ($status) {
             'approved' => 'PocketFinds — Registration Approved',
             'activated' => 'PocketFinds — Account Reactivated',
@@ -360,12 +353,17 @@ class AdminController extends Controller
     public function registrations()
     {
         $counts = $this->sidebarCounts();
-        // Riders remain company-reviewed. Hub staff appear here for platform approval;
-        // their company interview must be confirmed before access can be granted.
+        // Riders/couriers are Logistics/Sorting Center's to review (LogisticsController::riders()),
+        // not Admin's — the ERP spec's admin scope is buyer/seller/logistics applications only.
+        // Hub staff join an existing logistics company the same way a rider does, so their
+        // applications belong to that company's own admin too (LogisticsController::staff()),
+        // not the platform admin — otherwise a hub-staff signup would show up here looking
+        // indistinguishable from someone founding a brand new company.
         // This is a review queue for an initial approve/reject decision, not a directory — an
         // approved account moves on to the Users page, and a suspended one could only ever have
         // gotten there by being approved first, so it belongs there too, not back here.
         $users = User::with('category')->where('is_admin', false)->where('account_type', '!=', 'rider')
+            ->where(fn ($q) => $q->where('logistics_role', '!=', 'hub_staff')->orWhereNull('logistics_role'))
             ->whereNotIn('status', ['approved', 'suspended'])->latest()->get();
 
         return view('admin.registrations', array_merge($counts, compact('users')));

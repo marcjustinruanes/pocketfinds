@@ -52,35 +52,6 @@ class HubHiringTest extends TestCase
             'is_logistics' => in_array($role, ['hub_staff', 'logistics_admin']), 'business_name' => $hub->company_name, 'logistics_hub_id' => $hub->id, 'status' => $status]);
     }
 
-    public function test_platform_sees_hub_staff_and_cannot_skip_company_review(): void
-    {
-        $staff = $this->person('hub_staff', 'pending');
-        $platform = $this->person('admin');
-        $this->actingAs($platform)->get('/admin/registrations')->assertOk()->assertSee($staff->username)->assertSee('Hub Staff')->assertSee('Approve platform access');
-        $this->patchJson('/admin/registrations/'.$staff->id.'/approve')->assertUnprocessable();
-        $this->assertSame('pending', $staff->fresh()->status);
-    }
-
-    public function test_platform_can_reject_a_hub_staff_application(): void
-    {
-        $staff = $this->person('hub_staff', 'pending');
-        $platform = $this->person('admin');
-        $this->actingAs($platform)->patch('/admin/registrations/'.$staff->id.'/reject', ['rejection_decision' => 'allow_resubmission', 'reason_preset' => 'Incomplete or unclear documents'])->assertRedirect()->assertSessionHasNoErrors();
-        $this->assertSame('rejected', $staff->fresh()->status);
-    }
-
-    public function test_early_interview_and_platform_approval_return_useful_form_errors(): void
-    {
-        $staff = $this->person('hub_staff', 'interview');
-        $staff->update(['interview_scheduled_at' => now()->addDay(), 'interview_location' => 'Company hub']);
-        $this->actingAs($this->admin)->from('/logistics/staff')->patch('/logistics/staff/'.$staff->id.'/confirm', ['interview_completed' => '1'])
-            ->assertRedirect('/logistics/staff')->assertSessionHasErrors('interview_completed');
-        $this->assertFalse(app(HubHiring::class)->companyInterviewComplete($staff->fresh()));
-        $this->actingAs($this->person('admin'))->from('/admin/registrations')->patch('/admin/registrations/'.$staff->id.'/approve')
-            ->assertRedirect('/admin/registrations')->assertSessionHasErrors('status');
-        $this->assertSame('interview', $staff->fresh()->status);
-    }
-
     private function settings(string $role, array $values = [])
     {
         return $this->actingAs($this->admin)->patchJson('/logistics/hubs/'.$this->hub->id.'/toggle-hiring', array_merge([
@@ -165,10 +136,9 @@ class HubHiringTest extends TestCase
 
     public function test_staff_requires_interview_and_records_each_decision(): void
     {
-        $this->travelTo(now()->startOfDay()->addHours(15));
         $this->postJson('/register', $this->application('hub_staff'))->assertOk();
         $staff = User::where('username', 'applicant_hub_staff')->firstOrFail();
-        Mail::shouldReceive('raw')->once()->withArgs(fn ($body, $callback) => DB::transactionLevel() === 0
+        Mail::shouldReceive('raw')->twice()->withArgs(fn ($body, $callback) => DB::transactionLevel() === 0
             && in_array($staff->fresh()->status, ['interview', 'approved'], true)
             && DB::table('hiring_application_history')->where('user_id', $staff->id)->orderByDesc('id')->value('status') === $staff->fresh()->status);
         $this->actingAs($this->admin)->patchJson('/logistics/staff/'.$staff->id.'/confirm')->assertUnprocessable();
@@ -176,14 +146,9 @@ class HubHiringTest extends TestCase
         $this->patch('/logistics/staff/'.$staff->id.'/approve', ['interview_date' => now()->toDateString(), 'interview_time' => '12:00', 'interview_location' => 'Company hub'])->assertRedirect();
         $this->assertSame('interview', $staff->fresh()->status);
         $this->patch('/logistics/staff/'.$staff->id.'/confirm',['interview_completed'=>'1'])->assertRedirect();
-        $this->assertSame('interview', $staff->fresh()->status);
-        $this->assertTrue(app(HubHiring::class)->companyInterviewComplete($staff->fresh()));
-        $platform = $this->person('admin');
-        $this->actingAs($platform)->patch('/admin/registrations/'.$staff->id.'/approve')->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame('approved', $staff->fresh()->status);
-        $this->actingAs($this->admin);
         $this->patchJson('/logistics/staff/'.$staff->id.'/confirm')->assertUnprocessable();
-        $this->assertSame(['pending', 'interview', 'interview', 'approved'], DB::table('hiring_application_history')->where('user_id', $staff->id)->orderBy('id')->pluck('status')->all());
+        $this->assertSame(['pending', 'interview', 'approved'], DB::table('hiring_application_history')->where('user_id', $staff->id)->orderBy('id')->pluck('status')->all());
     }
 
     public function test_platform_cannot_recruit_but_can_suspend_and_reactivate_personnel(): void
@@ -192,8 +157,7 @@ class HubHiringTest extends TestCase
         foreach (['rider', 'hub_staff'] as $role) {
             foreach (['pending', 'interview', 'rejected'] as $state) {
                 $person = $this->person($role, $state);
-                $response = $this->actingAs($platform)->patchJson('/admin/registrations/'.$person->id.'/approve');
-                $role === 'rider' ? $response->assertForbidden() : $response->assertUnprocessable();
+                $this->actingAs($platform)->patchJson('/admin/registrations/'.$person->id.'/approve')->assertForbidden();
                 $this->patchJson('/admin/users/'.$person->id.'/approve')->assertUnprocessable();
                 $this->patchJson('/admin/users/'.$person->id.'/suspend', ['reason_preset' => 'other','reason_details'=>'Administrative review required'])->assertUnprocessable();
                 $this->assertSame($state, $person->fresh()->status);
@@ -348,12 +312,10 @@ class HubHiringTest extends TestCase
             $suspended = $this->person($role, 'suspended');
             $this->settings($role, ['limit' => 1])->assertRedirect();
             $path = $role === 'rider' ? 'riders/'.$pending->id.'/approve' : 'staff/'.$pending->id.'/confirm';
-            $companyReview = $this->actingAs($this->admin)->patchJson('/logistics/'.$path, $role === 'hub_staff' ? ['interview_completed' => '1'] : []);
-            $role === 'hub_staff' ? $companyReview->assertRedirect() : $companyReview->assertUnprocessable();
+            $this->actingAs($this->admin)->patchJson('/logistics/'.$path)->assertUnprocessable();
             $path = $role === 'rider' ? 'riders' : 'staff';
             $this->patchJson('/logistics/'.$path.'/'.$suspended->id.'/activate')->assertUnprocessable();
-            $platformReview = $this->actingAs($this->person('admin'))->patchJson('/admin/registrations/'.$pending->id.'/approve');
-            $role === 'hub_staff' ? $platformReview->assertUnprocessable() : $platformReview->assertForbidden();
+            $this->actingAs($this->person('admin'))->patchJson('/admin/registrations/'.$pending->id.'/approve')->assertForbidden();
             $this->patchJson('/admin/users/'.$suspended->id.'/approve')->assertUnprocessable();
             $this->assertSame($applicationStatus, $pending->fresh()->status);
             $this->assertSame('suspended', $suspended->fresh()->status);

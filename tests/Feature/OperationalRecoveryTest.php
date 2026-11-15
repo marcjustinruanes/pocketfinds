@@ -42,7 +42,7 @@ class OperationalRecoveryTest extends TestCase
     }
     protected function requestData(): array { return ['key'=>(string)Str::uuid(),'revision'=>$this->assignment->fresh()->revision,'old_rider_id'=>$this->assignment->fresh()->courier_id,'replacement_rider_id'=>$this->replacement->id,'reason'=>'Rider unavailable before collection']; }
     protected function confirmData(): array { $a=$this->assignment->fresh();return ['key'=>$a->reassignment['key'],'revision'=>$a->revision,'action'=>'confirm','confirmed'=>'1']; }
-    protected function requestChange(): void { $this->actingAs($this->staff)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$this->requestData())->assertRedirect()->assertSessionHasNoErrors(); }
+    protected function requestChange(): void { $this->actingAs($this->admin)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$this->requestData())->assertRedirect()->assertSessionHasNoErrors(); }
 
     public function test_classification_is_read_only_and_receipt_prospectively_closes_pickup(): void
     {
@@ -75,14 +75,14 @@ class OperationalRecoveryTest extends TestCase
 
     public function test_handover_stale_duplicate_and_wrong_hub_requests_are_rejected(): void
     {
-        $data=$this->requestData();$this->actingAs($this->staff)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$data)->assertRedirect()->assertSessionHasNoErrors();
+        $data=$this->requestData();$this->actingAs($this->admin)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$data)->assertRedirect()->assertSessionHasNoErrors();
         $this->postJson(route('logistics.assignments.reassign',$this->assignment->id),$data)->assertRedirect()->assertSessionHasNoErrors();
         $stale=$this->confirmData();$this->actingAs($this->seller)->postJson(route('seller.assignments.decide',$this->assignment->id),$stale)->assertRedirect()->assertSessionHasNoErrors();
         $this->postJson(route('seller.assignments.decide',$this->assignment->id),$stale)->assertConflict();
         $this->assertSame(1,DB::table('logistics_financial_events')->where('event','assignment_reassigned_confirmed')->count());
         DB::table('shipments')->where('id',$this->shipment->id)->update(['rider_confirmed_pickup_at'=>now()]);
         $this->replacement=$this->rider;
-        $this->actingAs($this->staff)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$this->requestData())->assertUnprocessable();
+        $this->actingAs($this->admin)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$this->requestData())->assertUnprocessable();
     }
     protected function delivery(): void
     {
@@ -126,7 +126,7 @@ class OperationalRecoveryTest extends TestCase
     public function test_delivery_release_wins_before_reassignment_and_cannot_be_cleared(): void
     {
         $this->delivery();$this->actingAs($this->rider)->patch(route('rider.deliveries.advance',$this->shipment->id),['from'=>'assigned_to_rider'])->assertRedirect()->assertSessionHasNoErrors();
-        $this->actingAs($this->staff)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$this->requestData())->assertUnprocessable();
+        $this->actingAs($this->admin)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$this->requestData())->assertUnprocessable();
         $this->assertNotNull($this->shipment->fresh()->out_for_delivery_at);
     }
     public function test_stale_authenticated_rider_cannot_confirm_pickup_after_suspension(): void
@@ -141,10 +141,10 @@ class OperationalRecoveryTest extends TestCase
         $staff=$this->person('hub_staff',$otherHub->id);
         $this->actingAs($staff)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$this->requestData())->assertForbidden();
         $foreign=$this->person('admin',null,'Other');
-        $this->actingAs($foreign)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$this->requestData())->assertForbidden();
+        $this->actingAs($foreign)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$this->requestData())->assertNotFound();
         $this->actingAs($this->rider)->patch(route('rider.my-pickups.confirm',$this->shipment->id),['tracking_number'=>$this->shipment->tracking_number])->assertRedirect()->assertSessionHasNoErrors()->assertSessionHas('success');
         $this->assertNotNull($this->shipment->fresh()->rider_confirmed_pickup_at);
-        $this->actingAs($this->staff)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$this->requestData())->assertUnprocessable();
+        $this->actingAs($this->admin)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$this->requestData())->assertUnprocessable();
     }
     public function test_reassignment_audit_failure_rolls_back_owner_revision_and_snapshot(): void
     {
@@ -159,11 +159,11 @@ class OperationalRecoveryTest extends TestCase
     }
     public function test_cancellation_preserves_assignment_and_stale_request_cannot_reappear(): void
     {
-        $data=$this->requestData();$this->actingAs($this->staff)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$data)->assertRedirect()->assertSessionHasNoErrors();
+        $data=$this->requestData();$this->actingAs($this->admin)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$data)->assertRedirect()->assertSessionHasNoErrors();
         $cancel=$this->confirmData();unset($cancel['confirmed']);$cancel['action']='cancel';$cancel['reason']='Seller cannot confirm current possession';
         $this->actingAs($this->seller)->postJson(route('seller.assignments.decide',$this->assignment->id),$cancel)->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame($this->rider->id,$this->shipment->fresh()->pickup_rider_id);
-        $this->actingAs($this->staff)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$data)->assertConflict();
+        $this->actingAs($this->admin)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$data)->assertConflict();
     }
     public function test_staff_cash_recovery_is_separate_from_count_and_preserves_shortages_and_overages(): void
     {
@@ -214,7 +214,7 @@ class OperationalRecoveryTest extends TestCase
     public function test_ineligible_replacement_and_earned_sources_cannot_be_reassigned(): void
     {
         DB::table('users')->where('id',$this->replacement->id)->update(['vehicle_type'=>'four_wheels']);
-        $this->actingAs($this->staff)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$this->requestData())->assertUnprocessable();
+        $this->actingAs($this->admin)->postJson(route('logistics.assignments.reassign',$this->assignment->id),$this->requestData())->assertUnprocessable();
         DB::table('users')->where('id',$this->replacement->id)->update(['vehicle_type'=>'two_wheels','status'=>'suspended']);
         $this->postJson(route('logistics.assignments.reassign',$this->assignment->id),$this->requestData())->assertUnprocessable();
         DB::table('users')->where('id',$this->replacement->id)->update(['status'=>'approved']);
@@ -225,8 +225,7 @@ class OperationalRecoveryTest extends TestCase
 
     public function test_reassignment_pages_render_scoped_possession_and_decision_fields(): void
     {
-        $this->actingAs($this->admin)->get(route('logistics.assignments.review'))->assertOk()->assertDontSee('Replacement rider')->assertDontSee('Request possession review');
-        $response=$this->actingAs($this->staff)->get(route('logistics.assignments.review'))->assertOk()->assertSee('Replacement rider')->assertSee('Request possession review')->assertSee('aria-haspopup="dialog"',false)->assertSee('assignment-review-dialog')->assertSee('Recorded assignment decisions');
+        $response=$this->actingAs($this->admin)->get(route('logistics.assignments.review'))->assertOk()->assertSee('Replacement rider')->assertSee('Request possession review')->assertSee('aria-haspopup="dialog"',false)->assertSee('assignment-review-dialog')->assertSee('Recorded assignment decisions');
         if(getenv('ASSIGNMENT_REVIEW_PREVIEW')==='1')file_put_contents(storage_path('framework/testing/assignment-review.html'),$response->getContent());
         $this->requestChange();
         $this->actingAs($this->seller)->get(route('seller.assignments.review'))->assertOk()->assertSee('I still physically hold this parcel')->assertSee('Cancellation reason');

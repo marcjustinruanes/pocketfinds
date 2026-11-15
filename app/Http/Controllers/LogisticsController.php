@@ -209,14 +209,9 @@ class LogisticsController extends Controller
     /** Pickup requests fresh from a seller — "Confirm/approve/verify parcel pickup requests from seller". */
     public function requests(Request $request)
     {
-        $hubStaff = auth()->user()->isHubStaff();
-        $queue=$request->validate(['queue'=>'nullable|in:review,assignment'])['queue']??($hubStaff ? 'assignment' : 'review');
-        abort_unless($hubStaff ? $queue === 'assignment' : (auth()->user()->isLogisticsAdmin() && $queue === 'review'), 403, 'Pickup rider assignment belongs to the origin hub; company pickup approval belongs to Logistics Admin.');
+        $queue=$request->validate(['queue'=>'nullable|in:review,assignment'])['queue']??'review';
         $counts = $this->sidebarCounts();
         $shipments = $this->companyScope()->with(['order.buyer', 'order.seller', 'pickupAssignment.courier'])
-            ->when($hubStaff, function ($q) {
-                app(LogisticsAccess::class)->pair($q, 'origin_hub', 'origin_province', app(LogisticsAccess::class)->hub(auth()->user()));
-            })
             ->where('shipping_status', 'ready_for_pickup')->when($queue==='assignment',fn($q)=>$q->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id'),fn($q)=>$q->whereNull('pickup_approved_at'))
             ->latest('created_at')->orderByDesc('id')->paginate(20)->withQueryString();
 
@@ -468,7 +463,7 @@ class LogisticsController extends Controller
      * Origin hub staff assign a rider to carry an approved pickup from the seller to their
      * own hub — the pickup-leg counterpart to assignCourier(), one stage earlier in the
      * pipeline. Hub staff can only assign a pickup that actually originates at their own
-     * hub; the company admin has read-only assignment oversight. A rider can
+     * hub; the company admin (who oversees every hub) can assign any of them. A rider can
      * still self-accept the same request first (RiderController::acceptPickupRequest()) —
      * this uses the same conditional update so only one of the two ever wins.
      */
@@ -1334,7 +1329,7 @@ class LogisticsController extends Controller
                     .'  Date: '.$staff->interview_scheduled_at?->format('l, F j, Y')."\n"
                     .'  Time: '.$staff->interview_scheduled_at?->format('g:i A')."\n"
                     ."  Location: {$staff->interview_location}\n\n"
-                    ."After the company confirms your interview, Platform Admin must approve your account before you can log in.\n\n"
+                    ."Once that's completed and confirmed, your account will be enabled and you'll be able to log in.\n\n"
                     ."If you have any questions or need to reschedule, please reach out to {$staff->business_name} directly.",
             ],
             'approved' => [
@@ -1372,8 +1367,8 @@ class LogisticsController extends Controller
     /**
      * "Approve" on a fresh application doesn't grant login — it invites the applicant to a
      * face-to-face interview and holds the account at 'interview' (still blocked from
-     * logging in, same as 'pending'). Company confirmation records the completed
-     * interview; Platform Admin then makes the final access decision.
+     * logging in, same as 'pending') until confirmStaffApproval() gives the real, final
+     * approval once that interview has actually happened.
      */
     public function inviteStaffInterview(Request $request, $id)
     {
@@ -1396,23 +1391,17 @@ class LogisticsController extends Controller
         return back()->with('success', 'Interview invitation sent — the applicant is on hold until you confirm after the interview.');
     }
 
-    /** Company interview review; final platform approval is handled by Platform Admin. */
+    /** The actual, final approval — only meant to be clicked after the face-to-face interview has happened. */
     public function confirmStaffApproval(Request $request,$id)
     {
         $staff = $this->staffMember($id);
         abort_unless($staff->status === 'interview', 422, 'This application is not awaiting approval.');
         $request->validate(['interview_completed'=>'required|accepted']);
-        if (! $staff->interview_scheduled_at || $staff->interview_scheduled_at->isFuture()) {
-            $scheduled = $staff->interview_scheduled_at?->timezone('Asia/Manila')->format('F j, Y \a\t g:i A');
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'interview_completed' => 'This interview is scheduled for '.($scheduled ? $scheduled.' PHT' : 'an unconfirmed time').'. Confirm it only after the interview has taken place.',
-            ]);
-        }
-        $staff->hiringDecision=['action'=>'company_interview_completed','interview_completed'=>true,'interview_completed_attested_at'=>now()->toIso8601String(),'interview_completed_attested_by'=>auth()->id()];
-        // Keep access blocked until Platform Admin makes the final approval decision.
-        $staff->save();
+        $staff->hiringDecision=['action'=>'interview_approval','interview_completed'=>true,'interview_completed_attested_at'=>now()->toIso8601String(),'interview_completed_attested_by'=>auth()->id()];
+        $staff->update(['status' => 'approved', 'status_reason' => null]);
+        $this->notifyStaffStatus($staff, 'approved');
 
-        return back()->with('success', 'Company interview confirmed. The account is awaiting Platform Admin approval and cannot log in yet.');
+        return back()->with('success', 'Hub staff application approved — they can now log in.');
     }
 
     public function rejectStaff(Request $request, $id)

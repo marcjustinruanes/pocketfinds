@@ -28,9 +28,7 @@
   <section><h2>Delivery progress</h2>
     @if($shipment = $order->shipment)
     <div class="order-detail-info-grid">
-      <div class="full"><span>Tracking number</span><strong>{{ $shipment->tracking_number ?: 'Not assigned' }}</strong>
-        @if($shipment->tracking_number)<svg class="receipt-barcode" id="receiptBarcode" role="img" aria-label="Barcode for {{ $shipment->tracking_number }}"></svg>@endif
-      </div>
+      <div><span>Tracking number</span><strong>{{ $shipment->tracking_number ?: 'Not assigned' }}</strong></div>
       <div><span>Logistics company</span><strong>{{ $shipment->logistics_company ?: 'Not assigned' }}</strong></div>
       <div><span>Shipment status</span><strong>{{ str($shipment->shipping_status)->replace('_', ' ')->title() }}</strong></div>
       @if($shipment->courier)<div><span>Delivery rider</span><strong>{{ trim($shipment->courier->given_names.' '.$shipment->courier->last_name) }}</strong></div>@endif
@@ -45,9 +43,5 @@
   <footer>Generated {{ now()->format('M j, Y g:i A') }} ({{ config('app.timezone') }}). This record reflects the payment and delivery evidence currently recorded for this order.</footer>
 </main>
 <script src="{{ asset('js/order-receipt.js') }}" defer></script>
-@if($order->shipment?->tracking_number)
-<script src="{{ asset('js/vendor/JsBarcode.code128.min.js') }}"></script>
-<script>JsBarcode('#receiptBarcode',@json($order->shipment->tracking_number),{format:'CODE128',width:2,height:60,margin:8,displayValue:false,lineColor:'#000',background:'#fff'});const b=document.getElementById('receiptBarcode');b.setAttribute('viewBox',`0 0 ${parseFloat(b.getAttribute('width'))} ${parseFloat(b.getAttribute('height'))}`);b.setAttribute('width','100%');b.removeAttribute('height');</script>
-@endif
 </body>
 </html>

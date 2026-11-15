@@ -158,11 +158,10 @@ class LogisticsShipping
         $seller = User::findOrFail($order->seller_id);
         $companies = LogisticsHub::companiesServicing($seller->municipality, $order->shipping_address['municipality'] ?? null, $seller->province, $order->shipping_address['province'] ?? null);
         if (! $companies->contains($shipment->logistics_company)) $this->fail('The selected carrier no longer covers this route.');
-        $fixed = ($order->commerce_snapshot['financial_policy'] ?? null) === FinancialPolicy::VERSION || app(LogisticsCashDesk::class)->amount((string)$order->shipping_amount) === FinancialPolicy::DELIVERY_CENTS;
-        // Fixed-fee parcels use the official policy, not a regional rate revision.
-        $rate = $fixed ? null : $this->rate($shipment->logistics_company, $order->shipping_address['region'] ?? '', true);
-        if (! $fixed && ! $rate) $this->fail('This carrier has no approved rate for the destination region. Select another carrier or request rate review.');
+        $rate = $this->rate($shipment->logistics_company, $order->shipping_address['region'] ?? '', true);
+        if (! $rate) $this->fail('This carrier has no approved rate for the destination region. Select another carrier or request rate review.');
         $kg = $this->kilograms($order->items ?? []);
+        $fixed = ($order->commerce_snapshot['financial_policy'] ?? null) === FinancialPolicy::VERSION || app(LogisticsCashDesk::class)->amount((string)$order->shipping_amount) === FinancialPolicy::DELIVERY_CENTS;
         $approved = $fixed ? FinancialPolicy::DELIVERY_CENTS : (int) $rate->first_kg_cents + ($kg - 1) * (int) $rate->additional_kg_cents;
         // New fixed-fee parcels retain the same logistics entitlement at handoff.
         // Historical snapshots continue to use their agreed carrier rates.

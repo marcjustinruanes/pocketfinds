@@ -13,7 +13,6 @@ final class LogisticsWorkspace
                 ['My hub','logistics.dashboard',['logistics.dashboard']],
             ]],
             'operations'=>['label'=>'Operations','icon'=>'box','links'=>[
-                ['Pickup riders','logistics.requests',['logistics.requests*']],
                 ['Scan parcels','logistics.scan',['logistics.scan']],
                 ['Hub transfers','logistics.transfers',['logistics.transfers*']],
                 ['Delivery riders','logistics.assignments',['logistics.assignments*']],

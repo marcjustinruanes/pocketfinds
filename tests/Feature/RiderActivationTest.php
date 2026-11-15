@@ -61,26 +61,6 @@ class RiderActivationTest extends TestCase
         return [$user, $mail->activationUrl, basename(parse_url($mail->activationUrl, PHP_URL_PATH))];
     }
 
-    public function test_resend_reports_mail_failure_without_approving_the_rider(): void
-    {
-        [$rider] = $this->invite();
-        Mail::shouldReceive('to')->once()->andThrow(new \RuntimeException('Synthetic mail failure'));
-        $this->actingAs($this->admin)->from(route('logistics.riders'))->post(route('logistics.riders.activation.resend', $rider->id))
-            ->assertRedirect(route('logistics.riders'))->assertSessionHasErrors('activation_email')->assertSessionMissing('success');
-        $this->assertSame('failed', DB::table('rider_account_activations')->where('user_id', $rider->id)->value('delivery_status'));
-        $this->assertSame('pending', $rider->fresh()->status);
-    }
-
-    public function test_activation_email_uses_public_url_and_has_a_plain_text_link(): void
-    {
-        config(['app.url' => 'https://pocketfinds.example']);
-        [$rider, $url] = $this->invite();
-        $this->assertStringStartsWith('https://pocketfinds.example/rider/activate/', $url);
-        $mail = Mail::sent(RiderActivationMail::class)->first();
-        $this->assertStringContainsString($url, $mail->render());
-        $this->assertStringContainsString($url, view('emails.rider-activation-text', $mail->buildViewData())->render());
-    }
-
     public function test_admin_adds_rider_without_password_and_email_activation_enables_login(): void
     {
         [$rider, $url, $token] = $this->invite();
