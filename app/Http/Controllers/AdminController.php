@@ -329,6 +329,7 @@ class AdminController extends Controller
 
     public function aiWorkspace(Request $request)
     {
+        abort_if($request->query('mode') === 'seller' && !config('features.admin_ai_review'), 404);
         $selection = $request->validate([
             'mode' => 'sometimes|in:dashboard,reports,seller,product,draft,chat,analytics,inventory,anomalies,product_copy',
             'product_id' => 'sometimes|string|max:64', 'seller_id' => 'sometimes|integer|min:1',
@@ -362,7 +363,7 @@ class AdminController extends Controller
         // This is a review queue for an initial approve/reject decision, not a directory — an
         // approved account moves on to the Users page, and a suspended one could only ever have
         // gotten there by being approved first, so it belongs there too, not back here.
-        $users = User::with('category')->where('is_admin', false)->where('account_type', '!=', 'rider')
+        $users = User::with(['category','logisticsHub'])->where('is_admin', false)->where('account_type', '!=', 'rider')
             ->where(fn ($q) => $q->where('logistics_role', '!=', 'hub_staff')->orWhereNull('logistics_role'))
             ->whereNotIn('status', ['approved', 'suspended'])->latest()->get();
 
@@ -381,10 +382,7 @@ class AdminController extends Controller
 
     public function compliance()
     {
-        $counts = $this->sidebarCounts();
-        $sellers = User::with('category')->where('account_type', 'seller')->where('is_admin', false)->latest()->get();
-
-        return view('admin.compliance', array_merge($counts, compact('sellers')));
+        return redirect()->route('admin.users');
     }
 
     public function complaints()
@@ -397,11 +395,12 @@ class AdminController extends Controller
 
     public function resolveComplaint(Request $request, $id)
     {
+        $request->validate(['resolution'=>'nullable|string|max:2000']);
         Complaint::where('id', $id)->update([
             'status' => 'resolved',
             'handled_by' => auth()->id(),
             'resolved_at' => now(),
-            'resolution' => $request->input('resolution', 'Resolved by admin.'),
+            'resolution' => $request->input('resolution') ?: 'Resolved by admin.',
         ]);
 
         return back();
@@ -798,7 +797,7 @@ class AdminController extends Controller
                 $q->where('sender_id', $receiver->id)->where('receiver_id', auth()->id());
             })->oldest()->get();
 
-        return response()->json(['ok' => true, 'html' => view('admin.partials.messages-body', compact('messages'))->render()]);
+        return response()->json(['ok' => true, 'html' => view('admin.partials.messages-body', compact('messages'))->render(), 'messages' => $messages->map(fn ($message) => $this->formatStaffMessage($message))]);
     }
 
     public function reactMessage(Request $request, Message $message)
@@ -959,6 +958,13 @@ class AdminController extends Controller
         ]);
 
         return back()->with('success', 'Request rejected and the user notified.');
+    }
+
+    public function vouchers()
+    {
+        abort_unless(\App\Services\BuyerCommerce::installed(), 404);
+        $vouchers = \DB::table('commerce_vouchers')->whereNull('seller_id')->orderByDesc('id')->get();
+        return view('admin.vouchers', array_merge($this->sidebarCounts(), compact('vouchers')));
     }
 
     public function products()

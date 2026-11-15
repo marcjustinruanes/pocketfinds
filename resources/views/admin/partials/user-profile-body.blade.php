@@ -1,107 +1,77 @@
-{{-- Shared, view-only profile detail sections for a user. Expects: $user (User model). --}}
-<div class="section-card">
-  <div class="section-head"><span class="ic"><x-admin-icon name="account" /></span><span>Personal Information</span></div>
-  <div class="detail-grid">
-    <div><div class="field-label">Full Name</div><div class="field-value">{{ $user->given_names }} {{ $user->middle_name ? $user->middle_name.' ' : '' }}{{ $user->last_name }}</div></div>
-    <div><div class="field-label">Username</div><div class="field-value mono">{{ $user->username ?? '—' }}</div></div>
-    <div><div class="field-label">Sex</div><div class="field-value">{{ ucfirst($user->sex ?? '—') }}</div></div>
-    <div><div class="field-label">Birthday</div><div class="field-value mono">{{ $user->birthday?->format('M d, Y') ?? '—' }}</div></div>
-    <div><div class="field-label">Age</div><div class="field-value">{{ $user->age ?? '—' }}</div></div>
-    <div><div class="field-label">Status</div><div class="field-value"><span class="stamp stamp-{{ $user->status }}">{{ ucfirst($user->status) }}</span></div></div>
-  </div>
-</div>
-
-<div class="section-card">
-  <div class="section-head"><span class="ic"><x-admin-icon name="mail" /></span><span>Contact &amp; Auth</span></div>
-  <div class="detail-grid">
-    <div><div class="field-label">Email</div><div class="field-value">{{ $user->email }}</div></div>
-    <div><div class="field-label">Contact No.</div><div class="field-value mono">{{ $user->contact_no }}</div></div>
-    <div><div class="field-label">Auth Method</div><div class="field-value">{{ ucfirst($user->auth_method) }}</div></div>
-    <div><div class="field-label">Joined</div><div class="field-value mono">{{ $user->created_at?->format('M d, Y') ?? '—' }}</div></div>
-  </div>
-</div>
-
-<div class="section-card">
-  <div class="section-head"><span class="ic"><x-admin-icon name="pin" /></span><span>Address</span></div>
-  <div class="detail-grid">
-    <div class="full"><div class="field-label">Full Address</div><div class="field-value">{{ collect([$user->house_no, $user->street, $user->barangay, $user->municipality, $user->province])->filter()->implode(', ') ?: '—' }}</div></div>
-  </div>
-</div>
-
-<div class="section-card">
-  <div class="section-head"><span class="ic"><x-admin-icon name="shield" /></span><span>Verification Documents</span></div>
-  <div class="doc-grid">
-    {{-- Riders have no separate government ID upload — their driver's license
-         (shown below) doubles as ID, so the generic thumb would just repeat it. --}}
-    @unless($user->account_type === 'rider')
-    <x-admin-doc-thumb :path="$user->id_file" label="Government ID" />
-    @endunless
-    <x-admin-doc-thumb :path="$user->selfie_file" label="Selfie with ID" />
-    @if($user->account_type === 'seller')
-    @foreach(\App\Support\SellerDocuments::required($user->seller_type) as $documentField)
-    <x-admin-doc-thumb :path="$user->{$documentField}" :label="\App\Support\SellerDocuments::LABELS[$documentField]" />
+@php
+  $personnelRole = app(\App\Services\HubHiring::class)->role($user);
+  $founder = \App\Services\CompanyOwnership::founder($user);
+  $sellerType = $user->seller_type instanceof \App\Enums\SellerType ? $user->seller_type : \App\Enums\SellerType::tryFrom((string)$user->seller_type);
+  $suffix = $user->suffix instanceof \BackedEnum ? $user->suffix->value : $user->suffix;
+  $identityName = $user->id_type_id ? \Illuminate\Support\Facades\DB::table('id_types')->where('id',$user->id_type_id)->value('name') : null;
+  $sections = [
+    'Personal information'=>[
+      'First name'=>$user->given_names,'Middle name'=>$user->middle_name,'Last name'=>$user->last_name,'Suffix'=>$suffix,
+      'Sex'=>$user->sex ? ucfirst($user->sex) : null,'Birthday'=>$user->birthday?->format('M j, Y'),
+    ],
+    'Account & contact'=>[
+      'Username'=>$user->username,'Email address'=>$user->email,'Contact number'=>$user->contact_no,
+      'Sign-in method'=>ucfirst($user->auth_method ?? ''),'Joined'=>$user->created_at?->format('M j, Y'),
+    ],
+    'Address'=>[
+      'Region'=>$user->region,'Province'=>$user->province,'City / municipality'=>$user->municipality,
+      'Barangay'=>$user->barangay,'House number'=>$user->house_no,'Street'=>$user->street,'Postal code'=>$user->postal_code,
+    ],
+  ];
+  if ($user->account_type==='seller') $sections['Business information']=[
+    'Business name'=>$user->business_name,'Seller type'=>$sellerType?->label(),'TIN'=>$user->tin,
+    'Shop category'=>collect([$user->category?->name,$user->category_other])->filter()->implode(', '),
+  ];
+  if ($founder) $sections['Company & representative']=[
+    'Company name'=>$user->business_name,'SEC registration number'=>$user->sec_registration_no,'TIN'=>$user->tin,
+    'Position'=>$user->position,'Representative email'=>$user->representative_email,'Representative contact'=>$user->representative_contact_no,
+    'Service regions'=>implode(', ', $user->service_regions ?? []),
+  ];
+  if ($personnelRole) $sections['Company & hub assignment']=[
+    'Company'=>$user->business_name,'Role'=>$personnelRole==='hub_staff'?'Hub staff':'Rider',
+    'Assigned hub'=>$user->logisticsHub ? collect([$user->logisticsHub->municipality,$user->logisticsHub->province])->filter()->implode(', ') : null,
+  ];
+  if ($personnelRole==='rider') $sections['Vehicle & licence']=[
+    'Vehicle type'=>\Illuminate\Support\Str::headline($user->vehicle_type ?? ''),
+    'Ownership'=>match($user->vehicle_ownership){'own'=>'Own vehicle','company'=>'Company vehicle',default=>null},
+    'Brand'=>$user->vehicle_brand,'Model'=>$user->vehicle_model,'Plate number'=>$user->plate_number,
+    'Licence number'=>$user->license_number,'Licence expiry'=>$user->license_expiry?->format('M j, Y'),
+  ];
+  $documents = ['selfie_file'=>'Selfie'];
+  if ($personnelRole==='rider') {
+    $documents += ['license_file'=>"Driver's License",'nbi_clearance_file'=>'NBI clearance'];
+    if ($user->vehicle_ownership==='own') $documents += ['or_file'=>'Official receipt (OR)','cr_file'=>'Certificate of registration (CR)'];
+    $documents += ['resume_file'=>'Resume / CV (optional)'];
+  } else {
+    $documents = ['id_file'=>'Government-issued ID'] + $documents;
+    if ($personnelRole==='hub_staff') $documents += ['resume_file'=>'Resume / CV (optional)'];
+  }
+  if ($user->account_type==='seller') {
+    foreach (\App\Support\SellerDocuments::LABELS as $field=>$label) {
+      if (in_array($field,\App\Support\SellerDocuments::required($user->seller_type),true) || $user->{$field}) $documents[$field]=$label;
+    }
+    if ($user->business_permit_file) $documents['business_permit_file']='Business permit';
+  }
+  if ($founder) $documents += ['company_logo'=>'Company logo','business_permit_file'=>'Business permit'] + \App\Support\LogisticsDocuments::LABELS;
+@endphp
+<div class="platform-registration-record">
+@foreach($sections as $sectionTitle=>$fields)
+<section class="section-card platform-registration-section">
+  <div class="section-head"><span class="platform-registration-step">{{ $loop->iteration }}</span><span>{{ $sectionTitle }}</span></div>
+  <dl class="platform-profile-fields">
+    @foreach($fields as $label=>$value)
+      <div><dt>{{ $label }}</dt><dd>{{ filled($value) ? $value : 'Not provided' }}</dd></div>
     @endforeach
-    @endif
-    @if($user->account_type === 'logistics' || $user->business_permit_file)
-    <x-admin-doc-thumb :path="$user->business_permit_file" label="Business Permit" />
-                    @if(\App\Services\CompanyOwnership::founder($user))
-                      @foreach(\App\Support\LogisticsDocuments::LABELS as $field => $label)
-                        <x-admin-doc-thumb :path="$user->{$field}" :label="$label" />
-                      @endforeach
-                    @endif
-    @endif
-    @if($user->account_type === 'logistics' && $user->company_logo)
-    <x-admin-doc-thumb :path="$user->company_logo" label="Company Logo" />
-    @endif
-    @if($user->resume_file)
-    <x-admin-doc-thumb :path="$user->resume_file" label="Resume / CV" />
-    @endif
+  </dl>
+</section>
+@endforeach
+<details class="section-card platform-document-section" open>
+  <summary>Submitted documents<span>{{ collect($documents)->filter(fn($label,$field)=>filled($user->{$field}))->count() }} uploaded</span></summary>
+  <div class="platform-identity-type"><span>ID type</span><strong>{{ $personnelRole==='rider' ? "Driver's License" : ($identityName ?: 'Not provided') }}</strong></div>
+  <div class="doc-grid">
+    @foreach($documents as $field=>$label)
+      <x-admin-doc-thumb :path="$user->{$field}" :label="$label" />
+    @endforeach
   </div>
+</details>
 </div>
-
-@if($user->account_type === 'seller')
-<div class="section-card">
-  <div class="section-head"><span class="ic"><x-admin-icon name="bag" /></span><span>Seller Details</span></div>
-  <div class="detail-grid">
-    <div><div class="field-label">Business Name</div><div class="field-value">{{ $user->business_name ?? '—' }}</div></div>
-    <div class="full"><div class="field-label">Category</div><div class="field-value">{{ collect([$user->category?->name, $user->category_other])->filter()->implode(', ') ?: '—' }}</div></div>
-  </div>
-</div>
-@endif
-
-@if($user->account_type === 'logistics' && $user->business_name)
-<div class="section-card">
-  <div class="section-head"><span class="ic"><x-admin-icon name="truck" /></span><span>Logistics Company</span></div>
-  <div class="detail-grid">
-    <div class="full"><div class="field-label">Company Name</div><div class="field-value">{{ $user->business_name }}</div></div>
-    @if($user->logistics_role)<div><div class="field-label">Role</div><div class="field-value">{{ ucfirst($user->logistics_role) }}</div></div>@endif
-  </div>
-</div>
-@endif
-
-@if($user->account_type === 'rider' && $user->vehicle_type)
-<div class="section-card">
-  <div class="section-head"><span class="ic"><x-admin-icon name="truck" /></span><span>Vehicle Information</span></div>
-  <div class="detail-grid">
-    <div class="full"><div class="field-label">Logistics Company</div><div class="field-value">{{ $user->business_name ?: '—' }}</div></div>
-    <div><div class="field-label">Vehicle Type</div><div class="field-value">{{ \Illuminate\Support\Str::title(str_replace('_',' ',$user->vehicle_type)) }}</div></div>
-    <div><div class="field-label">Ownership</div><div class="field-value">{{ $user->vehicle_ownership === 'own' ? 'Own Vehicle' : ($user->vehicle_ownership === 'company' ? 'Company Vehicle' : '—') }}</div></div>
-    @if($user->vehicle_brand)<div><div class="field-label">Brand / Model</div><div class="field-value">{{ $user->vehicle_brand }} {{ $user->vehicle_model }}</div></div>@endif
-    @if($user->plate_number)
-    <div><div class="field-label">Plate Number</div><div class="field-value mono">{{ $user->plate_number }}</div></div>
-    @endif
-    @if($user->license_number)
-    <div><div class="field-label">License No.</div><div class="field-value mono">{{ $user->license_number }}</div></div>
-    <div><div class="field-label">License Expiry</div><div class="field-value mono">{{ $user->license_expiry?->format('M d, Y') }}</div></div>
-    @endif
-  </div>
-  <div class="doc-grid" style="margin-top:10px">
-    <x-admin-doc-thumb :path="$user->license_file" label="Driver's License" />
-    <x-admin-doc-thumb :path="$user->nbi_clearance_file" label="NBI clearance" />
-    @if($user->vehicle_ownership === 'own')
-    <x-admin-doc-thumb :path="$user->or_file" label="OR" />
-    <x-admin-doc-thumb :path="$user->cr_file" label="CR" />
-    @endif
-  </div>
-</div>
-@endif

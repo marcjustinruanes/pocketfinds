@@ -13,7 +13,9 @@
   </div>
   <div class="ai-tabs" role="tablist" aria-label="AI tasks">
     @foreach(['dashboard' => 'Overview', 'analytics' => 'Sales insights', 'inventory' => 'Inventory', 'anomalies' => 'Review alerts', 'reports' => 'Complaints', 'seller' => 'Seller review', 'product' => 'Product screening', 'product_copy' => 'Product copy', 'draft' => 'Drafts', 'chat' => 'Ask dashboard'] as $key => $label)
+      @if($key !== 'seller' || config('features.admin_ai_review'))
       <button type="button" role="tab" id="ai-tab-{{ $key }}" aria-controls="ai-task-form" aria-selected="false" data-mode="{{ $key }}">{{ $label }}</button>
+      @endif
     @endforeach
   </div>
   <div class="ai-workbench">

@@ -3,28 +3,34 @@
 @section('page-title', 'Hub Staff')
 @section('page-sub', "Approve/disapprove hub staff applications, activate or suspend accounts")
 
+@section('body-class','platform-accounts-page logistics-team-page')
+@push('account-head')
+<link rel="stylesheet" href="{{ asset('css/platform-accounts.css') }}?v={{ filemtime(public_path('css/platform-accounts.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/logistics-team.css') }}?v={{ filemtime(public_path('css/logistics-team.css')) }}">
+@endpush
+@section('workspace-actions')
+<div class="rider-workspace-actions"><form method="GET" id="staff-search" class="rider-search-form" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg><input name="search" value="{{ request('search') }}" placeholder="Search name, username or email" aria-label="Search hub staff" oninput="clearTimeout(this._staffSearchTimer);this._staffSearchTimer=setTimeout(()=>this.form.requestSubmit(),350)"></form><button type="button" class="btn btn-primary rider-create-button" data-modal-open="create-personnel">Create hub staff account</button></div>
+@endsection
 @section('content')
 <section class="personnel-page hub-staff-page">
-@include('logistics.partials.personnel-tabs')
 
-<div class="personnel-create-toolbar"><button type="button" class="btn btn-primary" data-modal-open="create-personnel">Create hub staff account</button></div>
+
+
 @include('logistics.partials.personnel-create-modal', ['creationRole'=>'hub_staff'])
 
 
-<form method="GET" id="staff-search" class="logistics-toolbar"><input name="search" value="{{ request('search') }}" placeholder="Search name, username or email" aria-label="Search personnel"><button class="btn btn-outline">Search</button></form>
+
 
 
 <div class="card">
-  <div class="card-head">
-    <h2>Hub staff</h2><span class="personnel-record-count">{{ $staff->total() }} {{ \Illuminate\Support\Str::plural('member', $staff->total()) }}</span>
-  </div>
+
   <div class="card-pad">
 
 
     <div class="table-wrap">
       <table class="dtable">
         <thead>
-          <tr><th>Applicant</th><th>Hub</th><th>Submitted</th><th><label class="staff-status-heading"><span>Status</span><select aria-label="Filter hub staff by status" name="status" form="staff-search" onchange="this.form.requestSubmit()">@foreach(['all'=>'All statuses','pending'=>'Pending','interview'=>'Interview','approved'=>'Approved','rejected'=>'Rejected','suspended'=>'Suspended'] as $key=>$label)<option value="{{ $key }}" @selected($status === $key)>{{ $label }} ({{ $key === 'all' ? $statusCounts->sum() : ($statusCounts[$key] ?? 0) }})</option>@endforeach</select><span aria-hidden="true">?</span></label></th><th>Actions</th></tr>
+          <tr><th>Applicant</th><th>Hub</th><th>Submitted</th><th>@include('logistics.partials.team-status-filter',['filterForm'=>'staff-search','teamRole'=>'hub staff','filterStatuses'=>['all'=>'All statuses','pending'=>'Pending','interview'=>'Interview','approved'=>'Approved','rejected'=>'Rejected','suspended'=>'Suspended']])</th><th>Manage</th></tr>
         </thead>
         <tbody>
           @forelse($staff as $member)
@@ -38,7 +44,6 @@
             <td>
               @if($member->logisticsHub)
                 {{ $member->logisticsHub->municipality }}, {{ $member->logisticsHub->province }}
-                @if($member->logisticsHub->is_regional_hub)<span class="stamp stamp-active" style="margin-left:4px">Regional</span>@endif
               @else
                 <span style="color:var(--danger)">No hub linked</span>
               @endif
@@ -47,8 +52,7 @@
             <td><span class="stamp stamp-{{ $member->status }}">{{ ucfirst($member->status) }}</span></td>
             <td>
               <div class="row-actions">
-                <a class="btn btn-sm btn-outline" href="{{ route('logistics.accounts.edit', $member->id) }}">Manage &nearr;</a>
-                <button type="button" class="btn btn-sm btn-outline" data-modal-open="staffModal-{{ $member->id }}">Review</button>
+                <button type="button" class="btn platform-detail-button" data-modal-open="staffModal-{{ $member->id }}" aria-label="Manage hub staff" title="Manage hub staff"><span aria-hidden="true">&#8599;</span></button>
               </div>
             </td>
           </tr>
@@ -67,47 +71,8 @@
                 <button class="modal-close" data-modal-close aria-label="Close"><x-admin-icon name="close" /></button>
               </div>
               <div class="modal-body">
-                <div class="section-card">
-                  <div class="section-head"><span class="ic"><x-admin-icon name="account" /></span><span>Personal Information</span></div>
-                  <div class="detail-grid">
-                    <div><div class="field-label">Full Name</div><div class="field-value">{{ $member->given_names }} {{ $member->middle_name ? $member->middle_name.' ' : '' }}{{ $member->last_name }}</div></div>
-                    <div><div class="field-label">Username</div><div class="field-value mono">{{ $member->username ?? '—' }}</div></div>
-                    <div><div class="field-label">Sex</div><div class="field-value">{{ ucfirst($member->sex ?? '—') }}</div></div>
-                    <div><div class="field-label">Birthday</div><div class="field-value mono">{{ $member->birthday?->format('M d, Y') ?? '—' }}</div></div>
-                    <div><div class="field-label">Age</div><div class="field-value">{{ $member->age ?? '—' }}</div></div>
-                    <div><div class="field-label">Contact No.</div><div class="field-value mono">{{ $member->contact_no }}</div></div>
-                  </div>
-                </div>
-
-                <div class="section-card">
-                  <div class="section-head"><span class="ic"><x-admin-icon name="pin" /></span><span>Address &amp; Hub</span></div>
-                  <div class="detail-grid">
-                    <div class="full"><div class="field-label">Full Address</div><div class="field-value">{{ collect([$member->house_no, $member->street, $member->barangay, $member->municipality, $member->province])->filter()->implode(', ') ?: '—' }}</div></div>
-                    <div>
-                      <div class="field-label">Hub</div>
-                      <div class="field-value">
-                        @if($member->logisticsHub)
-                          {{ $member->logisticsHub->municipality }}, {{ $member->logisticsHub->province }}
-                          {{ $member->logisticsHub->is_regional_hub ? ' — regional hub' : '' }}
-                        @else
-                          <span style="color:var(--danger)">No hub linked — their address may no longer match a registered coverage area.</span>
-                        @endif
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="section-card">
-                  <div class="section-head"><span class="ic"><x-admin-icon name="shield" /></span><span>Verification Documents</span></div>
-                  <div class="doc-grid">
-                    <x-admin-doc-thumb :path="$member->selfie_file" label="Selfie" />
-                    <x-admin-doc-thumb :path="$member->id_file" label="Government ID" />
-                    @if($member->resume_file)
-                    <x-admin-doc-thumb :path="$member->resume_file" label="Resume / CV" />
-                    @endif
-                  </div>
-                </div>
-
+@include('admin.partials.review-summary',['user'=>$member])
+@include('admin.partials.user-profile-body',['user'=>$member])
                 @if($member->status === 'interview')
                 <div class="section-card" style="background:var(--info-soft);border-color:var(--info-line)">
                   <div class="section-head"><span class="ic"><x-admin-icon name="account" /></span><span style="color:var(--info)">Awaiting Interview</span></div>
@@ -128,7 +93,7 @@
                 @endif
               </div>
               <div class="modal-foot">
-                <button class="btn btn-outline" data-modal-close>Cancel</button>
+                <button class="btn btn-outline" data-modal-close>Close</button><a class="btn btn-outline" href="{{ route('logistics.accounts.edit',$member->id) }}">Edit account & hub</a>
                 @if($member->status === 'pending')
                 <button type="button" class="btn btn-outline-danger" onclick="openReasonModal('reject', '{{ route('logistics.staff.reject', $member->id) }}')">Reject</button>
                 <button type="button" class="btn btn-success" onclick="openStaffFollowupModal('interviewModal-{{ $member->id }}')">Interview</button>

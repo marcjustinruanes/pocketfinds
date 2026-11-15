@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
         $middleware->append(\App\Http\Middleware\ProductionHttps::class);
         $middleware->append(\App\Http\Middleware\AttendanceFeature::class);
+        $middleware->append(\App\Http\Middleware\AdminAiFeature::class);
         $middleware->appendToGroup('web', MediaConsistency::class);
         // Keep the GCash number literal: surrounding spaces must be rejected.
         $middleware->trimStrings(except: [fn (Request $request) => $request->is('gcash-purchases/*/instructions')]);

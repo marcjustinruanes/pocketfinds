@@ -356,7 +356,8 @@ class LogisticsController extends Controller
         $assignmentRows->setCollection($assignmentRows->getCollection()->map(function($row)use($byId,$transfers){
             $row->item=$row->assignment_type==='delivery'?$byId->get($row->id):$transfers->get($row->id);return $row;
         }));
-        return view('logistics.assign',array_merge($counts,compact('shipments','assignmentRows')));
+        $hubs=LogisticsHub::where('company_name',$request->user()->business_name)->where('is_operational',true)->orderBy('province')->orderBy('municipality')->get();
+        return view('logistics.assign',array_merge($counts,compact('shipments','assignmentRows','hubs')));
     }
 
     public function assignmentParcelDetails(Request $request, string $id)
@@ -1223,15 +1224,14 @@ class LogisticsController extends Controller
         $status = in_array($request->query('status'), ['pending', 'approved', 'rejected', 'suspended'], true)
             ? $request->query('status') : 'all';
         // A company's own roster only — riders who joined this exact company at registration.
-        $coverageInstalled = app(\App\Services\RiderBarangayCoverage::class)->installed();
-        $riders = User::when($coverageInstalled, fn ($q) => $q->with('barangayRoutes'))->where('account_type', 'rider')->where('business_name', $company)
+        $riders = User::where('account_type', 'rider')->where('business_name', $company)
             ->when($status !== 'all', fn ($q) => $q->where('status', $status))
             ->when($search, fn ($q) => $q->where(fn ($q) => $q->where('given_names', 'like', '%'.$search.'%')->orWhere('last_name', 'like', '%'.$search.'%')->orWhere('username', 'like', '%'.$search.'%')->orWhere('email', 'like', '%'.$search.'%')))
             ->latest()->orderByDesc('id')->paginate(20)->withQueryString();
         $statusCounts = User::where('account_type', 'rider')->where('business_name', $company)
             ->selectRaw('status, count(*) as c')->groupBy('status')->pluck('c', 'status');
 
-        return view('logistics.riders', array_merge($counts, compact('riders', 'status', 'statusCounts', 'hubs', 'coverageInstalled')));
+        return view('logistics.riders', array_merge($counts, compact('riders', 'status', 'statusCounts', 'hubs')));
     }
 
     private function rider(int $id): User

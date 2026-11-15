@@ -4,6 +4,26 @@
 @section('page-sub', 'Review and approve new account applications')
 @php use Illuminate\Support\Facades\Storage; @endphp
 
+@section('body-class', 'platform-accounts-page')
+@push('account-head')
+<link rel="stylesheet" href="{{ asset('css/platform-accounts.css') }}?v={{ filemtime(public_path('css/platform-accounts.css')) }}">
+@endpush
+
+@section('workspace-search')
+<div class="platform-account-toolbar">
+    <div class="filter-bar registration-filters">
+      <div class="search-mini">
+        <span class="ic"><x-admin-icon name="search" /></span>
+        <input type="text" placeholder="Search name or email..." aria-label="Search accounts" data-table-search="regTable">
+      </div>
+
+    </div>
+
+
+
+</div>
+@endsection
+
 @section('content')
 <div class="admin-registrations-page">
 @include('admin.partials.ai-link', ['aiMode' => 'seller', 'aiLabel' => 'AI seller review'])
@@ -12,43 +32,17 @@
   {{ session('success') }}
 </div>
 @endif
-<div class="card registration-table-card">
-  <div class="card-head">
-    <div><h2>Applications</h2><p>{{ $users->count() }} total submissions</p></div>
-  </div>
+<div class="card platform-accounts-card">
+
   <div class="card-pad">
-    <div class="filter-bar registration-filters">
-      <div class="search-mini">
-        <span class="ic"><x-admin-icon name="search" /></span>
-        <input type="text" placeholder="Search name or email..." data-table-search="regTable">
-      </div>
-      <select class="select" id="regTypeFilter">
-        <option value="all">All Types</option>
-        <option value="buyer">Buyer</option>
-        <option value="seller">Seller</option>
-        <option value="logistics">Logistics</option>
-      </select>
-    </div>
-
-    @php
-      $regByStatus = $users->countBy('status');
-    @endphp
-    {{-- Approved and suspended accounts both live on the Users page — this list is only ever
-         pending or rejected applications, an initial approve/reject decision still pending. --}}
-    <div data-tabs id="regTabs">
-      <a class="tab active" data-tab="all">All <span class="tab-count">{{ $users->count() }}</span></a>
-      <a class="tab" data-tab="pending">Pending <span class="tab-count">{{ $regByStatus->get('pending', 0) }}</span></a>
-      <a class="tab" data-tab="rejected">Rejected <span class="tab-count">{{ $regByStatus->get('rejected', 0) }}</span></a>
-    </div>
-
     <div class="table-wrap">
-      <table class="dtable" id="regTable">
+      <table class="dtable" id="regTable" data-platform-filter-table>
         <thead>
-          <tr><th>Applicant</th><th>Type</th><th>Submitted</th><th>Status</th><th></th></tr>
+          <tr><th>Applicant</th><th>@include('admin.partials.column-filter', ['filterTable'=>'regTable'])</th><th>Submitted</th><th>@include('admin.partials.column-filter', ['filterTable'=>'regTable','filterLabel'=>'Status','filterField'=>'status','filterOptions'=>['all'=>'All statuses','pending'=>'Pending','rejected'=>'Rejected']])</th><th class="platform-manage-heading">Manage</th></tr>
         </thead>
         <tbody>
           @forelse($users as $user)
-          <tr class="rail-row rail-{{ $user->status }}" data-type="{{ $user->status }}" data-account-type="{{ $user->account_type }}">
+          <tr class="rail-row rail-{{ $user->status }}" data-status="{{ $user->status }}" data-account-type="{{ $user->account_type }}">
             <td>
               <div class="cell-user">
                 <x-user-avatar :user="$user" size="30" class="avatar-sm" />
@@ -60,162 +54,29 @@
             <td><span class="stamp stamp-{{ $user->status }}">{{ ucfirst($user->status) }}</span></td>
             <td>
               <div class="row-actions">
-                <button class="btn btn-sm btn-outline" data-modal-open="reviewModal-{{ $user->id }}">Review</button>
-                @if($user->account_type === 'seller')<a class="btn btn-sm btn-outline" href="{{ route('admin.ai', ['mode' => 'seller', 'seller_id' => $user->id]) }}"><x-admin-icon name="chart" /> AI review</a>@endif
+                <button type="button" class="btn platform-detail-button" data-modal-open="reviewModal-{{ $user->id }}" aria-label="Review {{ $user->given_names }} {{ $user->last_name }}" title="Review account"><span aria-hidden="true">&#8599;</span></button>
+                @if(config('features.admin_ai') && config('features.admin_ai_review') && $user->account_type === 'seller')<a class="btn btn-sm btn-outline" href="{{ route('admin.ai', ['mode' => 'seller', 'seller_id' => $user->id]) }}"><x-admin-icon name="chart" /> AI review</a>@endif
               </div>
             </td>
           </tr>
 
           {{-- Per-user review modal --}}
+          @push('account-registration-modals')
           <div class="modal-overlay" id="reviewModal-{{ $user->id }}">
-            <div class="modal modal-lg">
+            <div class="modal modal-lg platform-user-modal" role="dialog" aria-modal="true" aria-label="Review application">
               <div class="modal-head">
                 <div class="modal-head-main">
                   <span class="modal-icon"><x-admin-icon name="edit" /></span>
                   <div class="modal-head-copy">
                     <h3>Review Application</h3>
-                    <p>{{ $user->given_names }} {{ $user->last_name }} — {{ ucfirst($user->account_type) }}</p>
                   </div>
                 </div>
                 <button class="modal-close" data-modal-close aria-label="Close"><x-admin-icon name="close" /></button>
               </div>
               <div class="modal-body">
+                @include('admin.partials.review-summary', ['user'=>$user])
 
-                {{-- Personal --}}
-                <div class="section-card">
-                  <div class="section-head"><span class="ic"><x-admin-icon name="account" /></span><span>Personal Information</span></div>
-                  <div class="detail-grid">
-                    <div><div class="field-label">Full Name</div><div class="field-value">{{ $user->given_names }} {{ $user->middle_name ? $user->middle_name.' ' : '' }}{{ $user->last_name }}</div></div>
-                    <div><div class="field-label">Username</div><div class="field-value mono">{{ $user->username ?? '—' }}</div></div>
-                    <div><div class="field-label">Sex</div><div class="field-value">{{ ucfirst($user->sex ?? '—') }}</div></div>
-                    <div><div class="field-label">Birthday</div><div class="field-value mono">{{ $user->birthday?->format('M d, Y') ?? '—' }}</div></div>
-                    <div><div class="field-label">Age</div><div class="field-value">{{ $user->age ?? '—' }}</div></div>
-                    <div><div class="field-label">Account Type</div><div class="field-value"><span class="stamp stamp-{{ $user->account_type }}">{{ ucfirst($user->account_type) }}</span></div></div>
-                  </div>
-                </div>
-
-                {{-- Contact --}}
-                <div class="section-card">
-                  <div class="section-head"><span class="ic"><x-admin-icon name="mail" /></span><span>Contact &amp; Auth</span></div>
-                  <div class="detail-grid">
-                    <div><div class="field-label">Email</div><div class="field-value">{{ $user->email }}</div></div>
-                    <div><div class="field-label">Contact No.</div><div class="field-value mono">{{ $user->contact_no }}</div></div>
-                    <div><div class="field-label">Auth Method</div><div class="field-value">{{ ucfirst($user->auth_method) }}</div></div>
-                    <div><div class="field-label">Submitted</div><div class="field-value mono">{{ $user->created_at?->format('M d, Y') ?? '—' }}</div></div>
-                  </div>
-                </div>
-
-                {{-- Address --}}
-                <div class="section-card">
-                  <div class="section-head"><span class="ic"><x-admin-icon name="pin" /></span><span>Address</span></div>
-                  <div class="detail-grid">
-                    <div class="full"><div class="field-label">Full Address</div><div class="field-value">@php
-                      $mun  = is_numeric(trim($user->municipality ?? ''))  ? null : $user->municipality;
-                      $prov = is_numeric(trim($user->province ?? '')) ? null : $user->province;
-                    @endphp{{ collect([$user->house_no, $user->street, $user->barangay, $mun, $prov])->filter()->implode(', ') ?: '—' }}</div></div>
-                  </div>
-                </div>
-
-                {{-- Verification Documents --}}
-                <div class="section-card">
-                  <div class="section-head"><span class="ic"><x-admin-icon name="shield" /></span><span>Verification Documents</span></div>
-                  <div class="doc-grid">
-                    {{-- Riders have no separate government ID upload — their driver's license
-                         (shown below) doubles as ID, so the generic thumb would just repeat it. --}}
-                    @unless($user->account_type === 'rider')
-                    <x-admin-doc-thumb :path="$user->id_file" label="Government ID" />
-                    @endunless
-                    <x-admin-doc-thumb :path="$user->selfie_file" label="Selfie with ID" />
-                    @if($user->account_type === 'seller')
-                    @foreach(\App\Support\SellerDocuments::required($user->seller_type) as $documentField)
-                    <x-admin-doc-thumb :path="$user->{$documentField}" :label="\App\Support\SellerDocuments::LABELS[$documentField]" />
-                    @endforeach
-                    @endif
-                    @if($user->account_type === 'logistics' || $user->business_permit_file)
-                    <x-admin-doc-thumb :path="$user->business_permit_file" label="Business Permit" />
-                    @if(\App\Services\CompanyOwnership::founder($user))
-                      @foreach(\App\Support\LogisticsDocuments::LABELS as $field => $label)
-                        <x-admin-doc-thumb :path="$user->{$field}" :label="$label" />
-                      @endforeach
-                    @endif
-                    @endif
-                    @if($user->account_type === 'logistics' && $user->company_logo)
-                    <x-admin-doc-thumb :path="$user->company_logo" label="Company Logo" />
-                    @endif
-                    @if($user->resume_file)
-                    <x-admin-doc-thumb :path="$user->resume_file" label="Resume / CV" />
-                    @endif
-                    @if($user->account_type === 'rider')
-                      <x-admin-doc-thumb :path="$user->license_file" label="Driver's License" />
-                      @if($user->vehicle_ownership === 'own')
-                      <x-admin-doc-thumb :path="$user->or_file" label="OR" />
-                      <x-admin-doc-thumb :path="$user->cr_file" label="CR" />
-                      @endif
-                    @endif
-                  </div>
-                </div>
-
-                {{-- Seller-specific --}}
-                @if($user->account_type === 'seller' && $user->business_name)
-                <div class="section-card">
-                  <div class="section-head"><span class="ic"><x-admin-icon name="bag" /></span><span>Seller Details</span></div>
-                  <div class="detail-grid">
-                    <div><div class="field-label">Business Name</div><div class="field-value">{{ $user->business_name }}</div></div>
-                    <div><div class="field-label">Postal Code</div><div class="field-value">{{ $user->postal_code ?? 'Not provided' }}</div></div>
-                    <div><div class="field-label">Seller Type</div><div class="field-value">{{ $user->seller_type?->label() ?? 'Not provided' }}</div></div>
-                    <div><div class="field-label">TIN</div><div class="field-value">{{ $user->tin ?? 'Not provided' }}</div></div>
-                    <div><div class="field-label">Region</div><div class="field-value">{{ $user->region ?? 'Not provided' }}</div></div>
-                    <div class="full"><div class="field-label">Category</div><div class="field-value">{{ collect([$user->category?->name, $user->category_other])->filter()->implode(', ') ?: '—' }}</div></div>
-                  </div>
-                </div>
-                @endif
-
-                {{-- Logistics-specific --}}
-                @if($user->account_type === 'logistics' && $user->business_name)
-                <div class="section-card">
-                  <div class="section-head"><span class="ic"><x-admin-icon name="truck" /></span><span>Logistics Company</span></div>
-                  <div class="detail-grid">
-                    <div class="full"><div class="field-label">Company Name</div><div class="field-value">{{ $user->business_name }}</div></div>
-                    <div><div class="field-label">Contact Person</div><div class="field-value">{{ $user->given_names }} {{ $user->last_name }}</div></div>
-                    <div><div class="field-label">Position / Job Title</div><div class="field-value">{{ $user->position ?? 'Not provided' }}</div></div>
-                    <div><div class="field-label">Representative Email</div><div class="field-value">{{ $user->representative_email ?? 'Not provided' }}</div></div>
-                    <div><div class="field-label">Representative Contact Number</div><div class="field-value">{{ $user->representative_contact_no ?? 'Not provided' }}</div></div>
-                    <div><div class="field-label">SEC Registration Number</div><div class="field-value">{{ $user->sec_registration_no ?? 'Not provided' }}</div></div>
-                    <div><div class="field-label">TIN</div><div class="field-value">{{ $user->tin ?? 'Not provided' }}</div></div>
-                    <div><div class="field-label">Region</div><div class="field-value">{{ $user->region ?? 'Not provided' }}</div></div>
-                    <div><div class="field-label">Postal Code</div><div class="field-value">{{ $user->postal_code ?? 'Not provided' }}</div></div>
-                    <div class="full"><div class="field-label">Service Regions</div><div class="field-value">{{ implode(', ', $user->service_regions ?? []) ?: 'Not provided' }}</div></div>
-                    <div class="full"><div class="field-label">Coverage Hubs</div><div class="field-value">
-                        @forelse(\App\Models\LogisticsHub::where('company_name', $user->business_name)->orderBy('province')->orderBy('municipality')->get() as $coverageHub)
-                            <div>{{ $coverageHub->region ? $coverageHub->region.' — ' : '' }}{{ $coverageHub->province }} / {{ $coverageHub->municipality }}</div>
-                        @empty
-                            No hubs registered.
-                        @endforelse
-                    </div></div>
-                  </div>
-                </div>
-                @endif
-
-                {{-- Rider-specific --}}
-                @if($user->account_type === 'rider' && $user->vehicle_type)
-                <div class="section-card">
-                  <div class="section-head"><span class="ic"><x-admin-icon name="truck" /></span><span>Vehicle Information</span></div>
-                  <div class="detail-grid">
-                    <div class="full"><div class="field-label">Logistics Company</div><div class="field-value">{{ $user->business_name ?: '—' }}</div></div>
-                    <div><div class="field-label">Vehicle Type</div><div class="field-value">{{ \Illuminate\Support\Str::title(str_replace('_',' ',$user->vehicle_type)) }}</div></div>
-                    <div><div class="field-label">Ownership</div><div class="field-value">{{ $user->vehicle_ownership === 'own' ? 'Own Vehicle' : ($user->vehicle_ownership === 'company' ? 'Company Vehicle' : '—') }}</div></div>
-                    @if($user->vehicle_brand)<div><div class="field-label">Brand / Model</div><div class="field-value">{{ $user->vehicle_brand }} {{ $user->vehicle_model }}</div></div>@endif
-                    @if($user->plate_number)
-                    <div><div class="field-label">Plate Number</div><div class="field-value mono">{{ $user->plate_number }}</div></div>
-                    @endif
-                    @if($user->license_number)
-                    <div><div class="field-label">License No.</div><div class="field-value mono">{{ $user->license_number }}</div></div>
-                    <div><div class="field-label">License Expiry</div><div class="field-value mono">{{ $user->license_expiry?->format('M d, Y') }}</div></div>
-                    @endif
-                  </div>
-                </div>
-                @endif
-
+                @include('admin.partials.user-profile-body', ['user'=>$user])
               </div>
               <div class="modal-foot">
                 <button class="btn btn-outline" data-modal-close>Cancel</button>
@@ -234,6 +95,7 @@
               </div>
             </div>
           </div>
+          @endpush
           @empty
           <tr><td colspan="5"><div class="empty"><div class="ic"><x-admin-icon name="edit" /></div><h3>No registrations yet</h3></div></td></tr>
           @endforelse
@@ -244,22 +106,9 @@
 </div>
 </div>
 
-<script>
-function applyRegFilters() {
-  const statusTab = document.querySelector('#regTabs .tab.active')?.dataset.tab || 'all';
-  const typeVal = document.getElementById('regTypeFilter').value;
-  document.querySelectorAll('#regTable tbody tr[data-type]').forEach(row => {
-    const statusOk = statusTab === 'all' || row.dataset.type === statusTab;
-    const typeOk = typeVal === 'all' || row.dataset.accountType === typeVal;
-    row.hidden = !(statusOk && typeOk);
-  });
-}
-document.querySelectorAll('#regTabs .tab').forEach(tab => {
-  // run after admin.js's own tab-click handler has applied its status-only filter
-  tab.addEventListener('click', () => setTimeout(applyRegFilters, 0));
-});
-document.getElementById('regTypeFilter').addEventListener('change', applyRegFilters);
-</script>
+
+
+@stack('account-registration-modals')
 
 @include('admin.partials.reason-modals', ['reasonModalTypes' => ['reject']])
 @include('admin.partials.doc-lightbox')

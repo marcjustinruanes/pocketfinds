@@ -1,0 +1,162 @@
+/* Account administration: one consistent list and review workspace. */
+.platform-accounts-page .platform-accounts-card{border-radius:18px;overflow:hidden}
+.platform-accounts-page .platform-accounts-card>.card-pad{padding:0}
+.platform-accounts-page .filter-bar{padding:18px 20px;margin:0;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center}
+.platform-accounts-page .search-mini{position:relative;max-width:460px;width:100%;margin:0}
+.platform-accounts-page .search-mini .ic{position:absolute;inset:0 auto 0 14px;display:grid;place-items:center;color:var(--muted);pointer-events:none}
+.platform-accounts-page .search-mini input{box-sizing:border-box;width:100%;height:43px;padding:10px 14px 10px 40px;border:1px solid var(--border);border-radius:11px;background:var(--surface);font:12px var(--font-body);color:var(--text);box-shadow:none}
+.platform-accounts-page .search-mini input::placeholder{color:var(--muted);opacity:.85}
+.platform-accounts-page .table-wrap{margin:0;border:0;border-radius:0}
+.platform-accounts-page .dtable{width:100%;border-collapse:collapse}
+.platform-accounts-page .dtable th{height:54px;padding:12px 18px;white-space:nowrap}
+.platform-accounts-page .dtable td{padding:18px;border-bottom:1px solid var(--border)}
+.platform-accounts-page .dtable tbody tr:last-child td{border-bottom:0}
+.platform-accounts-page .dtable .rail-row{border-left:0}
+.platform-accounts-page .dtable .rail-row td:first-child{border-left:0;box-shadow:none}
+.platform-accounts-page .cell-user{gap:12px;text-align:left;max-width:330px;margin:0 auto}
+.platform-accounts-page .cell-user strong{font-size:12px;font-weight:600;line-height:1.5;color:var(--text)}
+.platform-accounts-page .cell-user span{font-size:11px;line-height:1.5;overflow-wrap:anywhere;color:var(--muted)}
+.platform-accounts-page .cell-user .avatar-sm{width:36px;height:36px;flex:0 0 36px;border-radius:50%;background:var(--pink-soft);color:var(--pink)}
+.platform-accounts-page .stamp{font:500 10px/1.5 var(--font-body);padding:5px 10px;border-radius:30px;letter-spacing:0}
+.platform-accounts-page .stamp::before{display:none}
+.platform-accounts-page .mono{font-family:var(--font-body);font-size:11px;color:var(--muted)}
+.platform-accounts-page .row-actions{justify-content:center;gap:8px}
+.platform-accounts-page .platform-detail-button{width:34px;height:34px;min-height:0;padding:0;display:inline-grid;place-items:center;background:transparent;border:0;color:var(--pink);font-size:22px;border-radius:9px;box-shadow:none}
+.platform-accounts-page .platform-detail-button:hover{background:var(--pink-soft)}
+.platform-accounts-page .platform-request-status{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.platform-accounts-page .platform-request-status button{display:flex;align-items:center;gap:14px;padding:10px 15px;border:1px solid var(--border);border-radius:11px;background:var(--surface);font:500 12px var(--font-body);color:var(--muted);cursor:pointer}
+.platform-accounts-page .platform-request-status button strong{font-size:11px;font-weight:600;padding:2px 7px;border-radius:20px;background:var(--paper)}
+.platform-accounts-page .platform-request-status button.active{background:var(--pink-soft);border-color:var(--pink-line);color:var(--pink)}
+.platform-accounts-page .modal-lg{width:min(860px,calc(100vw - 32px));max-width:860px}
+.platform-accounts-page .modal-head{padding:20px 24px;gap:16px}
+.platform-accounts-page .modal-head h3{font-size:18px;font-weight:650;letter-spacing:-.025em}
+.platform-accounts-page .modal-head p{font-size:11px;line-height:1.5}
+.platform-accounts-page .modal-body{padding:24px;background:var(--paper)}
+.platform-accounts-page .section-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px;box-shadow:none}
+.platform-accounts-page .section-head{font:600 12px var(--font-body);color:var(--text);padding:0 0 14px;margin:0 0 16px;border-bottom:1px solid var(--border)}
+.platform-accounts-page .detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 24px}
+.platform-accounts-page .detail-grid>.full{grid-column:1/-1}
+.platform-accounts-page .field-label{font:500 10px var(--font-body);color:var(--muted);margin:0 0 6px;text-transform:none;letter-spacing:0}
+.platform-accounts-page .field-value{font:500 12px/1.6 var(--font-body);overflow-wrap:anywhere;color:var(--text)}
+.platform-accounts-page .modal-foot{padding:16px 24px;gap:10px;flex-wrap:wrap}
+.platform-accounts-page .form-row label{display:block;font:500 12px var(--font-body);margin-bottom:9px;color:var(--text)}
+.platform-accounts-page .form-row :is(input,select,textarea){box-sizing:border-box;width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface);box-shadow:none;font:12px/1.6 var(--font-body);color:var(--text)}
+.platform-accounts-page .admin-request-change{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:15px}
+.platform-accounts-page .admin-request-summary{justify-content:center;font-size:11px;gap:8px;flex-wrap:wrap}
+.platform-accounts-page .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:650px){.platform-accounts-page .filter-bar{padding:14px}.platform-accounts-page .dtable th,.platform-accounts-page .dtable td{padding:12px}.platform-accounts-page .modal-head,.platform-accounts-page .modal-body,.platform-accounts-page .modal-foot{padding:16px}.platform-accounts-page .detail-grid{grid-template-columns:minmax(0,1fr);gap:14px}.platform-accounts-page .platform-request-status{gap:6px}.platform-accounts-page .platform-request-status button{padding:9px 10px;gap:8px;font-size:11px}}
+/* Account search sits above its table, with a single clean input outline. */
+.platform-accounts-page .platform-account-toolbar{margin:0 0 16px}
+.platform-accounts-page .platform-account-toolbar .filter-bar{padding:0;margin:0;border:0;background:transparent;box-shadow:none}
+.platform-accounts-page .platform-account-toolbar .search-mini{max-width:520px;border:0;background:transparent;padding:0;box-shadow:none}
+.platform-accounts-page .platform-account-toolbar .search-mini input{height:44px;background:var(--surface);border:1px solid var(--border);border-radius:12px}
+.platform-accounts-page .platform-manage-heading{width:100px}
+.platform-accounts-page .platform-detail-button{width:36px;height:36px;border:1px solid var(--border);border-radius:50%;background:var(--surface);font-size:20px}
+.platform-accounts-page .platform-detail-button:hover{border-color:var(--pink-line);background:var(--pink-soft)}
+/* Reset the inherited translateY: it pulled the search icon above the field. */
+body.platform-accounts-page .platform-account-toolbar .search-mini .ic{position:absolute;left:15px;top:0;bottom:0;right:auto;width:18px;height:auto;transform:none;display:flex;align-items:center;justify-content:center;pointer-events:none}
+body.platform-accounts-page .platform-account-toolbar .search-mini .ic svg{display:block;width:17px;height:17px}
+body.platform-accounts-page .platform-account-toolbar .search-mini input{padding-left:44px;line-height:normal}
+body.platform-accounts-page .modal{max-height:calc(100dvh - 48px);border-radius:22px;overflow:auto;box-shadow:0 20px 65px #59334624}
+body.platform-accounts-page .modal-head{align-items:center;padding:22px 24px;border-bottom:1px solid var(--border);background:var(--surface)}
+body.platform-accounts-page .modal-head-main{align-items:center;gap:12px}
+body.platform-accounts-page .modal-icon{width:38px;height:38px;flex:0 0 38px;border:1px solid var(--pink-line);border-radius:12px;background:var(--pink-soft);color:var(--pink);box-shadow:none}
+body.platform-accounts-page .modal-head h3{font-size:18px;line-height:1.3;font-weight:650}
+body.platform-accounts-page .modal-head p{font-size:11px;margin:4px 0 0;color:var(--muted)}
+body.platform-accounts-page .modal-close{width:32px;height:32px;flex:0 0 32px;border:1px solid var(--border);border-radius:50%;background:var(--surface);color:var(--muted)}
+body.platform-accounts-page .modal-body{padding:22px 24px;background:var(--paper)}
+body.platform-accounts-page .platform-review-summary{display:flex;align-items:center;gap:13px;padding:17px;margin-bottom:20px;background:var(--surface);border:1px solid var(--border);border-radius:14px}
+.platform-review-person{display:flex;flex-direction:column;gap:4px;min-width:0}
+.platform-review-person strong{font-size:14px;font-weight:650;color:var(--text)}
+.platform-review-person>span{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.platform-review-state{display:flex;flex-direction:column;align-items:flex-end;gap:7px;margin-left:auto;font-size:10px;color:var(--muted)}
+body.platform-accounts-page .section-card,body.platform-accounts-page .admin-request-section{padding:18px;border:1px solid var(--border);border-radius:14px;background:var(--surface);box-shadow:none;margin:0 0 14px}
+body.platform-accounts-page .section-head{display:flex;align-items:center;gap:8px;padding:0 0 13px;margin:0 0 17px;border-bottom:1px solid var(--border);font-size:12px;font-weight:600}
+body.platform-accounts-page .section-head .ic{color:var(--muted)}
+body.platform-accounts-page .detail-grid{gap:18px 24px}
+body.platform-accounts-page .field-label{margin-bottom:6px;color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0}
+body.platform-accounts-page .field-value{font-size:12px;line-height:1.65;font-weight:500}
+body.platform-accounts-page .doc-grid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+body.platform-accounts-page .modal-foot{padding:16px 24px;background:var(--surface);border-top:1px solid var(--border);align-items:center}
+body.platform-accounts-page .modal-foot .btn{min-height:40px;border-radius:10px;padding:10px 16px;font-size:12px;box-shadow:none}
+body.platform-accounts-page .admin-request-section h4{display:flex;align-items:center;gap:8px;font-size:12px;margin:0 0 16px}
+body.platform-accounts-page .admin-request-change{grid-template-columns:minmax(100px,.6fr) minmax(0,1.4fr);padding:14px 0;border:0;border-bottom:1px solid var(--border);border-radius:0}
+body.platform-accounts-page .admin-request-change:last-child{border-bottom:0;padding-bottom:0}
+body.platform-accounts-page .admin-request-change-values{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+body.platform-accounts-page .admin-request-change-values small{display:block;font-size:9px;font-weight:500;margin-bottom:5px;color:var(--muted)}
+body.platform-accounts-page .platform-requested-value{color:var(--text);font-size:12px;font-weight:600}
+body.platform-accounts-page .form-row textarea{resize:vertical;min-height:110px}
+@media(max-width:650px){body.platform-accounts-page .modal{max-height:calc(100dvh - 24px);border-radius:17px}body.platform-accounts-page .modal-head,body.platform-accounts-page .modal-body,body.platform-accounts-page .modal-foot{padding:16px}body.platform-accounts-page .platform-review-summary{flex-wrap:wrap;padding:13px}.platform-review-person{flex:1;min-width:100px}.platform-review-state{flex-direction:row;align-items:center;gap:10px}body.platform-accounts-page .admin-request-change{grid-template-columns:minmax(0,1fr)}body.platform-accounts-page .admin-request-change-values{gap:12px}body.platform-accounts-page .detail-grid{grid-template-columns:minmax(0,1fr)}}
+/* Account section navigation and search share one horizontal toolbar. */
+body.platform-accounts-page .platform-tabs-search-row{display:flex;align-items:center;gap:16px;margin-bottom:22px;min-width:0}
+body.platform-accounts-page .platform-tabs-search-row .platform-section-tabs{flex:0 1 auto;margin:0;min-width:0;flex-wrap:nowrap}
+body.platform-accounts-page .platform-tabs-search-row .platform-section-tabs a{flex:0 0 auto;padding:12px 16px;white-space:nowrap}
+body.platform-accounts-page .platform-tabs-search-row .platform-account-toolbar{flex:1 1 240px;min-width:180px;margin:0 0 0 auto}
+body.platform-accounts-page .platform-tabs-search-row .search-mini{max-width:none;min-width:0}
+@media(max-width:950px){body.platform-accounts-page .platform-tabs-search-row{flex-wrap:wrap;gap:12px}body.platform-accounts-page .platform-tabs-search-row .platform-section-tabs{flex:1 1 100%;flex-wrap:wrap}body.platform-accounts-page .platform-tabs-search-row .platform-section-tabs a{flex:1 1 auto}body.platform-accounts-page .platform-tabs-search-row .platform-account-toolbar{flex:1 1 100%;margin:0}}
+/* A compact profile view with optional documents, rather than repeated identity fields. */
+body.platform-accounts-page .platform-user-modal{max-width:760px}
+body.platform-accounts-page .platform-user-modal .platform-review-summary{border:0;background:transparent;padding:0 0 20px;border-bottom:1px solid var(--border);border-radius:0;margin:0 0 20px}
+body.platform-accounts-page .platform-user-modal .platform-review-person strong{font-size:17px;line-height:1.4}
+body.platform-accounts-page .platform-user-modal .platform-review-person>span{font-size:12px}
+.platform-profile-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 26px;margin:0}
+.platform-profile-fields .full{grid-column:1/-1;padding-top:16px;border-top:1px solid var(--border)}
+.platform-profile-fields dt{font-size:10px;color:var(--muted);margin:0 0 7px;font-weight:500}
+.platform-profile-fields dd{font-size:12px;line-height:1.6;font-weight:500;color:var(--text);margin:0;overflow-wrap:anywhere}
+body.platform-accounts-page .platform-document-section>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)}
+body.platform-accounts-page .platform-document-section>summary::-webkit-details-marker{display:none}
+body.platform-accounts-page .platform-document-section>summary>span{font-size:10px;font-weight:500;color:var(--pink);margin-left:auto}
+body.platform-accounts-page .platform-document-section>summary::after{content:'+';font-size:18px;font-weight:400;color:var(--muted)}
+body.platform-accounts-page .platform-document-section[open]>summary::after{content:'\2212'}
+body.platform-accounts-page .platform-document-section[open]>.doc-grid{margin-top:17px}
+body.platform-accounts-page .platform-document-section>summary:focus-visible{outline:2px solid var(--pink);outline-offset:5px;border-radius:3px}
+body.platform-accounts-page .platform-vehicle-documents{margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+body.platform-accounts-page .platform-user-modal .doc-thumb.missing{min-height:64px;display:flex;align-items:center;gap:10px;padding:12px;border:1px dashed var(--border);border-radius:10px;background:var(--paper)}
+body.platform-accounts-page .platform-user-modal .doc-thumb.missing .doc-thumb-img{width:28px;height:28px;flex:0 0 28px;background:transparent}
+body.platform-accounts-page .platform-user-modal .doc-thumb.missing .doc-thumb-img svg{width:16px;height:16px;color:var(--muted)}
+body.platform-accounts-page .platform-user-modal .doc-thumb.missing .doc-thumb-label{padding:0;text-align:left;font-size:10px;line-height:1.5}
+@media(max-width:550px){.platform-profile-fields{grid-template-columns:minmax(0,1fr);gap:16px}.platform-profile-fields .full{grid-column:auto}body.platform-accounts-page .platform-user-modal .platform-review-person strong{font-size:15px}}
+/* Match the rounded-square manage control in all account tables. */
+body.platform-accounts-page .platform-detail-button{box-sizing:border-box;display:inline-grid;place-items:center;width:46px;height:46px;padding:0;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--pink);font-size:17px;font-weight:500;line-height:1;box-shadow:none}
+body.platform-accounts-page .platform-detail-button:hover{border-color:var(--pink-line);background:var(--pink-soft)}
+body.platform-accounts-page .platform-detail-button:focus-visible{outline:2px solid var(--pink);outline-offset:3px}
+body.platform-accounts-page .platform-request-status{display:flex;gap:5px;padding:6px;border:1px solid var(--border);border-radius:14px;background:var(--surface);width:fit-content;margin-bottom:20px}
+body.platform-accounts-page .platform-request-status button{border:0;background:transparent;border-radius:9px;padding:10px 16px;gap:12px}
+body.platform-accounts-page .platform-request-status button.active{background:var(--pink-soft);color:var(--pink)}
+body.platform-accounts-page .admin-request-summary{display:flex;flex-direction:column;gap:4px;align-items:center;font-size:11px;line-height:1.5}
+body.platform-accounts-page .admin-request-summary>[aria-hidden]{display:none}
+body.platform-accounts-page .admin-request-summary>span:first-child{font-weight:600;color:var(--text)}
+body.platform-accounts-page .admin-request-summary>span:last-of-type{color:var(--muted);font-size:10px}
+body.platform-accounts-page .platform-user-modal .modal-foot>div{align-items:center;flex-wrap:wrap}
+@media(max-width:650px){body.platform-accounts-page .platform-detail-button{width:40px;height:40px;border-radius:11px}body.platform-accounts-page .platform-request-status{width:auto;flex-wrap:wrap}body.platform-accounts-page .platform-request-status button{flex:1 1 auto;justify-content:center;padding:9px 10px}}
+body.platform-resources-page .product-review-kpis{display:none}
+body.platform-resources-page .platform-voucher-toolbar{display:flex;justify-content:flex-end;margin-bottom:18px}
+body.platform-resources-page .platform-voucher-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+body.platform-resources-page .platform-voucher-fields .form-row{margin:0;display:flex;flex-direction:column;gap:8px;font-size:11px;color:var(--muted)}
+body.platform-resources-page .platform-voucher-form>.btn{margin-top:22px}
+body.platform-resources-page .platform-voucher-table-code{display:flex;flex-direction:column;gap:5px}
+body.platform-resources-page .platform-voucher-table-code strong{font-size:12px;color:var(--text)}
+body.platform-resources-page .platform-voucher-table-code span{color:var(--pink);font-weight:600;font-size:12px}
+body.platform-resources-page .platform-voucher-dates{display:flex;flex-direction:column;gap:5px;font-size:10px;color:var(--muted)}
+body.platform-resources-page .modal [data-modal-tabs]{display:flex;flex-wrap:wrap;gap:6px;padding:6px;border:1px solid var(--border);border-radius:12px;margin-bottom:18px;background:var(--surface)}
+body.platform-resources-page .modal [data-modal-tabs] .tab{border:0;border-radius:8px;padding:9px 12px;font-size:11px}
+body.platform-resources-page .modal [data-modal-tabs] .tab.active{background:var(--pink-soft);color:var(--pink)}
+@media(max-width:650px){body.platform-resources-page .platform-voucher-fields{grid-template-columns:minmax(0,1fr)}}
+body.platform-accounts-page .platform-registration-section .section-head{gap:10px}
+body.platform-accounts-page .platform-registration-step{display:grid;place-items:center;width:24px;height:24px;flex:0 0 24px;border:1px solid var(--pink-line);border-radius:8px;background:var(--pink-soft);font-size:10px;font-weight:600;color:var(--pink)}
+body.platform-accounts-page .platform-identity-type{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:18px;padding:12px 0;border-top:1px solid var(--border);font-size:11px}
+body.platform-accounts-page .platform-identity-type>span{color:var(--muted)}
+body.platform-accounts-page .platform-identity-type>strong{font-size:11px;font-weight:500;color:var(--text)}
+body.platform-accounts-page .platform-registration-record .doc-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+body.platform-accounts-page .platform-registration-record .platform-document-section .doc-grid{margin-top:10px}
+@media(max-width:500px){body.platform-accounts-page .platform-registration-record .doc-grid{grid-template-columns:minmax(0,1fr)}}
+.platform-case-tabs{display:flex;gap:6px;padding:5px;border:1px solid var(--border);border-radius:12px;background:var(--surface);width:fit-content;margin-bottom:20px}
+.platform-case-tabs a{padding:11px 17px;border-radius:8px;color:var(--muted);font-size:12px;text-decoration:none}
+.platform-case-tabs a[aria-current]{background:var(--pink-soft);color:var(--pink);font-weight:600}
+.platform-cases-page .platform-resolution-label{display:flex;flex-direction:column;gap:8px;font-size:11px;color:var(--muted);text-align:left;margin-bottom:12px}
+.platform-cases-page .platform-resolution-label textarea{width:100%;min-width:230px;border:1px solid var(--border);border-radius:10px;padding:11px;font:12px var(--font-body);background:var(--surface);color:var(--text);resize:vertical}
+.platform-cases-page .platform-return-details>div{border-top:0!important;padding:0!important}
+.platform-cases-page .platform-return-details h3{font-size:14px;margin:0 0 16px;overflow-wrap:anywhere}
+.platform-cases-page .platform-return-details p{font-size:12px;line-height:1.6;overflow-wrap:anywhere;color:var(--muted)}
+.platform-cases-page .platform-return-details form{margin-top:20px;padding:18px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}
+.platform-cases-page .platform-return-details input,.platform-cases-page .platform-return-details textarea,.platform-cases-page .platform-return-details select{box-sizing:border-box;width:100%;border:1px solid var(--border);border-radius:10px;padding:11px;background:var(--surface);font:12px var(--font-body);color:var(--text)}

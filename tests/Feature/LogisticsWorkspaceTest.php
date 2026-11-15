@@ -19,6 +19,52 @@ class LogisticsWorkspaceTest extends TestCase
         $this->actingAs(User::create(['account_type'=>'logistics','is_logistics'=>true,'logistics_role'=>'admin','username'=>'workspace_logistics','email'=>'workspace-logistics@example.test','given_names'=>'Ana','last_name'=>'Reyes','business_name'=>'Tiny Logistics','password'=>'Pass@2026','status'=>'approved']));
     }
 
+    public function test_personnel_edit_reuses_actual_registration_screens(): void
+    {
+        view()->share('errors', new \Illuminate\Support\ViewErrorBag());
+        foreach (['rider', 'hub_staff'] as $role) {
+            $member = new User(['account_type'=>$role === 'rider' ? 'rider' : 'logistics', 'logistics_role'=>$role === 'hub_staff' ? 'hub_staff' : null, 'given_names'=>'Existing', 'last_name'=>'Member', 'username'=>'existing_member', 'email'=>'existing@example.test', 'status'=>'approved', 'business_name'=>'Tiny Logistics']);
+            $member->id = 777;
+            $html = view($role === 'rider' ? 'auth.register-rider' : 'auth.register-logistics-staff', ['managedRegistration'=>true, 'editingAccount'=>$member, 'terms'=>null, 'logisticsCompanies'=>collect(), 'companyPolicies'=>collect(), 'companyHubs'=>collect()])->render();
+            $this->assertStringContainsString('registration-flow.js', $html);
+            $this->assertStringContainsString('personnel-registration-edit.js', $html);
+            $this->assertStringContainsString('id="personnel-edit-data"', $html);
+            $this->assertStringContainsString('existing_member', $html);
+            $this->assertStringContainsString('id="panel-5"', $html);
+            $this->assertStringContainsString('id="panel-2"', $html);
+            $this->assertStringContainsString('id="panel-6"', $html);
+            $this->assertStringContainsString('id="house_no"', $html);
+        }
+    }
+
+    public function test_team_lists_share_status_filters_and_registration_review_layout(): void
+    {
+        view()->share('errors',new \Illuminate\Support\ViewErrorBag());
+        foreach (['riders','staff'] as $page) {
+            $teamRoute=app('router')->getRoutes()->getByName('logistics.'.$page);
+            $teamRoute->bind(request());
+            request()->setRouteResolver(fn()=>$teamRoute);
+            $member=new User(['account_type'=>$page==='riders'?'rider':'logistics','is_logistics'=>$page==='staff','logistics_role'=>$page==='staff'?'hub_staff':null,'given_names'=>'Team','last_name'=>'Member','username'=>'team_member','email'=>'member@example.test','business_name'=>'Tiny Logistics','status'=>$page==='riders'?'pending':'interview','vehicle_type'=>'two_wheels','vehicle_ownership'=>'own']);
+            $member->id=777;
+            $member->setRelation('logisticsHub',null);
+            $member->setRelation('category',null);
+            $member->setRelation('barangayRoutes',collect());
+            $records=new \Illuminate\Pagination\LengthAwarePaginator([$member],1,20);
+            $html=view('logistics.'.$page,['riders'=>$records,'staff'=>$records,'status'=>'all','statusCounts'=>collect(['approved'=>1]),'hubs'=>collect(),'coverageInstalled'=>false])->render();
+            $this->assertStringContainsString('logistics-team.css',$html);
+            $this->assertStringContainsString('class="team-status-heading"',$html);
+            $this->assertStringContainsString('Submitted documents',$html);
+            $this->assertStringContainsString('data-personnel-registration-src',$html);
+            $this->assertSame(1,substr_count($html,'id="create-personnel"'));
+            $this->assertSame(1,substr_count($html,'data-modal-open="create-personnel"'));
+            $this->assertStringNotContainsString("'logistics.layout')",$html);
+            $this->assertStringNotContainsString('id="riderTabs"',$html);
+            $this->assertStringContainsString('Edit account & hub',$html);
+            if ($page==='riders') $this->assertStringContainsString(route('logistics.riders.approve',777),$html);
+            else $this->assertStringContainsString('confirmInterviewModal-777',$html);
+        }
+    }
+
     public function test_admin_navigation_has_six_sections_and_all_tools_remain_reachable(): void
     {
         request()->setRouteResolver(fn()=>app('router')->getRoutes()->getByName('logistics.monitor'));
@@ -29,6 +75,9 @@ class LogisticsWorkspaceTest extends TestCase
         $this->assertSame(1,substr_count($sidebar,'aria-current="page"'));
         $tabs=view('logistics.partials.workspace-tabs')->render();
         foreach(['logistics.requests','logistics.assignments','logistics.issues','logistics.history'] as $route) $this->assertStringContainsString(route($route, [], false),$tabs);
+        $this->assertStringNotContainsString('>Hub transfers</a>',$tabs);
+        $this->assertStringNotContainsString('>Live monitor</a>',$tabs);
+        $this->assertMatchesRegularExpression('/aria-current="page"\s*>Assignments<\/a>/',$tabs);
         $this->assertSame('operations',LogisticsWorkspace::current('logistics.transfers.show'));
         $this->assertSame('team',LogisticsWorkspace::current('logistics.accounts.edit'));
         $this->assertSame('resources',LogisticsWorkspace::current('logistics.vehicles.review'));

@@ -137,11 +137,22 @@ class AdminGcashFlowTest extends TestCase
         $this->assertDatabaseCount('orders',1);
     }
 
+    public function test_admin_payment_filters_use_the_seller_right_sidebar(): void
+    {
+        $this->proof($this->purchase());
+        $this->actingAs($this->admin)->get(route('gcash.index'))->assertOk()
+            ->assertSee('seller-order-layout',false)->assertSee('seller-order-categories',false)
+            ->assertSee('seller-order-categories.css',false)->assertSee('Payment status filters')
+            ->assertDontSee('order-tabs-shell',false)->assertDontSee('order-tab-icon',false);
+    }
+
     public function test_admin_and_buyer_pages_render_and_seller_has_no_review_form(): void
     {
         $purchase=$this->proof($this->purchase());
         $this->actingAs($this->buyer)->get(route('gcash.show',$purchase->id))->assertOk()->assertSee('Waiting for admin payment approval')->assertSee('PocketFinds')->assertSee('09203783822')->assertDontSee('Ready to place your order');
-        $this->actingAs($this->admin)->get(route('gcash.index'))->assertOk()->assertSee('Platform GCash account')->assertSee('Pending review');
+        $this->actingAs($this->admin)->get(route('gcash.index'))->assertOk()->assertSee('Platform GCash account')->assertSee('Pending review')
+            ->assertSee('seller-order-layout',false)->assertSee('seller-order-categories',false)
+            ->assertSee('seller-order-categories.css',false)->assertDontSee('order-tabs-shell',false);
         $this->get(route('gcash.show',$purchase->id))->assertOk()->assertSee('Verify Payment')->assertSee('Notify buyer')->assertDontSee('Receipt is unclear or incorrect')->assertSee('Proof of returned payment');
         $this->actingAs($this->seller)->get(route('gcash.show',[$purchase->id,'embedded'=>1]))->assertOk()->assertDontSee('Verify Payment')->assertDontSee('Notify buyer')->assertSee('Admin verification');
         $this->get(route('seller.orders'))->assertOk()->assertSee('Awaiting admin payment approval')->assertDontSee('> Confirm Order</button>',false);

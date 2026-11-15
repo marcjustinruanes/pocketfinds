@@ -12,14 +12,16 @@
 @stack('head')
 @include('account.partials.notification-assets')
 <link rel="stylesheet" href="{{ asset('css/admin-ux.css') }}?v={{ filemtime(public_path('css/admin-ux.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/platform-workspace.css') }}?v={{ filemtime(public_path('css/platform-workspace.css')) }}">
 @stack('account-head')
 </head>
-<body class="admin @yield('body-class')">
-<div class="shell" id="appShell" data-navigation-shell data-collapse-key="sidebar_collapsed">
+<body class="admin platform-workspace @yield('body-class')">
+<div class="shell collapsed" id="appShell" data-navigation-shell data-sidebar-hover data-collapse-key="admin_sidebar_collapsed">
   @include('admin.partials.sidebar')
   <div style="display:flex;flex-direction:column;min-width:0">
     @include('admin.partials.topbar')
     <main class="content">
+      @include('admin.partials.workspace-tabs')
       @yield('content')
     </main>
   </div>
@@ -66,8 +68,12 @@
   </section>
 </div>
 
+@include('account.partials.messages-widget',['messageWidgetId'=>'sellerMessagesWidget','messageWidgetBodyId'=>'sellerMessagesWidgetBody','messageWidgetTitleId'=>'sellerMessagesTitle','sellerMessageWidget'=>true,'messageWidgetAudience'=>'your contacts','messageWidgetPath'=>'/admin/messages'])
+@include('buyer.partials.assistant',['assistantGuest'=>true,'assistantAdmin'=>true])
+<script src="{{ asset('js/seller-messages-widget.js') }}?v={{ filemtime(public_path('js/seller-messages-widget.js')) }}"></script>
 <div class="toast-stack" id="toastStack"></div>
 <script src="/js/admin.js"></script>
+<script src="{{ asset('js/platform-table-filters.js') }}?v={{ filemtime(public_path('js/platform-table-filters.js')) }}"></script>
 @stack('scripts')
 <script src="{{ asset('js/navigation.js') }}?v={{ filemtime(public_path('js/navigation.js')) }}"></script>
 </body>

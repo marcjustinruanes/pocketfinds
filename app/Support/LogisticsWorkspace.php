@@ -33,9 +33,7 @@ final class LogisticsWorkspace
             ]],
             'operations'=>['label'=>'Operations','icon'=>'box','links'=>[
                 ['Pickup requests','logistics.requests',['logistics.requests*','logistics.hub-requests*']],
-                ['Assignments','logistics.assignments',['logistics.assignments*','logistics.transfers*']],
-                ['Hub transfers','logistics.transfers',['logistics.transfers*']],
-                ['Live monitor','logistics.monitor',['logistics.monitor']],
+                ['Assignments','logistics.assignments',['logistics.assignments*','logistics.transfers*','logistics.monitor']],
                 ['Issues','logistics.issues',['logistics.issues*']],
                 ['Delivery history','logistics.history',['logistics.history']],
             ]],

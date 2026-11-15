@@ -8,9 +8,9 @@
 <div class="chat-shell" data-has-conversation="{{ $buyer ? 'true' : 'false' }}">
   <div class="chat-list" id="chatList">
     <div class="chat-list-head"><label class="chat-search"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7"/><path d="m16 16 5 5"/></svg><input type="search" id="conversationSearch" placeholder="Search conversations" aria-label="Search conversations" autocomplete="off"></label></div>
-    @if($messageRole==='logistics')
+    @if(in_array($messageRole,['logistics','admin'],true))
       @foreach($messageContacts as $contact)
-      <a href="{{ route('logistics.messages.thread',['userId'=>$contact->id]) }}" class="chat-list-item {{ $buyer && $buyer->id===$contact->id ? 'active' : '' }} {{ $contact->unread_count ? 'chat-unread' : '' }}">
+      <a href="{{ ($messageRole==='admin' ? route('admin.messages.user',['user'=>$contact->id]) : route('logistics.messages.thread',['userId'=>$contact->id])) }}" class="chat-list-item {{ $buyer && $buyer->id===$contact->id ? 'active' : '' }} {{ $contact->unread_count ? 'chat-unread' : '' }}">
         <x-user-avatar :user="$contact" size="36" class="cli-av" />
         <div class="cli-body"><div class="cli-name">{{ $contact->given_names }} {{ $contact->last_name }}</div><div class="cli-preview">{{ $contact->last_message?->displayBody() ?: ($contact->is_admin ? 'PocketFinds Support' : ucfirst($contact->account_type)) }}</div></div>
         @if($contact->unread_count)<span class="cli-unread">{{ $contact->unread_count }}</span>@endif
@@ -57,7 +57,7 @@
         <x-user-avatar :user="$buyer" size="34" class="chat-head-av" />
         <div class="chat-head-info">
           <div class="chat-head-name">{{ $buyer->is_admin ? 'PocketFinds Support' : $buyerName }}</div>
-          <div style="font-size:11px;color:var(--muted)">{{ $buyer->is_admin ? 'Admin' : ($messageRole==='logistics' ? ucfirst($buyer->account_type) : 'Customer') }}</div>
+          <div style="font-size:11px;color:var(--muted)">{{ $buyer->is_admin ? 'Admin' : (in_array($messageRole,['logistics','admin'],true) ? ucfirst($buyer->account_type) : 'Customer') }}</div>
         </div>
       @else
         <div style="color:var(--muted);font-size:13px">Select a conversation</div>
@@ -76,7 +76,7 @@
           <div class="chat-msg-wrap {{ $isMe ? '' : 'chat-msg-wrap-in' }}" data-message-id="{{ $msg->id }}">
             <div class="chat-msg-content">
             @if($msg->product_id && $msg->product)
-              <a href="{{ route($messageRole==='logistics' ? 'logistics.requests' : 'seller.inventory') }}" class="chat-product-card">
+              <a href="{{ route($messageRole==='admin' ? 'admin.products' : ($messageRole==='logistics' ? 'logistics.requests' : 'seller.inventory')) }}" class="chat-product-card">
                 <div class="chat-product-img">
                   @if($msg->product->image)
                     <img src="{{ Storage::url($msg->product->image) }}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">
@@ -91,7 +91,7 @@
               </a>
             @endif
             @if($msg->order_id && $msg->order)
-              <a href="{{ route($messageRole==='logistics' ? 'logistics.history' : 'seller.orders') }}" class="chat-product-card">
+              <a href="{{ route($messageRole==='admin' ? 'admin.reports' : ($messageRole==='logistics' ? 'logistics.history' : 'seller.orders')) }}" class="chat-product-card">
                 <div class="chat-product-img">@include('seller.partials.icon', ['name' => 'orders', 'size' => 18])</div>
                 <div class="chat-product-info">
                   <div class="chat-product-name">{{ $msg->order->order_number }}</div>
@@ -177,7 +177,7 @@
         <button class="icon-btn" type="button" onclick="document.getElementById('fileInput').click()" title="Attach file">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
         </button>
-        @if($messageRole!=='logistics')<button class="icon-btn" type="button" title="Products" onclick="togglePicker('products')">@include('buyer.partials.icon', ['name' => 'bag', 'size' => 16])</button>
+        @if(!in_array($messageRole,['logistics','admin'],true))<button class="icon-btn" type="button" title="Products" onclick="togglePicker('products')">@include('buyer.partials.icon', ['name' => 'bag', 'size' => 16])</button>
         <button class="icon-btn" type="button" title="Orders" onclick="togglePicker('orders')">@include('buyer.partials.icon', ['name' => 'package', 'size' => 16])</button>@endif
         </div>
         <textarea id="chatInput" rows="1" aria-label="Message" aria-describedby="chatComposeHint" placeholder="Write a message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){event.preventDefault();sendMessage()}"></textarea>
@@ -381,7 +381,7 @@ async function sendMessage(event) {
   const fd = new FormData();
   fd.append('_token', CSRF);
   fd.append('receiver_id', RECEIVER);
-  if (@json($messageRole==='logistics') && replyMessageId) fd.append('reply_to_id',replyMessageId);
+  if (@json($messageRole==='logistics' || $messageRole==='admin') && replyMessageId) fd.append('reply_to_id',replyMessageId);
   if (text)         fd.append('body', text);
   if (attachedProduct?.id) fd.append('product_id', attachedProduct.id);
   if (attachedOrder?.id) fd.append('order_id', attachedOrder.id);
@@ -437,7 +437,7 @@ function appendMessage(msg, isMe = msg.sender_id === MY_ID, localMediaUrl = null
 
   if (msg.product_id) {
     const card = document.createElement('a');
-    card.href = msg.product_url || '{{ route($messageRole==='logistics' ? 'logistics.requests' : 'seller.inventory') }}';
+    card.href = msg.product_url || '{{ route($messageRole==='admin' ? 'admin.products' : ($messageRole==='logistics' ? 'logistics.requests' : 'seller.inventory')) }}';
     card.className = 'chat-product-card';
     const imageWrap = document.createElement('div');
     imageWrap.className = 'chat-product-img';

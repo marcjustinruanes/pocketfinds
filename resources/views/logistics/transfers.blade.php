@@ -11,7 +11,9 @@
 <a class="tab {{ !request('queue') ? 'active' : '' }}" href="{{ route('logistics.assignments',array_merge(request()->except(['queue','page']),['view'=>'transfers']),false) }}">All transfers</a>
 </nav>
 @if(request('queue')!=='awaiting')<label class="hub-transfer-search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" name="search" form="hubTransferFilters" value="{{ request('search') }}" placeholder="Search transfers" aria-label="Search tracking, batch, or municipality"></label>@endif
+@if(auth()->user()->isHubStaff())
 <a href="{{ route('logistics.transfers.create') }}" class="btn btn-primary">Request a transfer</a>
+@endif
 </div>
 @if(request('queue') === 'awaiting')
 @include('logistics.partials.transfer-queue')

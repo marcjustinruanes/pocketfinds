@@ -54,6 +54,17 @@ class PersonnelOnboardingTest extends TestCase
         $this->patchJson('/logistics/riders/'.$r->id.'/approve')->assertUnprocessable();$this->assertSame('pending',$r->fresh()->status);
         $d['selfie_file']=$this->image();$this->patch('/logistics/accounts/'.$r->id,$d)->assertRedirect()->assertSessionHasNoErrors();$this->assertNotSame($r->selfie_file,$r->fresh()->selfie_file);
     }
+    public function test_registration_edit_modal_saves_json_without_replacing_untouched_documents(): void
+    {
+        $r = $this->create();
+        $original = $r->license_file;
+        $data = $this->data();
+        unset($data['role'], $data['password'], $data['password_confirmation'], $data['license_file'], $data['selfie_file'], $data['or_file'], $data['cr_file']);
+        $this->withHeaders(['Accept'=>'application/json'])->patch('/logistics/accounts/'.$r->id, $data)->assertOk()->assertJson(['success'=>true]);
+        $this->assertSame($original, $r->fresh()->license_file);
+        $this->assertSame('pending', $r->fresh()->status);
+    }
+
     public function test_staff_requires_explicit_completed_interview_attestation(): void
     {
         $s=$this->create('hub_staff');$this->patchJson('/logistics/staff/'.$s->id.'/confirm',['interview_completed'=>'1'])->assertUnprocessable();

@@ -43,6 +43,8 @@ class RiderCoverageController extends LogisticsController
             'barangays' => 'present|array|max:1000', 'barangays.*' => ['required', 'string', 'distinct', 'regex:/^[0-9]{9}$/D']]);
         $coverage->save(auth()->user(), $rider, $data['barangays'], (int) $data['hub_id'], $data['version']);
 
-        return back()->with('success', 'Barangay coverage updated.');
+        return redirect()->route('logistics.accounts.edit', $rider->id)
+            ->with('coverage_success', 'Barangay coverage updated.')
+            ->withFragment('tab-barangay');
     }
 }

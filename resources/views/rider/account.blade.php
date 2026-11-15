@@ -94,24 +94,8 @@
     </div>
 
     {{-- Password --}}
-    <div class="card">
-      <div class="card-head"><h2>Change Password</h2></div>
-      <div class="card-pad">
-        @if(session('password_success'))
-        <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px">{{ session('password_success') }}</div>
-        @endif
-        @error('current_password')
-        <div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px">{{ $message }}</div>
-        @enderror
-        <form method="POST" action="{{ route('rider.account.password') }}">
-          @csrf
-          <div class="form-row"><label>Current Password</label><input type="password" name="current_password" required></div>
-          <div class="form-row"><label>New Password</label><input type="password" name="password" required></div>
-          <div class="form-row"><label>Confirm New Password</label><input type="password" name="password_confirmation" required></div>
-          <button class="btn btn-primary" type="submit">Update Password</button>
-        </form>
-      </div>
-    </div>
+    @include('buyer.partials.email-change', ['emailRole'=>'rider'])
+    @include('account.partials.login-security', ['securityRole'=>'rider'])
 
   </div>
 
@@ -151,7 +135,7 @@
     </div>
   </div>
 </div>
-@include('account.partials.email-change')
+
 </x-account-workspace>
 @include('account.partials.profile-photo-manager')
 @endsection

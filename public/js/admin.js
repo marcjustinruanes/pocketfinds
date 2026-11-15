@@ -155,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ---- Table search ---- */
   document.querySelectorAll('[data-table-search]').forEach(input => {
     const table = document.getElementById(input.dataset.tableSearch);
-    if (!table) return;
+    if (!table || table.hasAttribute('data-platform-filter-table')) return;
     input.addEventListener('input', () => {
       const q = input.value.trim().toLowerCase();
       table.querySelectorAll('tbody tr').forEach(row => {

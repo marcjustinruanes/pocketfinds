@@ -210,11 +210,9 @@ class CommerceController extends Controller
         $u = $this->emailAccount($r);
         $r->merge(['email' => strtolower(trim((string) $r->input('email')))]);
         $rules = ['email' => ['required', 'email', 'regex:/@gmail\.com$/i', 'unique:users,email']];
-        if (!in_array($u->account_type, ['buyer','seller'], true)) $rules['current_password'] = 'required|string';
+
         $d = $r->validate($rules);
-        if (!in_array($u->account_type, ['buyer','seller'], true) && ! Hash::check($d['current_password'], $u->password)) {
-            $this->flow()->fail('Current password is incorrect.', 'current_password');
-        }
+
         $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         try {
             Mail::raw("Your PocketFinds email-change verification code is {$code}. It expires in 5 minutes.", fn ($m) => $m->to($d['email'])->subject('Verify your new PocketFinds email'));
@@ -340,7 +338,7 @@ class CommerceController extends Controller
         $user = $this->manager($r);
 
         return $user->is_admin
-            ? redirect(route('admin.products').'#platform-vouchers')
+            ? redirect(route('admin.vouchers'))
             : redirect(route('seller.account').'#shipping-rates');
     }
 

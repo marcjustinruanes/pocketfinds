@@ -3,6 +3,10 @@
 @section('page-title', 'Policies')
 @section('page-sub', 'Terms & Conditions for every role, and every logistics company\'s own')
 
+@section('body-class','platform-settings-page')
+@push('account-head')
+<link rel="stylesheet" href="{{ asset('css/platform-settings.css') }}?v={{ filemtime(public_path('css/platform-settings.css')) }}">
+@endpush
 @section('content')
 @if(session('success'))
 <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px">
@@ -18,18 +22,15 @@
   <div class="card-pad" style="display:flex;flex-direction:column;gap:22px">
     @foreach($tcRoles as $accountType => $label)
     @php($doc = $terms->get($accountType))
-    <div @if(!$loop->first) style="border-top:1px solid var(--border);padding-top:22px" @endif>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <h3 style="margin:0;font-size:14px">{{ $label }}</h3>
-        @if($doc?->editor)
-          <span style="font-size:11.5px;color:var(--muted)">Last updated by {{ $doc->editor->given_names }} {{ $doc->editor->last_name }} · {{ $doc->updated_at->diffForHumans() }}</span>
-        @endif
-      </div>
+    <details class="platform-policy-record" @if(old('policy_role')===$accountType) open @endif>
+      <summary><span>{{ $label }}</span><span>{{ $doc ? 'Edit terms' : 'Not configured' }}</span></summary>
+      <div class="platform-policy-body">
       @if($doc)
       <form method="POST" action="{{ route('admin.policies.update', $accountType) }}">
+        <input type="hidden" name="policy_role" value="{{ $accountType }}">
         @csrf
         <div class="form-row">
-          <textarea name="content" rows="10" required maxlength="20000" style="font-family:var(--font-mono, monospace);font-size:12.5px;line-height:1.6;width:100%;padding:12px;border:1px solid var(--border);border-radius:9px;resize:vertical">{{ old('content', $doc->content) }}</textarea>
+          <textarea name="content" rows="10" required maxlength="20000" style="font-family:var(--font-mono, monospace);font-size:12.5px;line-height:1.6;width:100%;padding:12px;border:1px solid var(--border);border-radius:9px;resize:vertical">{{ old('policy_role')===$accountType ? old('content',$doc->content) : $doc->content }}</textarea>
         </div>
         <button class="btn btn-primary" type="submit">Save {{ $label }} Terms &amp; Conditions</button>
       </form>
@@ -53,7 +54,8 @@
       @else
       <p style="color:var(--muted);font-size:13px">No {{ $label }} Terms &amp; Conditions document found — run the database migration to create the default one.</p>
       @endif
-    </div>
+      </div>
+    </details>
     @endforeach
   </div>
 </div>
@@ -64,7 +66,7 @@
   </div>
   <div class="card-pad" style="display:flex;flex-direction:column;gap:18px">
     @forelse($companies as $company)
-    <div @if(!$loop->first) style="border-top:1px solid var(--border);padding-top:18px" @endif>
+    <details class="platform-policy-record"><summary><span>{{ $company->name }}</span><span>{{ $company->policy?->hasPending() ? 'Pending review' : 'View policy' }}</span></summary><div class="platform-policy-body">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
         @if($company->logo_path)
           <img src="{{ \Illuminate\Support\Facades\Storage::url($company->logo_path) }}" alt="{{ $company->name }}" style="width:34px;height:34px;border-radius:8px;object-fit:cover;flex:none">
@@ -125,7 +127,8 @@
       </details>
       @endif
       @endif
-    </div>
+      </div>
+    </details>
     @empty
     <p style="color:var(--muted);font-size:13px">No logistics companies yet — one appears here as soon as a registrant creates it and gets approved.</p>
     @endforelse
