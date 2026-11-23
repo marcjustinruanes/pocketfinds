@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- AppColors.pageBackground (light mode) — keeps the native launch
+         background (shown before Flutter's first frame, and by Android 12+'s
+         own splash-screen system) an exact match for SplashIntro's
+         background instead of a plain white flash. -->
+    <color name="launch_background">#FFF9FC</color>
+	<color name="ic_launcher_background">#FFF9FC</color>
+</resources>

@@ -196,12 +196,12 @@ class _ShipmentCard extends StatelessWidget {
               const SizedBox(height: 6),
               Row(
                 children: [
-                  const Icon(Icons.location_on_outlined, size: 14, color: AppColors.textMuted),
+                  Icon(Icons.location_on_outlined, size: 14, color: AppColors.textMuted),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
                       shipment.deliverTo.isEmpty ? 'Address not provided' : shipment.deliverTo,
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
                   ),
                 ],
@@ -210,7 +210,7 @@ class _ShipmentCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('${shipment.items.length} item(s)', style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                  Text('${shipment.items.length} item(s)', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                   Text(formatPeso(shipment.total), style: const TextStyle(fontWeight: FontWeight.w800)),
                 ],
               ),

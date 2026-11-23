@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 import '../utils/formatters.dart';
 
 /// A card with a bold title and content below — used by Checkout, Order
@@ -18,8 +21,13 @@ class TitledCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-            const SizedBox(height: 8),
+            Text(
+              title,
+              style: AppTypography.sectionTitle.copyWith(fontSize: 15),
+            ),
+            const SizedBox(height: 12),
+            Divider(height: 1, color: AppColors.border),
+            const SizedBox(height: 16),
             child,
           ],
         ),
@@ -39,17 +47,19 @@ class SummaryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = TextStyle(
-      fontWeight: bold ? FontWeight.w800 : FontWeight.w400,
-      fontSize: bold ? 16 : 13,
-    );
+    final labelStyle = bold
+        ? AppTypography.body.copyWith(fontWeight: FontWeight.w800, fontSize: 15)
+        : AppTypography.body;
+    final amountStyle = bold
+        ? AppTypography.priceLarge.copyWith(fontSize: 16)
+        : AppTypography.price.copyWith(fontSize: 13);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: style),
-          Text(formatPeso(amount), style: style),
+          Text(label, style: labelStyle),
+          Text(formatPeso(amount), style: amountStyle),
         ],
       ),
     );

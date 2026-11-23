@@ -2,6 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Connect to the PocketFinds server on your local network.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
@@ -26,6 +33,27 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- ID photo + selfie capture during registration (image_picker). -->
+	<key>NSCameraUsageDescription</key>
+	<string>PocketFinds uses the camera to scan parcel codes and capture account verification photos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>PocketFinds needs photo library access so you can choose an existing photo of your ID.</string>
+	<!-- "Continue with Google" native sign-in (google_sign_in). REPLACE the
+	     placeholders below with your project's real iOS OAuth client from
+	     Google Cloud Console (a client of type "iOS", distinct from the
+	     Android/Web ones) before this button will work on iOS. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict><key>CFBundleURLSchemes</key><array><string>pocketfinds</string></array></dict>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.REPLACE_WITH_IOS_REVERSED_CLIENT_ID</string>
+			</array>
+		</dict>
+	</array>
+	<key>GIDClientID</key>
+	<string>REPLACE_WITH_IOS_CLIENT_ID.apps.googleusercontent.com</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -66,5 +94,7 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+<key>NSLocationWhenInUseUsageDescription</key><string>PocketFinds uses your location to receive rider job offers, record delivery handover locations, and suggest a buyer delivery address.</string>
+<key>FlutterDeepLinkingEnabled</key><false/>
 </dict>
 </plist>

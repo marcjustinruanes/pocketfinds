@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+
 import '../theme/app_colors.dart';
 
 /// A product image, or a consistent placeholder when there isn't a usable
@@ -43,11 +44,11 @@ class ProductImage extends StatelessWidget {
 
   Widget _gradientBox({Widget? child}) {
     return DecoratedBox(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [AppColors.pinkSoft, Color(0xFFF4F4F5)],
+          colors: [AppColors.pinkSoft, const Color(0xFFF4F4F5)],
         ),
       ),
       child: child,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../screens/auth/unsupported_role_screen.dart';
 import '../screens/buyer/buyer_shell.dart';
 import '../screens/guest/guest_home_screen.dart';
@@ -23,7 +24,7 @@ Future<void> navigateForSession(
       destination = UnsupportedRoleScreen(user: resolution.user!);
     case SessionOutcome.blocked:
     case SessionOutcome.error:
-      // Deliberately NOT signing out here: they still have a valid Supabase
+      // Deliberately NOT signing out here: they still have a valid local API
       // session, just not one the mobile app can do anything with yet. If
       // an admin approves them later, simply reopening the app will resolve
       // straight to their real home next time — no re-login needed. Signing

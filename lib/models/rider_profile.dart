@@ -1,12 +1,13 @@
-/// A rider's vehicle/license info from `rider_profiles`, read via
-/// `get_my_rider_profile()` (that table has RLS enabled with no direct
-/// grants — only the caller's own row is ever returned).
 class RiderProfile {
   final String vehicleType;
   final String? vehicleBrand;
   final String? vehicleModel;
   final String? plateNumber;
   final String? licenseNumber;
+  final String status; // pending, approved, rejected, suspended
+  final bool isAvailable;
+  final int? logisticsCenterId;
+  final String? hubMunicipality, hubProvince, hubCompany;
 
   const RiderProfile({
     required this.vehicleType,
@@ -14,6 +15,12 @@ class RiderProfile {
     this.vehicleModel,
     this.plateNumber,
     this.licenseNumber,
+    this.status = 'pending',
+    this.isAvailable = false,
+    this.logisticsCenterId,
+    this.hubMunicipality,
+    this.hubProvince,
+    this.hubCompany,
   });
 
   String get vehicleLabel => [
@@ -28,6 +35,12 @@ class RiderProfile {
       vehicleModel: map['vehicle_model'] as String?,
       plateNumber: map['plate_number'] as String?,
       licenseNumber: map['license_number'] as String?,
+      status: map['status']?.toString() ?? 'pending',
+      isAvailable: map['is_available'] as bool? ?? false,
+      logisticsCenterId: map['logistics_center_id'] as int?,
+      hubMunicipality: map['hub_municipality']?.toString(),
+      hubProvince: map['hub_province']?.toString(),
+      hubCompany: map['hub_company']?.toString(),
     );
   }
 }

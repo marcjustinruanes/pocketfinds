@@ -1,0 +1,73 @@
+<?php
+declare(strict_types=1);
+if(PHP_SAPI!=='cli')exit;
+require dirname(__DIR__).'/bootstrap.php';
+foreach(['Support','Buyer','WebsiteBuyer','Auth','GoogleIdentity','Registration','Actions','Commerce'] as $file)require dirname(__DIR__)."/$file.php";
+use App\Models\{User,AccountUpdateRequest,BuyerPaymentAccount,Product,Message,Complaint};
+use Illuminate\Support\Facades\{DB,Mail,Cache,Hash};
+use Illuminate\Support\Str;
+config(['cache.default'=>'array']);
+$checks=0;$sent=[];
+function check(bool $ok,string $message):void{global $checks;if(!$ok)throw new RuntimeException($message);echo "PASS $message\n";$checks++;}
+function denied(Closure $fn,string $message):void{try{$fn();}catch(ApiError|Illuminate\Validation\ValidationException|Symfony\Component\HttpKernel\Exception\HttpExceptionInterface|Illuminate\Database\Eloquent\ModelNotFoundException $e){check(true,$message);return;}throw new RuntimeException('Expected rejection: '.$message);}
+function fixture():User{$tag=Str::lower(Str::random(12));$u=new User();$u->forceFill(['email'=>"web-$tag@example.invalid",'username'=>'web_'.$tag,'password'=>'Testing-password-123!','given_names'=>'Buyer','last_name'=>'Fixture','account_type'=>'buyer','status'=>'approved','email_verified_at'=>now(),'birthday'=>'1995-01-01','contact_no'=>'09123456789','province'=>'Laguna','municipality'=>'Famy','barangay'=>'Test','house_no'=>'1','street'=>'Test Street']);$u->save();return $u;}
+DB::beginTransaction();
+try{
+    Mail::shouldReceive('raw')->andReturnUsing(function($body,$callback)use(&$sent){$sent[]=$body;});
+    $buyer=fixture();$other=fixture();$api=new WebsiteBuyer(new Identity($buyer));$outsider=new WebsiteBuyer(new Identity($other));
+    $summary=$api->handle('dashboard',[]);
+    check(array_keys($summary['status_counts'])===['to_ship','in_transit','out_for_delivery','completed'],'buyer dashboard reuses native website status buckets');
+    check(array_sum($summary['status_counts'])===0,'dashboard counts exclude other buyers orders');
+    $before=$buyer->given_names;
+    $api->handle('profile',['given_names'=>'Updated','last_name'=>'Fixture','middle_name'=>'Test','contact_no'=>'09123456789']);
+    check($buyer->fresh()->given_names===$before,'profile changes do not bypass administrator review');
+    $snapshot=$api->handle('account',[]);check($snapshot['pending_request']['status']==='pending','account snapshot displays pending request');
+    denied(fn()=>$api->handle('profile',['given_names'=>'Again','last_name'=>'Fixture']),'second update is blocked while review is pending');
+    check($outsider->handle('account',[])['pending_request']===null,'pending profile request is scoped to owner');
+    $request=AccountUpdateRequest::where('user_id',$buyer->id)->firstOrFail();$request->apply();$request->update(['status'=>'approved']);$buyer->refresh();
+    check($buyer->given_names==='Updated','existing administrator apply operation commits requested profile');
+    $api->handle('address',['region'=>'Region IV-A','postal_code'=>'4021','province'=>'Laguna','municipality'=>'Famy','barangay'=>'Test','house_no'=>'9','street'=>'New Street']);
+    check($buyer->fresh()->street==='Test Street','profile address stays unchanged until reviewed');
+    $pending=AccountUpdateRequest::where('user_id',$buyer->id)->where('status','pending')->firstOrFail();$pending->apply();$pending->update(['status'=>'approved']);$buyer->refresh();
+    check($buyer->street==='New Street' && $buyer->postal_code==='4021','approved address includes postal code');
+    $actions=new MobileActions(new Identity($buyer));
+    $actions->handle('update_my_profile_details',['p_given_names'=>'Reviewed','p_last_name'=>'Fixture','p_middle_name'=>'Test','p_facebook_url'=>'https://facebook.com/fixture']);
+    check($buyer->fresh()->given_names==='Updated' && AccountUpdateRequest::where('user_id',$buyer->id)->where('status','pending')->exists(),'legacy profile editor cannot bypass identity review');
+    check($buyer->fresh()->facebook_url==='https://facebook.com/fixture','existing social profile updates are retained alongside identity review');
+    denied(fn()=>$actions->handle('update_my_profile_details',['p_given_names'=>'Another','p_last_name'=>'Fixture']),'legacy profile editor respects pending request limit');
+    $api->handle('payment-send-code',['type'=>'gcash','account_name'=>'Fixture Buyer','account_number'=>'09123456789']);
+    preg_match('/(?:is:|is)\s*(\d{6})/',end($sent),$match);$code=$match[1]??'';check(strlen($code)===6,'GCash connection sends email verification');
+    denied(fn()=>$api->handle('payment-send-code',['type'=>'gcash','account_name'=>'Fixture Buyer','account_number'=>'09123456789']),'GCash code send has cooldown');
+    denied(fn()=>$api->handle('payment-verify',['otp'=>$code==='000000'?'111111':'000000']),'incorrect GCash code cannot save account');
+    $linked=$api->handle('payment-verify',['otp'=>$code]);$accountId=$linked['account']['id'];
+    check(BuyerPaymentAccount::whereKey($accountId)->where('buyer_id',$buyer->id)->exists(),'verified GCash entry uses native buyer payment accounts');
+    denied(fn()=>$api->handle('payment-verify',['otp'=>$code]),'GCash verification code cannot be replayed');
+    denied(fn()=>$outsider->handle('payment-remove',['id'=>$accountId]),'another buyer cannot remove connected GCash');
+    $api->handle('payment-remove',['id'=>$accountId]);check(!BuyerPaymentAccount::whereKey($accountId)->exists(),'buyer can remove own GCash account');
+    $product=Product::where('status','active')->firstOrFail();
+    $report=$api->handle('report-product',['product_id'=>$product->id,'reason'=>'Misleading description or photos','description'=>'Fixture report']);
+    check(($report['ok']??false) && Complaint::where('complainant_id',$buyer->id)->where('message_body',$product->name)->exists(),'product report retains listing snapshot and seller respondent');
+    $message=Message::create(['sender_id'=>$other->id,'receiver_id'=>$buyer->id,'body'=>'Fixture report message','read'=>false]);
+    $api->handle('report-message',['message_id'=>$message->id,'reason'=>'Spam']);
+    check(Complaint::where('complainant_id',$buyer->id)->where('message_id',$message->id)->exists(),'message report retains authorized message snapshot');
+    $stranger=fixture();denied(fn()=>(new WebsiteBuyer(new Identity($stranger)))->handle('report-message',['message_id'=>$message->id,'reason'=>'Spam']),'nonparticipant cannot report private message');
+    check(is_array($api->handle('announcements',[])['items']),'buyer announcements read native published audience');
+    check(is_array($api->handle('faqs',[])['items']),'buyer FAQs read native published questions');
+    $auth=new MobileAuth(new Identity($buyer),'');
+    denied(fn()=>$auth->handle('update',['current_password'=>'wrong','password'=>'Changed-password-456!','password_confirmation'=>'Changed-password-456!']),'password change verifies current password');
+    $auth->handle('update',['current_password'=>'Testing-password-123!','password'=>'Changed-password-456!','password_confirmation'=>'Changed-password-456!']);
+    check(Hash::check('Changed-password-456!',$buyer->fresh()->password),'password change remains immediate after current password check');
+    $signupEmail='signup-'.Str::lower(Str::random(12)).'@gmail.com';
+    $auth=new MobileAuth(new Identity(null),'');
+    $auth->handle('registration-send-code',['email'=>'fixture-'.Str::lower(Str::random(12)).'@example.invalid']);
+    check(true,'signup accepts valid non-Gmail email for the agreed test-case rules');
+    $terms=$auth->handle('registration-terms',[]);
+    check(array_keys($terms)===['title','content'],'guest registration reads published terms without internal policy drafts');
+    $auth->handle('registration-send-code',['email'=>$signupEmail]);
+    preg_match('/ is (\d{6})\./',end($sent),$match);$signupCode=$match[1];
+    denied(fn()=>$auth->handle('registration-verify-code',['email'=>$signupEmail,'code'=>$signupCode==='000000'?'111111':'000000']),'signup email rejects incorrect code');
+    $proof=$auth->handle('registration-verify-code',['email'=>$signupEmail,'code'=>$signupCode]);
+    check(!empty($proof['email_token']),'contact-step verification produces bounded email proof without a session');
+    denied(fn()=>$auth->handle('registration-verify-code',['email'=>$signupEmail,'code'=>$signupCode]),'signup email code cannot be replayed');
+    echo "$checks website buyer checks passed. No real email sent.\n";
+}finally{DB::rollBack();echo "Website buyer fixtures rolled back. Website source unchanged.\n";}

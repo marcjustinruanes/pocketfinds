@@ -150,7 +150,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
             TitledCard(
               title: 'Buyer contact',
               child: _contact == null
-                  ? const Text(
+                  ? Text(
                       'Loading…',
                       style: TextStyle(color: AppColors.textMuted),
                     )
@@ -158,7 +158,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(_contact!.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                        Text(_contact!.contact, style: const TextStyle(color: AppColors.textMuted)),
+                        Text(_contact!.contact, style: TextStyle(color: AppColors.textMuted)),
                       ],
                     ),
             ),
@@ -189,7 +189,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
             title: 'Order total',
             child: Text(
               formatPeso(_shipment.total),
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: AppColors.pinkDark),
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: AppColors.pinkDark),
             ),
           ),
         ],

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+
 import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_shadows.dart';
 import '../../theme/app_spacing.dart';
+import '../../widgets/primary_button.dart';
 
 /// Shown when a real, approved PocketFinds account signs in whose role isn't
 /// available on mobile (seller, admin, logistics) — an informational stop,
@@ -39,11 +41,11 @@ class UnsupportedRoleScreen extends StatelessWidget {
                   Container(
                     width: 72,
                     height: 72,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       color: AppColors.pinkSoft,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.info_outline,
                       size: 34,
                       color: AppColors.pink,
@@ -61,15 +63,12 @@ class UnsupportedRoleScreen extends StatelessWidget {
                     "but this app only supports Buyer and Rider accounts right now. "
                     'Please use the PocketFinds website to manage your account.',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.textMuted, height: 1.4),
+                    style: TextStyle(color: AppColors.textMuted, height: 1.4),
                   ),
                   const SizedBox(height: AppSpacing.xl),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => _logout(context),
-                      child: const Text('Log out'),
-                    ),
+                  PrimaryButton(
+                    label: 'Log out',
+                    onPressed: () => _logout(context),
                   ),
                 ],
               ),
