@@ -381,7 +381,7 @@ class HubTransferWorkflowTest extends TestCase
         $this->actingAs($this->receiver)->get('/logistics/transfers?direction=incoming')->assertOk()->assertViewHas('batches', fn ($rows) => $rows->total() === 1);
         $response=$this->actingAs($this->admin)->get('/logistics/transfers?status=pending&hub_id='.$this->destination->id.'&from='.now()->toDateString().'&to='.now()->toDateString())->assertOk()->assertViewHas('batches', fn ($rows) => $rows->total() === 1)->assertSee('form="hubTransferFilters"',false)->assertSee('logistics-transfer-filters.js')->assertDontSee('>Filter</button>',false);
         if(getenv('TRANSFER_FILTER_PREVIEW')==='1')file_put_contents(storage_path('framework/testing/transfer-filters.html'),$response->getContent());
-        $this->get('/logistics/transfers/request?origin_hub_id='.$this->origin->id.'&destination_hub_id='.$this->destination->id)->assertOk()->assertViewHas('candidates', fn ($rows) => $rows->total() === 0);
+        $this->get('/logistics/transfers/request?origin_hub_id='.$this->origin->id.'&destination_hub_id='.$this->destination->id)->assertForbidden();
         $this->get('/logistics/transfers/'.$batch->id)->assertOk()->assertSee('Approve request')->assertSee('Rejection reason')->assertDontSee('Dispatch approved batch');
     }
 

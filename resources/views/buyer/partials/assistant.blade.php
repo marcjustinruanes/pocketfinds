@@ -1,5 +1,6 @@
 @php
  $assistantSeller = $assistantSeller ?? false;
+ $assistantAdmin = $assistantAdmin ?? false;
  $assistantLogistics = $assistantLogistics ?? false;
  $assistantGuest = $assistantGuest ?? false;
 @endphp
@@ -13,6 +14,9 @@
   @endif
   @if($assistantLogistics && !request()->routeIs('logistics.messages*'))
   <button type="button" class="pf-messages-launch" data-seller-messages="{{ route('logistics.messages') }}" aria-label="Messages" title="Messages">@include('buyer.partials.icon',['name'=>'mail','size'=>24])</button>
+  @endif
+  @if($assistantAdmin && !request()->routeIs('admin.messages*'))
+  <button type="button" class="pf-messages-launch" data-seller-messages="{{ route('admin.messages') }}" aria-label="Messages" title="Messages">@include('buyer.partials.icon',['name'=>'mail','size'=>24])</button>
   @endif
   @unless($assistantGuest)
   <button type="button" class="pf-messages-launch" data-messages-trigger data-messages-url="{{ route('buyer.messages') }}" aria-label="Messages" title="Messages">@include('buyer.partials.icon', ['name' => 'mail', 'size' => 24])</button>

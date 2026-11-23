@@ -1,0 +1,5760 @@
+{
+  "source": "https://phlpost.gov.ph/zip-code-locator/",
+  "retrieved": "2026-11-17",
+  "locations": [
+    {
+      "region": "NCR (National Capital Region)",
+      "province": "Metro Manila",
+      "municipality": "Pandacan",
+      "postal_code": "1011"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Apayao",
+      "municipality": "Santa Marcela",
+      "postal_code": "3811"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Kalinga",
+      "municipality": "Tabuk City",
+      "postal_code": "3800"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Kalinga",
+      "municipality": "Tanudan",
+      "postal_code": "3805"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Kalinga",
+      "municipality": "Tinglayan",
+      "postal_code": "3804"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Kalinga",
+      "municipality": "Balbalan",
+      "postal_code": "3801"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Apayao",
+      "municipality": "Calanasan",
+      "postal_code": "3814"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Apayao",
+      "municipality": "Conner",
+      "postal_code": "3807"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Apayao",
+      "municipality": "Flora",
+      "postal_code": "3810"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Apayao",
+      "municipality": "Kabugao",
+      "postal_code": "3809"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Apayao",
+      "municipality": "Luna",
+      "postal_code": "3813"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Kalinga",
+      "municipality": "Lubuagan",
+      "postal_code": "3802"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Kalinga",
+      "municipality": "Pasil",
+      "postal_code": "3803"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Kalinga",
+      "municipality": "Pinukpok",
+      "postal_code": "3806"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Apayao",
+      "municipality": "Pudtol",
+      "postal_code": "3812"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Kalinga",
+      "municipality": "Rizal",
+      "postal_code": "3808"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Ifugao",
+      "municipality": "Aguinaldo",
+      "postal_code": "3606"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Ifugao",
+      "municipality": "Asipulo",
+      "postal_code": "3610"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Ifugao",
+      "municipality": "Hingyon",
+      "postal_code": "3607"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Ifugao",
+      "municipality": "Banaue",
+      "postal_code": "3601"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Ifugao",
+      "municipality": "Hungduan",
+      "postal_code": "3603"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Ifugao",
+      "municipality": "Kiangan",
+      "postal_code": "3604"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Ifugao",
+      "municipality": "Lagawe",
+      "postal_code": "3600"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Ifugao",
+      "municipality": "Lamut",
+      "postal_code": "3605"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Ifugao",
+      "municipality": "Mayoyao",
+      "postal_code": "3602"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Ifugao",
+      "municipality": "Tinoc",
+      "postal_code": "3609"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Ifugao",
+      "municipality": "Alfonso Lista (formerly Potia)",
+      "postal_code": "3608"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Benguet",
+      "municipality": "Tublay",
+      "postal_code": "2615"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Benguet",
+      "municipality": "Sablan",
+      "postal_code": "2614"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Benguet",
+      "municipality": "Tuba",
+      "postal_code": "2603"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Benguet",
+      "municipality": "Philippine Military Academy (PMA)",
+      "postal_code": "2602"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Benguet",
+      "municipality": "Atok",
+      "postal_code": "2612"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Benguet",
+      "municipality": "Baguio City",
+      "postal_code": "2600"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Benguet",
+      "municipality": "Bakun",
+      "postal_code": "2610"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Benguet",
+      "municipality": "Bokod",
+      "postal_code": "2605"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Benguet",
+      "municipality": "Buguias",
+      "postal_code": "2607"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Benguet",
+      "municipality": "Itogon",
+      "postal_code": "2604"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Benguet",
+      "municipality": "Kabayan",
+      "postal_code": "2606"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Benguet",
+      "municipality": "Kapangan",
+      "postal_code": "2613"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Benguet",
+      "municipality": "Kibungan",
+      "postal_code": "2611"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Benguet",
+      "municipality": "La Trinidad",
+      "postal_code": "2601"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Benguet",
+      "municipality": "Mankayan",
+      "postal_code": "2608"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "Peñarrubia",
+      "postal_code": "2804"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "Pidigan",
+      "postal_code": "2806"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "Pilar",
+      "postal_code": "2812"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "Sallapadan",
+      "postal_code": "2818"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "San Isidro",
+      "postal_code": "2809"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "San Juan",
+      "postal_code": "2823"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "San Quintin",
+      "postal_code": "2808"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "Tayum",
+      "postal_code": "2803"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "Tineg",
+      "postal_code": "2822"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "Tubo",
+      "postal_code": "2814"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "Villaviciosa",
+      "postal_code": "2811"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "La Paz",
+      "postal_code": "2826"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "Lacub",
+      "postal_code": "2821"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "Lagangilang",
+      "postal_code": "2802"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "Lagayan",
+      "postal_code": "2824"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "Langiden",
+      "postal_code": "2807"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "Licuan-Baay",
+      "postal_code": "2819"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "Luba",
+      "postal_code": "2813"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "Malibcong",
+      "postal_code": "2820"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "Manabo",
+      "postal_code": "2810"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "Bangued",
+      "postal_code": "2800"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "Boliney",
+      "postal_code": "2815"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "Bucay",
+      "postal_code": "2805"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "Bucloc",
+      "postal_code": "2817"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "Daguioman",
+      "postal_code": "2816"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "Danglas",
+      "postal_code": "2825"
+    },
+    {
+      "region": "CAR (Cordillera Administrative Region)",
+      "province": "Abra",
+      "municipality": "Dolores",
+      "postal_code": "2801"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Sorsogon",
+      "municipality": "Irosin",
+      "postal_code": "4707"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Sorsogon",
+      "municipality": "Juban",
+      "postal_code": "4703"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Sorsogon",
+      "municipality": "Magallanes",
+      "postal_code": "4705"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Sorsogon",
+      "municipality": "Matnog",
+      "postal_code": "4708"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Sorsogon",
+      "municipality": "Pilar",
+      "postal_code": "4714"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Sorsogon",
+      "municipality": "Prieto Diaz",
+      "postal_code": "4711"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Sorsogon",
+      "municipality": "Sorsogon",
+      "postal_code": "4700"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Sorsogon",
+      "municipality": "Sta. Magdalena",
+      "postal_code": "4709"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Sorsogon",
+      "municipality": "Bacon",
+      "postal_code": "4701"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Sorsogon",
+      "municipality": "Barcelona",
+      "postal_code": "4712"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Sorsogon",
+      "municipality": "Bulan",
+      "postal_code": "4706"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Sorsogon",
+      "municipality": "Bulusan",
+      "postal_code": "4704"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Sorsogon",
+      "municipality": "Casiguran",
+      "postal_code": "4702"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Sorsogon",
+      "municipality": "Castilla",
+      "postal_code": "4713"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Sorsogon",
+      "municipality": "Donsol",
+      "postal_code": "4715"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Sorsogon",
+      "municipality": "Gubat",
+      "postal_code": "4710"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Masbate",
+      "municipality": "Mandaon",
+      "postal_code": "5411"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Masbate",
+      "municipality": "Masbate",
+      "postal_code": "5400"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Masbate",
+      "municipality": "Milagros",
+      "postal_code": "5410"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Masbate",
+      "municipality": "Mobo",
+      "postal_code": "5401"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Masbate",
+      "municipality": "Monreal",
+      "postal_code": "5418"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Masbate",
+      "municipality": "Palanas",
+      "postal_code": "5404"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Masbate",
+      "municipality": "Pio V. Corpuz",
+      "postal_code": "5406"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Masbate",
+      "municipality": "Placer",
+      "postal_code": "5408"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Masbate",
+      "municipality": "San Fernando",
+      "postal_code": "5416"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Masbate",
+      "municipality": "San Jacinto",
+      "postal_code": "5417"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Masbate",
+      "municipality": "San Pascual",
+      "postal_code": "5420"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Masbate",
+      "municipality": "Uson",
+      "postal_code": "5402"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Masbate",
+      "municipality": "Claveria",
+      "postal_code": "5419"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Masbate",
+      "municipality": "Aroroy",
+      "postal_code": "5414"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Masbate",
+      "municipality": "Baleno",
+      "postal_code": "5413"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Masbate",
+      "municipality": "Balud",
+      "postal_code": "5412"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Masbate",
+      "municipality": "Batuan",
+      "postal_code": "5415"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Masbate",
+      "municipality": "Cataingan",
+      "postal_code": "5405"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Masbate",
+      "municipality": "Cawayan",
+      "postal_code": "5409"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Masbate",
+      "municipality": "Dimasalang",
+      "postal_code": "5403"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Masbate",
+      "municipality": "Esperanza",
+      "postal_code": "5407"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Catanduanes",
+      "municipality": "Bagamanoc",
+      "postal_code": "4807"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Catanduanes",
+      "municipality": "Baras",
+      "postal_code": "4803"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Catanduanes",
+      "municipality": "Bato",
+      "postal_code": "4801"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Catanduanes",
+      "municipality": "Caramoran",
+      "postal_code": "4808"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Catanduanes",
+      "municipality": "Gigmoto",
+      "postal_code": "4804"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Catanduanes",
+      "municipality": "Pandan",
+      "postal_code": "4809"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Catanduanes",
+      "municipality": "Panganiban",
+      "postal_code": "4806"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Catanduanes",
+      "municipality": "San Andres",
+      "postal_code": "4810"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Catanduanes",
+      "municipality": "San Miguel",
+      "postal_code": "4802"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Catanduanes",
+      "municipality": "Viga",
+      "postal_code": "4805"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Catanduanes",
+      "municipality": "Virac",
+      "postal_code": "4800"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Siruma",
+      "postal_code": "4427"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Tigaon",
+      "postal_code": "4420"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Tinambac",
+      "postal_code": "4426"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Sagnay",
+      "postal_code": "4421"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "San Fernando",
+      "postal_code": "4415"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "San Jose",
+      "postal_code": "4423"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Sipocot",
+      "postal_code": "4408"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Minalabac",
+      "postal_code": "4414"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Nabua",
+      "postal_code": "4434"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Naga City",
+      "postal_code": "4400"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Ocampo",
+      "postal_code": "4419"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Pamplona",
+      "postal_code": "4416"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Pasacao",
+      "postal_code": "4417"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Pili",
+      "postal_code": "4418"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Presentacion",
+      "postal_code": "4424"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Ragay",
+      "postal_code": "4410"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Caramoan",
+      "postal_code": "4429"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Del Gallego",
+      "postal_code": "4411"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Gainza",
+      "postal_code": "4412"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Garchitorena",
+      "postal_code": "4428"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Goa",
+      "postal_code": "4422"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Iriga City",
+      "postal_code": "4431"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Lagonoy",
+      "postal_code": "4425"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Libmanan",
+      "postal_code": "4407"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Lupi",
+      "postal_code": "4409"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Magarao",
+      "postal_code": "4403"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Milaor",
+      "postal_code": "4413"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Baao",
+      "postal_code": "4432"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Balatan",
+      "postal_code": "4436"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Bato",
+      "postal_code": "4435"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Bombon",
+      "postal_code": "4404"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Buhi",
+      "postal_code": "4433"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Bula",
+      "postal_code": "4430"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Cabusao",
+      "postal_code": "4406"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Calabanga",
+      "postal_code": "4405"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Camaligan",
+      "postal_code": "4401"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Sur (Camsur)",
+      "municipality": "Canaman",
+      "postal_code": "4402"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Norte",
+      "municipality": "Basud",
+      "postal_code": "4608"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Norte",
+      "municipality": "Capalonga",
+      "postal_code": "4607"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Norte",
+      "municipality": "Daet",
+      "postal_code": "4600"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Norte",
+      "municipality": "Jose Panganiban",
+      "postal_code": "4606"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Norte",
+      "municipality": "Labo",
+      "postal_code": "4604"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Norte",
+      "municipality": "Mercedes",
+      "postal_code": "4601"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Norte",
+      "municipality": "Paracale",
+      "postal_code": "4605"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Norte",
+      "municipality": "San Lorenzo Ruiz (formerly Imelda)",
+      "postal_code": "4610"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Norte",
+      "municipality": "San Vicente",
+      "postal_code": "4609"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Norte",
+      "municipality": "Sta. Elena",
+      "postal_code": "4611"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Norte",
+      "municipality": "Talisay",
+      "postal_code": "4602"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Norte",
+      "municipality": "Vinzons",
+      "postal_code": "4603"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Camarines Norte",
+      "municipality": "Tulay na Lupa",
+      "postal_code": "4612"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Albay",
+      "municipality": "Oas",
+      "postal_code": "4505"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Albay",
+      "municipality": "Pio Duran (Malacbalac)",
+      "postal_code": "4516"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Albay",
+      "municipality": "Polangui",
+      "postal_code": "4506"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Albay",
+      "municipality": "Rapu-Rapu",
+      "postal_code": "4517"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Albay",
+      "municipality": "Sto. Domingo",
+      "postal_code": "4508"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Albay",
+      "municipality": "Tabaco",
+      "postal_code": "4511"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Albay",
+      "municipality": "Tiwi",
+      "postal_code": "4513"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Albay",
+      "municipality": "Bacacay",
+      "postal_code": "4509"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Albay",
+      "municipality": "Camalig",
+      "postal_code": "4502"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Albay",
+      "municipality": "Daraga (Locsin)",
+      "postal_code": "4501"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Albay",
+      "municipality": "Guinobatan",
+      "postal_code": "4503"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Albay",
+      "municipality": "Jovellar",
+      "postal_code": "4515"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Albay",
+      "municipality": "Legazpi City",
+      "postal_code": "4500"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Albay",
+      "municipality": "Libon",
+      "postal_code": "4507"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Albay",
+      "municipality": "Ligao",
+      "postal_code": "4504"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Albay",
+      "municipality": "Malilipot",
+      "postal_code": "4510"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Albay",
+      "municipality": "Malinao",
+      "postal_code": "4512"
+    },
+    {
+      "region": "Region 5 (Bicol Region)",
+      "province": "Albay",
+      "municipality": "Manito",
+      "postal_code": "4514"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Romblon",
+      "municipality": "Sta. Maria (formerly Imelda)",
+      "postal_code": "5502"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Romblon",
+      "municipality": "Alcantara",
+      "postal_code": "5509"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Romblon",
+      "municipality": "Banton (Jones)",
+      "postal_code": "5515"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Romblon",
+      "municipality": "Calatrava",
+      "postal_code": "5503"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Romblon",
+      "municipality": "Concepcion",
+      "postal_code": "5516"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Romblon",
+      "municipality": "Corcuera",
+      "postal_code": "5514"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Romblon",
+      "municipality": "Ferrol",
+      "postal_code": "5506"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Romblon",
+      "municipality": "Looc",
+      "postal_code": "5507"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Romblon",
+      "municipality": "Magdiwang",
+      "postal_code": "5511"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Romblon",
+      "municipality": "Odiongan",
+      "postal_code": "5505"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Romblon",
+      "municipality": "Romblon",
+      "postal_code": "5500"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Romblon",
+      "municipality": "San Agustin",
+      "postal_code": "5501"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Romblon",
+      "municipality": "San Andres",
+      "postal_code": "5504"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Romblon",
+      "municipality": "San fernando",
+      "postal_code": "5513"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Romblon",
+      "municipality": "San Jose",
+      "postal_code": "5510"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Romblon",
+      "municipality": "Sta. Fe",
+      "postal_code": "5508"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "Kalayaan",
+      "postal_code": "5322"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "Linapacan",
+      "postal_code": "5314"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "Magsaysay",
+      "postal_code": "5319"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "Narra (Panacan)",
+      "postal_code": "5303"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "Puerto Princesa City",
+      "postal_code": "5300"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "Quezon",
+      "postal_code": "5304"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "Rizal (Marcos)",
+      "postal_code": "5323"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "Roxas",
+      "postal_code": "5308"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "San Vicente",
+      "postal_code": "5309"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "Sofronio Española",
+      "postal_code": "5324"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "Taytay",
+      "postal_code": "5312"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "Iwahig Penal Colony",
+      "postal_code": "5301"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "Aborlan",
+      "postal_code": "5302"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "Agutaya",
+      "postal_code": "5320"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "Araceli",
+      "postal_code": "5311"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "Balabac",
+      "postal_code": "5307"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "Batazara",
+      "postal_code": "5306"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "Brooke's Point",
+      "postal_code": "5305"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "Busuanga",
+      "postal_code": "5317"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "Cagayancillo",
+      "postal_code": "5321"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "Coron",
+      "postal_code": "5316"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "Culion",
+      "postal_code": "5315"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "Cuyo",
+      "postal_code": "5318"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "Dumaran",
+      "postal_code": "5310"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Palawan",
+      "municipality": "El Nido (Baquit)",
+      "postal_code": "5313"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Oriental Mindoro",
+      "municipality": "Calapan",
+      "postal_code": "5200"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Oriental Mindoro",
+      "municipality": "Baco",
+      "postal_code": "5201"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Oriental Mindoro",
+      "municipality": "Bansud",
+      "postal_code": "5210"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Oriental Mindoro",
+      "municipality": "Bongabong",
+      "postal_code": "5211"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Oriental Mindoro",
+      "municipality": "Bulalacao",
+      "postal_code": "5214"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Oriental Mindoro",
+      "municipality": "Gloria",
+      "postal_code": "5209"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Oriental Mindoro",
+      "municipality": "Mansalay",
+      "postal_code": "5213"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Oriental Mindoro",
+      "municipality": "Naujan",
+      "postal_code": "5204"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Oriental Mindoro",
+      "municipality": "Pinamalayan",
+      "postal_code": "5208"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Oriental Mindoro",
+      "municipality": "Pola",
+      "postal_code": "5206"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Oriental Mindoro",
+      "municipality": "Puerto Galera",
+      "postal_code": "5203"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Oriental Mindoro",
+      "municipality": "Roxas",
+      "postal_code": "5212"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Oriental Mindoro",
+      "municipality": "San Teodoro",
+      "postal_code": "5202"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Oriental Mindoro",
+      "municipality": "Socorro",
+      "postal_code": "5207"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Oriental Mindoro",
+      "municipality": "Victoria",
+      "postal_code": "5205"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Occidental Mindoro",
+      "municipality": "Tilik",
+      "postal_code": "5110"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Occidental Mindoro",
+      "municipality": "Abra de Ilog",
+      "postal_code": "5108"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Occidental Mindoro",
+      "municipality": "Calintaan",
+      "postal_code": "5102"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Occidental Mindoro",
+      "municipality": "Looc",
+      "postal_code": "5111"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Occidental Mindoro",
+      "municipality": "Lubang",
+      "postal_code": "5109"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Occidental Mindoro",
+      "municipality": "Magsaysay",
+      "postal_code": "5101"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Occidental Mindoro",
+      "municipality": "Mamburao",
+      "postal_code": "5106"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Occidental Mindoro",
+      "municipality": "Palauan",
+      "postal_code": "5107"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Occidental Mindoro",
+      "municipality": "Rizal",
+      "postal_code": "5103"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Occidental Mindoro",
+      "municipality": "Sablayan",
+      "postal_code": "5104"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Occidental Mindoro",
+      "municipality": "San Jose",
+      "postal_code": "5100"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Occidental Mindoro",
+      "municipality": "Sta. Cruz",
+      "postal_code": "5105"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Marinduque",
+      "municipality": "Boac",
+      "postal_code": "4900"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Marinduque",
+      "municipality": "Buenavista",
+      "postal_code": "4904"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Marinduque",
+      "municipality": "Gasan",
+      "postal_code": "4905"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Marinduque",
+      "municipality": "Mogpog",
+      "postal_code": "4901"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Marinduque",
+      "municipality": "Sta. Cruz",
+      "postal_code": "4902"
+    },
+    {
+      "region": "Region 4B (MIMAROPA)",
+      "province": "Marinduque",
+      "municipality": "Torrijos",
+      "postal_code": "4903"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Rizal",
+      "municipality": "Bagong Nayon (Cogeo)",
+      "postal_code": "1872"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Rizal",
+      "municipality": "Langhaya",
+      "postal_code": "1874"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Rizal",
+      "municipality": "Mambagat",
+      "postal_code": "1875"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Rizal",
+      "municipality": "Mayamot",
+      "postal_code": "1871"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Rizal",
+      "municipality": "Angono",
+      "postal_code": "1930"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Rizal",
+      "municipality": "Antipolo",
+      "postal_code": "1870"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Rizal",
+      "municipality": "Baras",
+      "postal_code": "1970"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Rizal",
+      "municipality": "Binangonan",
+      "postal_code": "1940"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Rizal",
+      "municipality": "Cainta",
+      "postal_code": "1900"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Rizal",
+      "municipality": "Cardona",
+      "postal_code": "1950"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Rizal",
+      "municipality": "Jalajala",
+      "postal_code": "1990"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Rizal",
+      "municipality": "Morong",
+      "postal_code": "1960"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Rizal",
+      "municipality": "Pililla",
+      "postal_code": "1910"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Rizal",
+      "municipality": "Rodriguez (Montalban)",
+      "postal_code": "1860"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Rizal",
+      "municipality": "San Mateo",
+      "postal_code": "1850"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Rizal",
+      "municipality": "Tanay",
+      "postal_code": "1980"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Rizal",
+      "municipality": "Teresa",
+      "postal_code": "1880"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Rizal",
+      "municipality": "Taytay",
+      "postal_code": "1920"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Quezon Capitol",
+      "postal_code": "4300"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "San Narciso",
+      "postal_code": "4313"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "Zumarraga",
+      "postal_code": "6725"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Pitogo",
+      "postal_code": "4308"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Plaridel",
+      "postal_code": "4306"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Polilio",
+      "postal_code": "4339"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Quezon",
+      "postal_code": "4332"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Real",
+      "postal_code": "4335"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Sampaloc",
+      "postal_code": "4329"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "San Andres",
+      "postal_code": "4314"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "San Antonio",
+      "postal_code": "4324"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "San Francisco",
+      "postal_code": "4315"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Sariaya",
+      "postal_code": "4322"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Tagkawayan",
+      "postal_code": "4321"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Tayabas",
+      "postal_code": "4327"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Tiaong",
+      "postal_code": "4325"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Unisan",
+      "postal_code": "4305"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "Wright",
+      "postal_code": "6703"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "Villareal",
+      "postal_code": "6717"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "Tarangnan",
+      "postal_code": "6704"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "Talalora",
+      "postal_code": "6719"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "Tagapul-an",
+      "postal_code": "6712"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "Sto. Niño",
+      "postal_code": "6711"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "Sta. Rita",
+      "postal_code": "6718"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "Sta. Margarita",
+      "postal_code": "6709"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "San Sebastian",
+      "postal_code": "6714"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "San Jose de Buan",
+      "postal_code": "6723"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "San Jorge",
+      "postal_code": "6707"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "Pinabacdao",
+      "postal_code": "6716"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "Pagsanghan",
+      "postal_code": "6705"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Hondagua",
+      "postal_code": "4317"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "Motiong",
+      "postal_code": "6702"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "Matuguinao",
+      "postal_code": "6708"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "Marabut",
+      "postal_code": "6721"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Panukulan",
+      "postal_code": "4337"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Gumaca",
+      "postal_code": "4307"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Infanta",
+      "postal_code": "4336"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Jomalig",
+      "postal_code": "4342"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Lopez",
+      "postal_code": "4316"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Lucban",
+      "postal_code": "4328"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Lucena City",
+      "postal_code": "4301"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Macalelon",
+      "postal_code": "4309"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Mauban",
+      "postal_code": "4330"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Mulanay",
+      "postal_code": "4312"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Padre Burgos",
+      "postal_code": "4303"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Pagbilao",
+      "postal_code": "4302"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Patnanungan",
+      "postal_code": "4341"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Perez",
+      "postal_code": "4334"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "Jiabong",
+      "postal_code": "6701"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "Hinabangan",
+      "postal_code": "6713"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "Gandara",
+      "postal_code": "6706"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "Daram",
+      "postal_code": "6722"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "Catbalogan",
+      "postal_code": "6700"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "Calbiga",
+      "postal_code": "6715"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "Calbayog City",
+      "postal_code": "6710"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "Basey",
+      "postal_code": "6720"
+    },
+    {
+      "region": "Region 8 (Eastern Visayas)",
+      "province": "Samar",
+      "municipality": "Almagro",
+      "postal_code": "6724"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Agdangan",
+      "postal_code": "4304"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Alabat",
+      "postal_code": "4333"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Atimonan",
+      "postal_code": "4331"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Buenavista",
+      "postal_code": "4320"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Burdeos",
+      "postal_code": "4340"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Calauag",
+      "postal_code": "4318"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Candelaria",
+      "postal_code": "4323"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Catanauan",
+      "postal_code": "4311"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Dolores",
+      "postal_code": "4326"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "General Nakar",
+      "postal_code": "4338"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "General Luna",
+      "postal_code": "4310"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Quezon",
+      "municipality": "Guinayangan",
+      "postal_code": "4319"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao Del Sur",
+      "municipality": "Tandag",
+      "postal_code": "8300"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao Del Sur",
+      "municipality": "Tago",
+      "postal_code": "8302"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao Del Sur",
+      "municipality": "Tagbina",
+      "postal_code": "8308"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Paete",
+      "postal_code": "4016"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Pagsanjan",
+      "postal_code": "4008"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Pakil",
+      "postal_code": "4017"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Pangil",
+      "postal_code": "4018"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Pila",
+      "postal_code": "4010"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Rizal",
+      "postal_code": "4003"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "San Pablo City",
+      "postal_code": "4000"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "San Pedro",
+      "postal_code": "4023"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Sta. Cruz",
+      "postal_code": "4009"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao Del Sur",
+      "municipality": "San Miguel",
+      "postal_code": "8301"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Sta. Maria",
+      "postal_code": "4022"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Victoria",
+      "postal_code": "4011"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Sta. Rosa",
+      "postal_code": "4026"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao Del Sur",
+      "municipality": "San Agustin",
+      "postal_code": "8305"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao Del Sur",
+      "municipality": "Marihatag",
+      "postal_code": "8306"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Siniloan",
+      "postal_code": "4019"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao Del Sur",
+      "municipality": "Malixi",
+      "postal_code": "8319"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao Del Sur",
+      "municipality": "Madrid",
+      "postal_code": "8316"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao Del Sur",
+      "municipality": "Lingig",
+      "postal_code": "8312"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao Del Sur",
+      "municipality": "Lianga",
+      "postal_code": "8307"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao Del Sur",
+      "municipality": "Lanuza",
+      "postal_code": "8314"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao Del Sur",
+      "municipality": "Hinatuan",
+      "postal_code": "8310"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao Del Sur",
+      "municipality": "Cortez",
+      "postal_code": "8313"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "College Los Baños",
+      "postal_code": "4031"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Laguna Technopark",
+      "postal_code": "4034"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao Del Sur",
+      "municipality": "Carrascal",
+      "postal_code": "8318"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Alaminos",
+      "postal_code": "4001"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Bay",
+      "postal_code": "4033"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Biñan",
+      "postal_code": "4024"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Cabuyao",
+      "postal_code": "4025"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Calamba",
+      "postal_code": "4027"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao del Norte",
+      "municipality": "Carmen",
+      "postal_code": "8315"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Caluan",
+      "postal_code": "4012"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Cavinti",
+      "postal_code": "4013"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Famy",
+      "postal_code": "4021"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Kalayaan",
+      "postal_code": "4015"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Liliw",
+      "postal_code": "4004"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Los Baños",
+      "postal_code": "4030"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Lumban",
+      "postal_code": "4014"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Luisiana",
+      "postal_code": "4032"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Mabitac",
+      "postal_code": "4020"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Magdalena",
+      "postal_code": "4007"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Majayjay",
+      "postal_code": "4005"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Nagcarlan",
+      "postal_code": "4002"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao Del Sur",
+      "municipality": "Cantilan",
+      "postal_code": "8317"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao Del Sur",
+      "municipality": "Cagwait",
+      "postal_code": "8304"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao Del Sur",
+      "municipality": "Bislig",
+      "postal_code": "8311"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao Del Sur",
+      "municipality": "Bayabas",
+      "postal_code": "8303"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao Del Sur",
+      "municipality": "Barobo",
+      "postal_code": "8309"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Dinagat Islands",
+      "municipality": "Tubajon",
+      "postal_code": "8426"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Dinagat Islands",
+      "municipality": "San Jose",
+      "postal_code": "8427"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Dinagat Islands",
+      "municipality": "Loreto",
+      "postal_code": "8415"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Dinagat Islands",
+      "municipality": "Libjo (formerly Albor",
+      "postal_code": "8414"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Dinagat Islands",
+      "municipality": "Dinagat",
+      "postal_code": "8412"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Dinagat Islands",
+      "municipality": "Cagdianao",
+      "postal_code": "8411"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Dinagat Islands",
+      "municipality": "Basilisa (formerly Rizal)",
+      "postal_code": "8413"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Laguna",
+      "municipality": "Botocan",
+      "postal_code": "4006"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Zambales",
+      "municipality": "Botolan",
+      "postal_code": "2202"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Zambales",
+      "municipality": "Cabangan",
+      "postal_code": "2203"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Zambales",
+      "municipality": "Candelaria",
+      "postal_code": "2212"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Zambales",
+      "municipality": "Castillejos",
+      "postal_code": "2208"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Zambales",
+      "municipality": "Iba",
+      "postal_code": "2201"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Zambales",
+      "municipality": "Olongapo City",
+      "postal_code": "2200"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Zambales",
+      "municipality": "Palauig",
+      "postal_code": "2210"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Zambales",
+      "municipality": "San Antonio",
+      "postal_code": "2206"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Zambales",
+      "municipality": "San Felipe",
+      "postal_code": "2204"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Zambales",
+      "municipality": "San Marcelino",
+      "postal_code": "2207"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao del Norte",
+      "municipality": "Tagana-an",
+      "postal_code": "8403"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao del Norte",
+      "municipality": "Tubod",
+      "postal_code": "8406"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao del Norte",
+      "municipality": "Surigao City",
+      "postal_code": "8400"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao del Norte",
+      "municipality": "Sta. Monica",
+      "postal_code": "8422"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao del Norte",
+      "municipality": "Socorro",
+      "postal_code": "8416"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao del Norte",
+      "municipality": "Sison",
+      "postal_code": "8404"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao del Norte",
+      "municipality": "San Isidro",
+      "postal_code": "8421"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao del Norte",
+      "municipality": "San Francisco",
+      "postal_code": "8401"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao del Norte",
+      "municipality": "San Benito",
+      "postal_code": "8423"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao del Norte",
+      "municipality": "Placer",
+      "postal_code": "8405"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao del Norte",
+      "municipality": "Pilar",
+      "postal_code": "8420"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao del Norte",
+      "municipality": "Malimono",
+      "postal_code": "8402"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao del Norte",
+      "municipality": "Mainit",
+      "postal_code": "8407"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao del Norte",
+      "municipality": "Gigaquit",
+      "postal_code": "8409"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao del Norte",
+      "municipality": "Gen. Luna",
+      "postal_code": "8419"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao del Norte",
+      "municipality": "Del Carmen",
+      "postal_code": "8418"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao del Norte",
+      "municipality": "Dapa",
+      "postal_code": "8417"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao del Norte",
+      "municipality": "Claver",
+      "postal_code": "8410"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao del Norte",
+      "municipality": "Burgos",
+      "postal_code": "8424"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao del Norte",
+      "municipality": "Bacuag",
+      "postal_code": "8408"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Surigao del Norte",
+      "municipality": "Alegria",
+      "postal_code": "8425"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Sur",
+      "municipality": "Veruela",
+      "postal_code": "8509"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Sur",
+      "municipality": "Trento",
+      "postal_code": "8505"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Sur",
+      "municipality": "Talacogon",
+      "postal_code": "8510"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Sur",
+      "municipality": "Sta. Josefa",
+      "postal_code": "8512"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Sur",
+      "municipality": "Sibagat",
+      "postal_code": "8503"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Sur",
+      "municipality": "San Luis",
+      "postal_code": "8511"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Sur",
+      "municipality": "San Francisco",
+      "postal_code": "8501"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Sur",
+      "municipality": "Rosario",
+      "postal_code": "8504"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Sur",
+      "municipality": "Prosperidad",
+      "postal_code": "8500"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Sur",
+      "municipality": "Loreto",
+      "postal_code": "8507"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Sur",
+      "municipality": "La Paz",
+      "postal_code": "8508"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Sur",
+      "municipality": "Esperanza",
+      "postal_code": "8513"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Sur",
+      "municipality": "Bunawan",
+      "postal_code": "8506"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Sur",
+      "municipality": "Bayugan",
+      "postal_code": "8502"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Norte",
+      "municipality": "Tubay",
+      "postal_code": "8606"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Norte",
+      "municipality": "Santiago",
+      "postal_code": "8608"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Norte",
+      "municipality": "Remedios T. Romualdez",
+      "postal_code": "8611"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Norte",
+      "municipality": "Nasipit",
+      "postal_code": "8602"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Norte",
+      "municipality": "Magallanes",
+      "postal_code": "8604"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Norte",
+      "municipality": "Las Nieves",
+      "postal_code": "8610"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Norte",
+      "municipality": "Kitcharao",
+      "postal_code": "8609"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Norte",
+      "municipality": "Jabonga",
+      "postal_code": "8607"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Norte",
+      "municipality": "Carmen",
+      "postal_code": "8603"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Norte",
+      "municipality": "Cabadbaran",
+      "postal_code": "8605"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Norte",
+      "municipality": "Butuan City",
+      "postal_code": "8600"
+    },
+    {
+      "region": "Region 13 (Caraga Region)",
+      "province": "Agusan del Norte",
+      "municipality": "Buenavista",
+      "postal_code": "8601"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Sultan Kudarat",
+      "municipality": "Tacurong",
+      "postal_code": "9800"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Sultan Kudarat",
+      "municipality": "Sen. Ninoy Aquino",
+      "postal_code": "9811"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Tarlac",
+      "municipality": "Victoria",
+      "postal_code": "2313"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Tarlac",
+      "municipality": "Tarlac",
+      "postal_code": "2300"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Tarlac",
+      "municipality": "Sta. Ignacia",
+      "postal_code": "2303"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Tarlac",
+      "municipality": "San Manuel",
+      "postal_code": "2309"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Tarlac",
+      "municipality": "San Jose",
+      "postal_code": "2318"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Tarlac",
+      "municipality": "San Clemente",
+      "postal_code": "2305"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Tarlac",
+      "municipality": "Ramos",
+      "postal_code": "2311"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Tarlac",
+      "municipality": "Pura",
+      "postal_code": "2312"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Tarlac",
+      "municipality": "Paniqui",
+      "postal_code": "2307"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Sultan Kudarat",
+      "municipality": "Pres. Quirino",
+      "postal_code": "9804"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Sultan Kudarat",
+      "municipality": "Palimbang",
+      "postal_code": "9809"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Sultan Kudarat",
+      "municipality": "Mariano Marcos",
+      "postal_code": "9802"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Sultan Kudarat",
+      "municipality": "Lutayan",
+      "postal_code": "9803"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Tarlac",
+      "municipality": "Bamban",
+      "postal_code": "2317"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Tarlac",
+      "municipality": "Moncada",
+      "postal_code": "2308"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Tarlac",
+      "municipality": "Mayantoc",
+      "postal_code": "2304"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Tarlac",
+      "municipality": "La Paz",
+      "postal_code": "2314"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Sultan Kudarat",
+      "municipality": "Lebak (Salaman)",
+      "postal_code": "9807"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Tarlac",
+      "municipality": "Gerona",
+      "postal_code": "2302"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Tarlac",
+      "municipality": "Concepcion",
+      "postal_code": "2316"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Tarlac",
+      "municipality": "Capas",
+      "postal_code": "2315"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Tarlac",
+      "municipality": "Camiling",
+      "postal_code": "2306"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Tarlac",
+      "municipality": "Anao",
+      "postal_code": "2310"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Sultan Kudarat",
+      "municipality": "Kalamansig",
+      "postal_code": "9808"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Sultan Kudarat",
+      "municipality": "Isulan",
+      "postal_code": "9805"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Sultan Kudarat",
+      "municipality": "Esperanza (Ampatuan)",
+      "postal_code": "9806"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Sultan Kudarat",
+      "municipality": "Columbio",
+      "postal_code": "9801"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Sultan Kudarat",
+      "municipality": "Bagumbayan",
+      "postal_code": "9810"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "Santa Cruz, Lubao",
+      "postal_code": "2025"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "Sasmuan",
+      "postal_code": "2004"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "Santo Tomas",
+      "postal_code": "2020"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "Santa Rita",
+      "postal_code": "2002"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "Santa Ana",
+      "postal_code": "2022"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "San Simon",
+      "postal_code": "2015"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "San Luis",
+      "postal_code": "2014"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "San Fernando",
+      "postal_code": "2000"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "Porac",
+      "postal_code": "2008"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "Dau, Mabalacat",
+      "postal_code": "2026"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "CSEZ, Clark",
+      "postal_code": "2023"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "Basa airbase",
+      "postal_code": "2007"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "Minalin",
+      "postal_code": "2019"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "Masantol",
+      "postal_code": "2017"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "Mexico",
+      "postal_code": "2021"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "Magalang",
+      "postal_code": "2011"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "Macabebe",
+      "postal_code": "2018"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "Mabalacat",
+      "postal_code": "2010"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "Lubao",
+      "postal_code": "2005"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "Guagua",
+      "postal_code": "2003"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "Floridablanca",
+      "postal_code": "2006"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "Candaba",
+      "postal_code": "2013"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "Bacolor",
+      "postal_code": "2001"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "Arayat",
+      "postal_code": "2012"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "Apalit",
+      "postal_code": "2016"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Pampanga",
+      "municipality": "Angeles City",
+      "postal_code": "2009"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Fort Magsaysay",
+      "postal_code": "3130"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Sta. Rosa",
+      "postal_code": "3101"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Sto. Domingo",
+      "postal_code": "3133"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Talavera",
+      "postal_code": "3114"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Talugtog",
+      "postal_code": "3118"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Zaragoza",
+      "postal_code": "3110"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "San Leonardo",
+      "postal_code": "3102"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "San Jose City",
+      "postal_code": "3121"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "San Isidro",
+      "postal_code": "3106"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Rizal",
+      "postal_code": "3127"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "San Antonio",
+      "postal_code": "3108"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Quezon",
+      "postal_code": "3113"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Peñaranda",
+      "postal_code": "3103"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Pantabangan",
+      "postal_code": "3124"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Palayan City",
+      "postal_code": "3132"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Nampicuan",
+      "postal_code": "3116"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Muñoz",
+      "postal_code": "3119"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Lupao",
+      "postal_code": "3122"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Llanera",
+      "postal_code": "3126"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Licab",
+      "postal_code": "3112"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Central Luzon State University",
+      "postal_code": "3120"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Jaen",
+      "postal_code": "3109"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Laur",
+      "postal_code": "3129"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Guimba",
+      "postal_code": "3115"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Gen. Tinio",
+      "postal_code": "3104"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Gen. M. Natividad",
+      "postal_code": "3125"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Gapan City",
+      "postal_code": "3105"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Gabaldon",
+      "postal_code": "3131"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Cuyapo",
+      "postal_code": "3117"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Carrangalan",
+      "postal_code": "3123"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Cabiao",
+      "postal_code": "3107"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Cabanatuan City",
+      "postal_code": "3100"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Bongabon",
+      "postal_code": "3128"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Nueva Ecija",
+      "municipality": "Aliaga",
+      "postal_code": "3111"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "South Cotabato",
+      "municipality": "Tupi",
+      "postal_code": "9505"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "Sapang Palay",
+      "postal_code": "3024"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "Sta. Maria",
+      "postal_code": "3022"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "San Rafael",
+      "postal_code": "3008"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "San Miguel",
+      "postal_code": "3011"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Agusan del Norte",
+      "municipality": "T'boli",
+      "postal_code": "9513"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "South Cotabato",
+      "municipality": "Tantangan",
+      "postal_code": "9510"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "South Cotabato",
+      "municipality": "Tampakan",
+      "postal_code": "9507"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "South Cotabato",
+      "municipality": "Surallah",
+      "postal_code": "9512"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "South Cotabato",
+      "municipality": "Sto. Niño",
+      "postal_code": "9509"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "Doña Remedios Trinidad",
+      "postal_code": "3009"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "Guiguinto",
+      "postal_code": "3015"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "South Cotabato",
+      "municipality": "Polomolok",
+      "postal_code": "9504"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "Hagonoy",
+      "postal_code": "3002"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "Malolos",
+      "postal_code": "3000"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "Marilao",
+      "postal_code": "3019"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "Meycauayan",
+      "postal_code": "3020"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "Norzagaray",
+      "postal_code": "3013"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "Obando",
+      "postal_code": "3021"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "Pandi",
+      "postal_code": "3014"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "Paombong",
+      "postal_code": "3001"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "Plaridel",
+      "postal_code": "3004"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "Pulilan",
+      "postal_code": "3005"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "San Ildefonso",
+      "postal_code": "3010"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "San Jose Del Monte",
+      "postal_code": "3023"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "South Cotabato",
+      "municipality": "Norala",
+      "postal_code": "9508"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "South Cotabato",
+      "municipality": "Lake Sebu",
+      "postal_code": "9518"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "South Cotabato",
+      "municipality": "Koronadal",
+      "postal_code": "9506"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "South Cotabato",
+      "municipality": "Gen. Santos City",
+      "postal_code": "9500"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "South Cotabato",
+      "municipality": "Banga",
+      "postal_code": "9511"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Sarangani",
+      "municipality": "Malungon",
+      "postal_code": "9503"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Sarangani",
+      "municipality": "Malapatan",
+      "postal_code": "9516"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Sarangani",
+      "municipality": "Maitum",
+      "postal_code": "9515"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Sarangani",
+      "municipality": "Maasim",
+      "postal_code": "9502"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Agusan del Norte",
+      "municipality": "Kiamba",
+      "postal_code": "9514"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "Cruz Na Daan",
+      "postal_code": "3025"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Sarangani",
+      "municipality": "Glan",
+      "postal_code": "9517"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Sarangani",
+      "municipality": "Alabel",
+      "postal_code": "9501"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Cotabato (North)",
+      "municipality": "Tulunan",
+      "postal_code": "9403"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Cotabato (North)",
+      "municipality": "Pre. Roxas",
+      "postal_code": "9405"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "Bulacan",
+      "postal_code": "3017"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "Bustos",
+      "postal_code": "3007"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "Calumpit",
+      "postal_code": "3003"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Cotabato (North)",
+      "municipality": "Pikit",
+      "postal_code": "9409"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "Bocaue",
+      "postal_code": "3018"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "Baliuag",
+      "postal_code": "3006"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "Balagtas",
+      "postal_code": "3016"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bulacan",
+      "municipality": "Angat",
+      "postal_code": "3012"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Cotabato (North)",
+      "municipality": "Pigkawayan",
+      "postal_code": "9412"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Cotabato (North)",
+      "municipality": "M'lang",
+      "postal_code": "9402"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Cotabato (North)",
+      "municipality": "Midsayap",
+      "postal_code": "9410"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Cotabato (North)",
+      "municipality": "Matalam",
+      "postal_code": "9406"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Cotabato (North)",
+      "municipality": "Makilala",
+      "postal_code": "9401"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Cotabato (North)",
+      "municipality": "Magpet",
+      "postal_code": "9404"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Cotabato (North)",
+      "municipality": "Libungan",
+      "postal_code": "9411"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Cotabato (North)",
+      "municipality": "Kidapawan",
+      "postal_code": "9400"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Cotabato (North)",
+      "municipality": "Kabacan",
+      "postal_code": "9407"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Cotabato (North)",
+      "municipality": "Carmen",
+      "postal_code": "9408"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Silang",
+      "postal_code": "4118"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Tagaytay",
+      "postal_code": "4120"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Tanza",
+      "postal_code": "4108"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Ternate",
+      "postal_code": "4111"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Trece Martirez City",
+      "postal_code": "4109"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Magallanes",
+      "postal_code": "4113"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Maragondon",
+      "postal_code": "4112"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Mendez",
+      "postal_code": "4121"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Noveleta",
+      "postal_code": "4105"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Naic",
+      "postal_code": "4110"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Rosario",
+      "postal_code": "4106"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Cotabato (North)",
+      "municipality": "Banisilan",
+      "postal_code": "9416"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Cotabato (North)",
+      "municipality": "Arakan",
+      "postal_code": "9417"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Cotabato (North)",
+      "municipality": "Antipas",
+      "postal_code": "9414"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Molino",
+      "postal_code": "4135"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Cotabato (North)",
+      "municipality": "Aleosan",
+      "postal_code": "9415"
+    },
+    {
+      "region": "Region 12 (SOCCSKSARGEN)",
+      "province": "Cotabato (North)",
+      "municipality": "Alamada",
+      "postal_code": "9413"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Gen. Trias",
+      "postal_code": "4107"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Gen. Mariano Alvarez",
+      "postal_code": "4117"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Imus",
+      "postal_code": "4103"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Indang",
+      "postal_code": "4122"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Kawit",
+      "postal_code": "4104"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Oriental",
+      "municipality": "Tarragona",
+      "postal_code": "8201"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Dasmariñas Resettlement Area",
+      "postal_code": "4115"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Oriental",
+      "municipality": "San Isidro",
+      "postal_code": "8209"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Gen. Aguinaldo (Bailen)",
+      "postal_code": "4124"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Oriental",
+      "municipality": "Mati",
+      "postal_code": "8200"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Oriental",
+      "municipality": "Manay",
+      "postal_code": "8202"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Oriental",
+      "municipality": "Lupon",
+      "postal_code": "8207"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Oriental",
+      "municipality": "Gov. Generoso",
+      "postal_code": "8210"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Oriental",
+      "municipality": "Cateel",
+      "postal_code": "8205"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Oriental",
+      "municipality": "Caraga",
+      "postal_code": "8203"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Oriental",
+      "municipality": "Boston",
+      "postal_code": "8206"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Oriental",
+      "municipality": "Banaybanay",
+      "postal_code": "8208"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Oriental",
+      "municipality": "Baganga",
+      "postal_code": "8204"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Occidental",
+      "municipality": "Sarangani",
+      "postal_code": "8015"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Occidental",
+      "municipality": "Santa Maria",
+      "postal_code": "8011"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Occidental",
+      "municipality": "Malita",
+      "postal_code": "8012"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Occidental",
+      "municipality": "Jose Abad Santos",
+      "postal_code": "8014"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Occidental",
+      "municipality": "Don Marcelino",
+      "postal_code": "8013"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Alfonso",
+      "postal_code": "4123"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Amadeo",
+      "postal_code": "4119"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Bacoor",
+      "postal_code": "4102"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Carmona",
+      "postal_code": "4116"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Cavite City",
+      "postal_code": "4100"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Cavite",
+      "municipality": "Dasmariñas",
+      "postal_code": "4114"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao del Sur",
+      "municipality": "University of Mindanao",
+      "postal_code": "8026"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao del Sur",
+      "municipality": "Toril",
+      "postal_code": "8025"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao del Sur",
+      "municipality": "Tibungco",
+      "postal_code": "8024"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao del Sur",
+      "municipality": "Talomo",
+      "postal_code": "8023"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao del Sur",
+      "municipality": "Sulop",
+      "postal_code": "8009"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao del Sur",
+      "municipality": "Santa Cruz",
+      "postal_code": "8001"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao del Sur",
+      "municipality": "Padada",
+      "postal_code": "8007"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao del Sur",
+      "municipality": "Mintal",
+      "postal_code": "8022"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "San Nicolas",
+      "postal_code": "4207"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao del Sur",
+      "municipality": "Matina",
+      "postal_code": "8021"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "San Pascual",
+      "postal_code": "4204"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Sta. Teresita",
+      "postal_code": "4206"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Sto. Tomas",
+      "postal_code": "4234"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Taal",
+      "postal_code": "4208"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Talisay",
+      "postal_code": "4220"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Tanauan",
+      "postal_code": "4232"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Taysan",
+      "postal_code": "4228"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Tingloy",
+      "postal_code": "4203"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao del Sur",
+      "municipality": "Matanao",
+      "postal_code": "8003"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Tuy",
+      "postal_code": "4214"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao del Sur",
+      "municipality": "Mandug",
+      "postal_code": "8020"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao del Sur",
+      "municipality": "Malalag",
+      "postal_code": "8010"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao del Sur",
+      "municipality": "Magsaysay",
+      "postal_code": "8004"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao del Sur",
+      "municipality": "Kiblawan",
+      "postal_code": "8008"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao del Sur",
+      "municipality": "Hagonoy",
+      "postal_code": "8006"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao del Sur",
+      "municipality": "Digos",
+      "postal_code": "8002"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao del Sur",
+      "municipality": "Davao International Airport",
+      "postal_code": "8019"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao del Sur",
+      "municipality": "Davao City",
+      "postal_code": "8000"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Lipa City",
+      "postal_code": "4217"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Lobo",
+      "postal_code": "4229"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao del Sur",
+      "municipality": "Calinan",
+      "postal_code": "8018"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Mabini",
+      "postal_code": "4202"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Malvar",
+      "postal_code": "4233"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Mataas na Kahoy",
+      "postal_code": "4223"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Nasugbu",
+      "postal_code": "4231"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Padre Garcia",
+      "postal_code": "4224"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Rosario",
+      "postal_code": "4225"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "San Jose",
+      "postal_code": "4227"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "San Juan",
+      "postal_code": "4226"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "San Luis",
+      "postal_code": "4210"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao del Sur",
+      "municipality": "Bunawan",
+      "postal_code": "8017"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao del Sur",
+      "municipality": "Bansalan",
+      "postal_code": "8005"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao del Sur",
+      "municipality": "Ateneo",
+      "postal_code": "8016"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Del Norte",
+      "municipality": "Talaingod",
+      "postal_code": "8107"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Del Norte",
+      "municipality": "Tagum",
+      "postal_code": "8100"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Del Norte",
+      "municipality": "Santo Tomas",
+      "postal_code": "8112"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Fernando Airbase",
+      "postal_code": "4218"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Del Norte",
+      "municipality": "San Isidro",
+      "postal_code": "8121"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Agoncillo",
+      "postal_code": "4211"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Del Norte",
+      "municipality": "Samal",
+      "postal_code": "8119"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Alitagtag",
+      "postal_code": "4205"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Balayan",
+      "postal_code": "4213"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Balete",
+      "postal_code": "4219"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Batangas City",
+      "postal_code": "4200"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Bauan",
+      "postal_code": "4201"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Calaca",
+      "postal_code": "4212"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Calatagan",
+      "postal_code": "4215"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Del Norte",
+      "municipality": "Panabo",
+      "postal_code": "8105"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Cuenca",
+      "postal_code": "4222"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Ibaan",
+      "postal_code": "4230"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Laurel",
+      "postal_code": "4221"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Lemery",
+      "postal_code": "4209"
+    },
+    {
+      "region": "Region 4A (CALABARZON)",
+      "province": "Batangas",
+      "municipality": "Lian",
+      "postal_code": "4216"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Del Norte",
+      "municipality": "New Corella",
+      "postal_code": "8104"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Del Norte",
+      "municipality": "Kaputian",
+      "postal_code": "8120"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Del Norte",
+      "municipality": "Kapalong",
+      "postal_code": "8113"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Del Norte",
+      "municipality": "Carmen",
+      "postal_code": "8101"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Del Norte",
+      "municipality": "Braulio E. Dujali",
+      "postal_code": "8106"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Del Norte",
+      "municipality": "Babak",
+      "postal_code": "8118"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao Del Norte",
+      "municipality": "Asuncion (formerly Saug)",
+      "postal_code": "8102"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao De Oro (Formerly Compostela Valley)",
+      "municipality": "Pantukan",
+      "postal_code": "8809"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Zambales",
+      "municipality": "San Narciso",
+      "postal_code": "2205"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Zambales",
+      "municipality": "Subic",
+      "postal_code": "2209"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Zambales",
+      "municipality": "Sta. Cruz",
+      "postal_code": "2213"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao De Oro (Formerly Compostela Valley)",
+      "municipality": "New Bataan",
+      "postal_code": "8804"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao De Oro (Formerly Compostela Valley)",
+      "municipality": "Nabunturan",
+      "postal_code": "8800"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao De Oro (Formerly Compostela Valley)",
+      "municipality": "Montevista",
+      "postal_code": "8801"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao De Oro (Formerly Compostela Valley)",
+      "municipality": "Monkayo",
+      "postal_code": "8805"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bataan",
+      "municipality": "Lamao",
+      "postal_code": "2104"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao De Oro (Formerly Compostela Valley)",
+      "municipality": "Mawab",
+      "postal_code": "8802"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao De Oro (Formerly Compostela Valley)",
+      "municipality": "Maragusan (formerly San Mariano)",
+      "postal_code": "8808"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bataan",
+      "municipality": "FAB (Freefort Area of Bataan)",
+      "postal_code": "2106"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao De Oro (Formerly Compostela Valley)",
+      "municipality": "Maco",
+      "postal_code": "8806"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao De Oro (Formerly Compostela Valley)",
+      "municipality": "Mabini",
+      "postal_code": "8807"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao De Oro (Formerly Compostela Valley)",
+      "municipality": "Laak (formerly San Vicente)",
+      "postal_code": "8810"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bataan",
+      "municipality": "Cabcaben",
+      "postal_code": "2109"
+    },
+    {
+      "region": "Region 11 (Davao Region)",
+      "province": "Davao De Oro (Formerly Compostela Valley)",
+      "municipality": "Compostela",
+      "postal_code": "8803"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bataan",
+      "municipality": "Limay",
+      "postal_code": "2103"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bataan",
+      "municipality": "Hermosa",
+      "postal_code": "2111"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bataan",
+      "municipality": "Dinalupihan",
+      "postal_code": "2110"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bataan",
+      "municipality": "Balanga",
+      "postal_code": "2100"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bataan",
+      "municipality": "Bagac",
+      "postal_code": "2107"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Villanueva",
+      "postal_code": "9002"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Bataan",
+      "municipality": "Abucay",
+      "postal_code": "2114"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Talisayan",
+      "postal_code": "9012"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Aurora",
+      "municipality": "Tagoloan",
+      "postal_code": "9001"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Sugbongcogon",
+      "postal_code": "9009"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Salay",
+      "postal_code": "9007"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Opol",
+      "postal_code": "9016"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Naawan",
+      "postal_code": "9023"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Aurora",
+      "municipality": "Casiguran",
+      "postal_code": "3204"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Aurora",
+      "municipality": "Dilasag",
+      "postal_code": "3205"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Aurora",
+      "municipality": "Dinalungan",
+      "postal_code": "3206"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Aurora",
+      "municipality": "Dingalan",
+      "postal_code": "3207"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Medina",
+      "postal_code": "9013"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Aurora",
+      "municipality": "Dipaculao",
+      "postal_code": "3203"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Aurora",
+      "municipality": "Maria Aurora",
+      "postal_code": "3202"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Aurora",
+      "municipality": "San Luis",
+      "postal_code": "3201"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Manticao",
+      "postal_code": "9024"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Magsaysay",
+      "postal_code": "9015"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Lugait",
+      "postal_code": "9025"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Libertad",
+      "postal_code": "9021"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Quirino",
+      "municipality": "Aglipay",
+      "postal_code": "3403"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Quirino",
+      "municipality": "Cabarroguis",
+      "postal_code": "3400"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Quirino",
+      "municipality": "Diffun",
+      "postal_code": "3401"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Lagonglong",
+      "postal_code": "9006"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Quirino",
+      "municipality": "Maddela",
+      "postal_code": "3404"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Quirino",
+      "municipality": "Nagtipunan",
+      "postal_code": "3405"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Quirino",
+      "municipality": "Saguday",
+      "postal_code": "3402"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Laguindingan",
+      "postal_code": "9019"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Kinoguitan",
+      "postal_code": "9010"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Jasaan",
+      "postal_code": "9003"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Initao",
+      "postal_code": "9022"
+    },
+    {
+      "region": "Region 3 (Central Luzon)",
+      "province": "Aurora",
+      "municipality": "Baler",
+      "postal_code": "3200"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Gitagum",
+      "postal_code": "9020"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Gingoog City",
+      "postal_code": "9014"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Nueva Vizcaya",
+      "municipality": "Solano",
+      "postal_code": "3709"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Nueva Vizcaya",
+      "municipality": "Sta. Fe",
+      "postal_code": "3705"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Nueva Vizcaya",
+      "municipality": "Quezon",
+      "postal_code": "3713"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Nueva Vizcaya",
+      "municipality": "Kayapa",
+      "postal_code": "3708"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Nueva Vizcaya",
+      "municipality": "Kasibu",
+      "postal_code": "3703"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "El Salvador",
+      "postal_code": "9017"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Nueva Vizcaya",
+      "municipality": "Dupax del Sur",
+      "postal_code": "3707"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Nueva Vizcaya",
+      "municipality": "Dupax del Norte",
+      "postal_code": "3706"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Nueva Vizcaya",
+      "municipality": "Diadi",
+      "postal_code": "3712"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Nueva Vizcaya",
+      "municipality": "Bayombong",
+      "postal_code": "3700"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Nueva Vizcaya",
+      "municipality": "Bambang",
+      "postal_code": "3702"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Nueva Vizcaya",
+      "municipality": "Bagabag",
+      "postal_code": "3711"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Nueva Vizcaya",
+      "municipality": "Aritao",
+      "postal_code": "3704"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Nueva Vizcaya",
+      "municipality": "Ambaguio",
+      "postal_code": "3701"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Nueva Vizcaya",
+      "municipality": "Alfonso Castañeda",
+      "postal_code": "3714"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Claveria",
+      "postal_code": "9004"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Cagayan de Oro City",
+      "postal_code": "9000"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Binuangan",
+      "postal_code": "9008"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Balingoan",
+      "postal_code": "9011"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Balingoan",
+      "postal_code": "9011"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Balingasag",
+      "postal_code": "9005"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "San Guillermo",
+      "postal_code": "3308"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "San Isidro",
+      "postal_code": "3310"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "San Manuel",
+      "postal_code": "3317"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "San Mariano",
+      "postal_code": "3332"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "San Mateo",
+      "postal_code": "3318"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "San Pablo",
+      "postal_code": "3329"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Sta. Maria",
+      "postal_code": "3330"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Santiago CIty",
+      "postal_code": "3311"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Sto. Tomas",
+      "postal_code": "3327"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Tumauini",
+      "postal_code": "3325"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Oriental",
+      "municipality": "Alubijid",
+      "postal_code": "9018"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Occidental",
+      "municipality": "Tudela",
+      "postal_code": "7202"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Occidental",
+      "municipality": "Tangub City",
+      "postal_code": "7214"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Occidental",
+      "municipality": "Sinacaban",
+      "postal_code": "7203"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Aurora",
+      "municipality": "Sapang dalaga",
+      "postal_code": "7212"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Occidental",
+      "municipality": "Plaridel",
+      "postal_code": "7209"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Occidental",
+      "municipality": "Panaon",
+      "postal_code": "7205"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Occidental",
+      "municipality": "Ozamis City",
+      "postal_code": "7200"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Quirino",
+      "postal_code": "3321"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Ramon",
+      "postal_code": "3319"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Reina Mercedes",
+      "postal_code": "3303"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Roxas",
+      "postal_code": "3320"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "San Agustin",
+      "postal_code": "3314"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Occidental",
+      "municipality": "Oroquieta City",
+      "postal_code": "7207"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Occidental",
+      "municipality": "Lopez Jaena",
+      "postal_code": "7208"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Occidental",
+      "municipality": "Jimenez",
+      "postal_code": "7204"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Occidental",
+      "municipality": "Don Victoriano Chiongbian",
+      "postal_code": "7216"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Occidental",
+      "municipality": "Concepcion",
+      "postal_code": "7213"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Gamu",
+      "postal_code": "3301"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Jones",
+      "postal_code": "3313"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Luna",
+      "postal_code": "3304"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Maconacon",
+      "postal_code": "3333"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Occidental",
+      "municipality": "Clarin",
+      "postal_code": "7201"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Mallig",
+      "postal_code": "3323"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Naguillan",
+      "postal_code": "3302"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Palanan",
+      "postal_code": "3334"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Quezon",
+      "postal_code": "3324"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Occidental",
+      "municipality": "Calamba",
+      "postal_code": "7210"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Occidental",
+      "municipality": "Bonifacio",
+      "postal_code": "7215"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Occidental",
+      "municipality": "Baliangao",
+      "postal_code": "7211"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Misamis Occidental",
+      "municipality": "Aloran",
+      "postal_code": "7206"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Cordon",
+      "postal_code": "3312"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Delfin Albano",
+      "postal_code": "3326"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Dinapigue",
+      "postal_code": "3336"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Divilacan",
+      "postal_code": "3335"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Echague",
+      "postal_code": "3309"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Lanao del Norte",
+      "municipality": "Tubod",
+      "postal_code": "9209"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "City of Ilagan",
+      "postal_code": "3300"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Alicia",
+      "postal_code": "3306"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Angadanan",
+      "postal_code": "3307"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Aurora",
+      "postal_code": "3316"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Benito Soliven",
+      "postal_code": "3331"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Burgos",
+      "postal_code": "3322"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Cabagan",
+      "postal_code": "3328"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "Cabatuan",
+      "postal_code": "3315"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Isabela",
+      "municipality": "City of Cauayan",
+      "postal_code": "3305"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Lanao del Norte",
+      "municipality": "Tangcal",
+      "postal_code": "9220"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Lanao del Norte",
+      "municipality": "Tagoloan",
+      "postal_code": "9222"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Lanao del Norte",
+      "municipality": "Sultan Naga Dimaporo (formerly Karomatan)",
+      "postal_code": "9215"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Lanao del Norte",
+      "municipality": "Sapad",
+      "postal_code": "9213"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Lanao del Norte",
+      "municipality": "Salvador",
+      "postal_code": "9212"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Lanao del Norte",
+      "municipality": "Poona Piagapo",
+      "postal_code": "9204"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Lanao del Norte",
+      "municipality": "Pantar",
+      "postal_code": "9218"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Sta. Teresita",
+      "postal_code": "3512"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Santo Niño",
+      "postal_code": "3525"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Tuao",
+      "postal_code": "3528"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Tuguegarao City",
+      "postal_code": "3500"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Lanao del Norte",
+      "municipality": "Pantao Ragat",
+      "postal_code": "9208"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Lanao del Norte",
+      "municipality": "Nunungan",
+      "postal_code": "9216"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Santa Praxedes",
+      "postal_code": "3521"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Sta. Ana",
+      "postal_code": "3514"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Lanao del Norte",
+      "municipality": "Munai",
+      "postal_code": "9219"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Lanao del Norte",
+      "municipality": "Matungao",
+      "postal_code": "9203"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Solana",
+      "postal_code": "3503"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Lanao del Norte",
+      "municipality": "Maigo",
+      "postal_code": "9206"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Lanao del Norte",
+      "municipality": "Magsaysay",
+      "postal_code": "9221"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Lanao del Norte",
+      "municipality": "Linamon",
+      "postal_code": "9201"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Lanao del Norte",
+      "municipality": "Lala",
+      "postal_code": "9211"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Lanao del Norte",
+      "municipality": "Kolambugan",
+      "postal_code": "9207"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Claveria",
+      "postal_code": "3519"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Enrile",
+      "postal_code": "3501"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Gattaran",
+      "postal_code": "3508"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Gonzaga",
+      "postal_code": "3513"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Iguig",
+      "postal_code": "3504"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Lal-lo",
+      "postal_code": "3509"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Lasam",
+      "postal_code": "3524"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Pamplona",
+      "postal_code": "3522"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Peñablanca",
+      "postal_code": "3502"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Piat",
+      "postal_code": "3527"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Rizal",
+      "postal_code": "3526"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Sanchez-Mira",
+      "postal_code": "3518"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Lanao del Norte",
+      "municipality": "Kauswagan",
+      "postal_code": "9202"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Lanao del Norte",
+      "municipality": "Kapatagan",
+      "postal_code": "9214"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Lanao del Norte",
+      "municipality": "Iligan City",
+      "postal_code": "9200"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Lanao del Norte",
+      "municipality": "Baroy",
+      "postal_code": "9210"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Lanao del Norte",
+      "municipality": "Baloi",
+      "postal_code": "9217"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Lanao del Norte",
+      "municipality": "Bacolod",
+      "postal_code": "9205"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Camiguin",
+      "municipality": "Sagay",
+      "postal_code": "9103"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Camiguin",
+      "municipality": "Mambajao",
+      "postal_code": "9100"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Abulug",
+      "postal_code": "3517"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Alcala",
+      "postal_code": "3507"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Allacapan",
+      "postal_code": "3523"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Amulung",
+      "postal_code": "3505"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Aparri",
+      "postal_code": "3515"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Baggao",
+      "postal_code": "3506"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Ballesteros",
+      "postal_code": "3516"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Buguey",
+      "postal_code": "3511"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Calayan",
+      "postal_code": "3520"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Cagayan",
+      "municipality": "Camalaniugan",
+      "postal_code": "3510"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Camiguin",
+      "municipality": "Mahinog",
+      "postal_code": "9101"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Camiguin",
+      "municipality": "Guinsiliban",
+      "postal_code": "9102"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Camiguin",
+      "municipality": "Catarman",
+      "postal_code": "9104"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Bukidnon",
+      "municipality": "Valencia",
+      "postal_code": "8709"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Bukidnon",
+      "municipality": "Talakag",
+      "postal_code": "8708"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Batanes",
+      "municipality": "Itbayat",
+      "postal_code": "3905"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Batanes",
+      "municipality": "Basco",
+      "postal_code": "3900"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Batanes",
+      "municipality": "Ivana",
+      "postal_code": "3902"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Batanes",
+      "municipality": "Mahatao",
+      "postal_code": "3901"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Bukidnon",
+      "municipality": "Sumilao",
+      "postal_code": "8701"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Batanes",
+      "municipality": "Sabtang",
+      "postal_code": "3904"
+    },
+    {
+      "region": "Region 2 (Cagayan Valley)",
+      "province": "Batanes",
+      "municipality": "Uyugan",
+      "postal_code": "3903"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Bukidnon",
+      "municipality": "San Fernando",
+      "postal_code": "8711"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Bukidnon",
+      "municipality": "Quezon",
+      "postal_code": "8715"
+    },
+    {
+      "region": "Region 1 (Ilocos Region)",
+      "province": "Pangasinan",
+      "municipality": "Sual",
+      "postal_code": "2403"
+    },
+    {
+      "region": "Region 1 (Ilocos Region)",
+      "province": "Pangasinan",
+      "municipality": "Tayug",
+      "postal_code": "2445"
+    },
+    {
+      "region": "Region 1 (Ilocos Region)",
+      "province": "Pangasinan",
+      "municipality": "Umingan",
+      "postal_code": "2443"
+    },
+    {
+      "region": "Region 1 (Ilocos Region)",
+      "province": "Pangasinan",
+      "municipality": "Urbiztondo",
+      "postal_code": "2414"
+    },
+    {
+      "region": "Region 1 (Ilocos Region)",
+      "province": "Pangasinan",
+      "municipality": "Urdaneta",
+      "postal_code": "2428"
+    },
+    {
+      "region": "Region 1 (Ilocos Region)",
+      "province": "Pangasinan",
+      "municipality": "Villasis",
+      "postal_code": "2427"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Bukidnon",
+      "municipality": "Phillips",
+      "postal_code": "8705"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Bukidnon",
+      "municipality": "Pangantucan",
+      "postal_code": "8717"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Bukidnon",
+      "municipality": "Musuan",
+      "postal_code": "8710"
+    },
+    {
+      "region": "Region 1 (Ilocos Region)",
+      "province": "Pangasinan",
+      "municipality": "Santa Barbara",
+      "postal_code": "2419"
+    },
+    {
+      "region": "Region 1 (Ilocos Region)",
+      "province": "Pangasinan",
+      "municipality": "Santa Maria",
+      "postal_code": "2440"
+    },
+    {
+      "region": "Region 1 (Ilocos Region)",
+      "province": "Pangasinan",
+      "municipality": "Santo Tomas",
+      "postal_code": "2426"
+    },
+    {
+      "region": "Region 1 (Ilocos Region)",
+      "province": "Pangasinan",
+      "municipality": "San Quintin",
+      "postal_code": "2444"
+    },
+    {
+      "region": "Region 1 (Ilocos Region)",
+      "province": "Pangasinan",
+      "municipality": "San Nicolas",
+      "postal_code": "2447"
+    },
+    {
+      "region": "Region 1 (Ilocos Region)",
+      "province": "Pangasinan",
+      "municipality": "Sison",
+      "postal_code": "2434"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Bukidnon",
+      "municipality": "Maramag",
+      "postal_code": "8714"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Bukidnon",
+      "municipality": "Manolo Fortich",
+      "postal_code": "8703"
+    },
+    {
+      "region": "Region 1 (Ilocos Region)",
+      "province": "Pangasinan",
+      "municipality": "San Manuel",
+      "postal_code": "2438"
+    },
+    {
+      "region": "Region 1 (Ilocos Region)",
+      "province": "Pangasinan",
+      "municipality": "San Jacinto",
+      "postal_code": "2431"
+    },
+    {
+      "region": "Region 1 (Ilocos Region)",
+      "province": "Pangasinan",
+      "municipality": "San Fabian",
+      "postal_code": "2433"
+    },
+    {
+      "region": "Region 1 (Ilocos Region)",
+      "province": "Pangasinan",
+      "municipality": "San Carlos City",
+      "postal_code": "2420"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Bukidnon",
+      "municipality": "Malitbog",
+      "postal_code": "8704"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Bukidnon",
+      "municipality": "Malaybalay",
+      "postal_code": "8700"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Bukidnon",
+      "municipality": "Libona",
+      "postal_code": "8706"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Agusan del Norte",
+      "municipality": "Lantapan",
+      "postal_code": "8722"
+    },
+    {
+      "region": "Region 1 (Ilocos Region)",
+      "province": "Pangasinan",
+      "municipality": "Rosales",
+      "postal_code": "2441"
+    },
+    {
+      "region": "Region 1 (Ilocos Region)",
+      "province": "Pangasinan",
+      "municipality": "Pozorrubio",
+      "postal_code": "2435"
+    },
+    {
+      "region": "Region 1 (Ilocos Region)",
+      "province": "Pangasinan",
+      "municipality": "Natividad",
+      "postal_code": "2446"
+    },
+    {
+      "region": "Region 1 (Ilocos Region)",
+      "province": "Pangasinan",
+      "municipality": "Mapandan",
+      "postal_code": "2429"
+    },
+    {
+      "region": "Region 1 (Ilocos Region)",
+      "province": "Pangasinan",
+      "municipality": "Mangatarem",
+      "postal_code": "2413"
+    },
+    {
+      "region": "Region 1 (Ilocos Region)",
+      "province": "Pangasinan",
+      "municipality": "Mangaldan",
+      "postal_code": "2432"
+    },
+    {
+      "region": "Region 10 (Northern Mindanao)",
+      "province": "Agusan del Norte",
+      "municipality": "Kitaotao",
+      "postal_code": "8716"
+    }
+  ]
+}

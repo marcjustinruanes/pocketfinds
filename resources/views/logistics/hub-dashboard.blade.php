@@ -22,7 +22,7 @@
           — approved {{ optional($shipment->pickup_approved_at)->diffForHumans() }}
         </div>
       </div>
-      @if($shipment->pickupAssignment)<p>{{ $shipment->pickupAssignment->status === 'offered' && $shipment->pickupAssignment->expires_at?->isFuture() ? 'Awaiting rider confirmation' : 'Previous offer expired or declined' }}: {{ $shipment->pickupAssignment->courier?->given_names }}</p>@endif
+      @if($shipment->pickupAssignment)<p>{{ $shipment->pickupAssignment->status === 'offered' ? 'Awaiting rider confirmation' : 'Previous offer expired or declined' }}: {{ $shipment->pickupAssignment->courier?->given_names }}</p>@endif
       <form method="POST" action="{{ route('logistics.requests.assign-pickup', $shipment->id) }}" style="display:flex;gap:6px">
         @csrf @method('PATCH')
         <select name="courier_id" class="select" required>
@@ -33,7 +33,7 @@
         </select>
         <button type="submit" class="btn btn-sm btn-primary" @disabled(($pickupRidersByShipment[$shipment->id] ?? collect())->isEmpty())>Send offer</button>
       </form>
-      @if(($pickupRidersByShipment[$shipment->id] ?? collect())->isEmpty())<p role="status">No eligible rider is available for the pickup barangay {{ app(\App\Services\RiderBarangayCoverage::class)->barangay($shipment, 'pickup') ?: '(missing address)' }}. Ask your logistics admin to review rider coverage and availability.</p>@endif
+      @if(($pickupRidersByShipment[$shipment->id] ?? collect())->isEmpty())<p role="status">No eligible online two-wheel rider is available at the pickup municipality hub. Review rider hub assignment and availability.</p>@endif
     </div>
     @empty
     <p class="hub-queue-empty">No approved pickups waiting at this hub right now.</p>

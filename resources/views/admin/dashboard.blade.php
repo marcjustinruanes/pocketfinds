@@ -1,6 +1,6 @@
 @extends('admin.layout')
 @section('title', 'Dashboard')
-@section('page-title', 'Dashboard')
+@section('page-title', 'Platform overview')
 @section('page-sub', 'Welcome back, ' . auth()->user()->given_names)
 
 @section('content')
@@ -43,22 +43,18 @@
       <div class="kpi tone-info">
         <div class="label">Total Users</div>
         <div class="value">{{ number_format($totalUsers) }}</div>
-        <div class="delta up">All accounts</div>
       </div>
       <div class="kpi tone-warning">
         <div class="label">Pending Registrations</div>
         <div class="value">{{ $pendingCount }}</div>
-        <div class="delta {{ $pendingCount > 0 ? 'down' : 'up' }}">Awaiting review</div>
       </div>
       <div class="kpi tone-danger">
         <div class="label">Open Disputes</div>
         <div class="value">{{ $openDisputes }}</div>
-        <div class="delta {{ $openDisputes > 0 ? 'down' : 'up' }}">Active cases</div>
       </div>
       <div class="kpi tone-success">
         <div class="label">Approved Users</div>
         <div class="value">{{ $approved }}</div>
-        <div class="delta up">Active accounts</div>
       </div>
     </div>
 

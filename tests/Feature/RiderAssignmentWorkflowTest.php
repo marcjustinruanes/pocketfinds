@@ -63,6 +63,35 @@ class RiderAssignmentWorkflowTest extends TestCase
         return '/rider/'.($leg === 'pickup' ? 'pickup-requests' : 'requests').'/'.$shipment->id.'/accept';
     }
 
+    public function test_delivery_uses_photo_proof_without_a_buyer_otp(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('sensitive_documents');
+        $shipment = $this->parcel();
+        $buyer=$this->person('buyer');$seller=$this->person('seller');
+        $order=\App\Models\Order::create(['order_number'=>uniqid('RECEIPT-'),'buyer_id'=>$buyer->id,'seller_id'=>$seller->id,'status'=>'out_for_delivery','items'=>[],'subtotal'=>10,'total'=>10]);
+        $shipment->update(['order_id'=>$order->id]);
+        $shipment->update(['courier_id' => $this->rider->id, 'shipping_status' => 'assigned_to_rider']);
+        DeliveryAssignment::create(['shipment_id' => $shipment->id, 'courier_id' => $this->rider->id, 'leg' => 'delivery', 'status' => 'assigned_to_rider']);
+        $url = '/rider/deliveries/'.$shipment->id.'/advance';
+        $this->actingAs($this->rider)->patch($url, ['from' => 'assigned_to_rider'])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertNull($shipment->fresh()->delivery_otp_hash);
+        $this->patch($url, ['from' => 'out_for_delivery'])->assertSessionHasErrors('delivery_proof');
+        $this->assertSame('out_for_delivery', $shipment->fresh()->shipping_status);
+        $proof = \Illuminate\Http\UploadedFile::fake()->createWithContent('delivery.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aT1sAAAAASUVORK5CYII='));
+        $this->patch($url, ['from' => 'out_for_delivery', 'delivery_proof' => $proof])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('delivered', $shipment->fresh()->shipping_status);
+        $this->assertNotNull($shipment->fresh()->delivery_proof_file);
+        $this->assertSame('out_for_delivery',$order->fresh()->status);
+        $this->travel(8)->days();
+        \App\Models\Order::autoCompleteDelivered();
+        $this->assertSame('out_for_delivery',$order->fresh()->status);
+        $this->actingAs($seller)->patch(route('buyer.orders.confirm-receipt',$order))->assertForbidden();
+        $this->actingAs($buyer)->patch(route('buyer.orders.confirm-receipt',$order))->assertRedirect(route('buyer.orders',['tab'=>'delivered']));
+        $this->assertSame('delivered',$order->fresh()->status);
+        $this->assertSame('delivered',$shipment->fresh()->shipping_status);
+        $this->assertTrue(\App\Services\BuyerCommerce::returnWindowOpen($order->fresh()));
+    }
+
     public function test_manual_pickup_and_delivery_wait_for_rider_confirmation_and_accept_only_once(): void
     {
         foreach (['pickup', 'delivery'] as $leg) {
@@ -127,13 +156,29 @@ class RiderAssignmentWorkflowTest extends TestCase
         $this->assertSame(3, $this->flow->activeJobs($this->rider->id));
     }
 
+    public function test_offers_have_no_deadline_and_can_be_accepted_after_days(): void
+    {
+        foreach (['pickup', 'delivery'] as $leg) {
+            $shipment = $this->parcel($leg);
+            $offer = $this->flow->propose($this->staff, $shipment->id, $this->rider->id, $leg);
+            $this->assertNull($offer->expires_at);
+            $this->travel(3)->days();
+            $this->flow->expireOutstanding();
+            $this->flow->expire($shipment->id);
+            $this->assertSame('offered', $offer->fresh()->status);
+            $this->flow->accept($this->rider, $shipment->id, $leg);
+            $this->assertNotNull($offer->fresh()->accepted_at);
+            $this->travelBack();
+        }
+    }
+
     public function test_declined_and_expired_offers_keep_manual_delivery_controls_available(): void
     {
         foreach (['declined', 'expired', 'offered'] as $state) {
             $shipment = $this->parcel();
             $offer = $this->flow->propose($this->staff, $shipment->id, $this->rider->id, 'delivery');
             $offer->update(['status' => $state, 'expires_at' => $state === 'offered' ? now()->addMinute() : now()->subMinute()]);
-            $this->actingAs($this->staff)->get('/logistics/assignments')->assertOk()->assertSee($this->staffUrl($shipment, 'delivery'), false)->assertSee('Send offer')->assertSee('Riders must confirm');
+            $this->actingAs($this->staff)->get('/logistics/assignments/parcels/'.$shipment->id)->assertOk()->assertSee($this->staffUrl($shipment, 'delivery'), false)->assertSee('Send offer');
             $this->patch($this->staffUrl($shipment, 'delivery'), ['courier_id' => $this->rider->id])->assertRedirect()->assertSessionHasNoErrors();
             $this->assertSame('offered', $offer->fresh()->status);
             $this->assertNull($offer->fresh()->accepted_at);
@@ -148,7 +193,7 @@ class RiderAssignmentWorkflowTest extends TestCase
         $this->flow->propose($this->staff, $shipment->id, $other->id, 'delivery');
         $this->actingAs($this->rider)->patchJson($this->acceptUrl($shipment, 'delivery'))->assertUnprocessable();
         $offer->refresh()->update(['expires_at' => now()->subSecond()]);
-        $this->actingAs($other)->patchJson($this->acceptUrl($shipment, 'delivery'))->assertUnprocessable();
+        $this->actingAs($this->rider)->patchJson($this->acceptUrl($shipment, 'delivery'))->assertUnprocessable();
         $this->flow->expire($shipment->id);
         $this->assertNull($shipment->fresh()->courier_id);
         $this->flow->propose($this->staff, $shipment->id, $this->rider->id, 'delivery');
@@ -212,8 +257,8 @@ class RiderAssignmentWorkflowTest extends TestCase
         $offer->fresh()->update(['expires_at' => now()->subSecond()]);
         $shipment->update(['delivery_offer_failures' => RiderDeliveryOffers::MAX_FAILURES - 1]);
         $this->flow->expire($shipment->id);
-        $this->assertSame('expired', $offer->fresh()->status);
-        $this->assertNull($this->flow->offer($shipment));
+        $this->assertSame('offered', $offer->fresh()->status);
+        $this->assertNotNull($this->flow->offer($shipment));
         $this->flow->propose($this->staff, $shipment->id, $this->rider->id, 'delivery');
         $this->flow->accept($this->rider, $shipment->id, 'delivery');
         $this->assertSame($this->rider->id, $shipment->fresh()->courier_id);

@@ -18,16 +18,26 @@ class SellerWorkspaceNavigationTest extends TestCase
         $this->actingAs(User::create(['account_type'=>'seller','username'=>'workspace-shop','email'=>'workspace@gmail.com','given_names'=>'Test','last_name'=>'Seller','password'=>'Pass@2026','status'=>'approved','business_name'=>'Workspace Shop']));
     }
 
-    public function test_six_sidebar_sections_replace_individual_tool_links(): void
+    public function test_inventory_renders_github_styles_without_an_external_stylesheet_request(): void
+    {
+        request()->setRouteResolver(fn () => Route::getRoutes()->getByName('seller.inventory'));
+        view()->share('errors', new \Illuminate\Support\ViewErrorBag());
+        $html = view('seller.inventory', ['seller'=>auth()->user(), 'products'=>collect(), 'categories'=>collect(), 'shopCategories'=>collect(), 'shopAssignments'=>collect()])->render();
+        $this->assertStringContainsString('<style data-seller-inventory-styles>', $html);
+        $this->assertStringContainsString('data-product-workspace', $html);
+        if (getenv('SELLER_INVENTORY_PREVIEW') === '1') file_put_contents(storage_path('framework/testing/seller-inventory.html'), $html);
+    }
+
+    public function test_five_sidebar_sections_replace_individual_tool_links(): void
     {
         request()->setRouteResolver(fn () => Route::getRoutes()->getByName('seller.feedback'));
         $html = view('seller.partials.workspace-navigation')->render();
-        $this->assertSame(6, substr_count($html, 'class="nav-item '));
+        $this->assertSame(5, substr_count($html, 'class="nav-item '));
         $this->assertSame(1, substr_count($html, 'aria-current="page"'));
-        foreach (['Dashboard','Orders','Products','Promotions','Finance','My Account'] as $label) $this->assertStringContainsString($label, $html);
+        foreach (['Dashboard','Orders','Products','Promotions','Finance'] as $label) $this->assertStringContainsString($label, $html);
         foreach (['Messages','Announcements','Shipping Payments','COD Payouts'] as $label) $this->assertStringNotContainsString($label, $html);
-        $tabs = view('seller.partials.workspace-tabs')->render();
-        foreach (['Inventory','Shop categories','Reviews'] as $label) $this->assertStringContainsString($label, $tabs);
+        $tabs = view('seller.partials.product-navigation')->render();
+        foreach (['Inventory','Reviews'] as $label) $this->assertStringContainsString($label, $tabs);
     }
 
     public function test_finance_tools_remain_accessible_under_one_section(): void
@@ -46,7 +56,9 @@ class SellerWorkspaceNavigationTest extends TestCase
             ->assertSee('seller-utility-row')->assertSee('aria-label="My account"', false)
             ->assertDontSee('<header class="topbar">', false)->assertDontSee('class="topbar-search"', false)
             ->assertDontSee('class="seller-account-label"', false)
-            ->assertDontSee('data-modal="addProductModal"', false);
+            ->assertDontSee('data-modal="addProductModal"', false)
+            ->assertSee('<style data-seller-dashboard-styles>', false)
+            ->assertSee('.dashboard-chart-tooltip { position: absolute;', false);
         if (getenv('SELLER_DASHBOARD_PREVIEW') === '1') {
             file_put_contents(storage_path('framework/testing/seller-dashboard.html'), $response->getContent());
         }
@@ -180,6 +192,16 @@ class SellerWorkspaceNavigationTest extends TestCase
         $db->where('id','own-alert')->update(['is_read'=>false]);
         $this->postJson(route('seller.notifications.read'))->assertOk()->assertJson(['read'=>true]);
         $this->assertEquals(1, (clone $db)->where('id','own-alert')->value('is_read'));
+    }
+
+    public function test_orders_render_more_than_six_recorded_timeline_events(): void
+    {
+        $db = \Illuminate\Support\Facades\DB::class;
+        $db::table('orders')->insert(['id'=>'long-timeline','order_number'=>'TIMELINE-TEST','seller_id'=>auth()->id(),'buyer_id'=>auth()->id(),'status'=>'completed','items'=>'[]','total'=>100,'subtotal'=>100,'shipping_amount'=>0,'discount_amount'=>0,'created_at'=>'2026-11-01 08:00:00','updated_at'=>'2026-11-02 08:00:00']);
+        foreach (['placed','confirmed','preparing','ready_for_pickup','picked_up','at_sorting_center','sorted','assigned_to_rider','out_for_delivery','delivered','completed'] as $index => $status) {
+            $db::table('order_status_history')->insert(['id'=>'timeline-'.$index,'order_id'=>'long-timeline','status'=>$status,'created_at'=>sprintf('2026-11-01 %02d:00:00', $index+8)]);
+        }
+        $this->get(route('seller.orders'))->assertOk()->assertSee('Order completed')->assertSee('At sorting center')->assertSee('Assigned to rider');
     }
 
     public function test_waybill_button_is_only_visible_during_preparation(): void

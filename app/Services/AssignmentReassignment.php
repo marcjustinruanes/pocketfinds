@@ -78,13 +78,14 @@ class AssignmentReassignment
     private function replacement(int $id, Shipment $s, string $leg): User
     {
         abort_unless(app(RiderDeliveryOffers::class)->canAssign($s, $leg, $id), 422,
-            'Choose an approved online rider covering the parcel barangay at its hub, with an available two-wheel vehicle and fewer than three active pickup/delivery jobs.');
+            'Choose an approved online rider assigned to the parcel municipality hub, with an available two-wheel vehicle and fewer than three active pickup/delivery jobs.');
 
         return User::whereKey($id)->lockForUpdate()->firstOrFail();
     }
 
     public function request(User $user, string $id, array $input): void
     {
+        abort_unless($user->fresh()->isHubStaff(), 403, 'Only the responsible hub staff may request a rider reassignment.');
         $d = Validator::make($input, ['key'=>'required|uuid','revision'=>'required|integer|min:0','old_rider_id'=>'required|integer','replacement_rider_id'=>'required|integer|different:old_rider_id','reason'=>'required|string|min:3|max:1000'])->validate();
         DB::transaction(function () use ($user, $id, $d) {
             [$a, $s] = $this->source($user, $id, [$d['replacement_rider_id']]); $actor = $this->actor($user); $this->scope($actor, $s, $a->leg);

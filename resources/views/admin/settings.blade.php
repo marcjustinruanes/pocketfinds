@@ -3,6 +3,10 @@
 @section('page-title', 'Settings')
 @section('page-sub', 'Manage platform configuration and your preferences')
 
+@section('body-class','platform-settings-page')
+@push('account-head')
+<link rel="stylesheet" href="{{ asset('css/platform-settings.css') }}?v={{ filemtime(public_path('css/platform-settings.css')) }}">
+@endpush
 @section('content')
 @if(session('success'))
 <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:18px">
@@ -17,13 +21,11 @@
 
 <div class="settings-shell">
   <nav class="settings-nav" id="settingsNav">
-    <a class="settings-nav-item active" data-settings-tab="general"><span class="ic"><x-admin-icon name="settings" /></span> General</a>
-    <a class="settings-nav-item" data-settings-tab="hero"><span class="ic"><x-admin-icon name="bag" /></span> Hero Banner</a>
-    <a class="settings-nav-item" data-settings-tab="collage"><span class="ic"><x-admin-icon name="bag" /></span> Account Photos</a>
-    <a class="settings-nav-item" data-settings-tab="categories"><span class="ic"><x-admin-icon name="bag" /></span> Category Photos</a>
-    <a class="settings-nav-item" data-settings-tab="policies"><span class="ic"><x-admin-icon name="file" /></span> Platform Policies</a>
-    <a class="settings-nav-item" data-settings-tab="appearance"><span class="ic"><x-admin-icon name="chart" /></span> Appearance</a>
-    <a class="settings-nav-item" data-settings-tab="danger"><span class="ic"><x-admin-icon name="flag" /></span> Danger Zone</a>
+    <button type="button" class="settings-nav-item active" data-settings-tab="general"><span class="ic"><x-admin-icon name="settings" /></span> General</button>
+    <button type="button" class="settings-nav-item" data-settings-tab="hero"><span class="ic"><x-admin-icon name="bag" /></span> Hero Banner</button>
+    <button type="button" class="settings-nav-item" data-settings-tab="collage"><span class="ic"><x-admin-icon name="bag" /></span> Account Photos</button>
+    <button type="button" class="settings-nav-item" data-settings-tab="categories"><span class="ic"><x-admin-icon name="bag" /></span> Category Photos</button>
+    <button type="button" class="settings-nav-item" data-settings-tab="danger"><span class="ic"><x-admin-icon name="flag" /></span> Danger Zone</button>
   </nav>
 
   <div>
@@ -209,29 +211,8 @@
           </form>
         </div>
       </div>
-    </div>
+      <section class="settings-hero-appearance">
 
-    {{-- ── Platform Policies ── --}}
-    {{-- Terms & Conditions editing lives on its own dedicated Policies page — it needs
-         room for per-role documents, revision history, and logistics companies' own
-         submitted documents with an approval queue. This panel just points there. --}}
-    <div data-settings-panel="policies" style="display:none">
-      <h2 class="settings-section-title"><span class="ic"><x-admin-icon name="file" /></span> Platform Policies</h2>
-      <p class="settings-section-sub">Terms & Conditions and other policy documents shown to users.</p>
-
-      <div class="card">
-        <div class="card-pad" style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
-          <div>
-            <h2 style="margin:0 0 4px;font-size:14px">Terms & Conditions</h2>
-            <p style="margin:0;font-size:12.5px;color:var(--muted)">Edit each role's document, review revision history, and approve logistics companies' own submitted policies.</p>
-          </div>
-          <a href="{{ route('admin.policies') }}" class="btn btn-primary">Open Policies Page</a>
-        </div>
-      </div>
-    </div>
-
-    {{-- ── Appearance ── --}}
-    <div data-settings-panel="appearance" style="display:none">
       <h2 class="settings-section-title"><span class="ic"><x-admin-icon name="chart" /></span> Appearance</h2>
       <p class="settings-section-sub">Your personal display and language preferences — only affects your own account.</p>
 
@@ -280,9 +261,14 @@
           </form>
         </div>
       </div>
+
+      </section>
     </div>
 
-    {{-- ── Danger Zone ── --}}
+    {{-- ── Platform Policies ── --}}
+    {{-- Terms & Conditions editing lives on its own dedicated Policies page — it needs
+         room for per-role documents, revision history, and logistics companies' own
+         submitted documents with an approval queue. This panel just points there. --}}
     <div data-settings-panel="danger" style="display:none">
       <h2 class="settings-section-title"><span class="ic"><x-admin-icon name="flag" /></span> Danger Zone</h2>
       <p class="settings-section-sub">Irreversible or platform-wide maintenance actions.</p>

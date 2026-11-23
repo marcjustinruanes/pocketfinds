@@ -36,7 +36,7 @@
     @include('account.partials.notification-menu', ['panelNotifications'=>$notifRows, 'panelUnreadCount'=>$unreadNotifCount, 'panelOpenRoute'=>'buyer.notifications.open', 'panelFooterUrl'=>route('buyer.announcements'), 'panelFooterLabel'=>'View announcements'])
     <a href="{{ route('buyer.cart') }}" class="icon-btn" id="cartIconBtn" title="Cart">
       @include('buyer.partials.icon', ['name' => 'cart', 'size' => 16])
-      @php($cartCount = (int) \App\Models\CartItem::where('buyer_id', auth()->id())->sum('qty'))
+      @php($cartCount = (int) \App\Models\CartItem::where('buyer_id', auth()->id())->distinct()->count('product_id'))
       <span id="cartBadge" style="{{ $cartCount ? '' : 'display:none;' }}position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--pink);color:#fff;font-size:10px;font-weight:700;line-height:16px;text-align:center">{{ $cartCount ?: '' }}</span>
     </a>
     <button type="button" class="icon-btn" title="Messages" data-messages-trigger data-messages-url="{{ route('buyer.messages') }}">

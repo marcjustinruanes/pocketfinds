@@ -6,7 +6,7 @@
 @section('content')
 <div class="admin-announcements-page">
 @include('admin.partials.ai-link', ['aiMode' => 'draft', 'aiLabel' => 'AI announcement draft'])
-@php $aiDraft = session('ai_announcement_draft', []); @endphp
+@php $aiDraft = config('features.admin_ai') ? session('ai_announcement_draft', []) : []; @endphp
 @if($aiDraft)
 <p class="announcement-draft-notice" role="status">AI draft loaded. Check the details before posting. Nothing has been published.</p>
 @endif

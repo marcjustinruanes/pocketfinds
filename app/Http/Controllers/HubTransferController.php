@@ -61,6 +61,7 @@ class HubTransferController extends LogisticsController
 
     public function create(Request $request)
     {
+        abort_unless($request->user()->isHubStaff(), 403, 'Only hub staff can request transfers.');
         $request->validate(['origin_hub_id' => 'nullable|integer', 'destination_hub_id' => 'nullable|integer']);
         $user = $request->user();
         $hubs = LogisticsHub::where('company_name', $user->business_name)->where('is_operational', true)->orderBy('province')->orderBy('municipality')->get();

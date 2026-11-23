@@ -2,11 +2,14 @@
 @section('title', 'Transfer Details')
 @section('page-title', 'Transfer Details')
 @section('page-sub', $batch->label())
+@push('account-head')
+<link rel="stylesheet" href="{{ asset('css/transfer-overview.css') }}?v={{ filemtime(public_path('css/transfer-overview.css')) }}">
+@endpush
 @section('content')
 <section class="hub-transfer-page hub-transfer-detail-page">
 @if(session('success'))<div class="card card-pad">{{ session('success') }}</div>@endif
 @if($errors->any())<div class="card card-pad">{{ $errors->first() }}</div>@endif
-<div class="card card-pad transfer-overview-card"><p class="mono">{{ $batch->id }}</p><p class="transfer-route-summary"><strong>{{ $batch->from_hub }}, {{ $batch->from_province }}</strong><span aria-hidden="true">→</span><strong>{{ $batch->to_hub }}, {{ $batch->to_province }}</strong></p>
+<div class="card card-pad transfer-overview-card"><p class="transfer-batch-id"><span>Transfer reference</span><strong class="mono">{{ $batch->id }}</strong></p><div class="transfer-route-summary" aria-label="Transfer route"><div><small>From</small><strong>{{ $batch->from_hub }}, {{ $batch->from_province }}</strong></div><span aria-hidden="true">&rarr;</span><div><small>To</small><strong>{{ $batch->to_hub }}, {{ $batch->to_province }}</strong></div></div>
 <div class="logistics-form-grid transfer-timeline">
 @foreach(['requested'=>'requester','approved'=>'approver','dispatched'=>'dispatcher','received'=>'receiver'] as $action=>$relation)<div class="transfer-timeline-item"><span>{{ ucfirst($action) }}</span><strong>{{ $batch->$relation?->username ?? 'Not recorded' }}</strong><time>{{ $batch->{$action.'_at'}?->format('Y-m-d g:i A') ?? '—' }}</time></div>@endforeach
 <div class="transfer-timeline-item"><span>Rider</span><strong>{{ $batch->rider?->username ?? '—' }}</strong></div><div class="transfer-timeline-item"><span>Vehicle</span><strong>{{ $batch->vehicle?->plate_number ?? ($batch->rider_id ? 'Personal vehicle / legacy vehicle not recorded' : '—') }}</strong></div>

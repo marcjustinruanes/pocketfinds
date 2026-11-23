@@ -334,7 +334,20 @@
     window.prevStep = () => { if (current > 0) show(current - 1); };
     window.registrationFlow = { showPanel: id => { const index = stages.findIndex(item => item.panels.includes(id)); if (index >= 0) show(index, false); }, role };
     form.addEventListener('submit', event => {
-        if (current === stages.length - 1) return;
+        if (current === stages.length - 1) {
+            // Recheck earlier steps: autofill, Google returns and restored drafts
+            // may change values after the user originally passed a step.
+            for (const item of stages) {
+                for (const id of item.panels) {
+                    if (window.validateStep(id)) continue;
+                    event.preventDefault();event.stopImmediatePropagation();
+                    show(stages.indexOf(item), false);
+                    form.querySelector('.step-panel.active .error')?.focus();
+                    return;
+                }
+            }
+            return;
+        }
         event.preventDefault(); event.stopImmediatePropagation(); continueStage();
     }, true);
     form.addEventListener('registration:saved', () => { sidebar.hidden = true; });

@@ -7,7 +7,7 @@
 <section class="card card-pad" style="margin-top:16px">
   <h2>{{ $rider->given_names }} {{ $rider->last_name }}</h2>
   <p>{{ $rider->logisticsHub?->municipality ?? 'No hub assigned' }}, {{ $rider->logisticsHub?->province }}</p>
-  <p>Select one or more barangays. Clearing all selections removes this rider from pickup and delivery selection. Coverage must be reassigned after a hub change.</p>
+  <p>These saved barangay routes are optional records. Pickup and delivery eligibility follows the assigned hub municipality and does not require barangay selections.</p>
   @if(session('success'))<p role="status">{{ session('success') }}</p>@endif
   @if($errors->any())<p role="alert">{{ $errors->first() }}</p>@endif
   @if($coverageError)

@@ -20,7 +20,7 @@ class BuyerCommerce
     {
         if (!in_array($order->status, ['delivered', 'completed'], true)) return false;
         if (app()->environment('local') && config('buyer-commerce.refund_test_mode')) return true;
-        $delivered=$order->shipment?->delivered_at ?? DB::table('order_status_history')->where('order_id',$order->id)->where('status','delivered')->max('created_at') ?? $order->updated_at;
+        $delivered=DB::table('order_status_history')->where('order_id',$order->id)->where('status','delivered')->where('changed_by',$order->buyer_id)->max('created_at') ?? $order->shipment?->delivered_at ?? DB::table('order_status_history')->where('order_id',$order->id)->where('status','delivered')->max('created_at') ?? $order->updated_at;
         return \Illuminate\Support\Carbon::parse($delivered)->gte(now()->subDays(7));
     }
 

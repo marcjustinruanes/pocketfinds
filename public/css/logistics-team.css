@@ -1,0 +1,23 @@
+/* Shared Rider and Hub Staff lists and review dialogs. */
+body.logistics-team-page .personnel-page>.card{border-radius:17px;box-shadow:none;overflow:hidden}
+body.logistics-team-page .personnel-page>.card>.card-pad{padding:0}
+body.logistics-team-page .personnel-page .table-wrap{margin:0;border:0;border-radius:0}
+body.logistics-team-page .personnel-page .dtable th{text-align:center;font:600 10px Inter,system-ui,sans-serif;letter-spacing:.05em;text-transform:uppercase;padding:16px;background:#fffafd;color:#987f8d}
+body.logistics-team-page .personnel-page .dtable td{text-align:center;padding:17px 16px;font-size:12px;vertical-align:middle}
+body.logistics-team-page .personnel-page .cell-user{justify-content:flex-start;text-align:left;max-width:310px;margin:0 auto}
+body.logistics-team-page .personnel-page .row-actions{justify-content:center}
+body.logistics-team-page .personnel-page .row-actions .platform-detail-button{width:44px;height:44px;padding:0;border-radius:12px;border:1px solid #eadfe6;background:#fff;color:#bc387f;font-size:17px;display:inline-grid;place-items:center}
+body.logistics-team-page .team-status-heading{position:relative;display:inline-flex;align-items:center;gap:12px;min-height:30px;font:inherit;color:inherit;cursor:pointer}
+body.logistics-team-page .team-status-heading select{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+body.logistics-team-page .team-status-heading:focus-within{outline:2px solid #bc387f;outline-offset:4px;border-radius:4px}
+body.logistics-team-page .stamp::before{display:none}
+body.logistics-team-page .personnel-page .modal .modal-head{padding:20px 24px}
+body.logistics-team-page .personnel-page .modal .modal-body{padding:22px 24px;background:#fffafd}
+body.logistics-team-page .personnel-page .modal .modal-foot{padding:16px 24px;gap:10px}
+body.logistics-team-page .personnel-page .modal-head h3{font-size:17px;font-weight:650}
+body.logistics-team-page .rider-workspace-actions .rider-search-form{min-width:160px}
+body.logistics-team-page .rider-workspace-actions .rider-search-form input{height:43px;border-radius:11px;padding-left:38px}
+body.logistics-team-page .personnel-registration-modal .personnel-registration-frame{min-height:0}
+body.logistics-team-page .personnel-registration-modal .modal-head{flex:none}
+@media(max-width:900px){body.logistics-team-page .logistics-workspace-tabs-row{flex-wrap:wrap}body.logistics-team-page .rider-workspace-actions{flex:1 1 100%}}
+@media(max-width:600px){body.logistics-team-page .rider-workspace-actions{flex-wrap:wrap}body.logistics-team-page .rider-workspace-actions .rider-search-form{flex:1 1 100%}body.logistics-team-page .personnel-page .dtable th,body.logistics-team-page .personnel-page .dtable td{padding:12px}body.logistics-team-page .personnel-page .modal .modal-head,body.logistics-team-page .personnel-page .modal .modal-body,body.logistics-team-page .personnel-page .modal .modal-foot{padding:16px}}

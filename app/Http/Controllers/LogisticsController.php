@@ -209,9 +209,14 @@ class LogisticsController extends Controller
     /** Pickup requests fresh from a seller — "Confirm/approve/verify parcel pickup requests from seller". */
     public function requests(Request $request)
     {
-        $queue=$request->validate(['queue'=>'nullable|in:review,assignment'])['queue']??'review';
+        $actor = $request->user();
+        $queue=$request->validate(['queue'=>'nullable|in:review,assignment'])['queue']??($actor->isHubStaff() ? 'assignment' : 'review');
+        abort_unless($actor->isLogisticsAdmin() || ($actor->isHubStaff() && $queue === 'assignment'), 403);
         $counts = $this->sidebarCounts();
         $shipments = $this->companyScope()->with(['order.buyer', 'order.seller', 'pickupAssignment.courier'])
+            ->when($actor->isHubStaff(), function ($query) use ($actor) {
+                app(LogisticsAccess::class)->pair($query, 'origin_hub', 'origin_province', app(LogisticsAccess::class)->hub($actor));
+            })
             ->where('shipping_status', 'ready_for_pickup')->when($queue==='assignment',fn($q)=>$q->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id'),fn($q)=>$q->whereNull('pickup_approved_at'))
             ->latest('created_at')->orderByDesc('id')->paginate(20)->withQueryString();
 
@@ -236,9 +241,6 @@ class LogisticsController extends Controller
             Order::notifyUser($shipment->order?->seller_id, 'Pickup Approved', $shipment->logistics_company.' approved the pickup for order #'.$shipment->order?->order_number.'. A rider will be assigned shortly.', 'order_status', $shipment->order_id);
             Order::notifyUser($shipment->order?->buyer_id, 'Pickup Approved', 'The pickup for order #'.$shipment->order?->order_number.' was approved. A rider can now accept the pickup.', 'order_status', $shipment->order_id);
         }, 3);
-
-        $approved = $this->companyScope()->find($id);
-        if ($approved) app(\App\Services\RiderDeliveryOffers::class)->offer($approved, 'pickup');
 
         return back();
     }
@@ -339,7 +341,11 @@ class LogisticsController extends Controller
     public function assignments(Request $request)
     {
         $counts=$this->sidebarCounts();
-        $deliveryQuery=$this->companyScope()->whereNotExists(function($q){
+        $deliveryQuery=$this->companyScope()
+            ->whereIn('shipping_status', ['sorted','assigned_to_rider','out_for_delivery','delivered','completed','delivery_failed','returned'])
+            ->when($request->user()->isHubStaff(), function ($query) use ($request) {
+                app(LogisticsAccess::class)->pair($query, 'destination_hub', 'destination_province', app(LogisticsAccess::class)->hub($request->user()));
+            })->whereNotExists(function($q){
             $q->selectRaw('1')->from('hub_transfer_members as assignment_members')->join('hub_transfer_batches as assignment_batches','assignment_batches.id','=','assignment_members.batch_id')
                 ->whereColumn('assignment_members.shipment_id','shipments.id')->whereIn('assignment_batches.status',['pending','approved','in_transit']);
         });
@@ -356,7 +362,8 @@ class LogisticsController extends Controller
         $assignmentRows->setCollection($assignmentRows->getCollection()->map(function($row)use($byId,$transfers){
             $row->item=$row->assignment_type==='delivery'?$byId->get($row->id):$transfers->get($row->id);return $row;
         }));
-        return view('logistics.assign',array_merge($counts,compact('shipments','assignmentRows')));
+        $hubs=LogisticsHub::where('company_name',$request->user()->business_name)->where('is_operational',true)->orderBy('province')->orderBy('municipality')->get();
+        return view('logistics.assign',array_merge($counts,compact('shipments','assignmentRows','hubs')));
     }
 
     public function assignmentParcelDetails(Request $request, string $id)
@@ -1223,15 +1230,14 @@ class LogisticsController extends Controller
         $status = in_array($request->query('status'), ['pending', 'approved', 'rejected', 'suspended'], true)
             ? $request->query('status') : 'all';
         // A company's own roster only — riders who joined this exact company at registration.
-        $coverageInstalled = app(\App\Services\RiderBarangayCoverage::class)->installed();
-        $riders = User::when($coverageInstalled, fn ($q) => $q->with('barangayRoutes'))->where('account_type', 'rider')->where('business_name', $company)
+        $riders = User::where('account_type', 'rider')->where('business_name', $company)
             ->when($status !== 'all', fn ($q) => $q->where('status', $status))
             ->when($search, fn ($q) => $q->where(fn ($q) => $q->where('given_names', 'like', '%'.$search.'%')->orWhere('last_name', 'like', '%'.$search.'%')->orWhere('username', 'like', '%'.$search.'%')->orWhere('email', 'like', '%'.$search.'%')))
             ->latest()->orderByDesc('id')->paginate(20)->withQueryString();
         $statusCounts = User::where('account_type', 'rider')->where('business_name', $company)
             ->selectRaw('status, count(*) as c')->groupBy('status')->pluck('c', 'status');
 
-        return view('logistics.riders', array_merge($counts, compact('riders', 'status', 'statusCounts', 'hubs', 'coverageInstalled')));
+        return view('logistics.riders', array_merge($counts, compact('riders', 'status', 'statusCounts', 'hubs')));
     }
 
     private function rider(int $id): User

@@ -267,10 +267,50 @@ class BuyerCommerceTest extends TestCase
         $this->assertEquals(2, $row['items'][1]['qty']);
     }
 
+    public function test_delivered_orders_offer_returns_without_allowing_early_completion(): void
+    {
+        $order=Order::create(['order_number'=>'INSPECT-7','buyer_id'=>$this->buyer->id,'seller_id'=>$this->seller->id,'status'=>'delivered','items'=>[],'subtotal'=>10,'total'=>10]);
+        $order->logStatus('delivered',$this->buyer->id);
+        $this->actingAs($this->buyer)->get(route('buyer.orders',['tab'=>'delivered']))
+            ->assertOk()->assertSee('Request Return / Refund')->assertDontSee('>Order Received</button>',false);
+        $this->patch(route('buyer.orders.confirm-receipt',$order))->assertRedirect()->assertSessionHas('error');
+        $this->assertSame('delivered',$order->fresh()->status);
+        $order->update(['status'=>'completed']);
+        $this->get(route('buyer.orders',['tab'=>'completed']))->assertOk()->assertDontSee('Request Return / Refund');
+    }
+
+    public function test_cart_badge_counts_unique_products_instead_of_units_or_variations(): void
+    {
+        $this->cart->update(['qty'=>22]);
+        $this->product->update(['stock'=>30]);
+        CartItem::create(['buyer_id'=>$this->buyer->id,'product_id'=>$this->product->id,'seller_slug'=>$this->seller->username,'name'=>'Basket variant','price'=>100,'qty'=>2,'variation_value'=>'Large']);
+        foreach(['Second','Third'] as $name){
+            $product=Product::create(['seller_id'=>$this->seller->id,'name'=>$name,'price'=>100,'stock'=>30,'weight_grams'=>400,'status'=>'active']);
+            CartItem::create(['buyer_id'=>$this->buyer->id,'product_id'=>$product->id,'seller_slug'=>$this->seller->username,'name'=>$name,'price'=>100,'qty'=>1]);
+        }
+        $response=$this->actingAs($this->buyer)->get(route('buyer.cart'))->assertOk();
+        $this->assertMatchesRegularExpression('/id="cartBadge"[^>]*>3<\/span>/',$response->getContent());
+        $this->postJson(route('buyer.cart.add'),['product_id'=>$this->product->id,'qty'=>1])->assertOk()->assertJsonPath('count',3);
+    }
+
+    public function test_order_counts_match_payment_and_date_filters(): void
+    {
+        $order=Order::create(['order_number'=>'FILTER-COD','buyer_id'=>$this->buyer->id,'seller_id'=>$this->seller->id,'status'=>'placed','payment_method'=>1,'items'=>[],'subtotal'=>10,'total'=>10]);
+        $this->actingAs($this->buyer)->get(route('buyer.orders',['payment'=>'gcash']))
+            ->assertOk()->assertViewHas('orderCounts',fn($counts)=>$counts->sum()===0)
+            ->assertSee('No matching orders')->assertSee('Clear filters and view all orders');
+        $this->get(route('buyer.orders'))->assertOk()->assertSee('FILTER-COD')
+            ->assertViewHas('orderCounts',fn($counts)=>$counts->sum()===1);
+        $order->forceFill(['created_at'=>now()->subYears(2)])->save();
+        $this->get(route('buyer.orders',['period'=>'30d']))->assertOk()
+            ->assertViewHas('orderCounts',fn($counts)=>$counts->sum()===0);
+    }
+
     public function test_cod_checkout_retry_and_cancel_do_not_duplicate_stock(): void
     {
         $d = $this->payload();
-        $this->actingAs($this->buyer)->post(route('buyer.commerce.place'), $d)->assertSessionHasNoErrors()->assertRedirect();
+        $response = $this->actingAs($this->buyer)->post(route('buyer.commerce.place'), $d)->assertSessionHasNoErrors()->assertRedirect();
+        $this->followRedirects($response)->assertOk()->assertSee(Order::first()->order_number);
         $this->post(route('buyer.commerce.place'), $d)->assertSessionHasNoErrors();
         $this->assertDatabaseCount('orders', 1);
         $this->assertSame(17, $this->product->fresh()->stock);
@@ -594,7 +634,8 @@ class BuyerCommerceTest extends TestCase
         foreach(['logistics','rider'] as $role){$this->actingAs($this->roleAccount($role))->get(route('commerce.return.photo',[$request->id,0]))->assertForbidden();}
         $this->actingAs($this->seller)->post(route('commerce.return.action',$request->id),['action'=>'approve'])->assertSessionHasNoErrors();
         $this->post(route('commerce.return.action',$request->id),['action'=>'received'])->assertSessionHasNoErrors();
-        $this->actingAs($admin)->get(route('admin.complaints'))->assertOk()->assertSee('Broken basket requiring review.')->assertSee('Record completed repayment');
+        $this->actingAs($admin)->get(route('admin.complaints'))->assertOk()->assertSee(route('admin.complaints',['view'=>'returns']), false);
+        $this->get(route('admin.complaints',['view'=>'returns']))->assertOk()->assertSee('Broken basket requiring review.')->assertSee('Record completed repayment');
         $this->post(route('commerce.return.action',$request->id),['action'=>'refunded','reference'=>'ACTUAL-REFUND-123'])->assertSessionHasNoErrors();
         $this->assertDatabaseHas('commerce_returns',['id'=>$request->id,'status'=>'refunded','refund_reference'=>'ACTUAL-REFUND-123']);
     }

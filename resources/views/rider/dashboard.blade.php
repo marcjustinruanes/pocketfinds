@@ -66,7 +66,7 @@
 
 <div class="card">
   <div class="card-head">
-    <div><h2>Your Delivery Offers</h2><p style="font-size:11.5px;color:var(--muted)">Accept your personal offer within 60 seconds.</p></div>
+    <div><h2>Your Delivery Offers</h2><p style="font-size:11.5px;color:var(--muted)">Accept your personal offer without a time limit.</p></div>
     <a href="{{ route('rider.requests') }}" class="btn btn-sm btn-outline">View all</a>
   </div>
   <div class="table-wrap">

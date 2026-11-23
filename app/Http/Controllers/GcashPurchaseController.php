@@ -52,7 +52,7 @@ class GcashPurchaseController extends Controller
             return redirect()->route('buyer.orders', ['payment' => 'gcash']);
         }
         if ($this->reviewer($r)) {
-            $q = GcashPurchase::where('payment_state', '!=', 'awaiting_payment');
+            $q = GcashPurchase::query();
         } else {
             abort_unless(in_array($role, ['buyer', 'seller']), 403);
             $flow->eligible($r->user(), $role);
@@ -85,7 +85,7 @@ class GcashPurchaseController extends Controller
             $paymentCounts['rejected'] = ($paymentCounts['rejected'] ?? 0) + ($paymentCounts['manual_resolution'] ?? 0);
             $paymentCounts->forget('manual_resolution');
             $r->validate(['q'=>'nullable|string|max:100','period'=>'nullable|in:all,30d,6m,year','state'=>'nullable|in:all,awaiting_payment,proof_submitted,underpaid,rejected,order_placed,manual_resolution,verified,refunds,cancelled']);
-            if (in_array($r->query('state'), ['awaiting_payment', 'manual_resolution'], true)) {
+            if ($r->query('state') === 'manual_resolution') {
                 return redirect()->route('gcash.index', array_replace($r->query(), ['state' => $r->query('state') === 'manual_resolution' ? 'rejected' : 'all']));
             }
             if ($r->query('state') === 'refunds') {
@@ -327,7 +327,7 @@ class GcashPurchaseController extends Controller
                 if ($refundOnRejection) $reason = mb_substr(trim((string)$reason).' Payment returned to the buyer; refund proof is attached.', 0, 1000);
                 $result = $underpaid
                     ? $flow->notifyBuyerOfShortPayment($r->user(), $id, $d['revision'], (string) $reason)
-                    : $flow->decide($r->user(), $id, $d['revision'], $accepted, $purchase->usesAdminReview() && $accepted ? (string) $purchase->amount_due : ($d['amount'] ?? null), $reason, $d['reference'] ?? null);
+                    : $flow->decide($r->user(), $id, $d['revision'], $accepted, $purchase->usesAdminReview() && $accepted ? (string) ($d['amount'] ?? $purchase->amount_due) : ($d['amount'] ?? null), $reason, $d['reference'] ?? null);
                 if ($needsEvidence) $this->recordAdminEvidence($r,$id,'received_proof','admin_received_proof');
                 if ($refundOnRejection) $this->recordAdminEvidence($r,$id,'refund_proof','admin_rejection_refund_proof');
                 return response()->json(['purchase'=>$result]);

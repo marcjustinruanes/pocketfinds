@@ -1,0 +1,16 @@
+.logistics-ui .hub-transfer-detail-page .transfer-overview-card{padding:24px;min-width:0}
+.logistics-ui .transfer-overview-card .transfer-batch-id{display:grid;gap:6px;margin:0 0 20px}
+.logistics-ui .transfer-batch-id>span{font-size:12px;color:var(--muted,#827783)}
+.logistics-ui .transfer-batch-id>strong{font-size:13px;overflow-wrap:anywhere;line-height:1.6}
+.logistics-ui .hub-transfer-detail-page .transfer-route-summary{display:grid;grid-template-columns:minmax(0,1fr) 32px minmax(0,1fr);align-items:center;gap:16px;padding:18px;margin:0 0 20px;border:1px solid var(--border,#eadfe7);border-radius:12px;background:#fff9fc}
+.logistics-ui .transfer-route-summary>div{display:grid;gap:6px;min-width:0}
+.logistics-ui .transfer-route-summary small{font-size:11px;color:var(--muted,#827783)}
+.logistics-ui .transfer-route-summary strong{font-size:15px;line-height:1.5;overflow-wrap:anywhere}
+.logistics-ui .hub-transfer-detail-page .transfer-route-summary>span{font-size:24px;color:var(--pink,#bf3c7d);text-align:center}
+.logistics-ui .hub-transfer-detail-page .transfer-timeline{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0;padding:0;border:0}
+.logistics-ui .hub-transfer-detail-page .transfer-timeline-item{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0;padding:16px;border:1px solid var(--border,#eadfe7);border-radius:10px;background:#fff;line-height:1.5}
+.logistics-ui .transfer-timeline-item>span{font-size:12px;color:var(--muted,#827783)}
+.logistics-ui .transfer-timeline-item>strong{font-size:14px;overflow-wrap:anywhere}
+.logistics-ui .transfer-timeline-item>time{font-size:12px;color:var(--muted,#827783);font-variant-numeric:tabular-nums}
+@media(max-width:800px){.logistics-ui .hub-transfer-detail-page .transfer-timeline{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.logistics-ui .hub-transfer-detail-page .transfer-overview-card{padding:16px}.logistics-ui .hub-transfer-detail-page .transfer-route-summary{grid-template-columns:1fr;gap:10px}.logistics-ui .hub-transfer-detail-page .transfer-route-summary>span{transform:rotate(90deg);justify-self:start}.logistics-ui .hub-transfer-detail-page .transfer-timeline{grid-template-columns:1fr}}

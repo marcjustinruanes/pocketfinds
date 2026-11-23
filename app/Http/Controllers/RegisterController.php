@@ -36,8 +36,8 @@ class RegisterController extends Controller
 
     public function postalCode(Request $request)
     {
-        $data = $request->validate(['municipality_code'=>['required','regex:/^\d{9,10}$/D'], 'municipality'=>['required','string','max:255']]);
-        $postal = app(\App\Services\RegistrationPostalCode::class)->lookup($data['municipality_code'], $data['municipality']);
+        $data = $request->validate(['municipality_code'=>['required','regex:/^\d{9,10}$/D'], 'municipality'=>['required','string','max:255'], 'province'=>['required','string','max:255']]);
+        $postal = app(\App\Services\RegistrationPostalCode::class)->lookup($data['municipality_code'], $data['municipality'], $data['province']);
         return response()->json(['postal_code'=>$postal, 'status'=>$postal ? 'found' : 'unavailable']);
     }
 
@@ -554,7 +554,7 @@ class RegisterController extends Controller
             'representative_email' => $isLogisticsFound ? $request->representative_email : null,
             'representative_contact_no' => $isLogisticsFound ? $request->representative_contact_no : null,
             'sec_registration_no' => $isLogisticsFound ? $request->sec_registration_no : null,
-            'postal_code' => app(\App\Services\RegistrationPostalCode::class)->lookup($request->municipality_psgc_code, $request->municipality) ?? ($request->postal_code ?: null),
+            'postal_code' => $request->postal_code ?: app(\App\Services\RegistrationPostalCode::class)->lookup($request->municipality_psgc_code, $request->municipality, $request->province),
             'service_regions' => $isLogisticsFound ? array_values(array_unique(array_column(json_decode($request->hub_areas, true), 'region'))) : null,
             'province' => $request->province,
             'municipality' => $request->municipality,

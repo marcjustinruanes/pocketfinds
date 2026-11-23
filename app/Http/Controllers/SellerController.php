@@ -19,6 +19,7 @@ use App\Services\GcashWorkflow;
 use App\Services\MediaLifecycle;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -286,44 +287,48 @@ class SellerController extends Controller
         // One transaction on the locked order row: the shipment and the status change
         // land together or not at all, and a buyer cancel that got there first (which
         // has already restocked) can't be overwritten into a shipped, cancelled order.
-        DB::transaction(function () use ($order, $data, $seller, $buyerMunicipality, $buyerProvince) {
-            $locked = Order::lockFresh($order->id);
-            app(GcashWorkflow::class)->assertOrderOperation($locked, in_array($locked->status, ['placed', 'confirmed', 'preparing', 'ready_for_pickup']));
-            abort_unless($locked->status === 'preparing', 422, 'This order is not awaiting preparation.');
+        try {
+            DB::transaction(function () use ($order, $data, $seller, $buyerMunicipality, $buyerProvince) {
+                $locked = Order::lockFresh($order->id);
+                app(GcashWorkflow::class)->assertOrderOperation($locked, in_array($locked->status, ['placed', 'confirmed', 'preparing', 'ready_for_pickup']));
+                abort_unless($locked->status === 'preparing', 422, 'This order is not awaiting preparation.');
 
-            if (! $locked->shipment) {
-                // pickup_approved_at stays null until the company's admin confirms the handoff
-                // (LogisticsController::approveRequest()) — until then this is invisible to
-                // every pickup rider, even though its status is already 'ready_for_pickup'.
-                Shipment::create([
-                    'order_id' => $locked->id,
-                    'tracking_number' => 'PF-SHIP-'.now()->format('ymd').'-'.strtoupper(Str::random(6)),
-                    'shipping_status' => 'ready_for_pickup',
-                    'logistics_company' => $data['logistics_company'],
-                    'origin_hub' => $seller->municipality,
-                    'origin_province' => $seller->province,
-                    'destination_hub' => $buyerMunicipality,
-                    'destination_province' => $buyerProvince,
-                ]);
-            }
-            $locked->update(['status' => 'ready_for_pickup']);
-            $locked->logStatus('ready_for_pickup', auth()->id());
-            Order::notifyUser($locked->buyer_id, 'Parcel Ready for Pickup', 'Order #'.$locked->order_number.' is ready for courier pickup.', 'order_status', $locked->id);
+                if (! $locked->shipment) {
+                    // pickup_approved_at stays null until the company's admin confirms the handoff
+                    // (LogisticsController::approveRequest()) — until then this is invisible to
+                    // every pickup rider, even though its status is already 'ready_for_pickup'.
+                    Shipment::create([
+                        'order_id' => $locked->id,
+                        'tracking_number' => 'PF-SHIP-'.now()->format('ymd').'-'.strtoupper(Str::random(6)),
+                        'shipping_status' => 'ready_for_pickup',
+                        'logistics_company' => $data['logistics_company'],
+                        'origin_hub' => $seller->municipality,
+                        'origin_province' => $seller->province,
+                        'destination_hub' => $buyerMunicipality,
+                        'destination_province' => $buyerProvince,
+                    ]);
+                }
+                $locked->update(['status' => 'ready_for_pickup']);
+                $locked->logStatus('ready_for_pickup', auth()->id());
+                Order::notifyUser($locked->buyer_id, 'Parcel Ready for Pickup', 'Order #'.$locked->order_number.' is ready for courier pickup.', 'order_status', $locked->id);
 
-            // Make the new linked Shipment visible to the carrier's approval workflow.
-            // Only company Logistics Admins receive this request alert; riders remain
-            // gated by pickup_approved_at in their existing offer/query flow.
-            User::where('account_type', 'logistics')->where('is_logistics', true)->where('is_admin', false)
-                ->where('status', 'approved')->where('business_name', $data['logistics_company'])
-                ->where(fn ($query) => $query->whereNull('logistics_role')->orWhere('logistics_role', 'admin'))
-                ->get()->each(fn (User $admin) => Order::notifyUser(
-                    $admin->id,
-                    'New Seller Pickup Request',
-                    'Order #'.$locked->order_number.' is ready for pickup and requires your approval before rider assignment.',
-                    'order_status',
-                    $locked->id
-                ));
-        });
+                // Make the new linked Shipment visible to the carrier's approval workflow.
+                // Only company Logistics Admins receive this request alert; riders remain
+                // gated by pickup_approved_at in their existing offer/query flow.
+                User::where('account_type', 'logistics')->where('is_logistics', true)->where('is_admin', false)
+                    ->where('status', 'approved')->where('business_name', $data['logistics_company'])
+                    ->where(fn ($query) => $query->whereNull('logistics_role')->orWhere('logistics_role', 'admin'))
+                    ->get()->each(fn (User $admin) => Order::notifyUser(
+                        $admin->id,
+                        'New Seller Pickup Request',
+                        'Order #'.$locked->order_number.' is ready for pickup and requires your approval before rider assignment.',
+                        'order_status',
+                        $locked->id
+                    ));
+            });
+        } catch (ValidationException $e) {
+            return back()->with('error', collect($e->errors())->flatten()->first());
+        }
 
         return back()->with('order_success', 'Order handed off to '.$data['logistics_company'].' for courier pickup.');
     }

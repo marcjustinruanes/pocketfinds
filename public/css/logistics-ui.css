@@ -321,30 +321,30 @@ body.logistics-ui {
 .logistics-ui .acf-label {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  font-size: 12.5px;
-  font-weight: 500;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text);
   min-width: 0;
 }
 .logistics-ui .acf-input {
   width: 100%;
-  min-height: 42px;
-  padding: 10px 13px;
+  min-height: 48px;
+  padding: 12px 14px;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--text) 2%, var(--surface));
+  border-radius: 9px;
+  background: #fff;
   color: var(--text);
   font: 400 14px/1.5 var(--font-body);
   box-sizing: border-box;
-  transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+  transition: border-color .15s ease, box-shadow .15s ease;
 }
+.logistics-ui .acf-input::placeholder { color: var(--muted); opacity: 1; }
 .logistics-ui .acf-input:focus-visible {
   border-color: var(--pink);
-  background: var(--surface);
-  outline: 2px solid var(--pink-line);
-  outline-offset: 2px;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pink) 10%, transparent);
+  background: #fff;
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pink) 12%, transparent);
 }
 .logistics-ui .acf-input:disabled { opacity: .6; cursor: not-allowed; background: color-mix(in srgb, var(--text) 4%, var(--surface)); }
 .logistics-ui .acf-req { color: var(--pink-dark); font-weight: 600; margin-left: 2px; }
@@ -358,31 +358,31 @@ body.logistics-ui {
 .logistics-ui .acf-phone-prefix {
   flex: 0 0 auto;
   display: flex; align-items: center;
-  padding: 0 11px;
+  padding: 0 12px;
   border: 1px solid var(--border); border-right: 0;
-  border-radius: 10px 0 0 10px;
+  border-radius: 9px 0 0 9px;
   background: color-mix(in srgb, var(--text) 4%, var(--surface));
   color: var(--muted);
   font-size: 13px; font-weight: 500;
   white-space: nowrap;
-  min-height: 42px;
+  min-height: 48px;
 }
-.logistics-ui .acf-phone-wrap .acf-input { border-radius: 0 10px 10px 0; flex: 1 1 auto; min-width: 0; }
+.logistics-ui .acf-phone-wrap .acf-input { border-radius: 0 9px 9px 0; flex: 1 1 auto; min-width: 0; }
 
 /* ── Password visibility toggle ── */
 .logistics-ui .acf-pw-wrap { display: flex; align-items: stretch; position: relative; }
 .logistics-ui .acf-pw-wrap .acf-input { padding-right: 44px; flex: 1 1 auto; min-width: 0; }
 .logistics-ui .acf-pw-toggle {
   position: absolute; right: 0; top: 0; bottom: 0;
-  width: 42px;
+  width: 44px;
   display: flex; align-items: center; justify-content: center;
   background: none; border: none; cursor: pointer;
   color: var(--muted);
-  border-radius: 0 10px 10px 0;
+  border-radius: 0 9px 9px 0;
   transition: color .15s ease;
 }
 .logistics-ui .acf-pw-toggle:hover { color: var(--text); }
-.logistics-ui .acf-pw-toggle:focus-visible { outline: 2px solid var(--pink-dark); outline-offset: 2px; border-radius: 0 10px 10px 0; }
+.logistics-ui .acf-pw-toggle:focus-visible { outline: 2px solid var(--pink-dark); outline-offset: 2px; border-radius: 0 9px 9px 0; }
 .logistics-ui .acf-pw-toggle svg { width: 17px; height: 17px; pointer-events: none; }
 .logistics-ui .acf-pw-toggle.acf-pw-visible { color: var(--pink-dark); }
 
@@ -441,10 +441,10 @@ body.logistics-ui {
 
 /* ── Region auto-display ── */
 .logistics-ui .acf-region-display {
-  min-height: 42px;
-  padding: 10px 13px;
+  min-height: 48px;
+  padding: 12px 14px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 9px;
   background: color-mix(in srgb, var(--text) 2%, var(--surface));
   font-size: 14px;
   line-height: 1.5;
@@ -459,11 +459,11 @@ body.logistics-ui {
 .logistics-ui .acf-footer { padding-top: 24px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
 .logistics-ui .acf-submit-note { font-size: 12.5px; color: var(--muted); line-height: 1.6; margin: 0; }
 .logistics-ui .acf-submit {
-  min-height: 44px;
-  padding: 11px 28px;
+  min-height: 50px;
+  padding: 12px 28px;
   font-size: 14px;
-  font-weight: 600;
-  border-radius: 12px;
+  font-weight: 650;
+  border-radius: 9px;
   letter-spacing: -.01em;
   transition: box-shadow .18s ease, opacity .15s ease;
 }

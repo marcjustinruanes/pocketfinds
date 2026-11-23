@@ -37,7 +37,7 @@ class OrderTimeline
     ];
 
     /** Only events backed by order history or a recorded payment/shipment timestamp are shown. */
-    public static function forOrder(Order $order, iterable $history, mixed $paymentConfirmedAt = null): array
+    public static function forOrder(Order $order, iterable $history, mixed $paymentConfirmedAt = null, bool $showUpcoming = false): array
     {
         $events = collect($history)
             ->filter(fn ($event) => isset(self::LABELS[$event->status]));
@@ -102,6 +102,23 @@ class OrderTimeline
                 'timestamp' => $timestamp,
             ];
         })->all();
+
+        if ($showUpcoming && !in_array($order->status, ['cancelled', 'returned', 'delivery_failed'], true)) {
+            $stages = ['placed', 'confirmed', 'preparing', 'ready_for_pickup',
+                'pickup_approved', 'picked_up', 'at_sorting_center', 'hub_transfer',
+                'sorted', 'assigned_to_rider', 'out_for_delivery', 'delivered', 'completed'];
+            $currentStage = array_search($order->status, $stages, true);
+            if ($currentStage !== false) {
+                foreach (array_slice($stages, $currentStage + 1) as $status) {
+                    if (collect($rows)->contains('status', $status)) continue;
+                    $rows[] = [
+                        'status' => $status, 'title' => self::LABELS[$status],
+                        'icon' => self::ICONS[$status], 'state' => 'future',
+                        'label' => 'Upcoming', 'timestamp' => null,
+                    ];
+                }
+            }
+        }
 
         return [
             'rows' => $rows,

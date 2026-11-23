@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
         $middleware->append(\App\Http\Middleware\ProductionHttps::class);
         $middleware->append(\App\Http\Middleware\AttendanceFeature::class);
+        $middleware->append(\App\Http\Middleware\AdminAiFeature::class);
         $middleware->appendToGroup('web', MediaConsistency::class);
         // Keep the GCash number literal: surrounding spaces must be rejected.
         $middleware->trimStrings(except: [fn (Request $request) => $request->is('gcash-purchases/*/instructions')]);
@@ -44,6 +45,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->render(function (\Illuminate\Http\Exceptions\PostTooLargeException $exception, Request $request) {
+            if (!$request->is('register', 'registration/*')) return null;
+            return response()->json(['success'=>false, 'message'=>'The registration uploads exceed the server limit. Your entries are still on this page. Choose smaller files and submit again.'], 413);
+        });
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

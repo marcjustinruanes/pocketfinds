@@ -112,7 +112,6 @@
           <fieldset class="cod-collection">
             <legend>Proof of delivery</legend>
             <div class="form-row"><label for="delivery-proof">Photo proof (JPG or PNG, maximum 5 MB)</label><input id="delivery-proof" name="delivery_proof" type="file" accept="image/jpeg,image/png" required></div>
-            <div class="form-row" style="margin-bottom:0"><label for="delivery-otp">Buyer delivery OTP</label><input id="delivery-otp" name="delivery_otp" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required></div>
           </fieldset>
           @endif
           <button class="btn btn-primary" style="width:100%">{{ $info['button'] }}</button>

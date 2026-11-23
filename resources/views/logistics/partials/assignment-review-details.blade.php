@@ -13,12 +13,12 @@
 <input type="hidden" name="_assignment_review" value="{{ $a->id }}">
 <input type="hidden" name="key" value="{{ $p['key'] }}"><input type="hidden" name="revision" value="{{ $a->revision }}"><input type="hidden" name="action" value="cancel">
 <label for="cancel-{{ $a->id }}">Cancellation reason</label><textarea id="cancel-{{ $a->id }}" name="reason" minlength="3" maxlength="1000" required>{{ old('_assignment_review')===$a->id ? old('reason') : '' }}</textarea><button class="btn">Cancel request</button></form></details>
-@elseif(!$seller && in_array($a->leg,['pickup','delivery']) && in_array($a->status,['accepted','assigned_to_rider']) && $a->work_class==='active')
+@elseif(!$seller && $actor->isHubStaff() && in_array($a->leg,['pickup','delivery']) && in_array($a->status,['accepted','assigned_to_rider']) && $a->work_class==='active')
 <section class="assignment-review-action"><h3>Request pre-collection reassignment</h3><form method="POST" action="{{ route('logistics.assignments.reassign',$a->id) }}">@csrf
 <input type="hidden" name="_assignment_review" value="{{ $a->id }}">
 <input type="hidden" name="key" value="{{ (string)\Illuminate\Support\Str::uuid() }}"><input type="hidden" name="revision" value="{{ $a->revision }}"><input type="hidden" name="old_rider_id" value="{{ $a->courier_id }}">
 <label for="replacement-{{ $a->id }}">Replacement rider</label><select id="replacement-{{ $a->id }}" name="replacement_rider_id" required><option value="">Select an eligible rider</option>@foreach($riders[$a->id] ?? [] as $r)<option value="{{ $r->id }}" @selected(old('_assignment_review')===$a->id && (string)old('replacement_rider_id')===(string)$r->id)>{{ $r->username }}</option>@endforeach</select>
-@if(empty($riders[$a->id]) || $riders[$a->id]->isEmpty())<p>No eligible online rider covering this parcel's barangay is available at its hub with capacity for another pickup/delivery job.</p>@endif
+@if(empty($riders[$a->id]) || $riders[$a->id]->isEmpty())<p>No eligible online rider is available at this parcel municipality hub with capacity for another pickup/delivery job.</p>@endif
 <label for="reason-{{ $a->id }}">Reason</label><textarea id="reason-{{ $a->id }}" name="reason" minlength="3" maxlength="1000" required>{{ old('_assignment_review')===$a->id ? old('reason') : '' }}</textarea><button class="btn btn-primary">Request possession review</button></form></section>
 @endif
 <section class="assignment-review-history"><h3>Recorded assignment decisions</h3>

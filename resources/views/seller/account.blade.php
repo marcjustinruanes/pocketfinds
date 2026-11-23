@@ -3,8 +3,8 @@
 @section('page-title', 'My Account')
 
 @include('account.partials.role-workspace-assets')
-@push('account-head')<link rel="stylesheet" href="{{ asset('css/account-verification.css') }}?v={{ filemtime(public_path('css/account-verification.css')) }}">@endpush
-@push('scripts')<script src="{{ asset('js/account-verification.js') }}?v={{ filemtime(public_path('js/account-verification.js')) }}" defer></script>@endpush
+@push('account-head')<link rel="stylesheet" href="{{ asset('css/account-verification.css') }}?v={{ substr(hash_file('sha256', public_path('css/account-verification.css')), 0, 12) }}">@endpush
+@push('scripts')<script src="{{ asset('js/account-verification.js') }}?v={{ substr(hash_file('sha256', public_path('js/account-verification.js')), 0, 12) }}" defer></script>@endpush
 
 @section('content')
 <x-account-workspace role="seller">
@@ -264,15 +264,16 @@ document.querySelectorAll('.doc-preview-btn').forEach(btn => {
 });
 </script>
 
-<script src="{{ asset('js/role-account-details.js') }}?v={{ filemtime(public_path('js/role-account-details.js')) }}"></script>
+<script src="{{ asset('js/role-account-details.js') }}?v={{ substr(hash_file('sha256', public_path('js/role-account-details.js')), 0, 12) }}"></script>
 @if(\App\Services\BuyerCommerce::installed())
 @include('account.partials.commerce-vacation')
 
 
 @endif
 
+@include('account.partials.delete-account')
 </x-account-workspace>
 @include('account.partials.profile-photo-manager')
 @endsection
 
-@push('scripts')<script src="{{ asset('js/commerce.js') }}?v={{ filemtime(public_path('js/commerce.js')) }}"></script>@endpush
+@push('scripts')<script src="{{ asset('js/commerce.js') }}?v={{ substr(hash_file('sha256', public_path('js/commerce.js')), 0, 12) }}"></script>@endpush

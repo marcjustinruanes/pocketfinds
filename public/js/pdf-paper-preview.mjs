@@ -29,6 +29,13 @@ export async function renderPdfPaper(container, url) {
       }
     } finally { await pdf.destroy(); }
   } catch {
-    if (container.pdfPreviewToken === token) status.textContent = 'This PDF could not be displayed. Please use an unlocked, valid PDF.';
+    if (container.pdfPreviewToken !== token) return;
+    status.textContent = 'This PDF could not be displayed here.';
+    const fallback = document.createElement('a');
+    fallback.href = url;
+    fallback.target = '_blank';
+    fallback.rel = 'noopener';
+    fallback.textContent = 'Open PDF receipt';
+    container.replaceChildren(status, fallback);
   }
 }

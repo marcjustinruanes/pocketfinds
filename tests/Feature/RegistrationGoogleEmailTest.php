@@ -23,6 +23,15 @@ class RegistrationGoogleEmailTest extends TestCase
         return Crypt::encryptString(json_encode(['purpose'=>'registration-email', 'email'=>'newbuyer@gmail.com', 'nonce'=>$nonce, 'expires_at'=>$expires]));
     }
 
+    public function test_google_return_preserves_session_failure_instead_of_reporting_cancellation(): void
+    {
+        $this->withSession(['registration_google_type'=>'buyer'])
+            ->get('/register/google/return?error=session_expired')
+            ->assertRedirect(route('register.buyer',['google_return'=>1]))
+            ->assertSessionHas('google_email_error','Your Google verification session expired. Enable cookies for this website, then try Continue with Google again.')
+            ->assertSessionMissing('registration_verified_email');
+    }
+
     public function test_fresh_forms_do_not_reuse_a_previous_google_verified_email(): void
     {
         foreach (['buyer','seller','rider','logistics','logistics-staff'] as $type) {

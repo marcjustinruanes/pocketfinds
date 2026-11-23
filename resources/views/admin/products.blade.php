@@ -4,6 +4,24 @@
 @section('page-sub', 'Review and manage seller product submissions')
 @php use Illuminate\Support\Facades\Storage; @endphp
 
+@section('body-class', 'platform-accounts-page platform-resources-page')
+@push('account-head')
+<link rel="stylesheet" href="{{ asset('css/platform-accounts.css') }}?v={{ filemtime(public_path('css/platform-accounts.css')) }}">
+@endpush
+
+@section('workspace-search')
+<div class="platform-account-toolbar">
+    <div class="filter-bar product-review-filters">
+      <div class="search-mini">
+        <span class="ic"><x-admin-icon name="search" /></span>
+        <input type="text" placeholder="Search product, seller or SKU..." data-table-search="productsTable">
+      </div>
+
+    </div>
+
+</div>
+@endsection
+
 @section('content')
 <div class="admin-product-reviews-page">
 @include('admin.partials.ai-link', ['aiMode' => 'product', 'aiLabel' => 'AI product screening'])
@@ -31,55 +49,13 @@
   $archivedProducts  = $products->where('status', 'archived')->count();
   $outOfStockProducts = $products->filter(fn($p) => $p->total_stock <= 0)->count();
 @endphp
-<div class="kpi-grid product-review-kpis" style="grid-template-columns:repeat(5,1fr)">
-  <button type="button" class="kpi kpi-filter active" data-status-kpi="">
-    <div class="label">Total Submissions</div>
-    <div class="value">{{ $products->count() }}</div>
-  </button>
-  <button type="button" class="kpi kpi-filter" data-status-kpi="pending">
-    <div class="label">Pending Review</div>
-    <div class="value">{{ $pendingProducts }}</div>
-    <div class="delta {{ $pendingProducts > 0 ? 'down' : 'up' }}">Needs attention</div>
-  </button>
-  <button type="button" class="kpi kpi-filter" data-status-kpi="active">
-    <div class="label">Approved</div>
-    <div class="value">{{ $activeProducts }}</div>
-    <div class="delta up">Live in shop</div>
-  </button>
-  <button type="button" class="kpi kpi-filter" data-status-kpi="rejected">
-    <div class="label">Rejected</div>
-    <div class="value">{{ $rejectedProducts }}</div>
-  </button>
-  <button type="button" class="kpi kpi-filter" data-status-kpi="archived">
-    <div class="label">Archived</div>
-    <div class="value">{{ $archivedProducts }}</div>
-  </button>
-</div>
+<div class="card platform-accounts-card">
 
-<div class="card product-review-table-card">
-  <div class="card-head">
-    <div><h2>Product Submissions</h2><p>{{ $products->count() }} total</p></div>
-  </div>
   <div class="card-pad">
-    <div class="filter-bar product-review-filters">
-      <div class="search-mini">
-        <span class="ic"><x-admin-icon name="search" /></span>
-        <input type="text" placeholder="Search product, seller or SKU..." data-table-search="productsTable">
-      </div>
-      <select class="select" id="statusFilter">
-        <option value="">All Status</option>
-        <option value="pending">Pending Review</option>
-        <option value="active">Approved</option>
-        <option value="rejected">Rejected / Declined</option>
-        <option value="archived">Archived</option>
-        <option value="outofstock">Out of Stock</option>
-      </select>
-    </div>
-
     <div class="table-wrap">
-    <table class="dtable" id="productsTable">
+    <table class="dtable" id="productsTable" data-platform-filter-table>
       <thead>
-        <tr><th>Product</th><th>Seller</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th>Submitted</th><th></th></tr>
+        <tr><th>Product</th><th>Seller</th><th>Category</th><th>Price</th><th>Stock</th><th>@include('admin.partials.column-filter', ['filterTable'=>'productsTable','filterLabel'=>'Status','filterField'=>'status','filterOptions'=>['all'=>'All statuses','pending'=>'Pending review','active'=>'Approved','rejected'=>'Rejected','archived'=>'Archived','outofstock'=>'Out of stock']])</th><th>Submitted</th><th class="platform-manage-heading">Manage</th></tr>
       </thead>
       <tbody>
         @forelse($products as $product)
@@ -136,8 +112,10 @@
           <td class="mono" style="font-size:12px">{{ $product->created_at?->format('M d, Y') ?? '—' }}</td>
           <td>
             <div class="row-actions">
-              <button class="btn btn-sm btn-outline" data-modal-open="productModal-{{ $product->id }}"><x-admin-icon name="eye" /> Review</button>
+              <button class="btn platform-detail-button" data-modal-open="productModal-{{ $product->id }}" type="button" aria-label="Review details" title="Review details"><span aria-hidden="true">&#8599;</span></button>
+              @if(config('features.admin_ai'))
               <a class="btn btn-sm btn-outline" href="{{ route('admin.ai', ['mode' => 'product', 'product_id' => $product->id]) }}"><x-admin-icon name="shield" /> AI screen</a>
+              @endif
             </div>
           </td>
         </tr>
@@ -391,30 +369,6 @@
 </div>
 
 <script>
-function applyProductFilter(val) {
-  document.querySelectorAll('#productsTable tbody tr[data-status]').forEach(row => {
-    let show;
-    if (!val) show = true;
-    else if (val === 'outofstock') show = row.dataset.stock === 'out';
-    else show = row.dataset.status === val;
-    row.style.display = show ? '' : 'none';
-  });
-  document.querySelectorAll('.kpi-filter').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.statusKpi === val);
-  });
-}
-
-document.getElementById('statusFilter').addEventListener('change', function () {
-  applyProductFilter(this.value);
-});
-
-document.querySelectorAll('.kpi-filter').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.getElementById('statusFilter').value = btn.dataset.statusKpi;
-    applyProductFilter(btn.dataset.statusKpi);
-  });
-});
-
 function openReject(id, name) {
   document.getElementById('rejectForm').action = `/admin/products/${id}/reject`;
   document.getElementById('rejectModalSub').textContent = `Tell the seller why "${name}" is being rejected.`;
@@ -448,10 +402,7 @@ document.addEventListener('click', (e) => {
   }
 });
 </script>
-@if(\App\Services\BuyerCommerce::installed())
-@include('commerce.messages')
-@include('account.partials.commerce-vouchers')
-@endif
+
 @endsection
 
 @push('scripts')<script src="{{ asset('js/commerce.js') }}?v={{ filemtime(public_path('js/commerce.js')) }}"></script>@endpush

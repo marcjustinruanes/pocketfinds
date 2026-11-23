@@ -2,7 +2,7 @@
 @section('title','Shipping Payments')
 @section('page-title','Shipping Payments')
 @section('page-sub','Carrier shipping fees and payment verification')
-@push('head')<link rel="stylesheet" href="{{ asset('css/logistics-cash-desk.css') }}?v={{ filemtime(public_path('css/logistics-cash-desk.css')) }}">@endpush
+@push('head')<link rel="stylesheet" href="{{ asset('css/logistics-cash-desk.css') }}?v={{ substr(hash_file('sha256', public_path('css/logistics-cash-desk.css')), 0, 12) }}">@endpush
 @section('content')
 <div class="cash-desk seller-shipping-payments">
   <section class="cash-card shipping-payments-panel" aria-labelledby="shipping-payments-title">

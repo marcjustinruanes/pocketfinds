@@ -2,36 +2,28 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
-
 class RegistrationPostalCode
 {
-    public function lookup(?string $code, ?string $municipality): ?string
+    public function lookup(?string $code, ?string $municipality, ?string $province = null): ?string
     {
-        if (!preg_match('/^\d{9,10}$/D', (string) $code) || !$municipality) return null;
-        $code = strlen($code) === 9 ? substr($code, 0, 2).'0'.substr($code, 2) : $code;
-        try {
-            $locations = Cache::remember('registration_postal_api_v1', now()->addDay(), function () {
-                $cities = Http::acceptJson()->timeout(5)->get('https://psgc.cloud/api/cities')->throw()->json();
-                $municipalities = Http::acceptJson()->timeout(5)->get('https://psgc.cloud/api/municipalities')->throw()->json();
-                if (!is_array($cities) || !is_array($municipalities)) throw new \RuntimeException('Invalid postal response.');
-                return array_merge($cities, $municipalities);
-            });
-            foreach ($locations as $location) {
-                if ((string) ($location['code'] ?? '') !== $code) continue;
-                if ($this->name((string) ($location['name'] ?? '')) !== $this->name($municipality)) return null;
-                $postal = trim((string) ($location['zip_code'] ?? ''));
-                return preg_match('/^\d{4}$/D', $postal) ? $postal : null;
-            }
-        } catch (\Throwable $exception) {
-            // An unavailable lookup must never result in an invented postal code.
+        if (!preg_match('/^\d{9,10}$/D', (string) $code) || !$municipality || !$province) return null;
+        $directory = json_decode(file_get_contents(resource_path('data/postal-codes.json')), true, 512, JSON_THROW_ON_ERROR);
+        $codes = [];
+        foreach ($directory['locations'] as $location) {
+            if ($this->name($location['province']) !== $this->name($province)
+                || $this->name($location['municipality']) !== $this->name($municipality)) continue;
+            $codes[] = $location['postal_code'];
         }
-        return null;
+        $codes = array_values(array_unique($codes));
+        // District-specific or missing codes require the user's local address knowledge.
+        return count($codes) === 1 ? $codes[0] : null;
     }
 
     private function name(string $name): string
     {
+        $name = preg_replace('/\bsta\.?\s+/iu', 'santa ', $name);
+        $name = preg_replace('/\bsto\.?\s+/iu', 'santo ', $name);
+        $name = preg_replace('/\s*\(capital\)/iu', '', $name);
         return preg_replace('/\s+/', ' ', trim(preg_replace('/\bcity of\b|\bcity\b/i', '', mb_strtolower($name))));
     }
 }

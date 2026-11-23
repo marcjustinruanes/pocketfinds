@@ -3,10 +3,10 @@
   $prefix = $slide === 2 ? 'hero_2_crop_' : 'hero_crop_';
   $upload = $slide === 2 ? 'hero_image_2' : 'hero_image';
 @endphp
-<fieldset data-hero-crop data-upload="{{ $upload }}" style="border:1px solid var(--border);border-radius:12px;padding:16px;margin:16px 0">
+<fieldset class="hero-crop-editor" data-hero-crop data-upload="{{ $upload }}" style="border:1px solid var(--border);border-radius:12px;padding:16px;margin:16px 0">
   <legend style="padding:0 6px;font-size:13px;font-weight:600">Banner {{ $slide }} crop</legend>
-  <div data-crop-frame style="position:relative;overflow:hidden;border-radius:8px;background:var(--border)">
-    <iframe data-crop-preview title="Banner {{ $slide }} at storefront size" style="display:block;border:0;transform-origin:top left;pointer-events:none" tabindex="-1"></iframe>
+  <div class="hero-crop-preview-frame" data-crop-frame style="position:relative;overflow:hidden;border-radius:8px;background:var(--border)">
+    <iframe class="hero-crop-preview" data-crop-preview title="Banner {{ $slide }} at storefront size" style="display:block;border:0;transform-origin:top left;pointer-events:none" tabindex="-1"></iframe>
   </div>
   <template data-crop-template>
     <!DOCTYPE html>
@@ -39,9 +39,11 @@
     </select>
   </label>
   @foreach(['x' => ['Horizontal position', 0, 100, 50], 'y' => ['Vertical position', 0, 100, 50], 'zoom' => ['Zoom', 100, 200, 100]] as $axis => [$label, $min, $max, $default])
+    <div class="hero-crop-slider">
     <label for="{{ $prefix.$axis }}" style="display:block;font-size:13px;margin-top:10px">{{ $label }} <output data-crop-output="{{ $axis }}"></output></label>
     <input id="{{ $prefix.$axis }}" name="{{ $prefix.$axis }}" data-crop-axis="{{ $axis }}" type="range" min="{{ $min }}" max="{{ $max }}" step="1" value="{{ old($prefix.$axis, $setting->{$prefix.$axis} ?? $default) }}" style="width:100%">
     @error($prefix.$axis)<span style="color:var(--danger)">{{ $message }}</span>@enderror
+    </div>
   @endforeach
   <button type="button" data-crop-reset class="btn" style="margin-top:12px">Reset crop</button>
 </fieldset>

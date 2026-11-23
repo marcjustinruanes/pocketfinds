@@ -632,12 +632,18 @@
             fd.set('business_permit_file', businessPermitBlob, `business_permit.${bpExt}`);
         }
 
-        fetch('{{ route("register.store") }}', {
+        fetch('/register', {
             method:  'POST',
+            credentials: 'same-origin',
+            redirect: 'error',
             body:    fd,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' },
         })
-        .then(r => r.json())
+        .then(async r => {
+            if(r.status===413)return {success:false,message:'The registration uploads are too large. Choose smaller files and try again.'};
+            if(r.status===419)return {success:false,message:'Your registration session expired. Reload the page and try again.'};
+            return r.json();
+        })
         .then(data => {
             if (data.success) {
                 form.dispatchEvent(new Event('registration:saved'));

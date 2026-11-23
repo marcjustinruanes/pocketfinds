@@ -2,15 +2,15 @@
 @section('title', 'Order Management')
 @section('page-title', 'Order Management')
 @section('body-class', 'seller-orders-page')
-@push('head')<link rel="stylesheet" href="{{ asset('css/seller-order-categories.css') }}?v={{ filemtime(public_path('css/seller-order-categories.css')) }}">@endpush
+@push('head')<link rel="stylesheet" href="{{ asset('css/seller-order-categories.css') }}?v={{ substr(hash_file('sha256', public_path('css/seller-order-categories.css')), 0, 12) }}">@endpush
 @push('head')
-<link rel="stylesheet" href="{{ asset('css/order-details.css') }}?v={{ filemtime(public_path('css/order-details.css')) }}">
-<link rel="stylesheet" href="{{ asset('css/seller-order-cards.css') }}?v={{ filemtime(public_path('css/seller-order-cards.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/order-details.css') }}?v={{ substr(hash_file('sha256', public_path('css/order-details.css')), 0, 12) }}">
+<link rel="stylesheet" href="{{ asset('css/seller-order-cards.css') }}?v={{ substr(hash_file('sha256', public_path('css/seller-order-cards.css')), 0, 12) }}">
 @endpush
-@push('scripts')<script src="{{ asset('js/seller-order-details.js') }}?v={{ filemtime(public_path('js/seller-order-details.js')) }}"></script>@endpush
+@push('scripts')<script src="{{ asset('js/seller-order-details.js') }}?v={{ substr(hash_file('sha256', public_path('js/seller-order-details.js')), 0, 12) }}"></script>@endpush
 
-@push('head')<link rel="stylesheet" href="{{ asset('css/order-record.css') }}?v={{ filemtime(public_path('css/order-record.css')) }}">@endpush
-@push('head')<link rel="stylesheet" href="{{ asset('css/order-record.css') }}?v={{ filemtime(public_path('css/order-record.css')) }}">@endpush
+@push('head')<link rel="stylesheet" href="{{ asset('css/order-record.css') }}?v={{ substr(hash_file('sha256', public_path('css/order-record.css')), 0, 12) }}">@endpush
+@push('head')<link rel="stylesheet" href="{{ asset('css/order-record.css') }}?v={{ substr(hash_file('sha256', public_path('css/order-record.css')), 0, 12) }}">@endpush
 @section('content')
 <div class="orders-management">
 @include('commerce.messages')
@@ -101,7 +101,7 @@
           @endif
         </div>
 
-        @if($returnRequests->has($order->id))@include('account.partials.return-case',['return'=>$returnRequests->get($order->id)])@endif
+        @if($returnRequests->has($order->id))<div style="padding:0 16px">@include('account.partials.return-case',['return'=>$returnRequests->get($order->id)])</div>@endif
         @if($cancellationRefunds->has($order->id))@include('seller.partials.cancellation-refund',['cancellationRefund'=>$cancellationRefunds->get($order->id)])@endif
         @include('logistics.partials.rts-custody')
       </div>
@@ -133,12 +133,13 @@
           <label for="logisticsCompanySelect">Logistics Company</label>
           <select name="logistics_company" id="logisticsCompanySelect" required></select>
         </div>
-        <p id="logisticsPickerEmpty" style="display:none;color:var(--muted);font-size:13px;margin:0">
-          No logistics company currently covers both your location and the buyer's location yet — check back once one adds your area as a hub.
-        </p>
+        <div id="logisticsPickerEmpty" style="display:none">
+          <p style="color:var(--muted);font-size:13px;margin:0 0 8px">No logistics company currently covers both your location and the buyer's location.</p>
+          <p style="color:var(--muted);font-size:12px;margin:0">Make sure your shop address is set correctly in <a href="{{ route('seller.account') }}#shop">Account settings</a>, or wait until a logistics company adds your area as a hub.</p>
+        </div>
       </div>
       <div class="modal-foot">
-        <button type="button" class="btn btn-outline" data-modal-close>Cancel</button>
+        <button type="button" class="btn btn-outline" data-modal-close>Close</button>
         <button type="submit" class="btn btn-primary" id="logisticsPickerSubmit">Hand Off for Pickup</button>
       </div>
     </form>

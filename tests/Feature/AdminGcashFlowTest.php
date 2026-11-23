@@ -36,6 +36,39 @@ class AdminGcashFlowTest extends TestCase
         $this->flow=app(GcashWorkflow::class);
     }
 
+    public function test_buyer_continue_payment_preserves_the_icon_timeline_format(): void
+    {
+        $purchase=$this->purchase();
+        $this->actingAs($this->buyer)->get(route('gcash.show',[$purchase->id,'embedded'=>1]))
+            ->assertOk()->assertSee('gcash-combined-timeline',false)
+            ->assertSee('Submit proof')->assertSee('Admin verification')
+            ->assertSee('Upload payment proof');
+    }
+
+    public function test_buyer_receipt_submission_and_form_cancellation_return_confirmed_json(): void
+    {
+        Storage::fake('local');
+        $purchase=$this->purchase();$order=Order::firstOrFail();
+        $this->actingAs($this->buyer)->post(route('gcash.proof',$purchase->id),[
+            'submission_id'=>(string)Str::uuid(),
+            'receipt'=>UploadedFile::fake()->create('receipt.pdf',10,'application/pdf'),
+        ],['Accept'=>'application/json'])->assertOk()->assertJsonPath('purchase.payment_state','proof_submitted');
+        $this->post(route('buyer.orders.cancel',$order),[
+            '_method'=>'PATCH','cancellation_reason'=>'Changed my mind',
+        ],['Accept'=>'application/json'])->assertOk()->assertJsonPath('cancelled',true);
+        $this->assertSame('cancelled',$order->fresh()->status);
+    }
+
+    public function test_admin_sees_gcash_checkout_before_receipt_submission(): void
+    {
+        $purchase=$this->purchase();
+        $this->actingAs($this->admin)->get(route('gcash.index'))
+            ->assertOk()->assertSee($purchase->id)->assertSee('Awaiting Receipt');
+        $this->get(route('gcash.index',['state'=>'awaiting_payment']))
+            ->assertOk()->assertSee($purchase->id)->assertSee('Buyer has not submitted a receipt');
+        $this->assertNull($purchase->fresh()->verified_at);
+    }
+
     private function person(string $role): User
     {
         return User::create(['account_type'=>$role,'is_admin'=>$role==='admin','username'=>uniqid('account'),'email'=>uniqid().'@example.test','status'=>'approved','given_names'=>ucfirst($role),'last_name'=>'Test','barangay'=>'B','municipality'=>'Pila','province'=>'Laguna','street'=>'Street']);
@@ -103,12 +136,16 @@ class AdminGcashFlowTest extends TestCase
         Storage::fake('local');
         $purchase=$this->proof($this->purchase());
         $decision=['revision'=>$purchase->revision,'accept'=>1,'amount'=>number_format((float)$purchase->amount_due+50,2,'.',''),'reference'=>'EXCESS-123456'];
+        $this->actingAs($this->admin)->get(route('gcash.show',$purchase->id))->assertOk()->assertSee('Actual amount received (PHP)')->assertSee('name="amount"',false);
         $this->actingAs($this->admin)->postJson(route('gcash.decide',$purchase->id),$decision)->assertUnprocessable();
         $this->assertSame('proof_submitted',$purchase->fresh()->payment_state);
         $decision['received_proof']=UploadedFile::fake()->create('received.pdf',10,'application/pdf');
         $this->postJson(route('gcash.decide',$purchase->id),$decision)->assertOk();
         $this->assertSame('order_placed',$purchase->fresh()->payment_state);
         $this->assertEquals($purchase->amount_due,$purchase->fresh()->verified_amount);
+        $pendingRefund=DB::table('gcash_purchase_history')->where('purchase_id',$purchase->id)->where('event','overpayment_pending')->first();
+        $this->assertNotNull($pendingRefund);
+        $this->assertEquals(50, json_decode($pendingRefund->before,true)['refund_amount']);
         $evidence=DB::table('gcash_purchase_history')->where('purchase_id',$purchase->id)->where('event','admin_received_proof')->first();
         $this->assertNotNull($evidence);
         $details=['name'=>'Buyer Test','number'=>'09123456789'];
@@ -137,11 +174,22 @@ class AdminGcashFlowTest extends TestCase
         $this->assertDatabaseCount('orders',1);
     }
 
+    public function test_admin_payment_filters_use_the_seller_right_sidebar(): void
+    {
+        $this->proof($this->purchase());
+        $this->actingAs($this->admin)->get(route('gcash.index'))->assertOk()
+            ->assertSee('seller-order-layout',false)->assertSee('seller-order-categories',false)
+            ->assertSee('seller-order-categories.css',false)->assertSee('Payment status filters')
+            ->assertDontSee('order-tabs-shell',false)->assertDontSee('order-tab-icon',false);
+    }
+
     public function test_admin_and_buyer_pages_render_and_seller_has_no_review_form(): void
     {
         $purchase=$this->proof($this->purchase());
         $this->actingAs($this->buyer)->get(route('gcash.show',$purchase->id))->assertOk()->assertSee('Waiting for admin payment approval')->assertSee('PocketFinds')->assertSee('09203783822')->assertDontSee('Ready to place your order');
-        $this->actingAs($this->admin)->get(route('gcash.index'))->assertOk()->assertSee('Platform GCash account')->assertSee('Pending review');
+        $this->actingAs($this->admin)->get(route('gcash.index'))->assertOk()->assertSee('Platform GCash account')->assertSee('Pending review')
+            ->assertSee('seller-order-layout',false)->assertSee('seller-order-categories',false)
+            ->assertSee('seller-order-categories.css',false)->assertDontSee('order-tabs-shell',false);
         $this->get(route('gcash.show',$purchase->id))->assertOk()->assertSee('Verify Payment')->assertSee('Notify buyer')->assertDontSee('Receipt is unclear or incorrect')->assertSee('Proof of returned payment');
         $this->actingAs($this->seller)->get(route('gcash.show',[$purchase->id,'embedded'=>1]))->assertOk()->assertDontSee('Verify Payment')->assertDontSee('Notify buyer')->assertSee('Admin verification');
         $this->get(route('seller.orders'))->assertOk()->assertSee('Awaiting admin payment approval')->assertDontSee('> Confirm Order</button>',false);
@@ -245,6 +293,23 @@ class AdminGcashFlowTest extends TestCase
         $this->actingAs($this->buyer)->get(route('gcash.adminEvidence',[$purchase->id,$proof->id]))->assertOk();
     }
 
+    public function test_buyer_cannot_cancel_ready_for_pickup_orders(): void
+    {
+        $purchase=$this->proof($this->purchase());
+        $this->flow->decide($this->admin,$purchase->id,$purchase->revision,true,(string)$purchase->amount_due,null,'READY-APPROVED');
+        $order=Order::where('gcash_purchase_id',$purchase->id)->firstOrFail();
+        DB::table('orders')->where('id',$order->id)->update(['status'=>'ready_for_pickup']);
+        $stock=$this->product->fresh()->stock;
+        $this->actingAs($this->buyer)->patchJson(route('buyer.orders.cancel',$order),[
+            'cancellation_reason'=>'Changed my mind',
+        ])->assertUnprocessable()->assertJsonPath('message','This order can no longer be cancelled. Refresh to see its current status.');
+        $this->assertSame('ready_for_pickup',$order->fresh()->status);
+        $this->assertSame($stock,$this->product->fresh()->stock);
+        $this->assertFalse($order->fresh()->cancelAndRestock('Changed my mind',null,$this->buyer->id));
+        $this->actingAs($this->buyer)->get(route('buyer.orders'))->assertOk()
+            ->assertDontSee('class="order-cancel-open',false);
+    }
+
     public function test_unpaid_cancellation_restores_stock_and_cannot_be_approved(): void
     {
         $this->refundsSchema();$purchase=$this->proof($this->purchase());$order=Order::firstOrFail();
@@ -257,7 +322,8 @@ class AdminGcashFlowTest extends TestCase
     {
         Storage::fake('local');
         $this->refundsSchema();$purchase=$this->proof($this->purchase());
-        $this->flow->decide($this->admin,$purchase->id,$purchase->revision,true,'200.00',null,'PAID-123456');
+        $this->flow->decide($this->admin,$purchase->id,$purchase->revision,true,(string)$purchase->amount_due,null,'PAID-123456');
+        $this->assertNotNull($purchase->fresh()->verified_at);
         $order=Order::firstOrFail();
         $this->actingAs($this->buyer)->patchJson(route('buyer.orders.cancel',$order),['cancellation_reason'=>'Changed my mind'])->assertOk();
         $refund=DB::table('cancellation_refunds')->first();$this->assertNotNull($refund);
@@ -274,6 +340,27 @@ class AdminGcashFlowTest extends TestCase
         $this->assertSame(10,$this->product->fresh()->stock);
     }
 
+    public function test_approved_payment_orders_and_notification_links_render_the_payment_timeline(): void
+    {
+        $purchase=$this->proof($this->purchase());
+        $this->actingAs($this->buyer)->get(route('buyer.orders'))->assertOk()
+            ->assertSee('data-payment-status-url=', false)
+            ->assertSee('data-continue-order-details aria-pressed="false" disabled', false);
+        $this->flow->decide($this->admin,$purchase->id,$purchase->revision,true,(string)$purchase->amount_due,null,'TIMELINE-APPROVED');
+        $order=Order::where('gcash_purchase_id',$purchase->id)->firstOrFail();
+        $this->actingAs($this->buyer)->get(route('buyer.orders'))->assertOk()->assertSee('Payment approved')->assertSee('Current')
+            ->assertSee('data-continue-order-details aria-pressed="true"', false)
+            ->assertSee('Customer name')->assertSee('Products')
+            ->assertSee('Upcoming')->assertSee('Order delivered')->assertSee('Order completed')
+            ->assertDontSee('data-payment-status-url=', false);
+        $this->get(route('buyer.orders',['payment'=>'gcash','payment_purchase'=>$purchase->id]))->assertOk();
+        $notification=DB::table('notifications')->where('user_id',$this->buyer->id)->where('notification_type','gcash_purchase')->where('reference_id',$purchase->id)->latest('created_at')->first();
+        $this->assertNotNull($notification);
+        $this->followingRedirects()->get(route('buyer.notifications.open',$notification->id))->assertOk()->assertSee('Payment approved');
+        $this->assertDatabaseHas('notifications',['id'=>$notification->id,'is_read'=>true]);
+        $this->actingAs($this->seller)->get(route('seller.orders'))->assertOk()->assertSee($order->order_number);
+    }
+
     public function test_commerce_checkout_with_vouchers_creates_one_order_and_survives_retry(): void
     {
         foreach(['2026_10_16_000001_add_registration_business_details','2026_10_16_000002_add_logistics_registration_details','2026_10_17_000001_add_buyer_commerce_features'] as $file)(require database_path('migrations/'.$file.'.php'))->up();
@@ -283,10 +370,12 @@ class AdminGcashFlowTest extends TestCase
         $data=['items'=>[$this->cart->id],'delivery_address_id'=>$address->id,'payment_method'=>1,'checkout_id'=>(string)Str::uuid()];
         $quote=app(\App\Services\BuyerCommerce::class)->quote($this->buyer,[$this->cart->id],$address->id);
         $data['quote_hash']=hash('sha256',json_encode($quote));
-        $this->actingAs($this->buyer)->post(route('buyer.commerce.place'),$data)->assertRedirect(route('gcash.index'))->assertSessionHasNoErrors();
+        $checkoutResponse=$this->actingAs($this->buyer)->post(route('buyer.commerce.place'),$data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->followRedirects($checkoutResponse)->assertOk()->assertSee('Continue payment');
         $this->post(route('buyer.commerce.place'),$data)->assertRedirect()->assertSessionHasNoErrors();
         $this->assertDatabaseCount('orders',1);$this->assertDatabaseCount('gcash_purchases',1);
         $purchase=GcashPurchase::firstOrFail();$this->assertSame('awaiting_payment',$purchase->payment_state);
+        $this->assertSame(route('buyer.orders',['payment'=>'gcash','payment_purchase'=>$purchase->id]),$checkoutResponse->headers->get('Location'));
         $this->assertSame(8,$this->product->fresh()->stock);$this->assertDatabaseCount('cart_items',0);
         $purchase=$this->proof($purchase);
         $this->flow->decide($this->admin,$purchase->id,$purchase->revision,true,$purchase->amount_due,null,'COMMERCE-123456');

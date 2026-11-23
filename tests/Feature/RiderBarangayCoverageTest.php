@@ -99,7 +99,7 @@ class RiderBarangayCoverageTest extends TestCase
         $this->actingAs($this->admin)->get($this->url())->assertOk()->assertSee('Central')->assertSee('Santa Clara');
         $this->configure(['043424001', '043424002']);
         $this->assertDatabaseCount('rider_barangay_routes', 2);
-        $this->get('/logistics/riders')->assertOk()->assertSee('Central, Santa Clara')->assertSee('Manage barangay routes');
+        $this->get('/logistics/riders')->assertOk()->assertSee('Service Municipality')->assertSee('Pila');
         $this->configure(['043424002']);
         $this->assertDatabaseCount('rider_barangay_routes', 1);
         $this->assertDatabaseHas('rider_barangay_routes', ['rider_id' => $this->rider->id, 'hub_id' => $this->hub->id, 'barangay_name' => 'Santa Clara', 'barangay_key' => 'santa clara']);
@@ -147,52 +147,39 @@ class RiderBarangayCoverageTest extends TestCase
         $this->assertCount(0, app(RiderDeliveryOffers::class)->eligible($this->parcel('delivery'), 'delivery')->get());
     }
 
-    public function test_pickup_and_delivery_use_their_own_barangay_for_choices_manual_and_automatic_offers(): void
+    public function test_pickup_and_delivery_qualify_by_municipality_without_barangay_routes(): void
     {
-        $this->configure(['043424001']);
-        $pickup = $this->parcel('pickup');
-        $delivery = $this->parcel('delivery');
         $flow = app(RiderDeliveryOffers::class);
-        $this->assertSame([$this->rider->id], $flow->eligible($pickup, 'pickup')->pluck('users.id')->all());
-        $this->assertCount(0, $flow->eligible($delivery, 'delivery')->get());
-        $this->assertNull($flow->offer($delivery));
-        $this->actingAs($this->staff)->patchJson('/logistics/assignments/'.$delivery->id.'/assign', ['courier_id' => $this->rider->id])->assertUnprocessable();
-        $this->get('/logistics/assignments')->assertOk()->assertSee('No eligible rider is available for the destination barangay Santa Clara');
-        $this->assertNotNull($flow->offer($pickup, 'pickup'));
-        $this->configure(['043424001', '043424002']);
-        $this->actingAs($this->staff)->patch('/logistics/assignments/'.$delivery->id.'/assign', ['courier_id' => $this->rider->id])->assertRedirect()->assertSessionHasNoErrors();
-        $this->assertNull($delivery->fresh()->courier_id);
-        $this->assertSame('offered', $delivery->deliveryAssignment()->firstOrFail()->status);
-        $this->assertNull($delivery->deliveryAssignment()->firstOrFail()->accepted_at);
-        $flow->accept($this->rider, $delivery->id, 'delivery');
-        $this->assertSame('assigned_to_rider', $delivery->fresh()->shipping_status);
+        foreach (['pickup', 'delivery'] as $leg) {
+            $parcel = $this->parcel($leg);
+            $this->assertSame([$this->rider->id], $flow->eligible($parcel, $leg)->pluck('users.id')->all());
+            $flow->propose($this->staff, $parcel->id, $this->rider->id, $leg);
+            $flow->accept($this->rider, $parcel->id, $leg);
+            $this->assertSame($this->rider->id, $leg === 'pickup' ? $parcel->fresh()->pickup_rider_id : $parcel->fresh()->courier_id);
+        }
     }
 
-    public function test_pickup_page_excludes_wrong_barangay_and_reports_no_available_rider(): void
+    public function test_missing_or_different_barangay_does_not_exclude_a_municipality_rider(): void
     {
-        $this->configure(['043424002']);
-        $pickup = $this->parcel('pickup');
-        $this->actingAs($this->staff)->get(route('logistics.dashboard'))->assertOk()->assertSee('No eligible rider is available for the pickup barangay Central');
-        $this->patchJson('/logistics/requests/'.$pickup->id.'/assign-pickup', ['courier_id' => $this->rider->id])->assertUnprocessable();
-        $this->assertNull(app(RiderDeliveryOffers::class)->offer($pickup, 'pickup'));
         $this->configure(['043424001']);
-        $this->actingAs($this->staff)->patch('/logistics/requests/'.$pickup->id.'/assign-pickup', ['courier_id' => $this->rider->id])->assertRedirect()->assertSessionHasNoErrors();
-        $this->assertNull($pickup->fresh()->pickup_rider_id);
+        $parcel = $this->parcel('delivery');
+        $flow = app(RiderDeliveryOffers::class);
+        $this->assertTrue($flow->canAssign($parcel, 'delivery', $this->rider->id));
+        $parcel->order->update(['shipping_address' => ['municipality' => 'Pila', 'province' => 'Laguna']]);
+        $this->assertTrue($flow->canAssign($parcel->fresh(), 'delivery', $this->rider->id));
+        $this->configure([]);
+        $this->assertNotNull($flow->offer($parcel->fresh(), 'delivery'));
     }
 
-    public function test_missing_address_unassigned_coverage_and_stale_hub_coverage_never_fall_back(): void
+    public function test_wrong_municipality_or_province_cannot_receive_an_offer(): void
     {
-        $pickup = $this->parcel('pickup');
         $flow = app(RiderDeliveryOffers::class);
-        $this->assertNull($flow->offer($pickup, 'pickup'));
-        $this->configure(['043424001']);
-        DB::table('users')->where('id', $this->seller->id)->update(['barangay' => '']);
-        $this->assertNull($flow->offer($pickup->fresh(), 'pickup'));
-        DB::table('users')->where('id', $this->seller->id)->update(['barangay' => ' central ']);
-        $this->assertNotNull($flow->offer($pickup->fresh(), 'pickup'));
-        $other = LogisticsHub::create(['company_name' => $this->hub->company_name, 'municipality' => 'Other Town', 'province' => 'Laguna', 'is_operational' => true]);
-        RiderBarangayRoute::where('rider_id', $this->rider->id)->update(['hub_id' => $other->id]);
-        $this->assertNull($flow->offer($pickup->fresh(), 'pickup'));
+        foreach (['destination_hub' => 'Other Town', 'destination_province' => 'Other Province'] as $field => $value) {
+            $parcel = $this->parcel('delivery');
+            $parcel->update([$field => $value]);
+            $this->assertFalse($flow->canAssign($parcel, 'delivery', $this->rider->id));
+            $this->assertNull($flow->offer($parcel, 'delivery'));
+        }
     }
 
     public function test_coverage_does_not_bypass_existing_rider_eligibility_or_combined_capacity(): void
@@ -235,20 +222,14 @@ class RiderBarangayCoverageTest extends TestCase
         $this->assertDatabaseCount('rider_barangay_routes', 1);
     }
 
-    public function test_hub_staff_dropdowns_show_only_riders_covering_each_parcel_barangay(): void
+    public function test_hub_staff_dropdowns_show_municipality_riders_without_routes(): void
     {
-        $this->configure(['043424001']);
-        $other = $this->person('rider');
-        $other->update(['given_names' => 'Destination']);
-        $this->coverage->save($this->admin, $other, ['043424002'], $this->hub->id, $this->coverage->version($other));
         $this->parcel('pickup');
-        $this->parcel('delivery');
+        $delivery = $this->parcel('delivery');
         $this->actingAs($this->staff)->get(route('logistics.dashboard'))->assertOk()
-            ->assertSee('<option value="'.$this->rider->id.'">', false)->assertDontSee('<option value="'.$other->id.'">', false);
-        $this->get('/logistics/assignments')->assertOk()
-            ->assertSee('<option value="'.$other->id.'">', false)->assertDontSee('<option value="'.$this->rider->id.'">', false);
-        $this->assertSame($this->rider->id, app(RiderDeliveryOffers::class)->offer($this->parcel('pickup'), 'pickup')->courier_id);
-        $this->assertSame($other->id, app(RiderDeliveryOffers::class)->offer($this->parcel('delivery'), 'delivery')->courier_id);
+            ->assertSee('<option value="'.$this->rider->id.'">', false);
+        $this->get('/logistics/assignments/parcels/'.$delivery->id)->assertOk()
+            ->assertSee('<option value="'.$this->rider->id.'">', false);
     }
 
     public function test_region_only_hubs_validate_barangays_without_inventing_a_province(): void

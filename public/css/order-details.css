@@ -200,6 +200,9 @@
 [data-order-summary] .order-tracking-horizontal .tracking-steps { align-items: stretch; }
 [data-order-summary] .tracking-step small { display: block; margin-top: 3px; color: #8c7381; font-size: 10px; }
 [data-order-summary] .tracking-step.is-current small { color: #b33272; font-weight: 700; }
+[data-order-summary] .order-tracking-full { overflow: visible; }
+[data-order-summary] .order-tracking-full .tracking-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); gap: 20px 8px; overflow: visible; }
+[data-order-summary] .order-tracking-full .tracking-step { min-width: 0; }
 [data-order-summary] .order-shipment-details { padding-bottom: 15px; }
 [data-order-summary] .order-shipment-details .order-detail-info-grid { margin: 12px 14px 0; }
 [data-order-summary] .order-shipment-transfers { margin: 14px; padding: 14px 15px; border: 1px solid #eee3e9; border-radius: 12px; background: #fff; }

@@ -46,6 +46,7 @@ class AdminAssistantController extends Controller
     public function analyze(Request $request, AdminAssistant $assistant, AdminAssistantContext $context, AutomatedAssistant $automated)
     {
         abort_unless($request->user()?->is_admin, 403);
+        abort_if($request->input('mode') === 'seller' && !config('features.admin_ai_review'), 404);
         $input = $request->validate([
             'mode' => 'required|in:dashboard,reports,seller,product,draft,chat,analytics,inventory,anomalies,product_copy',
             'message' => 'required_if:mode,draft,chat|nullable|string|max:1500',

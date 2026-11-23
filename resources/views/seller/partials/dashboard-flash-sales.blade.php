@@ -33,6 +33,6 @@
 </section>
 @once
 @push('scripts')
-<script src="{{ asset('js/seller-dashboard-deals.js') }}?v={{ filemtime(public_path('js/seller-dashboard-deals.js')) }}" defer></script>
+<script src="{{ asset('js/seller-dashboard-deals.js') }}?v={{ substr(hash_file('sha256', public_path('js/seller-dashboard-deals.js')), 0, 12) }}" defer></script>
 @endpush
 @endonce

@@ -2,7 +2,7 @@
 @section('title', 'Reports')
 @section('page-title', 'Reports')
 @section('page-sub', 'Sales, verified payment activity and COD payouts')
-@push('head')<link rel="stylesheet" href="{{ asset('css/seller-finance.css') }}?v={{ filemtime(public_path('css/seller-finance.css')) }}">@endpush
+@push('head')<link rel="stylesheet" href="{{ asset('css/seller-finance.css') }}?v={{ substr(hash_file('sha256', public_path('css/seller-finance.css')), 0, 12) }}">@endpush
 
 @section('content')
 <div class="seller-reports-page">

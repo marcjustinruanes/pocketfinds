@@ -20,6 +20,25 @@ use Tests\TestCase;
 
 class BuyerModulesTest extends TestCase
 {
+    public function test_notification_count_is_live_and_scoped_to_the_signed_in_user(): void
+    {
+        Order::notifyUser($this->buyer->id,'New order update','Update','order_status',null);
+        Order::notifyUser($this->seller->id,'Seller update','Update','order_status',null);
+        $this->actingAs($this->buyer)->getJson(route('account.notifications.unread-count'))
+            ->assertOk()->assertJsonPath('unread',1)->assertHeader('Cache-Control','no-store, private');
+        Order::notifyUser($this->buyer->id,'Another update','Update','order_status',null);
+        $this->getJson(route('account.notifications.unread-count'))->assertJsonPath('unread',2);
+        DB::table('notifications')->where('user_id',$this->buyer->id)->update(['is_read'=>true]);
+        $this->getJson(route('account.notifications.unread-count'))->assertJsonPath('unread',0);
+        $this->actingAs($this->seller)->getJson(route('account.notifications.unread-count'))
+            ->assertOk()->assertJsonPath('unread',1);
+    }
+
+    public function test_notification_count_requires_authentication(): void
+    {
+        $this->getJson(route('account.notifications.unread-count'))->assertUnauthorized();
+    }
+
     use WorkflowSchema;
     private User $buyer;
     private User $seller;
@@ -210,13 +229,51 @@ class BuyerModulesTest extends TestCase
         $this->assertSame('New street',$address->fresh()->street);$this->assertSame($snapshot,$order->fresh()->shipping_address);
         $this->actingAs($this->person('buyer'))->patchJson(route('buyer.addresses.update',$address),$data)->assertForbidden();
     }
+    public function test_saved_addresses_repair_duplicate_defaults_without_removing_addresses(): void
+    {
+        $a=$this->address($this->buyer,true);$b=$this->address($this->buyer,true);
+        BuyerAddress::ensureDefaultFor($this->buyer);
+        BuyerAddress::ensureDefaultFor($this->buyer);
+        $this->assertSame(2,BuyerAddress::where('buyer_id',$this->buyer->id)->count());
+        $this->assertSame(1,BuyerAddress::where('buyer_id',$this->buyer->id)->where('is_default',true)->count());
+        $this->assertTrue($a->fresh()->is_default);
+        $this->assertFalse($b->fresh()->is_default);
+    }
+
+    public function test_account_deletion_is_available_to_every_role_and_requires_password(): void
+    {
+        (require database_path('migrations/2026_11_06_130000_add_buyer_account_deletion_marker.php'))->up();
+        foreach (['buyer','seller','rider','logistics','admin'] as $role) {
+            $user=$this->person('buyer');
+            DB::table('users')->where('id',$user->id)->update(['account_type'=>$role,'is_admin'=>$role==='admin']);
+            $user->refresh();
+            view()->share('errors',new \Illuminate\Support\ViewErrorBag());
+            $markup=view('account.partials.delete-account')->render();
+            $this->assertStringContainsString('account-danger-zone',$markup);
+            $this->assertStringContainsString(route('account.destroy'),$markup);
+            $this->assertStringContainsString('yes i confirm',$markup);
+            $this->actingAs($user)->delete(route('account.destroy'),['password'=>'wrong','confirmation'=>'yes i confirm'])->assertSessionHasErrors('delete_account');
+            $this->assertNull($user->fresh()->deleted_at);
+            $this->delete(route('account.destroy'),['password'=>'Pass@2026','confirmation'=>'yes i confirm'])->assertRedirect(route('login'));
+            $this->assertNotNull($user->fresh()->deleted_at);
+            $this->assertSame('suspended',$user->fresh()->status);
+            $this->assertGuest();
+        }
+    }
+
     public function test_default_address_can_be_switched_and_previous_one_deleted(): void
     {
         $a=$this->address($this->buyer,true);$b=$this->address($this->buyer);
         $this->actingAs($this->buyer)->deleteJson(route('buyer.addresses.destroy',$a))->assertUnprocessable();
         $this->post(route('buyer.addresses.default',$b))->assertRedirect();
         $this->assertSame(1,BuyerAddress::where('buyer_id',$this->buyer->id)->where('is_default',true)->count());
-        $this->deleteJson(route('buyer.addresses.destroy',$a))->assertOk();
+        $snapshot=$a->toShippingArray();
+        $order=Order::create(['order_number'=>'REMOVED-ADDRESS','buyer_id'=>$this->buyer->id,'seller_id'=>$this->seller->id,'status'=>'placed','items'=>[],'shipping_address'=>$snapshot,'subtotal'=>10,'total'=>10]);
+        $this->withSession(['buyer_checkout_address'=>$a->id])
+            ->post(route('buyer.addresses.destroy',$a),['_method'=>'DELETE'],['Accept'=>'application/json'])
+            ->assertOk()->assertJsonPath('success',true)->assertSessionMissing('buyer_checkout_address');
+        $this->assertDatabaseMissing('buyer_addresses',['id'=>$a->id]);
+        $this->assertSame($snapshot,$order->fresh()->shipping_address);
         $this->actingAs($this->person('buyer'))->post(route('buyer.addresses.default',$b))->assertForbidden();
     }
     public function test_category_depth_ownership_and_parent_filtering(): void

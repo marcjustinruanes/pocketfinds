@@ -23,6 +23,21 @@ class BuyerAddress extends Model
      */
     public static function ensureDefaultFor(User $buyer): void
     {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($buyer) {
+            User::whereKey($buyer->id)->lockForUpdate()->firstOrFail();
+            $addresses = static::where('buyer_id', $buyer->id)->orderByDesc('is_default')->orderBy('id')->lockForUpdate()->get();
+            if ($addresses->isNotEmpty()) {
+                $default = $addresses->first();
+                static::where('buyer_id', $buyer->id)->where('id', '!=', $default->id)->where('is_default', true)->update(['is_default' => false]);
+                if (! $default->is_default) $default->update(['is_default' => true]);
+                return;
+            }
+            static::seedRegistrationAddress($buyer);
+        });
+    }
+
+    private static function seedRegistrationAddress(User $buyer): void
+    {
         if (static::where('buyer_id', $buyer->id)->exists()) return;
         if (!$buyer->province || !$buyer->municipality || !$buyer->barangay) return;
 

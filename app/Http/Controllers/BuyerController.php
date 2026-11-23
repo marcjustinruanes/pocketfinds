@@ -62,7 +62,7 @@ class BuyerController extends Controller
         ];
         $activeOrders = $statusCounts['to_ship'] + $statusCounts['in_transit'] + $statusCounts['out_for_delivery'];
         $completedOrders = $statusCounts['completed'];
-        $cartCount = (int) CartItem::where('buyer_id', $buyerId)->sum('qty');
+        $cartCount = (int) CartItem::where('buyer_id', $buyerId)->distinct()->count('product_id');
         $unreadMessages = Message::where('receiver_id', $buyerId)->where('read', false)->count();
 
         $recentOrders = Order::with('seller')
@@ -297,6 +297,10 @@ class BuyerController extends Controller
             return back()->with('error', 'Choose another default delivery address before removing this one.');
         }
 
+        if ((string) $request->session()->get('buyer_checkout_address') === (string) $address->id) {
+            $request->session()->forget('buyer_checkout_address');
+        }
+
         if ($request->expectsJson()) {
             return response()->json(['success' => true]);
         }
@@ -371,7 +375,7 @@ class BuyerController extends Controller
             ]);
         }
 
-        return response()->json(['count' => (int) CartItem::where('buyer_id', $buyerId)->sum('qty')]);
+        return response()->json(['count' => (int) CartItem::where('buyer_id', $buyerId)->distinct()->count('product_id')]);
     }
 
     /** Authoritatively resolve one variation option from a product's own stored data — never trust client-submitted price/stock/image for it. */
@@ -537,10 +541,6 @@ class BuyerController extends Controller
         $orderRelations = ['seller', 'paymentMethod', 'shipment.courier', 'shipment.pickupRider', 'shipment.hubTransferRider', 'shipment.hubLegs.rider', 'review'];
         if (Schema::hasTable('gcash_purchases')) $orderRelations[] = 'gcashPurchase';
         $orders = $baseQuery->with($orderRelations)
-            ->when($tab === 'to_ship', fn ($query) => $query->whereIn('status', Order::BUYER_TO_SHIP_STATUSES))
-            ->when($tab === 'in_transit', fn ($query) => $query->whereIn('status', Order::BUYER_IN_TRANSIT_STATUSES))
-            ->when($tab==='refunds',fn($query)=>$query->whereIn('id',$refundOrderIds))
-            ->when(! in_array($tab, ['all', 'to_ship', 'in_transit', 'refunds'], true), fn ($query) => $query->where('status', $tab))
             ->when($period === '30d', fn ($query) => $query->where('created_at', '>=', now()->subDays(30)))
             ->when($period === '6m', fn ($query) => $query->where('created_at', '>=', now()->subMonths(6)))
             ->when($period === 'year', fn ($query) => $query->where('created_at', '>=', now()->startOfYear()))
@@ -576,6 +576,15 @@ class BuyerController extends Controller
             })->values();
         }
 
+        $orderCounts = $orders->countBy('status');
+        $refundOrderIds = $refundOrderIds->intersect($orders->modelKeys());
+        $orders = $orders->filter(fn ($order) => match ($tab) {
+            'all' => true,
+            'to_ship' => in_array($order->status, Order::BUYER_TO_SHIP_STATUSES, true),
+            'in_transit' => in_array($order->status, Order::BUYER_IN_TRANSIT_STATUSES, true),
+            'refunds' => $refundOrderIds->contains($order->id),
+            default => $order->status === $tab,
+        })->values();
         $orderHistory = DB::table('order_status_history')->whereIn('order_id', $orders->modelKeys())->orderBy('created_at')->get(['order_id', 'status', 'created_at'])->groupBy('order_id');
         $paymentConfirmedAt = collect();
         $purchaseIds = $orders->pluck('gcash_purchase_id')->filter()->unique()->values();
@@ -684,29 +693,18 @@ class BuyerController extends Controller
     public function confirmReceipt(Order $order)
     {
         abort_unless($order->buyer_id === auth()->id(), 403);
-        if(\App\Services\BuyerCommerce::installed() && DB::table('commerce_returns')->where('order_id',$order->id)->whereIn('status',['pending','approved','escalated','received','refunded'])->exists()) return back()->with('error','Resolve the return/refund request before completing this order.');
-        // Only confirmable once the courier has actually marked it delivered — not merely
-        // "out for delivery" (still en route). See RiderController/LogisticsController's
-        // ORDER_STATUS_MAP for why 'delivered' stops short of 'completed' on its own.
-        if ($order->status !== 'delivered') {
-            return back()->with('error', 'This order cannot be confirmed as received yet.');
-        }
-
         $confirmed = DB::transaction(function () use ($order) {
             $locked = Order::lockFresh($order->id);
-            if ($locked->status !== 'delivered') {
-                return false;
-            }
+            if ($locked->status !== 'out_for_delivery') return false;
             $shipment = Shipment::where('order_id', $locked->id)->lockForUpdate()->first();
-
-            return $locked->completeDelivered($shipment, auth()->id(), 'Buyer confirmed receipt.', true);
+            if (!$shipment || $shipment->shipping_status !== 'delivered' || !$shipment->delivered_at) return false;
+            $locked->update(['status'=>'delivered']);
+            $locked->logStatus('delivered', auth()->id(), 'Buyer confirmed receipt. Seven-day inspection period started.');
+            Order::notifyUser($locked->seller_id, 'Buyer confirmed receipt', 'The buyer received order #'.$locked->order_number.'. The seven-day inspection period has started.', 'order_status', $locked->id);
+            return true;
         });
-
-        if (! $confirmed) {
-            return back()->with('error', 'This order cannot be confirmed as received yet.');
-        }
-
-        return redirect()->route('buyer.orders', ['tab' => 'completed'])->with('success', 'Thanks for confirming! Your order is now marked as completed.');
+        if (!$confirmed) return back()->with('error', 'Receipt can be confirmed after the rider records delivery. Refresh to see the current status.');
+        return redirect()->route('buyer.orders', ['tab'=>'delivered'])->with('success', 'Order received. You have seven days to inspect your items and request Return / Refund.');
     }
 
     /** Re-adds every item from a past order back into the cart, at today's price/stock. */
@@ -1067,6 +1065,19 @@ class BuyerController extends Controller
         return response()->json(['applies' => false, 'message' => "That code doesn't apply to your selected items."]);
     }
 
+    private function buyerChatContact(int $id): User
+    {
+        $contact = User::findOrFail($id);
+        $hasThread = Message::where(function ($q) use ($id) {
+            $q->where('sender_id', auth()->id())->where('receiver_id', $id);
+        })->orWhere(function ($q) use ($id) {
+            $q->where('sender_id', $id)->where('receiver_id', auth()->id());
+        })->exists();
+        abort_unless($contact->account_type === 'seller' ||
+            ($contact->account_type === 'rider' && $hasThread), 404);
+        return $contact;
+    }
+
     public function messages(Request $request)
     {
         $product = null;
@@ -1094,7 +1105,8 @@ class BuyerController extends Controller
         $seller = null;
         $sellerOnline = false;
         if ($request->filled('seller')) {
-            $seller = User::where('username', $request->query('seller'))->where('account_type', 'seller')->first();
+            $contact = User::where('username', $request->query('seller'))->first();
+            $seller = $contact ? $this->buyerChatContact((int) $contact->id) : null;
             if ($seller) {
                 $sellerOnline = Cache::has('seller-online-'.$seller->id);
             }
@@ -1133,7 +1145,7 @@ class BuyerController extends Controller
             ? $sellerOrders->firstWhere('id', $request->query('order'))
             : null;
 
-        // Only seller conversations can be opened by the buyer messaging routes.
+        // Buyer conversations include sellers and riders who have messaged this buyer.
         $conversations = Message::with(['sender', 'receiver', 'product', 'gcashPurchase'])
             ->where('sender_id', auth()->id())
             ->orWhere('receiver_id', auth()->id())
@@ -1143,7 +1155,7 @@ class BuyerController extends Controller
             ->map(fn ($msgs) => $msgs->first())
             ->filter(function ($message) {
                 $contact = $message->sender_id === auth()->id() ? $message->receiver : $message->sender;
-                return $contact && $contact->account_type === 'seller' && filled($contact->username);
+                return $contact && in_array($contact->account_type, ['seller', 'rider'], true) && filled($contact->username);
             });
 
         $linkedPurchase=($seller && is_string($request->query('purchase')) && \Illuminate\Support\Str::isUuid($request->query('purchase')) && \App\Services\GcashInventory::installed())
@@ -1164,7 +1176,7 @@ class BuyerController extends Controller
     public function messagesPoll(Request $request)
     {
         $data = $request->validate(['receiver_id' => ['required', 'integer']]);
-        $seller = User::whereKey($data['receiver_id'])->where('account_type', 'seller')->firstOrFail();
+        $seller = $this->buyerChatContact((int) $data['receiver_id']);
 
         Message::where('sender_id', $seller->id)
             ->where('receiver_id', auth()->id())
@@ -1196,7 +1208,7 @@ class BuyerController extends Controller
             ->firstOrFail();
         $respondent = $message
             ? ($message->sender_id === auth()->id() ? $message->receiver : $message->sender)
-            : User::whereKey($data['receiver_id'])->where('account_type', 'seller')->firstOrFail();
+            : $this->buyerChatContact((int) $data['receiver_id']);
         $evidence = $request->file('evidence');
         $values = [
             'id' => (string) Str::uuid(), 'order_id' => null, 'complainant_id' => auth()->id(),
@@ -1264,7 +1276,7 @@ class BuyerController extends Controller
             'attachment' => ['nullable', 'file', 'max:20480', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,avi'],
         ]);
 
-        $receiver = User::whereKey($data['receiver_id'])->where('account_type', 'seller')->firstOrFail();
+        $receiver = $this->buyerChatContact((int) $data['receiver_id']);
         $files = $request->file('attachments', []);
         if ($request->hasFile('attachment')) {
             $files[] = $request->file('attachment');
@@ -1647,7 +1659,7 @@ class BuyerController extends Controller
 
         DB::transaction(function () use ($buyer) {
             $locked = User::whereKey($buyer->id)->lockForUpdate()->firstOrFail();
-            abort_unless($locked->account_type === 'buyer' && ! $locked->deleted_at, 403);
+            abort_unless(! $locked->deleted_at, 403);
 
             $profileImage = $locked->profile_picture;
             $sensitiveFiles = collect(['id_file', 'selfie_file'])->mapWithKeys(fn ($field) => [$field => $locked->{$field}]);
@@ -1688,9 +1700,12 @@ class BuyerController extends Controller
                 'id_file' => null,
                 'selfie_file' => null,
                 'status' => 'suspended',
-                'status_reason' => 'Account deleted by the buyer.',
+                'status_reason' => 'Account deleted by its owner.',
                 'deleted_at' => now(),
-            ])->save();
+            ]);
+            // Self-deletion is a separate lifecycle from staff hiring/status review.
+            // Keep company membership and operational records while disabling login.
+            User::whereKey($locked->id)->update($locked->getDirty());
 
             app(MediaLifecycle::class)->deleteAfterCommit($profileImage, 'profile_images');
             foreach ($sensitiveFiles as $path) app(MediaLifecycle::class)->deleteAfterCommit($path, 'sensitive_documents');

@@ -29,6 +29,7 @@ class LogisticsShippingTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp(); $this->createWorkflowSchema();
+        config(['logistics.require_shipping_prepayment'=>true]);
         foreach (['2026_10_14_000004_add_gcash_purchases', '2026_10_16_000001_add_registration_business_details', '2026_10_16_000002_add_logistics_registration_details',
             '2026_10_17_000001_add_buyer_commerce_features', '2026_10_28_000001_add_logistics_financial_foundation',
             '2026_10_28_000002_add_logistics_financial_transactions'] as $file) (require database_path('migrations/'.$file.'.php'))->up();
@@ -96,6 +97,21 @@ class LogisticsShippingTest extends TestCase
     protected function invalid(callable $fn): void
     {
         try { $fn(); $this->fail('Expected validation failure.'); } catch (ValidationException $e) { $this->assertNotEmpty($e->errors()); }
+    }
+
+    public function test_previous_gcash_flow_allows_logistics_without_carrier_account_or_prepayment(): void
+    {
+        config(['logistics.require_shipping_prepayment'=>false]);
+        DB::table('logistics_shipping_accounts')->delete();
+        $order=$this->order();
+        $parcel=$this->parcel($order);
+        $ob=DB::table('logistics_shipping_obligations')->where('shipment_id',$parcel->id)->first();
+        $this->assertNotNull($ob);
+        $this->assertNull($ob->instructions);
+        $this->assertSame('pending',$ob->status);
+        $this->shipping->gate($parcel);
+        $this->assertDatabaseCount('logistics_financial_transactions',0);
+        $this->assertSame('1060.00',number_format($order->fresh()->total,2,'.',''));
     }
 
     public function test_matching_rate_creates_exact_snapshotted_obligation_and_no_cash(): void

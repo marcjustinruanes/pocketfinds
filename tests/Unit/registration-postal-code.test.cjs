@@ -12,7 +12,7 @@ function setup(){
 test('postal code comes from the API and resets when its parent address changes',async()=>{
  const c=setup();c.select('043426000');assert.equal(c.nodes.postal_code.value,'');assert.match(c.nodes.registrationPostalCapsule.textContent,/Looking up/);
  await c.settle(0,{postal_code:'4004'});assert.equal(c.nodes.postal_code.value,'4004');assert.equal(c.nodes.municipality_psgc_code.value,'043426000');
- assert.equal(c.nodes.postal_code.readOnly,true);
+ assert.equal(c.nodes.postal_code.readOnly,false);
  c.nodes.province.listeners.change();assert.equal(c.nodes.postal_code.value,'');assert.equal(c.nodes.registrationPostalCapsule.textContent,'');
 });
 test('a late postal response cannot replace the code for the new municipality',async()=>{

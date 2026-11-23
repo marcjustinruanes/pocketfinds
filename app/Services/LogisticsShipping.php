@@ -158,10 +158,10 @@ class LogisticsShipping
         $seller = User::findOrFail($order->seller_id);
         $companies = LogisticsHub::companiesServicing($seller->municipality, $order->shipping_address['municipality'] ?? null, $seller->province, $order->shipping_address['province'] ?? null);
         if (! $companies->contains($shipment->logistics_company)) $this->fail('The selected carrier no longer covers this route.');
-        $rate = $this->rate($shipment->logistics_company, $order->shipping_address['region'] ?? '', true);
-        if (! $rate) $this->fail('This carrier has no approved rate for the destination region. Select another carrier or request rate review.');
         $kg = $this->kilograms($order->items ?? []);
         $fixed = ($order->commerce_snapshot['financial_policy'] ?? null) === FinancialPolicy::VERSION || app(LogisticsCashDesk::class)->amount((string)$order->shipping_amount) === FinancialPolicy::DELIVERY_CENTS;
+        $rate = $this->rate($shipment->logistics_company, $order->shipping_address['region'] ?? '', true);
+        if (! $rate && ! $fixed) $this->fail('This carrier has no approved rate for the destination region. Select another carrier or request rate review.');
         $approved = $fixed ? FinancialPolicy::DELIVERY_CENTS : (int) $rate->first_kg_cents + ($kg - 1) * (int) $rate->additional_kg_cents;
         // New fixed-fee parcels retain the same logistics entitlement at handoff.
         // Historical snapshots continue to use their agreed carrier rates.
@@ -172,7 +172,7 @@ class LogisticsShipping
         if (! $fixed && ! $sellerSelectsCarrierAfterOrder && $gross !== $approved) $this->fail('The carrier-approved shipping rate does not match the original shipping charge. Handoff is held for rate review; the buyer total has not changed.');
         $gcash = $this->gcash($order);
         $account = $gcash && $gross > 0 ? DB::table('logistics_shipping_accounts')->where('company_name', $shipment->logistics_company)->lockForUpdate()->first() : null;
-        if ($gcash && $gross > 0 && ! $account) $this->fail('The carrier must publish its company GCash receiving account before shipping payment can be requested.');
+        if (config('logistics.require_shipping_prepayment', false) && $gcash && $gross > 0 && ! $account) $this->fail('The carrier must publish its company GCash receiving account before shipping payment can be requested.');
         $funding = $this->voucherFunding($order);
         if ($sellerSelectsCarrierAfterOrder) {
             $remaining = $gross;
@@ -199,6 +199,7 @@ class LogisticsShipping
 
     public function gate(Shipment $shipment): void
     {
+        if (!config('logistics.require_shipping_prepayment', false)) return;
         if (! $this->installed() || (int) $shipment->shipping_finance_version !== 1) return;
         $obligation = DB::table('logistics_shipping_obligations')->where('shipment_id', $shipment->id)->lockForUpdate()->first();
         if (! $obligation || $obligation->company_name !== $shipment->logistics_company || $obligation->order_id !== $shipment->order_id) $this->fail('This new shipment requires a valid shipping obligation.');

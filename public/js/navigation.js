@@ -77,6 +77,50 @@
 // Reading notifications stays in the open panel instead of navigating away.
 document.addEventListener('DOMContentLoaded', () => {
     const notificationMenus = [...document.querySelectorAll('.pf-notification-menu')];
+    let checkingNotifications = false;
+    const refreshNotificationBadges = async () => {
+        if (checkingNotifications || document.hidden || !notificationMenus.length) return;
+        checkingNotifications = true;
+        try {
+            const response = await fetch(notificationMenus[0].dataset.notificationCountUrl, {
+                credentials: 'same-origin', cache: 'no-store', redirect: 'error',
+                headers: {Accept: 'application/json'}, signal: AbortSignal.timeout(10000),
+            });
+            if (!response.ok) return;
+            const result = await response.json();
+            if (!Number.isInteger(result.unread) || result.unread < 0) return;
+            let changed = false;
+            notificationMenus.forEach(menu => {
+                changed ||= Number(menu.dataset.unreadCount) !== result.unread;
+                menu.dataset.unreadCount = String(result.unread);
+                const trigger = menu.querySelector('summary');
+                let dot = trigger.querySelector('.pf-buyer-dot');
+                if (result.unread && !dot) {
+                    dot = document.createElement('span');
+                    dot.className = 'pf-buyer-dot'; dot.setAttribute('aria-hidden', 'true');
+                    trigger.append(dot);
+                } else if (!result.unread) { dot?.remove(); }
+                trigger.setAttribute('aria-label', result.unread ? `Notifications, ${result.unread} unread` : 'Notifications');
+            });
+            // Fetch rendered, role-scoped panel contents without marking anything read.
+            if (changed) {
+                const page = await fetch(location.href, {credentials: 'same-origin', cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(10000)});
+                if (!page.ok) return;
+                const html = new DOMParser().parseFromString(await page.text(), 'text/html');
+                const panels = html.querySelectorAll('.pf-notification-panel');
+                notificationMenus.forEach((menu, index) => {
+                    if (panels[index]) menu.querySelector('.pf-notification-panel').replaceChildren(...panels[index].childNodes);
+                });
+            }
+        } catch { /* Preserve the last known badge during temporary network failures. */ }
+        finally { checkingNotifications = false; }
+    };
+    if (notificationMenus.length) {
+        refreshNotificationBadges();
+        setInterval(refreshNotificationBadges, 15000);
+        window.addEventListener('focus', refreshNotificationBadges);
+        document.addEventListener('visibilitychange', refreshNotificationBadges);
+    }
     const closeNotifications = () => notificationMenus.forEach(menu => { menu.open = false; });
     notificationMenus.forEach(menu => {
         const trigger = menu.querySelector('summary');

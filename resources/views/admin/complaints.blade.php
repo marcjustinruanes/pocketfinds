@@ -1,34 +1,29 @@
 @extends('admin.layout')
 @section('title', 'Complaints & Disputes')
-@section('page-title', 'Complaints & Disputes')
+@section('page-title', 'Disputes & refunds')
 @section('page-sub', 'Manage buyer/seller disputes and platform complaints')
 
+@section('body-class','platform-accounts-page platform-cases-page')
+@push('account-head')
+<link rel="stylesheet" href="{{ asset('css/platform-accounts.css') }}?v={{ filemtime(public_path('css/platform-accounts.css')) }}">
+@endpush
+@section('workspace-search')
+<div class="platform-account-toolbar"><div class="filter-bar"><div class="search-mini"><span class="ic"><x-admin-icon name="search" /></span><input type="search" aria-label="Search cases" placeholder="Search cases or orders" data-table-search="{{ request('view')==='returns' ? 'returnsTable' : 'dispTable' }}"></div></div></div>
+@endsection
+
 @section('content')
+<nav class="platform-case-tabs" aria-label="Case type"><a href="{{ route('admin.complaints') }}" @if(request('view')!=='returns') aria-current="page" @endif>Dispute cases</a><a href="{{ route('admin.complaints',['view'=>'returns']) }}" @if(request('view')==='returns') aria-current="page" @endif>Returns & refunds</a></nav>
+@include('commerce.messages')
+@if(request('view')!=='returns')
 @include('admin.partials.ai-link', ['aiMode' => 'reports', 'aiLabel' => 'AI complaint summary'])
-<div class="card">
-  <div class="card-head"><div><h2>Dispute Cases</h2><p>{{ $complaints->count() }} total cases</p></div></div>
+<div class="card platform-accounts-card">
   <div class="card-pad">
-    <div class="filter-bar">
-      <div class="search-mini">
-        <span class="ic"><x-admin-icon name="search" /></span>
-        <input type="text" placeholder="Search case..." data-table-search="dispTable">
-      </div>
-    </div>
-    @php
-      $complaintsByStatus = $complaints->countBy('status');
-    @endphp
-    <div data-tabs>
-      <a class="tab active" data-tab="all">All <span class="tab-count">{{ $complaints->count() }}</span></a>
-      <a class="tab" data-tab="open">Open <span class="tab-count">{{ $complaintsByStatus->get('open', 0) }}</span></a>
-      <a class="tab" data-tab="escalated">Escalated <span class="tab-count">{{ $complaintsByStatus->get('escalated', 0) }}</span></a>
-      <a class="tab" data-tab="resolved">Resolved <span class="tab-count">{{ $complaintsByStatus->get('resolved', 0) }}</span></a>
-    </div>
     <div class="table-wrap">
-      <table class="dtable" id="dispTable">
-        <thead><tr><th>Case ID</th><th>Filed By</th><th>Against</th><th>Type</th><th>Subject</th><th>Date</th><th>Status</th><th></th></tr></thead>
+      <table class="dtable" id="dispTable" data-platform-filter-table>
+        <thead><tr><th>Case ID</th><th>Filed By</th><th>Against</th><th>Type</th><th>Subject</th><th>Date</th><th>@include('admin.partials.column-filter',['filterTable'=>'dispTable','filterLabel'=>'Status','filterField'=>'status','filterOptions'=>['all'=>'All statuses','open'=>'Open','escalated'=>'Escalated','resolved'=>'Resolved']])</th><th class="platform-manage-heading">Manage</th></tr></thead>
         <tbody>
           @forelse($complaints as $c)
-          <tr class="rail-row rail-{{ $c->status }}" data-type="{{ $c->status }}">
+          <tr class="rail-row rail-{{ $c->status }}" data-status="{{ $c->status }}">
             <td class="mono">#{{ strtoupper(substr($c->id, 0, 8)) }}</td>
             <td>
               @if($c->complainant)
@@ -52,11 +47,12 @@
             <td><span class="stamp stamp-{{ $c->status }}">{{ ucfirst($c->status) }}</span></td>
             <td>
               <div class="row-actions">
-                <button class="btn btn-sm btn-outline" data-modal-open="dispModal-{{ $c->id }}">Open</button>
+                <button type="button" class="btn platform-detail-button" data-modal-open="dispModal-{{ $c->id }}" aria-label="Manage dispute"><span aria-hidden="true">&#8599;</span></button>
               </div>
             </td>
           </tr>
 
+          @push('dispute-modals')
           <div class="modal-overlay" id="dispModal-{{ $c->id }}">
             <div class="modal modal-lg">
               <div class="modal-head">
@@ -103,12 +99,14 @@
                 @if($c->status !== 'resolved')
                 <form method="POST" action="{{ route('admin.complaints.resolve', $c->id) }}" data-confirm data-confirm-title="Resolve this case?" data-confirm-message="This will mark the dispute as resolved." data-confirm-action="Mark resolved" data-confirm-tone="success">
                   @csrf @method('PATCH')
+                  <label class="platform-resolution-label">Resolution note<textarea name="resolution" rows="2" maxlength="2000" placeholder="Record how this case was resolved"></textarea></label>
                   <button class="btn btn-success" type="submit">Mark Resolved</button>
                 </form>
                 @endif
               </div>
             </div>
           </div>
+          @endpush
           @empty
           <tr><td colspan="8"><div class="empty"><div class="ic"><x-admin-icon name="flag" /></div><h3>No complaints yet</h3></div></td></tr>
           @endforelse
@@ -117,9 +115,11 @@
     </div>
   </div>
 </div>
+@stack('dispute-modals')
+@else
 @if(\App\Services\BuyerCommerce::installed())
-@include('commerce.messages')
-@include('account.partials.commerce-returns')
+@include('admin.partials.returns-table')
+@endif
 @endif
 @endsection
 

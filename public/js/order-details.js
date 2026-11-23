@@ -15,9 +15,31 @@ document.addEventListener('DOMContentLoaded', () => {
         const orderCard = button.closest('.order-card');
         if (modal.parentElement !== document.body) document.body.append(modal);
         let previousOverflow;
+        let paymentCheckTimer;
+        let paymentCheckRunning = false;
+        const checkPaymentApproval = async () => {
+            if (!modal.classList.contains('open') || !modal.dataset.paymentStatusUrl || paymentCheckRunning) return;
+            paymentCheckRunning = true;
+            try {
+                const response = await fetch(modal.dataset.paymentStatusUrl, {
+                    credentials: 'same-origin', cache: 'no-store', redirect: 'error',
+                    headers: {Accept: 'application/json'},
+                    signal: AbortSignal.timeout(10000),
+                });
+                if (!response.ok) return;
+                const result = await response.json();
+                if (modal.classList.contains('open') && result.purchase?.payment_state === 'order_placed' && result.purchase?.verified_at) {
+                    const destination = new URL(location.href);
+                    destination.searchParams.set('order_details', modal.dataset.orderId);
+                    location.replace(destination.href);
+                }
+            } catch { /* Keep the existing payment controls usable during a network failure. */ }
+            finally { paymentCheckRunning = false; }
+        };
         const close = () => {
             if (cancelling) return;
             modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true');
+            clearInterval(paymentCheckTimer);
             modal.classList.remove('order-cancelling');
             const cancelPanel = modal.querySelector('.order-cancel-panel');
             const cancelButton = modal.querySelector('.order-cancel-open');
@@ -30,6 +52,11 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.order-details-modal.open').forEach(open=>{if(open!==modal)open.querySelector('.order-details-close')?.click();});
             previousOverflow = document.body.style.overflow;
             modal.classList.add('open'); modal.setAttribute('aria-hidden', 'false');
+            clearInterval(paymentCheckTimer);
+            if (modal.dataset.paymentStatusUrl) {
+                checkPaymentApproval();
+                paymentCheckTimer = setInterval(checkPaymentApproval, 5000);
+            }
             const detailsButton = modal.querySelector('[data-continue-order-details]');
             if (detailsButton && !detailsButton.disabled) detailsButton.click();
             document.body.style.overflow = 'hidden'; modal.querySelector('.order-details-close').focus();
@@ -76,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
             controls.forEach(control => control.disabled = true);
             dialog.close(); feedback.textContent = 'Cancelling... Waiting for server confirmation.';
             try {
-                const response = await fetch(form.action, {method:'POST', credentials:'same-origin', headers:{Accept:'application/json'}, body:data});
+                const response = await fetch(form.action, {method:'POST', credentials:'same-origin', redirect:'error', headers:{Accept:'application/json'}, body:data});
                 let result;
                 try { result = await response.json(); } catch { throw new Error('Unexpected server response. Refresh the order before retrying.'); }
                 if (!response.ok || result.cancelled !== true) throw new Error(Object.values(result.errors || {}).flat().join(' ') || result.message || 'Cancellation was not confirmed. Refresh the order before retrying.');

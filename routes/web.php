@@ -39,9 +39,19 @@ use Illuminate\Support\Facades\Storage;
 
 require __DIR__.'/commerce.php';
 
+Route::get('/account/notification-unread-count', function (\Illuminate\Http\Request $request) {
+    $user = $request->user();
+    $query = $user->account_type === 'seller' && !$user->is_admin
+        ? \App\Models\Order::sellerNotificationsQuery((int) $user->id)
+        : \Illuminate\Support\Facades\DB::table('notifications')->where('user_id', $user->id);
+    return response()->json(['unread' => $query->where('is_read', false)->count()])
+        ->header('Cache-Control', 'private, no-store');
+})->middleware(['auth', 'throttle:30,1'])->name('account.notifications.unread-count');
+
 Route::get('/orders/{order}/receipt', [\App\Http\Controllers\OrderReceiptController::class, 'show'])->middleware(['auth', 'throttle:60,1'])->name('orders.receipt');
 
 Route::get('/', [GuestController::class, 'home']);
+Route::get('/download/android', \App\Http\Controllers\AppDownloadController::class)->name('app.download.android');
 Route::get('/auth/collage-image', \App\Http\Controllers\AuthCollageImageController::class)->name('auth.collage-image');
 Route::get('/auth/collage-image/{slot}', \App\Http\Controllers\AuthCollageImageController::class)->whereIn('slot', ['main', 'back', 'front'])->name('auth.collage-slot');
 Route::get('/rider/activate/{token}', [\App\Http\Controllers\RiderActivationController::class, 'show'])->middleware('throttle:30,1')->name('rider.activation.show');
@@ -359,15 +369,20 @@ Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
     Route::get('/messages', [AdminController::class, 'messages'])->name('messages');
     Route::get('/messages/poll', [AdminController::class, 'messagesPoll'])->name('messages.poll');
     Route::post('/messages/send', [AdminController::class, 'messagesSend'])->name('messages.send');
+    Route::post('/messages/report', [AdminController::class, 'reportMessage'])->name('messages.report');
     Route::get('/messages/{user}', [AdminController::class, 'messages'])->name('messages.user');
     Route::post('/messages/react/{message}', [AdminController::class, 'reactMessage'])->name('messages.react');
     Route::get('/account', [AdminController::class, 'account'])->name('account');
+    Route::post('/account/password-link', [BuyerController::class, 'passwordResetLink'])->middleware('throttle:3,5')->name('account.password-link');
+    Route::post('/account/password-change', [BuyerController::class, 'completePasswordChange'])->middleware('throttle:6,1')->name('account.password-change');
+    Route::get('/account/google/email', [SocialAuthController::class, 'redirectAccountEmailVerification'])->middleware('throttle:10,1')->name('account.google.email');
     Route::post('/account/update', [AdminController::class, 'accountUpdate'])->name('account.update');
     Route::post('/account/password', [AdminController::class, 'passwordUpdate'])->name('account.password');
     Route::get('/update-requests', [AdminController::class, 'updateRequests'])->name('update-requests');
     Route::patch('/update-requests/{id}/approve', [AdminController::class, 'approveUpdateRequest'])->name('update-requests.approve');
     Route::patch('/update-requests/{id}/reject', [AdminController::class, 'rejectUpdateRequest'])->name('update-requests.reject');
     Route::get('/products', [AdminController::class, 'products'])->name('products');
+    Route::get('/vouchers', [AdminController::class, 'vouchers'])->name('vouchers');
     Route::patch('/products/{id}/approve', [AdminController::class, 'approveProduct'])->name('products.approve');
     Route::patch('/products/{id}/reject', [AdminController::class, 'rejectProduct'])->name('products.reject');
     Route::get('/policies', [AdminController::class, 'policies'])->name('policies');
@@ -439,6 +454,9 @@ Route::prefix('logistics')->name('logistics.')->middleware(['logistics', 'logist
     Route::post('/messages/send', [LogisticsController::class, 'messagesSend'])->name('messages.send');
     Route::get('/messages/{userId}', [LogisticsController::class, 'messagesThread'])->name('messages.thread');
     Route::get('/account', [LogisticsController::class, 'account'])->name('account');
+    Route::post('/account/password-link', [BuyerController::class, 'passwordResetLink'])->middleware('throttle:3,5')->name('account.password-link');
+    Route::post('/account/password-change', [BuyerController::class, 'completePasswordChange'])->middleware('throttle:6,1')->name('account.password-change');
+    Route::get('/account/google/email', [SocialAuthController::class, 'redirectAccountEmailVerification'])->middleware('throttle:10,1')->name('account.google.email');
     Route::post('/account/update', [LogisticsController::class, 'accountUpdate'])->name('account.update');
     Route::post('/account/address', [LogisticsController::class, 'accountAddressUpdate'])->middleware('throttle:20,1,logistics-address-write:')->name('account.address');
     Route::get('/address-locations/{level}/{code?}', [LogisticsController::class, 'addressLocations'])->middleware('throttle:60,1,logistics-address:')->name('address.locations');
@@ -446,7 +464,6 @@ Route::prefix('logistics')->name('logistics.')->middleware(['logistics', 'logist
 
     // Company-wide oversight — the admin account only, never hub staff (see LogisticsAdminMiddleware).
     Route::middleware('logistics.admin')->group(function () {
-        Route::get('/requests', [LogisticsController::class, 'requests'])->name('requests');
         Route::patch('/requests/{id}/approve', [LogisticsController::class, 'approveRequest'])->name('requests.approve');
         Route::patch('/requests/{id}/reject', [LogisticsController::class, 'rejectRequest'])->name('requests.reject');
         Route::get('/hub-requests', [LogisticsController::class, 'hubRequests'])->name('hub-requests');
@@ -558,9 +575,8 @@ Route::prefix('logistics')->name('logistics.')->middleware(['logistics', 'logist
     Route::get('/hub/vehicles', [LogisticsController::class, 'hubVehicles'])->name('hub.vehicles');
     Route::patch('/hub/vehicles/{id}/toggle', [LogisticsController::class, 'toggleVehicleAvailability'])->name('hub.vehicles.toggle');
 
-    // Pickup-leg assignment — origin hub staff assign a rider for a request that
-    // originates at their own hub; the admin can do this for any hub. Not under
-    // logistics.admin (unlike /requests' approve/reject) so hub staff can reach it too.
+    // Admin reviews pickups; only the origin hub assigns pickup riders.
+    Route::get('/requests', [LogisticsController::class, 'requests'])->name('requests');
     Route::patch('/requests/{id}/assign-pickup', [LogisticsController::class, 'assignPickupRider'])->name('requests.assign-pickup');
 });
 
@@ -597,6 +613,9 @@ Route::prefix('rider')->name('rider.')->middleware(['rider', 'logistics.activity
     Route::post('/messages/send', [RiderController::class, 'messagesSend'])->name('messages.send');
     Route::get('/messages/{userId}', [RiderController::class, 'messagesThread'])->name('messages.thread');
     Route::get('/account', [RiderController::class, 'account'])->name('account');
+    Route::post('/account/password-link', [BuyerController::class, 'passwordResetLink'])->middleware('throttle:3,5')->name('account.password-link');
+    Route::post('/account/password-change', [BuyerController::class, 'completePasswordChange'])->middleware('throttle:6,1')->name('account.password-change');
+    Route::get('/account/google/email', [SocialAuthController::class, 'redirectAccountEmailVerification'])->middleware('throttle:10,1')->name('account.google.email');
     Route::post('/account/update', [RiderController::class, 'accountUpdate'])->name('account.update');
     Route::post('/account/address', [RiderController::class, 'accountAddressUpdate'])->name('account.address');
       Route::post('/account/vehicle', [RiderController::class, 'vehicleUpdate'])->name('account.vehicle');
@@ -625,3 +644,5 @@ Route::middleware(['web', 'auth', 'gcash.seller.block', 'throttle:60,1'])->prefi
     }
     Route::get('/{id}/proofs/{proof}', [GcashPurchaseController::class, 'receipt'])->name('receipt');
 });
+
+Route::delete('/account', [BuyerController::class, 'destroyAccount'])->middleware(['web', 'auth', 'throttle:3,1'])->name('account.destroy');

@@ -1,7 +1,7 @@
 <style>[data-role="product-form"] [hidden] { display:none !important; }</style>
-<script src="{{ asset('js/variant-matrix.js') }}?v={{ filemtime(public_path('js/variant-matrix.js')) }}"></script>
-<script src="{{ asset('js/nested-product-variants.js') }}?v={{ filemtime(public_path('js/nested-product-variants.js')) }}"></script>
-<script src="{{ asset('js/product-package-fields.js') }}?v={{ filemtime(public_path('js/product-package-fields.js')) }}"></script>
+<script src="{{ asset('js/variant-matrix.js') }}?v={{ substr(hash_file('sha256', public_path('js/variant-matrix.js')), 0, 12) }}"></script>
+<script src="{{ asset('js/nested-product-variants.js') }}?v={{ substr(hash_file('sha256', public_path('js/nested-product-variants.js')), 0, 12) }}"></script>
+<script src="{{ asset('js/product-package-fields.js') }}?v={{ substr(hash_file('sha256', public_path('js/product-package-fields.js')), 0, 12) }}"></script>
 <script>
 // Shared Add/Edit product form logic. Called once per modal instance (the Add
 // modal, and one Edit modal per product) — everything is scoped to `root` so

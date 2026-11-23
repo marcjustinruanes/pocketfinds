@@ -27,6 +27,14 @@
   @if(in_array($role, ['admin', 'logistics']))@include('orders.partials.logistics')@endif
   <section><h2>Delivery progress</h2>
     @if($shipment = $order->shipment)
+    @if($shipment->tracking_number)
+    <div style="display:flex;justify-content:center;margin-bottom:16px">
+      <div style="text-align:center">
+        <div id="receiptQr"></div>
+        <p style="font-family:monospace;font-size:13px;font-weight:700;letter-spacing:1px;margin:6px 0 0">{{ $shipment->tracking_number }}</p>
+      </div>
+    </div>
+    @endif
     <div class="order-detail-info-grid">
       <div><span>Tracking number</span><strong>{{ $shipment->tracking_number ?: 'Not assigned' }}</strong></div>
       <div><span>Logistics company</span><strong>{{ $shipment->logistics_company ?: 'Not assigned' }}</strong></div>
@@ -42,6 +50,19 @@
   @include('orders.partials.refund')
   <footer>Generated {{ now()->format('M j, Y g:i A') }} ({{ config('app.timezone') }}). This record reflects the payment and delivery evidence currently recorded for this order.</footer>
 </main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="{{ asset('js/order-receipt.js') }}" defer></script>
+@if($order->shipment?->tracking_number)
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    new QRCode(document.getElementById('receiptQr'), {
+      text: @json($order->shipment->tracking_number),
+      width: 110,
+      height: 110,
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+  });
+</script>
+@endif
 </body>
 </html>

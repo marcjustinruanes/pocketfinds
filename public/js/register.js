@@ -1641,8 +1641,9 @@ if (document.getElementById('buyerForm')) {
         const btn = form.querySelector('.btn-submit');
         if (btn.disabled) return;
         if (!validateStep(accountStep)) return;
-        btn.disabled = true; btn.textContent = 'Submitting…';
+        form.querySelectorAll('input.error,select.error,textarea.error').forEach(clearError);
         const fd = new FormData(form);
+        btn.disabled = true; btn.textContent = 'Submitting…';
         if (selfieBlob) fd.set('selfie_file', selfieBlob, 'selfie.jpg');
         if (idPhotoBlob) {
             const idExt = idPhotoBlob.type === 'application/pdf' ? 'pdf' : 'jpg';
@@ -1655,8 +1656,16 @@ if (document.getElementById('buyerForm')) {
         if (docBlobs.or)      fd.set('or_file',      docBlobs.or,      docBlobs.or.type === 'application/pdf'      ? 'or.pdf'      : 'or.jpg');
         if (docBlobs.cr)      fd.set('cr_file',      docBlobs.cr,      docBlobs.cr.type === 'application/pdf'      ? 'cr.pdf'      : 'cr.jpg');
         if (docBlobs.license) fd.set('license_file', docBlobs.license, docBlobs.license.type === 'application/pdf' ? 'license.pdf' : 'license.jpg');
-        fetch(form.hasAttribute('data-managed-registration') ? form.action : '/register', { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
-            .then(res => res.json())
+        // A stripped multipart body must not be displayed as missing user input.
+        const submittedNames = new Set([...fd.keys()]);
+        const target = new URL(form.hasAttribute('data-managed-registration') ? form.action : '/register', location.href);
+        target.protocol=location.protocol;target.host=location.host;
+        fetch(target.href, { method: 'POST', credentials:'same-origin', redirect:'error', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+            .then(async res => {
+                if(res.status===413) return {success:false,message:'The registration uploads are too large. Your entries are still here. Choose smaller files and submit again.'};
+                if(res.status===419) return {success:false,message:'Your registration session expired. Save your entries, reload the page and try again.'};
+                return res.json();
+            })
             .then(data => {
                 if (data.success) {
                     if(form.hasAttribute('data-managed-registration') && data.redirect){form.dispatchEvent(new Event('registration:saved'));window.parent.postMessage({type:'personnel-created',redirect:data.redirect},location.origin);return;}
@@ -1668,6 +1677,11 @@ if (document.getElementById('buyerForm')) {
                 } else {
                     btn.disabled = false; btn.textContent = 'Submit Registration';
                     const errMsg = data.errors ? Object.values(data.errors).map(v => Array.isArray(v) ? v[0] : v).join('\n') : (data.message ?? 'Something went wrong.');
+                    const missingBody = data.errors && ['account_type','auth_method','given_names','last_name'].every(name=>submittedNames.has(name) && (data.errors[name]||[]).some(message=>message.includes('required')));
+                    if(missingBody){
+                        showRegisterErrorModal('The server did not receive the registration form correctly. Your entries are still here. Please retry; if it happens again, use smaller document files.');
+                        return;
+                    }
                     if(data.errors){
                         let firstField=null;
                         Object.entries(data.errors).forEach(([name,messages])=>{const field=form.querySelector('[name="'+CSS.escape(name)+'"]');if(!field||field.type==='hidden')return;showError(field,Array.isArray(messages)?messages[0]:messages);firstField ||= field;});

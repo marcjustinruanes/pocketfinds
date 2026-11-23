@@ -1,0 +1,66 @@
+/* Administration settings follow the shared account workspace. */
+body.platform-settings-page .settings-shell{display:grid;grid-template-columns:minmax(0,1fr);gap:22px;align-items:start}
+body.platform-settings-page .settings-nav{position:static;display:flex;flex-wrap:wrap;gap:6px;padding:6px;border:1px solid var(--border);border-radius:14px;background:var(--surface);width:auto;box-shadow:none}
+body.platform-settings-page .settings-nav-item{display:flex;align-items:center;justify-content:center;gap:8px;flex:1 1 125px;min-height:42px;padding:10px 14px;border:0;border-radius:9px;background:transparent;color:var(--muted);font:500 12px var(--font-body);cursor:pointer;margin:0}
+body.platform-settings-page .settings-nav-item.active{background:var(--pink-soft);color:var(--pink);font-weight:650}
+body.platform-settings-page .settings-nav-item:hover{background:var(--pink-soft);color:var(--pink)}
+body.platform-settings-page .settings-nav-item .ic{display:none}
+body.platform-settings-page .card{border:1px solid var(--border);border-radius:17px;background:var(--surface);box-shadow:none}
+body.platform-settings-page .card-head{padding:18px 22px;gap:16px}
+body.platform-settings-page .card-head h2,body.platform-settings-page .settings-section-title{font:600 14px/1.5 var(--font-body);color:var(--text);letter-spacing:-.015em}
+body.platform-settings-page .card-head p,body.platform-settings-page .settings-section-sub{font-size:11px;line-height:1.6;color:var(--muted);max-width:650px}
+body.platform-settings-page .card-pad{padding:22px}
+body.platform-settings-page .form-row{margin-bottom:17px}
+body.platform-settings-page label:not(.switch):not(.faq-check){font:500 11px/1.5 var(--font-body);color:var(--muted)}
+body.platform-settings-page :is(input:not([type=checkbox]):not([type=radio]),select,textarea){box-sizing:border-box;max-width:100%;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);padding:12px 14px;font:12px/1.6 var(--font-body);box-shadow:none}
+body.platform-settings-page :is(input,select,textarea):focus{outline:1px solid var(--pink);outline-offset:1px;box-shadow:none;border-color:var(--pink)}
+body.platform-settings-page input[type=file]{width:100%;padding:13px!important;border-style:dashed!important}
+body.platform-settings-page input[type=file]::file-selector-button{padding:9px 12px;border:0;border-radius:7px;background:var(--pink-soft);color:var(--pink);font:500 11px var(--font-body);margin-right:12px;cursor:pointer}
+body.platform-settings-page .btn{min-height:39px;padding:10px 15px;border-radius:10px;font-size:11px;box-shadow:none}
+body.platform-settings-page .platform-policy-record{border:1px solid var(--border)!important;border-radius:13px;padding:0!important;overflow:hidden;background:var(--surface)}
+.platform-policy-record>summary{display:flex;align-items:center;justify-content:space-between;gap:14px;list-style:none;padding:17px 18px;font:600 12px var(--font-body);cursor:pointer;color:var(--text)}
+.platform-policy-record>summary::-webkit-details-marker{display:none}
+.platform-policy-record>summary>span+span{margin-left:auto;font-size:10px;font-weight:500;color:var(--muted)}
+.platform-policy-record>summary::after{content:'+';font-size:18px;color:var(--pink);font-weight:400}
+.platform-policy-record[open]>summary::after{content:'\2212'}
+.platform-policy-record[open]>summary{border-bottom:1px solid var(--border);background:var(--paper)}
+.platform-policy-body{padding:18px}
+body.platform-settings-page .platform-policy-body textarea{font-family:var(--font-body)!important;font-size:12px!important;min-height:240px}
+body.platform-settings-page .platform-policy-body pre{font-family:var(--font-body);line-height:1.7}
+body.platform-settings-page .support-faqs{max-width:none;margin:0;padding:0;background:transparent}
+body.platform-settings-page .faq-tabs{display:inline-flex;gap:5px;padding:5px;border:1px solid var(--border);border-radius:12px;background:var(--surface);margin-bottom:16px}
+body.platform-settings-page .faq-tabs a{border:0;border-radius:8px;padding:10px 16px;font-size:12px;color:var(--muted);text-decoration:none}
+body.platform-settings-page .faq-tabs a[aria-current=page]{background:var(--pink-soft);color:var(--pink)}
+.platform-settings-toolbar{display:flex;justify-content:flex-end;margin:0 0 18px}
+body.platform-settings-page .faq-management{display:block}
+body.platform-settings-page .faq-list{display:grid;gap:14px}
+body.platform-settings-page .faq-entry{padding:20px 22px;border:1px solid var(--border);border-radius:15px;background:var(--surface);box-shadow:none}
+body.platform-settings-page .faq-entry-head strong{font-size:13px;font-weight:600;color:var(--text)}
+body.platform-settings-page .faq-entry-head>span{font-size:10px;border:1px solid var(--pink-line);border-radius:20px;padding:4px 8px;color:var(--pink);background:var(--pink-soft)}
+body.platform-settings-page .faq-entry>p{font-size:12px;line-height:1.8;color:var(--muted);max-width:1000px;white-space:pre-wrap}
+body.platform-settings-page .faq-actions{display:flex;align-items:center;gap:10px;margin-top:14px}
+body.platform-settings-page .faq-editor{display:grid;gap:9px;position:static;padding:0;margin:0;border:0;background:transparent;box-shadow:none;max-width:none}
+body.platform-settings-page .faq-editor .faq-check{display:flex;align-items:center;gap:9px;font-size:12px;margin-top:8px}
+body.platform-settings-page .modal{border:1px solid var(--border);border-radius:20px;max-width:min(760px,calc(100vw - 32px))}
+body.platform-settings-page .modal-head,body.platform-settings-page .modal-body,body.platform-settings-page .modal-foot{padding:20px 24px}
+body.platform-settings-page .modal-head h3{font-size:18px;font-weight:650;letter-spacing:-.025em}
+body.platform-settings-page .modal-close{border:1px solid var(--border);border-radius:50%;width:32px;height:32px;background:var(--surface);color:var(--muted)}
+body.platform-settings-page summary:focus-visible,body.platform-settings-page button:focus-visible{outline:2px solid var(--pink);outline-offset:3px}
+@media(max-width:650px){body.platform-settings-page .settings-nav-item{flex-basis:100px;font-size:11px}body.platform-settings-page .card-head,body.platform-settings-page .card-pad,body.platform-settings-page .faq-entry{padding:16px}.platform-policy-record>summary{padding:14px}.platform-policy-body{padding:14px}body.platform-settings-page .modal-head,body.platform-settings-page .modal-body,body.platform-settings-page .modal-foot{padding:16px}}
+/* Reset the old vertical sidebar direction before applying tab sizing. */
+body.platform-settings-page .settings-nav{flex-direction:row;align-items:center;align-content:start;height:auto;min-height:0}
+body.platform-settings-page .settings-nav-item{flex:1 1 125px;height:42px;min-height:42px;max-height:42px;box-sizing:border-box}
+@media(max-width:650px){body.platform-settings-page .settings-nav-item{flex-basis:100px}}
+/* Contain the full-size storefront iframe inside each crop editor. */
+body.platform-settings-page fieldset.hero-crop-editor{display:block;position:relative;box-sizing:border-box;min-width:0;min-inline-size:0;width:100%;max-width:100%;clear:both;margin:20px 0!important;padding:16px!important;overflow:hidden}
+body.platform-settings-page .hero-crop-editor>legend{position:static;float:none;width:auto;max-width:100%;margin:0;padding:0 7px;line-height:1.5;white-space:normal}
+body.platform-settings-page .hero-crop-preview-frame{position:relative;box-sizing:border-box;min-width:0;width:100%;max-width:100%;height:220px;overflow:hidden;isolation:isolate}
+body.platform-settings-page iframe.hero-crop-preview{position:absolute;inset:0 auto auto 0;display:block;max-width:none;margin:0;border:0;transform-origin:top left;pointer-events:none}
+body.platform-settings-page .hero-crop-editor>label{display:flex!important;align-items:center;flex-wrap:wrap;gap:10px;margin:14px 0!important}
+body.platform-settings-page .hero-crop-editor [data-crop-size]{width:auto;max-width:100%;min-width:0;height:auto}
+body.platform-settings-page .hero-crop-slider{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;min-width:0;margin:14px 0}
+body.platform-settings-page .hero-crop-slider>label{display:flex!important;align-items:center;justify-content:space-between;gap:12px;margin:0!important;line-height:1.5}
+body.platform-settings-page .hero-crop-slider output{flex:none;color:var(--pink);font-variant-numeric:tabular-nums;font-size:11px}
+body.platform-settings-page .hero-crop-editor input[type=range]{display:block;position:static;box-sizing:border-box;width:100%;min-width:0;max-width:100%;height:24px;min-height:24px;padding:0;border:0;border-radius:0;background:transparent;accent-color:var(--pink);margin:0}
+body.platform-settings-page .hero-crop-editor [data-crop-dimensions]{overflow-wrap:anywhere;line-height:1.5}
+body.platform-settings-page .settings-shell>div:last-child,body.platform-settings-page [data-settings-panel=hero],body.platform-settings-page [data-settings-panel=hero] .card-pad,body.platform-settings-page [data-settings-panel=hero] form,body.platform-settings-page [data-settings-panel=hero] .form-row{min-width:0;max-width:100%}

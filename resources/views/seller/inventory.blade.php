@@ -3,11 +3,12 @@
 @section('page-title', 'Inventory')
 @section('body-class', 'seller-products-page')
 @push('head')
-<link rel="stylesheet" href="{{ asset('css/seller-products.css') }}?v={{ filemtime(public_path('css/seller-products.css')) }}">
+{{-- Render the GitHub inventory styles with the page so a failed asset request cannot break the UI. --}}
+<style data-seller-inventory-styles>{!! file_get_contents(public_path('css/seller-products.css')) !!}</style>
 @endpush
 @push('scripts')
-<script src="{{ asset('js/product-color-picker.js') }}?v={{ filemtime(public_path('js/product-color-picker.js')) }}" defer></script>
-<script src="{{ asset('js/seller-products.js') }}?v={{ filemtime(public_path('js/seller-products.js')) }}" defer></script>
+<script src="{{ asset('js/product-color-picker.js') }}?v={{ substr(hash_file('sha256', public_path('js/product-color-picker.js')), 0, 12) }}" defer></script>
+<script src="{{ asset('js/seller-products.js') }}?v={{ substr(hash_file('sha256', public_path('js/seller-products.js')), 0, 12) }}" defer></script>
 @endpush
 
 @section('content')

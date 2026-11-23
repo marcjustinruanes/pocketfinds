@@ -74,13 +74,13 @@
   </div>
   <div class="acf-grid">
     <label class="acf-label">First name <span class="acf-req" aria-hidden="true">*</span>
-      <input class="acf-input" name="given_names" type="text" value="{{ old('given_names', $account?->given_names ?? '') }}" required minlength="2" maxlength="50" autocomplete="given-name">
+      <input class="acf-input" name="given_names" type="text" value="{{ old('given_names', $account?->given_names ?? '') }}" placeholder="e.g. Juan" required minlength="2" maxlength="50" autocomplete="given-name">
     </label>
     <label class="acf-label">Last name <span class="acf-req" aria-hidden="true">*</span>
-      <input class="acf-input" name="last_name" type="text" value="{{ old('last_name', $account?->last_name ?? '') }}" required minlength="2" maxlength="50" autocomplete="family-name">
+      <input class="acf-input" name="last_name" type="text" value="{{ old('last_name', $account?->last_name ?? '') }}" placeholder="e.g. Dela Cruz" required minlength="2" maxlength="50" autocomplete="family-name">
     </label>
     <label class="acf-label">Middle name <span class="acf-optional">optional</span>
-      <input class="acf-input" name="middle_name" type="text" value="{{ old('middle_name', $account?->middle_name ?? '') }}" minlength="2" maxlength="50" autocomplete="additional-name">
+      <input class="acf-input" name="middle_name" type="text" value="{{ old('middle_name', $account?->middle_name ?? '') }}" placeholder="e.g. Santos" minlength="2" maxlength="50" autocomplete="additional-name">
     </label>
     <label class="acf-label">Suffix <span class="acf-optional">optional</span>
       <select class="acf-input" name="suffix">
@@ -94,7 +94,7 @@
       <span class="acf-phone-wrap">
         <span class="acf-phone-prefix">+63</span>
         <input class="acf-input" name="contact_no" type="tel" inputmode="numeric" autocomplete="tel-national"
-          placeholder="9XXXXXXXXX" required minlength="10" maxlength="10" pattern="9[0-9]{9}"
+          placeholder="9XX XXX XXXX" required minlength="10" maxlength="10" pattern="9[0-9]{9}"
           value="{{ substr(\App\Support\PhilippineMobile::normalize(old('contact_no', $account?->contact_no ?? '')), 1) }}">
       </span>
     </label>
@@ -129,10 +129,10 @@
   </div>
   <div class="acf-grid">
     <label class="acf-label">Username <span class="acf-req" aria-hidden="true">*</span>
-      <input class="acf-input" name="username" type="text" value="{{ old('username', $account?->username ?? '') }}" required maxlength="255" autocomplete="username">
+      <input class="acf-input" name="username" type="text" value="{{ old('username', $account?->username ?? '') }}" placeholder="e.g. juandelacruz" required maxlength="255" autocomplete="username">
     </label>
     <label class="acf-label">Email address <span class="acf-req" aria-hidden="true">*</span>
-      <input class="acf-input" name="email" type="email" value="{{ old('email', $account?->email ?? '') }}" required maxlength="255" autocomplete="email">
+      <input class="acf-input" name="email" type="email" value="{{ old('email', $account?->email ?? '') }}" placeholder="e.g. juan@email.com" required maxlength="255" autocomplete="email">
     </label>
     @if($emailActivation)
     @unless($editing)<input type="hidden" name="send_activation" value="1">@endunless
@@ -140,7 +140,7 @@
     @else
     <label class="acf-label">{{ $editing ? 'New password' : 'Password' }} @if($editing)<span class="acf-optional">optional</span>@else<span class="acf-req" aria-hidden="true">*</span>@endif
       <span class="acf-pw-wrap">
-        <input class="acf-input" type="password" name="password" autocomplete="new-password" minlength="12" maxlength="128" @required(!$editing) id="acf-pw-1">
+        <input class="acf-input" type="password" name="password" autocomplete="new-password" minlength="12" maxlength="128" placeholder="Min. 12 characters" @required(!$editing) id="acf-pw-1">
         <button type="button" class="acf-pw-toggle" aria-label="Show password" data-pw-target="acf-pw-1">
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z"/><circle cx="10" cy="10" r="2.5"/></svg>
         </button>
@@ -148,7 +148,7 @@
     </label>
     <label class="acf-label">Confirm password @if(!$editing)<span class="acf-req" aria-hidden="true">*</span>@endif
       <span class="acf-pw-wrap">
-        <input class="acf-input" type="password" name="password_confirmation" autocomplete="new-password" @required(!$editing) id="acf-pw-2">
+        <input class="acf-input" type="password" name="password_confirmation" autocomplete="new-password" placeholder="Re-enter password" @required(!$editing) id="acf-pw-2">
         <button type="button" class="acf-pw-toggle" aria-label="Show confirm password" data-pw-target="acf-pw-2">
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z"/><circle cx="10" cy="10" r="2.5"/></svg>
         </button>
@@ -188,7 +188,8 @@
     </label>
     <label class="acf-label" data-rider-license>Licence expiry date <span class="acf-req" aria-hidden="true">*</span>
       <input class="acf-input" type="date" name="license_expiry" min="{{ today()->addMonthNoOverflow()->toDateString() }}"
-        value="{{ old('license_expiry', $account?->license_expiry?->toDateString() ?? '') }}" required>
+        value="{{ old('license_expiry', $account?->license_expiry?->toDateString() ?? '') }}"
+        placeholder="YYYY-MM-DD" required>
     </label>
   </div>
 </div>

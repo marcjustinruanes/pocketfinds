@@ -39,7 +39,7 @@ class AssignmentWork
             return 'ambiguous';
         }
         if (in_array($assignment->status, ['completed', 'delivered'], true) || in_array($s->shipping_status, ['delivered', 'completed', 'returned', 'cancelled'], true)) return 'ambiguous';
-        return in_array($assignment->status, ['requested', 'accepted', 'assigned_to_rider', 'picked_up', 'out_for_delivery', 'hub_transfer', 'delivery_failed'], true) ? 'active' : 'ambiguous';
+        return in_array($assignment->status, ['offered', 'requested', 'accepted', 'assigned_to_rider', 'picked_up', 'out_for_delivery', 'hub_transfer', 'delivery_failed'], true) ? 'active' : 'ambiguous';
     }
 
     public function blocksRider(int $rider): bool

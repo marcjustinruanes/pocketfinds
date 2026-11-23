@@ -60,13 +60,30 @@ class LogisticsManagementController extends LogisticsController
 
     public function editAccount($id)
     {
-        $account = $this->managedUsers()->findOrFail($id);
+        $account = $this->managedUsers()->with('logisticsHub')->findOrFail($id);
+        if (request()->boolean('registration_edit')) {
+            $role = $account->account_type === 'rider' ? 'rider' : 'hub_staff';
+            $view = $this->createPersonnel(request(), $role);
+            $companyHubs = $view->getData()['companyHubs'];
+            foreach ($companyHubs as $group) foreach ($group as $hub) {
+                if ((int) $hub->id === (int) $account->logistics_hub_id) {
+                    $hub->is_hiring = true;
+                    $hub->hiring_status = 'Current hub';
+                }
+            }
+            return $view->with('editingAccount', $account);
+        }
         $assignments = DeliveryAssignment::with('shipment')->where('courier_id', $account->id)
             ->whereHas('shipment', fn ($q) => $q->where('logistics_company', auth()->user()->business_name))->latest('accepted_at')->paginate(15);
 
         $history = DB::table('hiring_application_history')->where('user_id', $account->id)->where('company_name', auth()->user()->business_name)->orderByDesc('id')->paginate(20, ['*'], 'history_page')->withQueryString();
 
-        return view('logistics.account-edit', array_merge($this->sidebarCounts(), ['account' => $account, 'hubs' => $this->companyHubs()->where('is_operational', true)->get(), 'assignments' => $assignments, 'applicationHistory' => $history]));
+        return view('logistics.account-edit', array_merge($this->sidebarCounts(), [
+            'account' => $account,
+            'hubs' => $this->companyHubs()->where('is_operational', true)->get(),
+            'assignments' => $assignments,
+            'applicationHistory' => $history,
+        ]));
     }
 
     private function accountData(Request $request, ?User $account = null): array
@@ -215,6 +232,7 @@ class LogisticsManagementController extends LogisticsController
             foreach(array_unique(array_filter($priorDocuments)) as $oldPath) if(!in_array($oldPath,array_intersect_key($account->getAttributes(),array_flip(\App\Services\SensitiveDocuments::FIELDS)),true)) app(\App\Services\MediaLifecycle::class)->deleteAfterCommit($oldPath,'sensitive_documents');
         },3);
 
+        if ($request->expectsJson()) return response()->json(['success' => true]);
         return back()->with('success', 'Application details saved. Existing status and approval history were preserved.');
     }
 

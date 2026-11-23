@@ -25,36 +25,14 @@
   @include('account.partials.admin-address')
 
   <div class="stack">
-    <div class="card">
-      <div class="card-head"><div><h2>Change Password</h2><p>Update your login credentials</p></div></div>
-      <div class="card-pad">
-        @error('current_password')
-        <div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:13px;margin-bottom:14px">{{ $message }}</div>
-        @enderror
-        <form method="POST" action="{{ route('admin.account.password') }}">
-          @csrf
-          <div class="form-row">
-            <label>Current Password</label>
-            <input type="password" name="current_password" required>
-          </div>
-          <div class="form-row">
-            <label>New Password</label>
-            <input type="password" name="password" required>
-            @error('password')<div class="hint" style="color:var(--danger);margin-top:5px">{{ $message }}</div>@enderror
-          </div>
-          <div class="form-row">
-            <label>Confirm New Password</label>
-            <input type="password" name="password_confirmation" required>
-          </div>
-          <button class="btn btn-primary" type="submit">Update Password</button>
-        </form>
-      </div>
-    </div>
+    @include('buyer.partials.email-change', ['emailRole'=>'admin'])
+    @include('account.partials.login-security', ['securityRole'=>'admin'])
 
     
   </div>
 </div>
-@include('account.partials.email-change')
+
+@include('account.partials.delete-account')
 </x-account-workspace>
 @include('account.partials.profile-photo-manager')
 @endsection

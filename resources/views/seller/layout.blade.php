@@ -5,15 +5,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>@yield('title', 'Seller') — PocketFinds</title>
-<link rel="stylesheet" href="{{ asset('css/seller.css') }}?v={{ filemtime(public_path('css/seller.css')) }}">
-<link rel="stylesheet" href="{{ asset('css/notifications.css') }}?v={{ filemtime(public_path('css/notifications.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/seller.css') }}?v={{ substr(hash_file('sha256', public_path('css/seller.css')), 0, 12) }}">
+<link rel="stylesheet" href="{{ asset('css/notifications.css') }}?v={{ substr(hash_file('sha256', public_path('css/notifications.css')), 0, 12) }}">
 @include('seller.partials.product-form-script')
-<link rel="stylesheet" href="{{ asset('css/navigation.css') }}?v={{ filemtime(public_path('css/navigation.css')) }}">
-<link rel="stylesheet" href="{{ asset('css/seller-shell.css') }}?v={{ filemtime(public_path('css/seller-shell.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/navigation.css') }}?v={{ substr(hash_file('sha256', public_path('css/navigation.css')), 0, 12) }}">
+<link rel="stylesheet" href="{{ asset('css/seller-shell.css') }}?v={{ substr(hash_file('sha256', public_path('css/seller-shell.css')), 0, 12) }}">
 @stack('head')
 @include('account.partials.notification-assets')
-<link rel="stylesheet" href="{{ asset('css/seller-modern.css') }}?v={{ filemtime(public_path('css/seller-modern.css')) }}">
-<link rel="stylesheet" href="{{ asset('css/seller-navigation.css') }}?v={{ filemtime(public_path('css/seller-navigation.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/seller-modern.css') }}?v={{ substr(hash_file('sha256', public_path('css/seller-modern.css')), 0, 12) }}">
+<link rel="stylesheet" href="{{ asset('css/seller-navigation.css') }}?v={{ substr(hash_file('sha256', public_path('css/seller-navigation.css')), 0, 12) }}">
 @stack('account-head')
 </head>
 <body class="seller @yield('body-class')">
@@ -64,10 +64,10 @@
 <div class="toast-stack" id="toastStack"></div>
 @include('seller.partials.messages-widget')
 @include('buyer.partials.assistant', ['assistantGuest'=>true, 'assistantSeller'=>true])
-<script src="/js/seller.js"></script>
-<script src="{{ asset('js/seller-messages-widget.js') }}?v={{ filemtime(public_path('js/seller-messages-widget.js')) }}"></script>
+<script src="{{ asset('js/seller.js') }}?v={{ substr(hash_file('sha256', public_path('js/seller.js')), 0, 12) }}"></script>
+<script src="{{ asset('js/seller-messages-widget.js') }}?v={{ substr(hash_file('sha256', public_path('js/seller-messages-widget.js')), 0, 12) }}"></script>
 @stack('scripts')
-<script src="{{ asset('js/navigation.js') }}?v={{ filemtime(public_path('js/navigation.js')) }}"></script>
+<script src="{{ asset('js/navigation.js') }}?v={{ substr(hash_file('sha256', public_path('js/navigation.js')), 0, 12) }}"></script>
 </body>
-<script src="{{ asset('js/address-postal-lookup.js') }}?v={{ filemtime(public_path('js/address-postal-lookup.js')) }}" defer></script>
+<script src="{{ asset('js/address-postal-lookup.js') }}?v={{ substr(hash_file('sha256', public_path('js/address-postal-lookup.js')), 0, 12) }}" defer></script>
 </html>

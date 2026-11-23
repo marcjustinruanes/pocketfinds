@@ -19,7 +19,7 @@
 <div class="cart-layout">
   <div class="stack">
     <div class="card cart-items-card">
-      <div class="card-head"><h2>Your items <span class="cart-count">{{ $items->count() }}</span></h2>@if($items->isNotEmpty())<div class="cart-header-actions"><label class="cart-select-all"><input id="cartSelectAll" type="checkbox" autocomplete="off" aria-label="Select all items"></label><button type="button" class="cart-bulk-delete" data-remove-selected="all" hidden disabled aria-label="Delete selected items" title="Delete selected items">@include('buyer.partials.icon',['name'=>'trash','size'=>15])</button></div>@endif</div>
+      <div class="card-head"><h2>Your items <span class="cart-count">{{ $items->unique('product_id')->count() }}</span></h2>@if($items->isNotEmpty())<div class="cart-header-actions"><label class="cart-select-all"><input id="cartSelectAll" type="checkbox" autocomplete="off" aria-label="Select all items"></label><button type="button" class="cart-bulk-delete" data-remove-selected="all" hidden disabled aria-label="Delete selected items" title="Delete selected items">@include('buyer.partials.icon',['name'=>'trash','size'=>15])</button></div>@endif</div>
       <div class="card-pad">
         @if(count($items))
           <div class="cart-items-scroll">
@@ -38,7 +38,7 @@
                 <span class="cart-shop-message-divider" aria-hidden="true">|</span>
                 <button type="button" class="cart-shop-message" data-messages-trigger data-messages-url="{{ route('buyer.messages',['seller'=>$shopItems->first()['seller_slug']]) }}" aria-label="Message {{ $shopItems->first()['seller'] }}" title="Message shop">@include('buyer.partials.icon',['name'=>'chat','size'=>16])</button>
               </div>
-              <div class="cart-header-actions"><span class="cart-count">{{ $shopItems->count() }} item{{ $shopItems->count() === 1 ? '' : 's' }}</span><button type="button" class="cart-bulk-delete" data-remove-selected="shop" aria-label="Delete selected items from {{ $shopItems->first()['seller'] }}" title="Delete selected shop items">@include('buyer.partials.icon',['name'=>'trash','size'=>15])</button></div>
+              <div class="cart-header-actions"><span class="cart-count">{{ $shopItems->unique('product_id')->count() }} item{{ $shopItems->unique('product_id')->count() === 1 ? '' : 's' }}</span><button type="button" class="cart-bulk-delete" data-remove-selected="shop" aria-label="Delete selected items from {{ $shopItems->first()['seller'] }}" title="Delete selected shop items">@include('buyer.partials.icon',['name'=>'trash','size'=>15])</button></div>
             </div>
             <div class="cart-items">
             @foreach($shopItems as $item)
@@ -197,7 +197,7 @@
         <div class="cart-summary-row" id="cartDiscountRow" style="display:none;color:var(--success)"><span id="cartDiscountLabel">Discount</span><span class="mono" id="cartDiscount">- ₱0.00</span></div>
         <hr style="border:0;border-top:1px solid var(--border)">
         <div class="cart-summary-total">
-          <span><strong id="cartTotalLabel">Total</strong><small id="cartSelectedCount">{{ $items->count() }} item{{ $items->count() === 1 ? '' : 's' }}</small></span>
+          <span><strong id="cartTotalLabel">Total</strong><small id="cartSelectedCount">{{ $items->unique('product_id')->count() }} item{{ $items->unique('product_id')->count() === 1 ? '' : 's' }}</small></span>
           <span class="mono" id="cartTotal">₱{{ number_format($subtotal, 2) }}</span>
         </div>
 

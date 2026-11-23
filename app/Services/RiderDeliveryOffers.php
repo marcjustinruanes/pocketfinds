@@ -9,19 +9,16 @@ use App\Models\Shipment;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
-/** A single expiring offer is issued per pickup or delivery job. */
+/** A single pending offer is issued per pickup or delivery job. */
 class RiderDeliveryOffers
 {
     public const LIMIT = 3;
-
-    public const OFFER_SECONDS = 60;
 
     public const MAX_FAILURES = 3;
 
     public function expireOutstanding(): void
     {
-        DeliveryAssignment::whereIn('leg', ['pickup', 'delivery'])->where('status', 'offered')->where('expires_at', '<=', now())
-            ->pluck('shipment_id')->unique()->each(fn ($id) => $this->expire((string) $id));
+        // Assignment offers have no confirmation deadline.
     }
 
     public function offer(Shipment $shipment, string $leg = 'delivery', array $exclude = []): ?DeliveryAssignment
@@ -34,7 +31,7 @@ class RiderDeliveryOffers
             app(AssignmentReassignment::class)->assertNoPending($shipment->id);
             $failureColumn = $leg.'_offer_failures';
             $current = DeliveryAssignment::where('shipment_id', $shipment->id)->where('leg', $leg)->lockForUpdate()->first();
-            if ($current && $current->status === 'offered' && $current->expires_at?->isFuture()
+            if ($current && $current->status === 'offered'
                 && $this->canAssign($shipment, $leg, (int) $current->courier_id)) {
                 return $current;
             }
@@ -57,25 +54,7 @@ class RiderDeliveryOffers
 
     public function expire(string $shipmentId): void
     {
-        foreach (['pickup', 'delivery'] as $leg) {
-            DB::transaction(function () use ($shipmentId, $leg) {
-                $shipment = $this->lock($shipmentId);
-                if (! $shipment || ! $this->open($shipment, $leg)) {
-                    return;
-                }
-                $assignment = DeliveryAssignment::where('shipment_id', $shipmentId)->where('leg', $leg)->lockForUpdate()->first();
-                if (! $assignment || $assignment->status !== 'offered' || ! $assignment->expires_at || $assignment->expires_at->isFuture()) {
-                    return;
-                }
-                $assignment->update(['status' => 'expired', 'expires_at' => null]);
-                $shipment->update([$leg.'_offer_expires_at' => null]);
-                $shipment->increment($leg.'_offer_failures');
-                $shipment->refresh();
-                if ((int) $shipment->{$leg.'_offer_failures'} < self::MAX_FAILURES) {
-                    $this->offer($shipment, $leg, [(int) $assignment->courier_id]);
-                }
-            }, 3);
-        }
+        // Compatibility with older callers; time does not expire offers.
     }
 
     public function decline(User $rider, string $shipmentId, string $leg = 'delivery'): void
@@ -83,7 +62,7 @@ class RiderDeliveryOffers
         DB::transaction(function () use ($rider, $shipmentId, $leg) {
             $shipment = $this->lock($shipmentId, [$rider->id]);
             $assignment = DeliveryAssignment::where('shipment_id', $shipmentId)->where('leg', $leg)->lockForUpdate()->firstOrFail();
-            abort_unless($this->open($shipment, $leg) && $assignment->status === 'offered' && $assignment->expires_at?->isFuture() && (int) $assignment->courier_id === (int) $rider->id, 422, 'This job offer is no longer available.');
+            abort_unless($this->open($shipment, $leg) && $assignment->status === 'offered' && (int) $assignment->courier_id === (int) $rider->id, 422, 'This job offer is no longer available.');
             $assignment->update(['status' => 'declined', 'declined_at' => now(), 'expires_at' => null]);
             $shipment->update([$leg.'_offer_expires_at' => null]);
             $shipment->increment($leg.'_offer_failures');
@@ -109,18 +88,6 @@ class RiderDeliveryOffers
         $query = $this->candidates((string) $shipment->logistics_company)
             ->whereRaw('LOWER(eligible_hub.municipality) = ?', [mb_strtolower(trim((string) $town))])->whereRaw('LOWER(eligible_hub.province) = ?', [mb_strtolower(trim((string) $province))])
             ->whereNotIn('users.id', $exclude);
-        $coverage = app(RiderBarangayCoverage::class);
-        if ($coverage->installed()) {
-            $barangay = $coverage->barangay($shipment, $leg);
-            $query->join('rider_barangay_routes as coverage', function ($join) use ($coverage, $barangay) {
-                $join->on('coverage.rider_id', '=', 'users.id')->on('coverage.hub_id', '=', 'users.logistics_hub_id')
-                    ->where('coverage.barangay_key', '=', $coverage->key($barangay));
-            });
-            if ($barangay === '') {
-                $query->whereRaw('1 = 0');
-            }
-        }
-
         return $query;
     }
 
@@ -133,7 +100,9 @@ class RiderDeliveryOffers
 
         return User::query()->join('logistics_hubs as eligible_hub', 'eligible_hub.id', '=', 'users.logistics_hub_id')
             ->leftJoinSub($loads, 'active', fn ($join) => $join->on('users.id', '=', 'active.rider_id'))
-            ->where('users.account_type', 'rider')->where('users.status', 'approved')->where('users.is_available', true)->where('users.vehicle_type', 'two_wheels')
+            ->where('users.account_type', 'rider')->where('users.status', 'approved')->where('users.is_available', true)
+            ->where('users.availability_updated_at', '>=', now()->subHours(2))
+            ->where('users.vehicle_type', 'two_wheels')
             ->where('users.is_admin', false)->where('users.is_logistics', false)
             ->where('users.business_name', $company)
             ->where('eligible_hub.company_name', $company)->where('eligible_hub.is_operational', true)
@@ -151,21 +120,21 @@ class RiderDeliveryOffers
         return DB::transaction(function () use ($staff, $shipmentId, $riderId, $leg) {
             $shipment = $this->lock($shipmentId, [$staff->id, $riderId]);
             $actor = User::whereKey($staff->id)->lockForUpdate()->firstOrFail();
-            abort_unless($actor->account_type === 'logistics' && ! $actor->is_admin && ($actor->isHubStaff() || $actor->isLogisticsAdmin()) && $actor->status === 'approved', 403);
+            abort_unless($actor->account_type === 'logistics' && ! $actor->is_admin && $actor->isHubStaff() && $actor->status === 'approved', 403, 'Only the responsible hub staff may assign a rider.');
             abort_unless($actor->business_name === $shipment->logistics_company, 404);
             app(LogisticsAccess::class)->requireLocation($actor, $leg === 'pickup' ? $shipment->origin_hub : $shipment->destination_hub, $leg === 'pickup' ? $shipment->origin_province : $shipment->destination_province);
             $this->assertOpen($shipment, $leg);
             app(AssignmentReassignment::class)->assertNoPending($shipment->id);
-            abort_unless($this->canAssign($shipment, $leg, $riderId), 422, 'Choose an approved online rider covering the parcel barangay at its hub, with an available two-wheel vehicle and fewer than three active pickup/delivery jobs.');
+            abort_unless($this->canAssign($shipment, $leg, $riderId), 422, 'Choose an approved online rider assigned to the parcel municipality hub, with an available two-wheel vehicle and fewer than three active pickup/delivery jobs.');
             if ($shipment->order) {
                 app(GcashWorkflow::class)->assertOrderOperation($shipment->order, $leg === 'pickup');
             }
             $current = DeliveryAssignment::where('shipment_id', $shipment->id)->where('leg', $leg)->lockForUpdate()->first();
-            if ($current && $current->status === 'offered' && (int) $current->courier_id === $riderId && $current->expires_at?->isFuture()) {
+            if ($current && $current->status === 'offered' && (int) $current->courier_id === $riderId) {
                 return $current;
             }
             $assignment = $this->send($shipment, $riderId, $leg);
-            Order::notifyUser($riderId, 'New '.ucfirst($leg).' Offer', 'Hub staff offered you a '.$leg.' job. Accept within 60 seconds to confirm.', 'delivery_assigned', $shipment->order_id);
+            Order::notifyUser($riderId, 'New '.ucfirst($leg).' Offer', 'Hub staff offered you a '.$leg.' job. Open your delivery requests to accept or decline. There is no confirmation deadline.', 'delivery_assigned', $shipment->order_id);
 
             return $assignment;
         }, 3);
@@ -178,7 +147,7 @@ class RiderDeliveryOffers
             $this->assertOpen($shipment, $leg);
             app(AssignmentReassignment::class)->assertNoPending($shipment->id);
             $assignment = DeliveryAssignment::where('shipment_id', $shipmentId)->where('leg', $leg)->lockForUpdate()->first();
-            abort_unless($assignment && $assignment->status === 'offered' && $assignment->expires_at?->isFuture() && (int) $assignment->courier_id === (int) $rider->id, 422, 'This job offer is no longer available.');
+            abort_unless($assignment && $assignment->status === 'offered' && (int) $assignment->courier_id === (int) $rider->id, 422, 'This job offer is no longer available.');
             abort_unless($this->canAssign($shipment, $leg, $rider->id), 422, 'This job requires an approved online rider at the parcel hub, an available two-wheel vehicle and fewer than three active pickup/delivery jobs.');
             if ($shipment->order) {
                 app(GcashWorkflow::class)->assertOrderOperation($shipment->order, $leg === 'pickup');
@@ -220,7 +189,7 @@ class RiderDeliveryOffers
         abort_if($this->retryExhausted($shipment), 422, 'Return custody review is required for refused or exhausted deliveries.');
         app(AssignmentReassignment::class)->assertNoPending($shipment->id);
         abort_unless($shipment->courier_id && $this->canAssign($shipment, 'delivery', (int) $shipment->courier_id), 422,
-            'The assigned rider must be online, approved, cover the destination barangay and have hub, vehicle and capacity eligibility.');
+            'The assigned rider must be online, approved, serve the destination municipality and have hub, vehicle and capacity eligibility.');
     }
 
     public function retryExhausted(Shipment $shipment): bool
@@ -303,7 +272,7 @@ class RiderDeliveryOffers
     {
         $assignment = DeliveryAssignment::updateOrCreate(['shipment_id' => $shipment->id, 'leg' => $leg], [
             'courier_id' => $riderId, 'status' => 'offered', 'requested_at' => now(), 'accepted_at' => null,
-            'expires_at' => now()->addSeconds(self::OFFER_SECONDS), 'declined_at' => null,
+            'expires_at' => null, 'declined_at' => null,
         ]);
         $shipment->update([$leg.'_offer_expires_at' => $assignment->expires_at]);
 

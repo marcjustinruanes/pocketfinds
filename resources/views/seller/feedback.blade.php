@@ -3,8 +3,8 @@
 @section('page-title', 'Customer Reviews')
 @section('body-class','seller-products-page')
 @push('head')
-<link rel="stylesheet" href="{{ asset('css/seller-products.css') }}?v={{ filemtime(public_path('css/seller-products.css')) }}">
-<link rel="stylesheet" href="{{ asset('css/seller-reviews.css') }}?v={{ filemtime(public_path('css/seller-reviews.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/seller-products.css') }}?v={{ substr(hash_file('sha256', public_path('css/seller-products.css')), 0, 12) }}">
+<link rel="stylesheet" href="{{ asset('css/seller-reviews.css') }}?v={{ substr(hash_file('sha256', public_path('css/seller-reviews.css')), 0, 12) }}">
 @endpush
 @section('content')
 <div class="seller-reviews">
@@ -111,5 +111,5 @@
   </div>
  </aside>
  </div></div>
-<script src="{{ asset('js/seller-reviews.js') }}?v={{ filemtime(public_path('js/seller-reviews.js')) }}" defer></script>
+<script src="{{ asset('js/seller-reviews.js') }}?v={{ substr(hash_file('sha256', public_path('js/seller-reviews.js')), 0, 12) }}" defer></script>
 @endsection

@@ -27,3 +27,16 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 /handoff/
+
+# Separate mobile checkout and local diagnostics
+/pocketfinds-app/
+/.tmp/
+/database/check_assignment.php
+/storage/*.png
+/storage/*.txt
+/storage/*.xml
+/storage/*.patch
+/storage/*.html
+/storage/*.css
+/storage/app/public/logistics_logos/
+/storage/app/public/product_images/

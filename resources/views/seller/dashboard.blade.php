@@ -3,7 +3,8 @@
 @section('body-class', 'seller-dashboard-page')
 @section('page-title', 'Shop overview')
 @push('head')
-<link rel="stylesheet" href="{{ asset('css/seller-dashboard.css') }}?v={{ filemtime(public_path('css/seller-dashboard.css')) }}">
+{{-- Keep the chart layout with the page, including when an asset request fails. --}}
+<style data-seller-dashboard-styles>{!! file_get_contents(public_path('css/seller-dashboard.css')) !!}</style>
 @endpush
 
 @section('content')

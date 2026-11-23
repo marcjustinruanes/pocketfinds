@@ -49,6 +49,7 @@
         @endif
       </div>
     </div>
+    @if($landing)@include('guest.partials.app-download')@endif
   </div>
 </footer>
 @if($supportEmail)

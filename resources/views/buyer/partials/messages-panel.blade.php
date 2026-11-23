@@ -55,7 +55,7 @@
         <div class="chat-about">
           <button type="button" class="chat-about-toggle" id="chatAboutToggle" aria-label="Conversation options" aria-expanded="false" aria-controls="chatAboutMenu"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01" stroke-linecap="round"/></svg></button>
           <div class="chat-about-menu" id="chatAboutMenu" hidden>
-            <a href="{{ route('guest.shop', $seller->username) }}">View shop</a>
+            @if($seller->account_type === 'seller')<a href="{{ route('guest.shop', $seller->username) }}">View shop</a>@endif
             <button type="button" id="chatMuteToggle" role="switch" aria-checked="false"><span>Mute</span><span class="chat-mute-switch" aria-hidden="true"></span></button>
             <button type="button" id="chatReportConversation">Report</button>
           </div>

@@ -13,6 +13,7 @@ final class LogisticsWorkspace
                 ['My hub','logistics.dashboard',['logistics.dashboard']],
             ]],
             'operations'=>['label'=>'Operations','icon'=>'box','links'=>[
+                ['Seller pickups','logistics.requests',['logistics.requests*']],
                 ['Scan parcels','logistics.scan',['logistics.scan']],
                 ['Assignments','logistics.assignments',['logistics.assignments*','logistics.transfers*','logistics.monitor']],
                 ['Issues','logistics.issues',['logistics.issues*']],
@@ -33,9 +34,7 @@ final class LogisticsWorkspace
             ]],
             'operations'=>['label'=>'Operations','icon'=>'box','links'=>[
                 ['Pickup requests','logistics.requests',['logistics.requests*','logistics.hub-requests*']],
-                ['Assignments','logistics.assignments',['logistics.assignments*','logistics.transfers*']],
-                ['Hub transfers','logistics.transfers',['logistics.transfers*']],
-                ['Live monitor','logistics.monitor',['logistics.monitor']],
+                ['Assignments','logistics.assignments',['logistics.assignments*','logistics.transfers*','logistics.monitor']],
                 ['Issues','logistics.issues',['logistics.issues*']],
                 ['Delivery history','logistics.history',['logistics.history']],
             ]],

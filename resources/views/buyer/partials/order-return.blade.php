@@ -11,7 +11,7 @@
 <form method="POST" action="{{ route('commerce.return.action',$returnRequest->id) }}">@csrf<input type="hidden" name="action" value="escalate"><button class="btn btn-outline">Ask Admin to Review</button></form>
 @endif
 </div></details>
-@elseif(in_array($order->status,['delivered','completed'],true))
+@elseif($order->status === 'delivered')
 @if(\App\Services\BuyerCommerce::returnWindowOpen($order))
 @if($order->status !== 'completed')
 <div class="order-actions"><button type="button" class="btn btn-outline order-refund-open" data-order-details="refundOrder{{ $order->id }}">Request Return / Refund</button></div>

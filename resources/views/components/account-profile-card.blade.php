@@ -30,8 +30,7 @@
             <div class="form-row"><label for="profileSex">Sex</label><select id="profileSex" @if($role !== 'admin') name="sex" @endif @disabled($role === 'admin') @required($role === 'seller')><option value="">Select sex</option>@foreach(['male'=>'Male','female'=>'Female',...($role !== 'seller' ? ['other'=>'Other'] : [])] as $value=>$label)<option value="{{ $value }}" @selected(old('sex', $accountUser->sex) === $value)>{{ $label }}</option>@endforeach</select></div>
             <div class="form-row"><label for="profileBirthday">Birthday</label><input id="profileBirthday" type="date" @if($role === 'seller') name="birthday" @endif value="{{ old('birthday', $accountUser->birthday?->format('Y-m-d')) }}" @readonly($role !== 'seller')></div>
             <div class="form-row profile-age-field"><div class="account-floating-field always-floating"><output class="account-age-output">{{ $accountUser->birthday ? $accountUser->birthday->age.' years old' : '—' }}</output><label>Age</label><fieldset aria-hidden="true"><legend><span>Age</span></legend></fieldset></div></div>
-          </div>
-        </section>
+          </div>        </section>
         <section class="profile-form-section">
           <div class="profile-form-section-heading"><h3>Contact information</h3><p>Your email and mobile number help us keep you updated.</p></div>
           <div class="form-grid-2">

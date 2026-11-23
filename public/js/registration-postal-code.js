@@ -5,7 +5,7 @@
     const postal=document.getElementById('postal_code'),code=document.getElementById('municipality_psgc_code'),capsule=document.getElementById('registrationPostalCapsule');
     let version=0, pending=null, last='';
     const clear=()=>{
-        version++;pending?.abort();pending=null;last='';postal.value='';postal.readOnly=true;code.value='';capsule.textContent='';capsule.removeAttribute('title');
+        version++;pending?.abort();pending=null;last='';postal.value='';postal.readOnly=false;code.value='';capsule.textContent='';capsule.removeAttribute('title');
     };
     async function lookup() {
         const selected=city.selectedOptions[0], selectedCode=selected?.dataset.code;
@@ -15,13 +15,13 @@
         const request=version;pending=new AbortController();
         capsule.textContent='Looking up postal code…';
         try {
-            const url=new URL(field.dataset.lookupUrl,location.href);url.searchParams.set('municipality_code',selectedCode);url.searchParams.set('municipality',city.value);
+            const url=new URL(field.dataset.lookupUrl,location.href);url.searchParams.set('municipality_code',selectedCode);url.searchParams.set('municipality',city.value);url.searchParams.set('province',document.getElementById('province').value);
             const response=await fetch(url,{signal:pending.signal,headers:{Accept:'application/json'}});
             if(!response.ok)throw new Error('Postal lookup unavailable');
             const data=await response.json();if(request!==version)return;
             postal.value=/^\d{4}$/.test(data.postal_code||'')?data.postal_code:'';
-            postal.readOnly=!!postal.value;
-            capsule.textContent=postal.value?'':'Enter if known, or leave blank.';
+            postal.readOnly=false;
+            capsule.textContent=postal.value?'Suggested code. Check and edit for your area.':'Enter if known, or leave blank.';
             if(!postal.value)capsule.title='Enter your postal code if known, or leave blank.';
         } catch(error) {
             if(request!==version || error.name==='AbortError')return;

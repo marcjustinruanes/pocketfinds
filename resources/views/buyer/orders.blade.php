@@ -133,21 +133,15 @@
   @endif
   @if($order->status === 'delivered' && !$returnRequests->has($order->id))
   <div class="order-actions" style="border-top:1px dashed var(--border,#eee);padding-top:10px">
-    <span>Already have your package?</span>
-    <form method="POST" action="{{ route('buyer.orders.confirm-receipt', $order) }}" onsubmit="return confirm('Confirm that you have received this order?')">
-      @csrf @method('PATCH')
-      <button type="submit" class="btn btn-primary btn-sm">Confirm Receipt</button>
-    </form>
+    @if(\App\Services\BuyerCommerce::returnWindowOpen($order))
+    <span>Inspect and test your items during the seven days after delivery. You can request Return / Refund here without confirming receipt.</span>
+    @else
+    <span>Your seven-day inspection period has ended.</span>
+    @endif
   </div>
   @endif
   @if($order->status === 'completed')
   <div class="order-actions order-review-actions" style="border-top:1px dashed var(--border,#eee);padding-top:10px">
-    @if(\App\Services\BuyerCommerce::installed() && !$returnRequests->has($order->id) && \App\Services\BuyerCommerce::returnWindowOpen($order))
-     <button type="button" class="btn btn-outline btn-sm order-refund-open" data-order-details="refundOrder{{ $order->id }}">Request Return / Refund</button>
-    @endif
-    @if(\App\Services\BuyerCommerce::installed() && !$returnRequests->has($order->id) && !\App\Services\BuyerCommerce::returnWindowOpen($order))
-     <span class="order-return-expired-inline">Return / Refund unavailable: the seven-day window after delivery has ended.</span>
-    @endif
     @if(\App\Services\BuyerCommerce::installed())
       @if($order->review)<button type="button" class="btn btn-outline btn-sm" data-order-details="myReviews{{ $order->id }}">View my review</button>@endif
       @php
@@ -188,7 +182,7 @@
   </div>
 </div>
 @endif
-<div class="order-details-modal" data-order-summary id="orderDetails{{ $order->id }}" aria-hidden="true">
+<div class="order-details-modal" data-order-summary id="orderDetails{{ $order->id }}" aria-hidden="true" @if($adminPayment && !$paymentApproved && $order->status !== 'cancelled') data-payment-status-url="{{ route('gcash.show', $order->gcash_purchase_id, false) }}" data-order-id="{{ $order->id }}" @endif>
   <div class="order-details-dialog" role="dialog" aria-modal="true" aria-labelledby="orderDetailsTitle{{ $order->id }}">
     <div class="order-details-head"><div><h3 id="orderDetailsTitle{{ $order->id }}">{{ ($order->items[0]['name'] ?? 'Your order').(count($order->items ?? []) > 1 ? ' + '.(count($order->items) - 1).' more' : '') }}</h3><p class="order-reference">Order reference: <span data-order-reference>{{ $order->order_number }}</span> <button type="button" class="order-copy-reference" aria-label="Copy order reference">Copy</button></p></div><div class="order-details-heading-actions"><button type="button" class="order-details-close order-details-close-icon" aria-label="Close order details">@include('buyer.partials.icon', ['name'=>'x','size'=>18])</button>@if($adminPayment)
 <nav class="order-details-capsules" aria-label="Order information">
@@ -201,7 +195,7 @@
 @endif</div></div>
     <div class="order-details-body" tabindex="0" role="region" aria-label="Scrollable order information">
     @php
-      $timeline = \App\Support\OrderTimeline::forOrder($order, $orderHistory->get($order->id, collect()), $paymentConfirmedAt[$order->gcash_purchase_id] ?? null);
+      $timeline = \App\Support\OrderTimeline::forOrder($order, $orderHistory->get($order->id, collect()), $paymentConfirmedAt[$order->gcash_purchase_id] ?? null, showUpcoming: true);
       $addressPart = fn ($part) => filled($part) && $part !== 'Not provided';
       $addressLine1 = collect([$order->shipping_address['house_no'] ?? null, $order->shipping_address['street'] ?? null])->filter($addressPart)->join(', ');
       $displayAddress = $order->shipping_address ?? [];
@@ -225,22 +219,12 @@
         array_splice($timeline['rows'], $sellerIndex === false ? 1 : $sellerIndex, 0, [[
           'title' => 'Payment approved',
           'icon' => 'shield',
+          'label' => $order->status === 'placed' ? 'Current' : 'Recorded',
           'state' => $order->status === 'placed' ? 'current' : 'completed',
           'timestamp' => $paymentApprovalEvent?->created_at ? \Illuminate\Support\Carbon::parse($paymentApprovalEvent->created_at) : null,
         ]]);
       }
     @endphp
-    @php $detail = $orderDetails->get($order->id); @endphp
-    @include('orders.partials.payment')
-    @include('orders.partials.refund')
-    @if($adminPayment && !$paymentApproved)
-      <details class="order-record-section"><summary>View products and order total</summary>
-        <table><thead><tr><th>Product / variation</th><th>Quantity</th><th>Line total</th></tr></thead><tbody>
-        @foreach($order->items ?? [] as $item)<tr><td>{{ $item['name'] ?? 'Product' }}<small>{{ collect([$item['variation_group'] ?? null, $item['variation_value'] ?? null])->filter()->join(' / ') }}</small></td><td>{{ $item['qty'] }}</td><td>PHP {{ number_format($item['price'] * $item['qty'], 2) }}</td></tr>@endforeach
-        </tbody></table>
-        @include('orders.partials.costs')
-      </details>
-    @endif
     @if($adminPayment)
       @include('buyer.partials.order-gcash-payment', [
         'order' => $order,
@@ -251,8 +235,8 @@
     @endif
     <div data-approved-order-content tabindex="-1">
     @if(!$adminPayment || $paymentApproved)
-    <section class="order-tracking order-tracking-horizontal" aria-label="Delivery progress">
-     <ol class="tracking-steps" aria-label="Recorded delivery progress">
+    <section class="order-tracking order-tracking-horizontal order-tracking-full" aria-label="Delivery progress">
+     <ol class="tracking-steps" aria-label="Completed, current and upcoming delivery steps">
       @foreach($timeline['rows'] as $step)
        <li class="tracking-step is-{{ $step['state'] }}" @if($step['state'] === 'current') aria-current="step" @endif>
         <span class="tracking-dot" aria-hidden="true">
@@ -278,9 +262,8 @@
           <div><span>Pickup rider</span><strong>{{ trim($shipment->pickupRider->given_names.' '.$shipment->pickupRider->last_name) }}</strong></div>
         @endif
         @if($shipment->courier)
-          <div><span>Delivery rider</span><strong>{{ trim($shipment->courier->given_names.' '.$shipment->courier->last_name) }}</strong>@if($shipment->courier->contact_no)<a href="tel:{{ preg_replace('/[^+0-9]/', '', $shipment->courier->contact_no) }}">Call rider</a>@endif</div>
+          <div><span>Delivery rider</span><strong>{{ trim($shipment->courier->given_names.' '.$shipment->courier->last_name) }}</strong></div>
         @endif
-        @if($shipment->delivery_failed_reason)<div><span>Failed delivery reason</span><strong>{{ str($shipment->delivery_failed_reason)->replace('_', ' ')->title() }}</strong></div>@endif
         @foreach([
           'scheduled_pickup_at' => 'Pickup scheduled', 'pickup_approved_at' => 'Pickup approved',
           'picked_up_at' => 'Picked up', 'at_sorting_center_at' => 'Sorting center receipt',
@@ -311,7 +294,10 @@
     @endif
     <div class="order-summary-columns"><div class="order-quantity-summary order-checkout-summary">
       <h3>Order summary</h3>
-      @include('orders.partials.costs')
+      <div class="order-cost-row"><span>Subtotal</span><strong>₱{{ number_format($order->subtotal, 2) }}</strong></div>
+      <div class="order-cost-row"><span>Shipping</span><strong>{{ (float) $order->shipping_amount > 0 ? '₱'.number_format($order->shipping_amount, 2) : 'Free' }}</strong></div>
+      <div class="order-cost-row order-cost-discount"><span>Discounts</span><strong>{{ (float) $order->discount_amount > 0 ? '−' : '' }}₱{{ number_format($order->discount_amount, 2) }}</strong></div>
+      <div class="order-cost-total"><span><strong>Total</strong><small>{{ $quantity = collect($order->items)->sum('qty') }} {{ $quantity === 1 ? 'item' : 'items' }}</small></span><strong>₱{{ number_format($order->total, 2) }}</strong></div>
     </div>
     <div class="order-detail-info-grid">
       <div><span>Customer name</span><strong>{{ $customerName }}</strong></div>
@@ -331,7 +317,7 @@
           @endphp
           <tr>
             <td>@include('buyer.partials.order-product-summary', ['item'=>$item])</td>
-            <td>{{ $item['qty'] }} × ₱{{ number_format($item['price'], 2) }}<br><small>Line total: PHP {{ number_format($item['qty'] * $item['price'], 2) }}</small></td>
+            <td>{{ $item['qty'] }} × ₱{{ number_format($item['original_price'] ?? $item['price'], 2) }}</td>
           </tr>
           @endforeach
         </tbody>
@@ -349,7 +335,7 @@
     </div>
     @if(in_array($order->status, \App\Models\Order::CANCELLABLE_STATUSES, true))
       <div class="order-cancel-panel" hidden>
-        <form class="order-cancel-form" data-confirm-dialog="cancelConfirm{{ $order->id }}" method="POST" action="{{ route('buyer.orders.cancel', $order) }}">
+        <form class="order-cancel-form" data-confirm-dialog="cancelConfirm{{ $order->id }}" method="POST" action="{{ route('buyer.orders.cancel', $order, false) }}">
           @csrf @method('PATCH')
           <label for="cancelReason{{ $order->id }}"><strong>Why are you cancelling?</strong></label>
           <select id="cancelReason{{ $order->id }}" name="cancellation_reason" required><option value="" selected disabled>Select a reason</option><option>Changed my mind</option><option>Found a better price</option><option>Ordered by mistake</option><option>Payment issue</option><option>Other</option></select>
@@ -376,7 +362,7 @@
 </dialog>
 @endif
 @empty
-<div class="card"><div class="card-pad"><div class="empty"><div class="ic">@include('buyer.partials.icon', ['name' => 'package', 'size' => 28])</div><h3>No orders yet</h3><p>Orders with status "{{ str_replace('_', ' ', ucfirst($tab)) }}" will appear here.</p>@if($tab === 'to_ship')<a href="{{ route('buyer.browse') }}" class="btn btn-primary" style="margin-top:14px">Start Shopping</a>@endif</div></div></div>
+<div class="card"><div class="card-pad"><div class="empty"><div class="ic">@include('buyer.partials.icon', ['name' => 'package', 'size' => 28])</div><h3>{{ $period !== 'all' || $payment !== 'all' || $categoryId ? 'No matching orders' : 'No orders yet' }}</h3>@if($period !== 'all' || $payment !== 'all' || $categoryId)<p><a href="{{ route('buyer.orders') }}">Clear filters and view all orders</a></p>@endif<p>Orders with status "{{ str_replace('_', ' ', ucfirst($tab)) }}" will appear here.</p>@if($tab === 'to_ship')<a href="{{ route('buyer.browse') }}" class="btn btn-primary" style="margin-top:14px">Start Shopping</a>@endif</div></div></div>
 @endforelse
 </div>
 </div>

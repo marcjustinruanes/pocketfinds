@@ -1,53 +1,23 @@
 <?php
-
 namespace Tests\Feature;
-
 use App\Services\RegistrationPostalCode;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
-
 class RegistrationPostalCodeTest extends TestCase
 {
-    protected function setUp(): void
+    public function test_official_postal_codes_use_both_municipality_and_province(): void
     {
-        parent::setUp();
-        Cache::forget('registration_postal_api_v1');
-        Http::preventStrayRequests();
-    }
-
-    private function api(): void
-    {
-        Http::fake([
-            'psgc.cloud/api/cities'=>Http::response([['code'=>'0403428000','name'=>'City of Santa Rosa','zip_code'=>'4026']]),
-            'psgc.cloud/api/municipalities'=>Http::response([
-                ['code'=>'0403426000','name'=>'Santa Cruz ','zip_code'=>'4004'],
-                ['code'=>'0102924000','name'=>'Santa Cruz','zip_code'=>'2732'],
-                ['code'=>'1705111000','name'=>'Santa Cruz','zip_code'=>''],
-            ]),
-        ]);
-    }
-
-    public function test_lookup_uses_location_codes_not_ambiguous_names_and_caches_api_data(): void
-    {
-        $this->api();
-        $this->getJson('/register/postal-code?municipality_code=043426000&municipality=Santa%20Cruz')->assertOk()->assertJson(['postal_code'=>'4004','status'=>'found']);
-        $this->getJson('/register/postal-code?municipality_code=0102924000&municipality=Santa%20Cruz')->assertOk()->assertJson(['postal_code'=>'2732']);
-        Http::assertSentCount(2);
-    }
-
-    public function test_mismatched_names_missing_codes_and_api_failure_never_invent_a_postal_code(): void
-    {
-        $this->api();
+        $this->getJson('/register/postal-code?municipality_code=043417000&municipality=Magdalena&province=Laguna')->assertOk()->assertJson(['postal_code'=>'4007','status'=>'found']);
         $service=app(RegistrationPostalCode::class);
-        $this->assertNull($service->lookup('043426000','Another Municipality'));
-        $this->assertNull($service->lookup('1705111000','Santa Cruz'));
-        $this->assertNull($service->lookup(null,'Santa Cruz'));
+        $this->assertSame('4009',$service->lookup('043426000','Santa Cruz','Laguna'));
+        $this->assertSame('4902',$service->lookup('174005000','Santa Cruz','Marinduque'));
+        $this->assertNull($service->lookup('043426000','Santa Cruz','Unknown Province'));
     }
-
-    public function test_api_failure_shows_unavailable_without_manual_fallback(): void
+    public function test_unknown_districts_and_missing_province_never_get_a_guessed_code(): void
     {
-        Http::fake(['*'=>Http::response([],503)]);
-        $this->getJson('/register/postal-code?municipality_code=043426000&municipality=Santa%20Cruz')->assertOk()->assertJson(['postal_code'=>null,'status'=>'unavailable']);
+        $service=app(RegistrationPostalCode::class);
+        $this->assertNull($service->lookup('043426000','Another Municipality','Laguna'));
+        $this->assertNull($service->lookup('043426000','Santa Cruz'));
+        $this->assertNull($service->lookup(null,'Santa Cruz','Laguna'));
+        $this->getJson('/register/postal-code?municipality_code=043426000&municipality=Santa%20Cruz&province=Unknown')->assertOk()->assertJson(['postal_code'=>null,'status'=>'unavailable']);
     }
 }

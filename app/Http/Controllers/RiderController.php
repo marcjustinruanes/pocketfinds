@@ -20,7 +20,6 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
 
 class RiderController extends Controller
@@ -46,10 +45,10 @@ class RiderController extends Controller
         $riderId = auth()->id();
 
         return [
-            'pickupRequests' => DeliveryAssignment::where('courier_id', $riderId)->where('leg', 'pickup')->where('status', 'offered')->where('expires_at', '>', now())->count(),
+            'pickupRequests' => DeliveryAssignment::where('courier_id', $riderId)->where('leg', 'pickup')->where('status', 'offered')->count(),
             'myPickups' => Shipment::where('pickup_rider_id', $riderId)->whereIn('shipping_status', ['ready_for_pickup', 'picked_up'])->count(),
             'myHubTransfers' => ShipmentHubLeg::where('rider_id', $riderId)->where('status', 'in_transit')->count(),
-            'deliveryRequests' => DeliveryAssignment::where('courier_id', $riderId)->where('leg', 'delivery')->where('status', 'offered')->where('expires_at', '>', now())->count(),
+            'deliveryRequests' => DeliveryAssignment::where('courier_id', $riderId)->where('leg', 'delivery')->where('status', 'offered')->count(),
             'activeDeliveries' => Shipment::where('courier_id', $riderId)
                 ->whereIn('shipping_status', ['assigned_to_rider', 'out_for_delivery'])->count(),
             'unreadMessages' => Message::where('receiver_id', $riderId)->where('read', false)->count(),
@@ -72,7 +71,7 @@ class RiderController extends Controller
         Shipment::where('logistics_company', auth()->user()->business_name)->where('shipping_status', 'sorted')->whereNull('courier_id')->cursor()->each(fn ($shipment) => $offers->offer($shipment));
         Shipment::where('logistics_company', auth()->user()->business_name)->where('shipping_status', 'ready_for_pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')->cursor()->each(fn ($shipment) => $offers->offer($shipment, 'pickup'));
         $counts = $this->sidebarCounts();
-        $pickupsOpen = Shipment::with(['order.buyer', 'order.seller'])->whereHas('pickupAssignment', fn ($q) => $q->where('courier_id', auth()->id())->where('status', 'offered')->where('expires_at', '>', now()))
+        $pickupsOpen = Shipment::with(['order.buyer', 'order.seller'])->whereHas('pickupAssignment', fn ($q) => $q->where('courier_id', auth()->id())->where('status', 'offered'))
             ->where('shipping_status', 'ready_for_pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')
             ->latest('created_at')->take(5)->get();
         // Named distinctly from sidebarCounts()'s 'myPickups' (an int badge count) — array_merge
@@ -80,7 +79,7 @@ class RiderController extends Controller
         $myPickupsList = Shipment::with(['order.buyer', 'order.seller'])
             ->where('pickup_rider_id', auth()->id())->where('shipping_status', 'ready_for_pickup')
             ->latest('updated_at')->get();
-        $deliveriesOpen = Shipment::with(['order.buyer', 'order.seller'])->whereHas('deliveryAssignment', fn ($q) => $q->where('courier_id', auth()->id())->where('status', 'offered')->where('expires_at', '>', now()))
+        $deliveriesOpen = Shipment::with(['order.buyer', 'order.seller'])->whereHas('deliveryAssignment', fn ($q) => $q->where('courier_id', auth()->id())->where('status', 'offered'))
             ->where('shipping_status', 'sorted')->whereNull('courier_id')
             ->latest('created_at')->take(5)->get();
         $active = $this->myActiveShipments();
@@ -105,7 +104,7 @@ class RiderController extends Controller
         Shipment::where('logistics_company', auth()->user()->business_name)->where('shipping_status', 'ready_for_pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')->cursor()->each(fn ($shipment) => $offers->offer($shipment, 'pickup'));
         $counts = $this->sidebarCounts();
         $shipments = Shipment::with(['order.buyer', 'order.seller'])->where('shipping_status', 'ready_for_pickup')->whereNotNull('pickup_approved_at')->whereNull('pickup_rider_id')
-            ->whereHas('pickupAssignment', fn ($query) => $query->where('courier_id', auth()->id())->where('status', 'offered')->where('expires_at', '>', now()))
+            ->whereHas('pickupAssignment', fn ($query) => $query->where('courier_id', auth()->id())->where('status', 'offered'))
             ->latest('created_at')->get();
 
         return view('rider.pickup-requests', array_merge($counts, compact('shipments')));
@@ -193,7 +192,7 @@ class RiderController extends Controller
         Shipment::where('logistics_company', auth()->user()->business_name)->where('shipping_status', 'sorted')->whereNull('courier_id')->cursor()->each(fn ($shipment) => $offers->offer($shipment));
         $counts = $this->sidebarCounts();
         $shipments = Shipment::with(['order.buyer', 'order.seller'])->where('shipping_status', 'sorted')->whereNull('courier_id')
-            ->whereHas('deliveryAssignment', fn ($query) => $query->where('courier_id', auth()->id())->where('status', 'offered')->where('expires_at', '>', now()))
+            ->whereHas('deliveryAssignment', fn ($query) => $query->where('courier_id', auth()->id())->where('status', 'offered'))
             ->latest('created_at')->get();
 
         return view('rider.requests', array_merge($counts, compact('shipments')));
@@ -300,13 +299,7 @@ class RiderController extends Controller
 
             $cash = app(\App\Services\CodCollection::class);
             if ($next === 'delivered') {
-                $request->validate(['delivery_proof' => 'required|file|mimes:jpg,jpeg,png|max:5120', 'delivery_otp' => 'required|digits:6']);
-                abort_if($shipment->delivery_otp_locked_until?->isFuture(), 422, 'Delivery OTP is locked. Try again after '.$shipment->delivery_otp_locked_until?->format('g:i A').'.');
-                if (! $shipment->delivery_otp_hash || ! Hash::check($request->input('delivery_otp'), $shipment->delivery_otp_hash)) {
-                    $attempts = ((int) $shipment->delivery_otp_attempts) + 1;
-                    $shipment->update(['delivery_otp_attempts' => $attempts, 'delivery_otp_locked_until' => $attempts >= 5 ? now()->addMinutes(15) : null]);
-                    abort(422, $attempts >= 5 ? 'Too many incorrect OTP entries. Delivery confirmation is locked for 15 minutes.' : 'The delivery OTP is incorrect.');
-                }
+                $request->validate(['delivery_proof' => 'required|file|mimes:jpg,jpeg,png|max:5120']);
                 $proofPath = app(MediaLifecycle::class)->store($request->file('delivery_proof'), 'delivery_proofs', 'sensitive_documents');
             }
             if ($next === 'delivered' && $cash->installed() && $cash->isCod($order)) {
@@ -317,10 +310,9 @@ class RiderController extends Controller
             if (isset(self::STAGE_TIMESTAMPS[$next])) {
                 $updates[self::STAGE_TIMESTAMPS[$next]] = now();
             }
-            if ($next === 'out_for_delivery') {
-                $otp = (string) random_int(100000, 999999);
-                $updates['delivery_otp_hash'] = Hash::make($otp);
-                $updates['delivery_otp_ciphertext'] = Crypt::encryptString($otp);
+            if (in_array($next, ['out_for_delivery', 'delivered'], true)) {
+                $updates['delivery_otp_hash'] = null;
+                $updates['delivery_otp_ciphertext'] = null;
                 $updates['delivery_otp_attempts'] = 0;
                 $updates['delivery_otp_locked_until'] = null;
             }
@@ -339,17 +331,15 @@ class RiderController extends Controller
             // deliberate exception ('delivered' stopping short of 'completed') is baked into
             // STAGE_ORDER itself: this method can never advance a shipment past 'delivered'.
             if ($order) {
-                $order->update(['status' => $next]);
+                $order->update(['status' => $next === 'delivered' ? 'out_for_delivery' : $next]);
 
                 Order::notifyUser($order->buyer_id, 'Order Update', 'Your order #'.$order->order_number.' is now '.str_replace('_', ' ', $next).'.', 'order_status', $order->id);
-
-                if ($next === 'out_for_delivery') Order::notifyUser($order->buyer_id, 'Delivery OTP', 'Share this OTP only after receiving order #'.$order->order_number.': '.$otp.'.', 'delivery_otp', $order->id);
 
                 if ($next === 'delivered') {
                     Order::notifyUser($order->seller_id, 'Courier Marked as Delivered', 'Order #'.$order->order_number.' was marked delivered by the courier — awaiting the buyer\'s confirmation.', 'order_delivered', $order->id);
                 }
 
-                $order->logStatus($next, auth()->id());
+                $order->logStatus($next === 'delivered' ? 'out_for_delivery' : $next, auth()->id(), $next === 'delivered' ? 'Rider recorded delivery; awaiting buyer receipt confirmation.' : null);
             }
 
             return ['next' => $next];

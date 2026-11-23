@@ -5,7 +5,6 @@
 
 @section('content')
 <section class="pickup-requests-page">
-@unless(auth()->user()->isLogisticsAdmin())<nav class="pickup-queue-tabs" aria-label="Pickup queues"><a class="{{ ($queue??'review')==='review'?'active':'' }}" @if(($queue??'review')==='review') aria-current="page" @endif href="{{ route('logistics.requests') }}">Awaiting review</a><a class="{{ ($queue??'review')==='assignment'?'active':'' }}" @if(($queue??'review')==='assignment') aria-current="page" @endif href="{{ route('logistics.requests',['queue'=>'assignment']) }}">Awaiting pickup Rider</a></nav>@endunless
 <div class="card pickup-requests-card">
   <div class="card-head"><h2>{{ ($queue??'review')==='assignment'?'Awaiting Pickup Rider':'Pending Requests' }}</h2><span class="stamp stamp-pending">{{ $shipments->total() }} pending</span></div>
   <div class="table-wrap">
@@ -40,13 +39,17 @@
           <td class="mono">{{ $s->created_at?->format('M d, Y') }}</td>
           <td>
             @php($shippingObligation = $shippingObligations[$s->id] ?? null)
-            @php($shippingBlocked = (int)$s->shipping_finance_version === 1 && (!$shippingObligation || ($shippingObligation->collection_mode === 'gcash' && !in_array($shippingObligation->status, ['verified','not_required']))))
+            @php($shippingBlocked = config('logistics.require_shipping_prepayment', false) && (int)$s->shipping_finance_version === 1 && (!$shippingObligation || ($shippingObligation->collection_mode === 'gcash' && !in_array($shippingObligation->status, ['verified','not_required']))))
             @if($shippingObligation)<a href="{{ route('logistics.finance.shipping.show', $shippingObligation->id) }}">Shipping: {{ str_replace('_',' ',$shippingObligation->status) }}</a>@endif
             @if(($queue??'review')==='assignment')
-            @if($s->pickupAssignment)<p>{{ $s->pickupAssignment->status === 'offered' && $s->pickupAssignment->expires_at?->isFuture() ? 'Awaiting rider confirmation' : 'Previous offer expired or declined' }}: {{ $s->pickupAssignment->courier?->given_names }}</p>@endif
+            @if($s->pickupAssignment)<p>{{ $s->pickupAssignment->status === 'offered' ? 'Awaiting rider confirmation' : 'Previous offer expired or declined' }}: {{ $s->pickupAssignment->courier?->given_names }}</p>@endif
+            @if(auth()->user()->isHubStaff())
             <form method="POST" action="{{ route('logistics.requests.assign-pickup',$s->id) }}">@csrf @method('PATCH')
             <label style="display:flex;flex-direction:column;gap:8px">Origin-hub pickup Rider<select class="select" name="courier_id" required style="min-height:44px;max-width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px"><option value="">Select eligible Rider</option>@foreach(($pickupRidersByShipment[$s->id] ?? collect()) as $rider)@if(app(App\Services\LogisticsAccess::class)->matches($rider->logisticsHub,$s->origin_hub,$s->origin_province))<option value="{{ $rider->id }}">{{ $rider->given_names }} {{ $rider->last_name }}</option>@endif @endforeach</select></label><button class="btn btn-primary" style="min-height:44px" @disabled($shippingBlocked || ($pickupRidersByShipment[$s->id] ?? collect())->isEmpty())>Send pickup offer</button></form>
-            @if(($pickupRidersByShipment[$s->id] ?? collect())->isEmpty())<p role="status">No eligible rider is available for the pickup barangay {{ app(\App\Services\RiderBarangayCoverage::class)->barangay($s, 'pickup') ?: '(missing address)' }}. Review rider coverage and availability.</p>@endif
+            @if(($pickupRidersByShipment[$s->id] ?? collect())->isEmpty())<p role="status">No eligible online two-wheel rider is available at the pickup municipality hub. Review rider hub assignment and availability.</p>@endif
+            @else
+            <p>Awaiting pickup rider assignment by the origin hub staff.</p>
+            @endif
             @else
             <div class="row-actions">
               <form method="POST" action="{{ route('logistics.requests.approve', $s->id) }}" data-confirm data-confirm-title="Approve this pickup?" data-confirm-message="The seller pickup will be approved and can be assigned to an eligible rider." data-confirm-action="Approve pickup" data-confirm-tone="success">@csrf @method('PATCH')

@@ -1,7 +1,7 @@
 @php
   $notifications = $notifications ?? \Illuminate\Support\Facades\DB::table('notifications')->where('user_id', auth()->id())->orderByDesc('created_at')->limit(8)->get();
   $notificationUnreadCount = \Illuminate\Support\Facades\DB::table('notifications')->where('user_id', auth()->id())->where('is_read',false)->count();
-  $cartCount = $cartCount ?? (int) \App\Models\CartItem::where('buyer_id', auth()->id())->sum('qty');
+  $cartCount = $cartCount ?? (int) \App\Models\CartItem::where('buyer_id', auth()->id())->distinct()->count('product_id');
   $unreadMessages = $unreadMessages ?? \App\Models\Message::where('receiver_id', auth()->id())->where('read', false)->count();
   $storefrontAnchor = request()->routeIs('buyer.dashboard') ? '' : route('buyer.dashboard');
 @endphp

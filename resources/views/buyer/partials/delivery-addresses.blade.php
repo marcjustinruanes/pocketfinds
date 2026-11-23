@@ -18,7 +18,7 @@
       </span>
       <button type="button" class="icon-btn address-action-icon" data-edit-delivery-address="{{ $addr->id }}" aria-label="Edit address" title="Edit address" style="width:24px;height:24px;flex:none">@include('buyer.partials.icon',['name'=>'edit','size'=>12])</button>
       @unless($addr->is_default)
-        <button type="button" class="icon-btn address-action-icon" data-delete-address="{{ $addr->id }}" aria-label="Remove {{ $addr->label ?: 'saved' }} address" title="Remove address" style="width:24px;height:24px;flex:none">
+        <button type="button" class="icon-btn address-action-icon" data-delete-address="{{ $addr->id }}" data-delete-url="{{ route('buyer.addresses.destroy', $addr, false) }}" aria-label="Remove {{ $addr->label ?: 'saved' }} address" title="Remove address" style="width:24px;height:24px;flex:none">
           @include('buyer.partials.icon', ['name' => 'trash', 'size' => 12])
         </button>
       @endunless
@@ -275,11 +275,16 @@ document.addEventListener('DOMContentLoaded', () => {
     button.textContent = 'Removing…';
     error.hidden = true;
     try {
-      const response = await fetch(`/buyer/addresses/${pendingAddressButton.dataset.deleteAddress}`, {
-        method: 'DELETE',
-        headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
+      const response = await fetch(pendingAddressButton.dataset.deleteUrl, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '' },
+        body: new URLSearchParams({ _method: 'DELETE' }),
       });
-      const data = await response.json();
+      if (response.status === 419) throw new Error('Your session expired. Refresh this page, then try again.');
+      if (response.redirected) throw new Error('Please sign in again, then retry removing this address.');
+      if (response.status === 404) { window.location.reload(); return; }
+      const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.success) throw new Error(data.message || 'Could not remove this address.');
       window.location.reload();
     } catch (failure) {

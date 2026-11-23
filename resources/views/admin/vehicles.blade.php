@@ -3,6 +3,24 @@
 @section('page-title', 'Company Vehicles')
 @section('page-sub', 'Review vehicles submitted by logistics companies — approved vehicles become available for rider assignment at their assigned hub')
 
+@section('body-class', 'platform-accounts-page platform-resources-page')
+@push('account-head')
+<link rel="stylesheet" href="{{ asset('css/platform-accounts.css') }}?v={{ filemtime(public_path('css/platform-accounts.css')) }}">
+@endpush
+
+@section('workspace-search')
+<div class="platform-account-toolbar">
+    <div class="filter-bar">
+      <div class="search-mini">
+        <span class="ic"><x-admin-icon name="search" /></span>
+        <input type="text" placeholder="Search vehicle, company or hub..." data-table-search="vehiclesTable">
+      </div>
+
+    </div>
+
+</div>
+@endsection
+
 @section('content')
 @if(session('success'))
 <div class="modal-overlay open" id="vehicleActionResultModal">
@@ -21,45 +39,13 @@
 </div>
 @endif
 
-<div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
-  <button type="button" class="kpi kpi-filter active" data-status-kpi="">
-    <div class="label">Total Vehicles</div>
-    <div class="value">{{ $vehicles->count() }}</div>
-  </button>
-  <button type="button" class="kpi kpi-filter" data-status-kpi="pending">
-    <div class="label">Awaiting Review</div>
-    <div class="value">{{ $platformCounts['pending'] ?? 0 }}</div>
-    <div class="delta {{ ($platformCounts['pending'] ?? 0) > 0 ? 'down' : 'up' }}">Needs attention</div>
-  </button>
-  <button type="button" class="kpi kpi-filter" data-status-kpi="approved">
-    <div class="label">Approved</div>
-    <div class="value">{{ $platformCounts['approved'] ?? 0 }}</div>
-    <div class="delta up">Available to riders</div>
-  </button>
-</div>
+<div class="card platform-accounts-card">
 
-<div class="card">
-  <div class="card-head">
-    <div><h2>Vehicle Submissions</h2><p>{{ $vehicles->count() }} total</p></div>
-  </div>
   <div class="card-pad">
-    <div class="filter-bar">
-      <div class="search-mini">
-        <span class="ic"><x-admin-icon name="search" /></span>
-        <input type="text" placeholder="Search vehicle, company or hub..." data-table-search="vehiclesTable">
-      </div>
-      <select class="select" id="vehicleStatusFilter">
-        <option value="">All Status</option>
-        <option value="pending">Awaiting Review</option>
-        <option value="approved">Approved</option>
-        <option value="rejected">Rejected</option>
-      </select>
-    </div>
-
     <div class="table-wrap">
-      <table class="dtable" id="vehiclesTable">
+      <table class="dtable" id="vehiclesTable" data-platform-filter-table>
         <thead>
-          <tr><th>Vehicle</th><th>Type</th><th>Company</th><th>Hub</th><th>Submitted By</th><th>Status</th><th>Submitted</th><th></th></tr>
+          <tr><th>Vehicle</th><th>Type</th><th>Company</th><th>Hub</th><th>Submitted By</th><th>@include('admin.partials.column-filter', ['filterTable'=>'vehiclesTable','filterLabel'=>'Status','filterField'=>'status','filterOptions'=>['all'=>'All statuses','pending'=>'Awaiting review','approved'=>'Approved','rejected'=>'Rejected']])</th><th>Submitted</th><th class="platform-manage-heading">Manage</th></tr>
         </thead>
         <tbody>
           @forelse($vehicles as $vehicle)
@@ -100,9 +86,7 @@
             <td class="mono" style="font-size:12px">{{ $vehicle->created_at?->format('M d, Y') ?? '—' }}</td>
             <td>
               <div class="row-actions">
-                <button class="btn btn-sm btn-outline" data-modal-open="vehicleModal-{{ $vehicle->id }}">
-                  <x-admin-icon name="eye" /> Review
-                </button>
+                <button class="btn platform-detail-button" data-modal-open="vehicleModal-{{ $vehicle->id }}" type="button" aria-label="Review details" title="Review details"><span aria-hidden="true">&#8599;</span></button>
               </div>
             </td>
           </tr>
@@ -202,13 +186,5 @@
 
 @include('admin.partials.reason-modals', ['reasonModalTypes' => ['reject'], 'applicationRejection' => false])
 
-<script>
-// Wire the status dropdown to filter the table rows
-document.getElementById('vehicleStatusFilter')?.addEventListener('change', function () {
-  const val = this.value;
-  document.querySelectorAll('#vehiclesTable tbody tr').forEach(row => {
-    row.style.display = (!val || row.dataset.status === val) ? '' : 'none';
-  });
-});
-</script>
+
 @endsection

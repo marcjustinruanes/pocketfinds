@@ -45,6 +45,62 @@
 
     <x-account-profile-card role="logistics" :action="route('logistics.account.update')" :pending="$pendingRequest !== null" />
 
+    {{-- Documents --}}
+    @php($docs = app(\App\Services\SensitiveDocuments::class))
+    @php($docRole = $user->account_type === 'rider' ? 'rider' : 'hub_staff')
+    @php($idType = $user->id_type_id ? \Illuminate\Support\Facades\DB::table('id_types')->where('id',$user->id_type_id)->value('name') : null)
+    @if($docs->url($user->id_file) || $docs->url($user->selfie_file) || ($docRole === 'rider' && ($docs->url($user->license_file) || $docs->url($user->nbi_clearance_file) || $docs->url($user->or_file) || $docs->url($user->cr_file))) || $docs->url($user->resume_file))
+    <div class="card" id="account-documents">
+      <div class="card-head"><div><h2>Application Documents</h2><p>Documents submitted during registration. Contact your admin to replace any document.</p></div></div>
+      <div class="card-pad">
+        <div class="form-grid-2">
+          @if($docs->url($user->id_file))
+          <div class="form-row">
+            <label>{{ $idType ? $idType.' (ID Photo)' : 'ID Photo' }}</label>
+            <a href="{{ $docs->url($user->id_file) }}" target="_blank" rel="noopener" class="btn btn-outline" style="font-size:12px">View ID document</a>
+          </div>
+          @endif
+          @if($docs->url($user->selfie_file))
+          <div class="form-row">
+            <label>Selfie</label>
+            <a href="{{ $docs->url($user->selfie_file) }}" target="_blank" rel="noopener" class="btn btn-outline" style="font-size:12px">View selfie</a>
+          </div>
+          @endif
+          @if($docRole === 'rider' && $docs->url($user->license_file))
+          <div class="form-row">
+            <label>Driver's License</label>
+            <a href="{{ $docs->url($user->license_file) }}" target="_blank" rel="noopener" class="btn btn-outline" style="font-size:12px">View license</a>
+          </div>
+          @endif
+          @if($docRole === 'rider' && $docs->url($user->nbi_clearance_file))
+          <div class="form-row">
+            <label>NBI Clearance</label>
+            <a href="{{ $docs->url($user->nbi_clearance_file) }}" target="_blank" rel="noopener" class="btn btn-outline" style="font-size:12px">View NBI clearance</a>
+          </div>
+          @endif
+          @if($docRole === 'rider' && $docs->url($user->or_file))
+          <div class="form-row">
+            <label>OR (Vehicle)</label>
+            <a href="{{ $docs->url($user->or_file) }}" target="_blank" rel="noopener" class="btn btn-outline" style="font-size:12px">View OR</a>
+          </div>
+          @endif
+          @if($docRole === 'rider' && $docs->url($user->cr_file))
+          <div class="form-row">
+            <label>CR (Vehicle)</label>
+            <a href="{{ $docs->url($user->cr_file) }}" target="_blank" rel="noopener" class="btn btn-outline" style="font-size:12px">View CR</a>
+          </div>
+          @endif
+          @if($docs->url($user->resume_file))
+          <div class="form-row">
+            <label>Resume / CV</label>
+            <a href="{{ $docs->url($user->resume_file) }}" target="_blank" rel="noopener" class="btn btn-outline" style="font-size:12px">View resume</a>
+          </div>
+          @endif
+        </div>
+      </div>
+    </div>
+    @endif
+
     {{-- Address --}}
     <div class="card" id="account-address" role="region" aria-labelledby="account-address-title">
       <div class="card-head"><div><h2 id="account-address-title">Address Information</h2><p>Where you're based</p></div></div>
@@ -92,24 +148,8 @@
     </div>
 
     {{-- Password --}}
-    <div class="card" id="account-security" role="region" aria-labelledby="account-security-title">
-      <div class="card-head"><h2 id="account-security-title">Change Password</h2></div>
-      <div class="card-pad">
-        @if(session('password_success'))
-        <div style="background:var(--success-soft);border:1px solid var(--success-line);color:var(--success);padding:10px 14px;border-radius:9px;font-size:14px;margin-bottom:14px">{{ session('password_success') }}</div>
-        @endif
-        @error('current_password')
-        <div style="background:var(--danger-soft);border:1px solid var(--danger-line);color:var(--danger);padding:10px 14px;border-radius:9px;font-size:14px;margin-bottom:14px">{{ $message }}</div>
-        @enderror
-        <form method="POST" action="{{ route('logistics.account.password') }}">
-          @csrf
-          <div class="form-row"><label for="account-current-password">Current Password</label><input type="password" id="account-current-password" name="current_password" required></div>
-          <div class="form-row"><label for="account-new-password">New Password</label><input type="password" id="account-new-password" name="password" required></div>
-          <div class="form-row"><label for="account-confirm-password">Confirm New Password</label><input type="password" id="account-confirm-password" name="password_confirmation" required></div>
-          <button class="btn btn-primary" type="submit">Update Password</button>
-        </form>
-      </div>
-    </div>
+    @include('buyer.partials.email-change', ['emailRole'=>'logistics'])
+    @include('account.partials.login-security', ['securityRole'=>'logistics'])
 
   </section>
 
@@ -157,8 +197,9 @@
     @endif
   </aside>
 </div>
-@include('account.partials.email-change')
+
 </div>
+@include('account.partials.delete-account')
 </x-account-workspace>
 @include('account.partials.profile-photo-manager')
 @endsection
