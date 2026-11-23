@@ -66,10 +66,10 @@ class ScannerLogin extends StatelessWidget {
                     const SizedBox(height: 24),
                     TextField(
                       controller: email,
-                      keyboardType: TextInputType.emailAddress,
+                      keyboardType: TextInputType.text,
                       autofillHints: const [AutofillHints.username],
                       decoration: const InputDecoration(
-                        labelText: 'Email address',
+                        labelText: 'Email or username',
                         prefixIcon: Icon(Icons.mail_outline),
                       ),
                     ),
