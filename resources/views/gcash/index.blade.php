@@ -3,7 +3,7 @@
 @section('page-title', auth()->user()->is_admin ? 'GCash payments' : 'GCash purchases')
 @section('hide-page-heading', !auth()->user()->is_admin && auth()->user()->account_type === 'buyer')
 @section('page-sub', auth()->user()->is_admin ? 'Review GCash payment status and purchase records' : (auth()->user()->account_type === 'buyer' ? 'Track your GCash checkout and payment status' : 'Review buyer GCash payments and purchase records'))
-@section('body-class', auth()->user()->is_admin ? '' : (auth()->user()->account_type === 'buyer' ? 'gcash-payments-page' : 'seller-orders-page seller-gcash-page'))
+@section('body-class', auth()->user()->is_admin ? 'seller-orders-page admin-gcash-page' : (auth()->user()->account_type === 'buyer' ? 'gcash-payments-page' : 'seller-orders-page seller-gcash-page'))
 @include('gcash.assets')
 @section('content')
 @php

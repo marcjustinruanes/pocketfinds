@@ -4,6 +4,9 @@
 <link rel="stylesheet" href="{{ asset('css/gcash-order-modal.css') }}?v={{ filemtime(public_path('css/gcash-order-modal.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/admin-gcash-orders.css') }}?v={{ filemtime(public_path('css/admin-gcash-orders.css')) }}">
 @endpush
+@push('account-head')
+<link rel="stylesheet" href="{{ asset('css/seller-order-categories.css') }}?v={{ filemtime(public_path('css/seller-order-categories.css')) }}">
+@endpush
 @push('scripts')<script src="{{ asset('js/gcash-order-modal.js') }}?v={{ filemtime(public_path('js/gcash-order-modal.js')) }}" defer></script>@endpush
 @php
  $state = request('state','all');
@@ -15,17 +18,16 @@
  $capsuleRefunds = \Illuminate\Support\Facades\Schema::hasTable('cancellation_refunds') ? \Illuminate\Support\Facades\DB::table('cancellation_refunds')->whereIn('order_id', $capsuleOrders->pluck('id'))->get(['order_id','status'])->keyBy('order_id') : collect();
 @endphp
 <div class="buyer-pages buyer-orders-page admin-gcash-orders">
- <div class="orders-page"><div class="orders-layout">
-  <aside class="order-tabs-shell" aria-label="Payment status filters"><nav class="tabs order-tabs">
+ <div class="orders-page"><div class="seller-order-layout">
+  <aside class="seller-order-categories" aria-label="Payment status filters"><nav class="seller-order-category-list">
    @foreach($states as [$key,$icon,$label])
    @php $count = $key === 'all' ? $paymentCounts->sum() : ($paymentCounts[$key]??0); @endphp
-   <a class="tab {{ $state === $key ? 'active' : '' }}" href="{{ route('gcash.index',array_filter(['state'=>$key,'q'=>request('q'),'period'=>request('period')])) }}" aria-label="{{ $label }} ({{ $count }})" title="{{ $label }}" @if($state===$key) aria-current="page" @endif>
-    <span class="order-tab-icon">@if($key==='all')@include('guest.partials.category-filter-icon',['category'=>null])@else @include('buyer.partials.icon',['name'=>$icon,'size'=>19])@endif</span>
-    <span class="order-tab-label">{{ $label }}</span>@if($count)<span class="order-tab-count">{{ $count }}</span>@endif
+   <a class="seller-order-category {{ $state === $key ? 'active' : '' }}" href="{{ route('gcash.index',array_filter(['state'=>$key,'q'=>request('q'),'period'=>request('period')])) }}" aria-label="{{ $label }} ({{ $count }})" title="{{ $label }}" @if($state===$key) aria-current="page" @endif>
+    <span class="seller-order-category-label">{{ $label }}</span>@if($count)<span class="seller-order-category-count">{{ $count }}</span>@endif
    </a>
    @endforeach
   </nav></aside>
-  <div class="orders-content">
+  <div class="orders-content seller-order-content">
    @include('commerce.messages')
    <form class="orders-toolbar" method="GET" action="{{ route('gcash.index') }}" aria-label="Filter GCash payments">
     <input type="hidden" name="state" value="{{ $state }}">
